@@ -1,0 +1,46 @@
+# Test Document for Upload
+
+This is a test document to verify the upload functionality.
+
+## Features to Test:
+
+1. **File Type Validation**: Only .txt, .docx, .pdf, .xlsx allowed
+2. **File Size Limit**: Maximum 10MB
+3. **Upload Progress**: Progress bar during upload
+4. **Error Handling**: Invalid file types and sizes
+5. **Document List**: Display uploaded documents
+6. **Status Tracking**: Processing, completed, failed states
+
+## Expected Behavior:
+
+- ✅ File should upload successfully
+- ✅ Progress bar should show upload progress
+- ✅ Document should appear in the list
+- ✅ Status should show as "completed"
+- ✅ File size should be displayed correctly
+- ✅ Upload date should be shown
+
+## Test Steps:
+
+1. Go to http://localhost:3000/login
+2. Click "use test account (admin/admin123)"
+3. Navigate to Documents page
+4. Click "Upload Document"
+5. Select this file
+6. Click "Upload"
+7. Verify document appears in the list
+
+## API Endpoints Used:
+
+- **Login**: `/auth/login/test`
+- **Get Documents**: `/upload/documents`
+- **Upload Document**: `/upload/`
+- **Delete Document**: `/upload/documents/{id}`
+
+## File Restrictions:
+
+- **Allowed Types**: .txt, .docx, .pdf, .xlsx
+- **Max Size**: 10MB
+- **Authentication**: Required (Bearer token)
+
+This document is ready for testing the upload functionality! 
