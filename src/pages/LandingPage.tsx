@@ -101,7 +101,7 @@ export default function LandingPage() {
               alt="Alan HRM"
               className="h-10 w-auto max-w-[160px] rounded-lg object-contain"
             />
-            <span className="text-blue-300 text-xs hidden sm:block">Hệ thống Quản lý Nhân sự</span>
+            <span className="text-ruby-accent text-xs hidden sm:block">Hệ thống Quản lý Nhân sự</span>
           </div>
           <a
             href="/login"
@@ -198,7 +198,7 @@ export default function LandingPage() {
                     <div className="text-2xl font-extrabold text-white">
                       <CountUp to={to} suffix={suffix} duration={duration} />
                     </div>
-                    <div className="text-xs text-blue-400 mt-0.5">{label}</div>
+                    <div className="text-xs text-ruby-accent mt-0.5">{label}</div>
                   </div>
                 ))}
               </motion.div>
@@ -218,7 +218,7 @@ export default function LandingPage() {
                 <div className="flex items-center justify-between mb-5">
                   <div>
                     <p className="text-white font-semibold text-sm">Tổng quan Nhân sự</p>
-                    <p className="text-blue-400 text-xs mt-0.5">Alan Beauty Medical Clinic · 2026</p>
+                    <p className="text-ruby-accent text-xs mt-0.5">Alan Beauty Medical Clinic · 2026</p>
                   </div>
                   <span className="flex items-center gap-1.5 text-xs text-green-400 bg-green-400/10 border border-green-400/20 px-2.5 py-1 rounded-full">
                     <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -232,13 +232,13 @@ export default function LandingPage() {
                     <div className="text-4xl font-extrabold text-green-400 mb-1">
                       <CountUp to={cardStats.active} duration={2.8} />
                     </div>
-                    <div className="text-blue-300 text-xs">Đang đi làm</div>
+                    <div className="text-ruby-accent/80 text-xs">Đang đi làm</div>
                   </div>
                   <div className="bg-white/5 border border-white/5 rounded-xl p-4 text-center">
                     <div className="text-4xl font-extrabold text-yellow-400 mb-1">
                       <CountUp to={cardStats.monthlyLeave} duration={2.5} />
                     </div>
-                    <div className="text-blue-300 text-xs">Nghỉ phép tháng</div>
+                    <div className="text-ruby-accent/80 text-xs">Nghỉ phép tháng</div>
                   </div>
                 </div>
 
