@@ -417,13 +417,13 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
           <button
             onClick={collapsed ? undefined : () => toggleGroup(item.name, expanded)}
             className={`w-full group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
-              active ? 'bg-primary-100 text-primary-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              active ? 'bg-ruby-light text-ruby-primary' : 'text-gray-600 hover:bg-ruby-light/50 hover:text-ruby-primary'
             } ${collapsed ? 'justify-center' : 'justify-between'}`}
             title={collapsed ? item.name : undefined}
           >
             <span className={`flex items-center ${collapsed ? '' : ''}`}>
               <item.icon
-                className={`h-6 w-6 flex-shrink-0 ${active ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'} ${collapsed ? '' : 'mr-3'}`}
+                className={`h-6 w-6 flex-shrink-0 ${active ? 'text-ruby-primary' : 'text-gray-400 group-hover:text-ruby-primary'} ${collapsed ? '' : 'mr-3'}`}
               />
               {!collapsed && item.name}
             </span>
@@ -442,11 +442,11 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
                     key={child.name}
                     to={child.href}
                     className={`group flex items-center px-2 py-1.5 text-sm font-medium rounded-md ${
-                      childActive ? 'bg-primary-100 text-primary-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      childActive ? 'bg-ruby-light text-ruby-primary' : 'text-gray-600 hover:bg-ruby-light/50 hover:text-ruby-primary'
                     }`}
                   >
                     <child.icon
-                      className={`h-4 w-4 flex-shrink-0 mr-2 ${childActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'}`}
+                      className={`h-4 w-4 flex-shrink-0 mr-2 ${childActive ? 'text-ruby-primary' : 'text-gray-400 group-hover:text-ruby-primary'}`}
                     />
                     {child.name}
                   </Link>
@@ -465,12 +465,12 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
         key={item.name}
         to={item.href}
         className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-          isActive ? 'bg-primary-100 text-primary-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          isActive ? 'bg-ruby-light text-ruby-primary' : 'text-gray-600 hover:bg-ruby-light/50 hover:text-ruby-primary'
         } ${collapsed ? 'justify-center' : ''}`}
         title={collapsed ? item.name : undefined}
       >
         <item.icon
-          className={`h-6 w-6 flex-shrink-0 ${isActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'} ${collapsed ? '' : 'mr-3'}`}
+          className={`h-6 w-6 flex-shrink-0 ${isActive ? 'text-ruby-primary' : 'text-gray-400 group-hover:text-ruby-primary'} ${collapsed ? '' : 'mr-3'}`}
         />
         {!collapsed && item.name}
       </Link>
@@ -490,7 +490,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
           <div className="flex h-16 items-center justify-between px-4">
             <Link to="/" className="flex items-center gap-2">
-              <img src="/logo-trung-anh.png" alt="Trung Anh Group" className="h-8 w-auto max-w-[130px] object-contain" />
+              <img src="/logo-alan.png" alt="Alan HRM" className="h-10 w-auto max-w-[160px] object-contain mix-blend-multiply" />
             </Link>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -515,7 +515,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
                       className="h-8 w-8 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                    <div className="h-8 w-8 bg-gradient-to-br from-ruby-primary to-ruby-hover rounded-full flex items-center justify-center shadow-lg shadow-ruby-primary/20">
                       <span className="text-sm font-medium text-white">
                         {user.username?.charAt(0).toUpperCase()}
                       </span>
@@ -528,8 +528,8 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
                     <div className="flex items-center space-x-2">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${userRole === 'ADMIN'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-blue-100 text-blue-800'
+                            ? 'bg-ruby-primary/10 text-ruby-primary'
+                            : 'bg-ruby-light text-ruby-primary'
                           }`}
                       >
                         {userRole}
@@ -552,7 +552,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
           <div className="relative flex h-16 items-center justify-center">
             {!isCollapsed && (
               <Link to="/" className="flex items-center justify-center">
-                <img src="/logo-trung-anh.png" alt="Trung Anh Group" className="h-10 w-auto object-contain" />
+                <img src="/logo-alan.png" alt="Alan HRM" className="h-14 w-auto object-contain mix-blend-multiply" />
               </Link>
             )}
             <button
@@ -584,7 +584,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
                       className="h-8 w-8 rounded-full object-cover flex-shrink-0"
                     />
                   ) : (
-                    <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="h-8 w-8 bg-gradient-to-br from-ruby-primary to-ruby-hover rounded-full flex items-center justify-center flex-shrink-0 shadow-lg shadow-ruby-primary/20">
                       <span className="text-sm font-medium text-white">
                         {(user.employee_profile?.full_name || user.hrm_user?.full_name || user.firstName || user.username)?.charAt(0).toUpperCase()}
                       </span>
@@ -598,8 +598,8 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
                     <div className="flex items-center space-x-2 mt-0.5">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${userRole === 'ADMIN'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-blue-100 text-blue-800'
+                            ? 'bg-ruby-primary/10 text-ruby-primary'
+                            : 'bg-ruby-light text-ruby-primary'
                           }`}
                       >
                         {userRole}
@@ -625,10 +625,10 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
         </button>
         <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
           <Link to="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-blue-900 flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-black text-xs tracking-tight">TAG</span>
+            <div className="h-9 w-9 rounded-lg bg-transparent flex items-center justify-center flex-shrink-0 border border-ruby-primary/20">
+              <span className="text-ruby-primary font-black text-xs tracking-tight">ALAN</span>
             </div>
-            <span className="text-sm font-bold text-gray-900">Trung Anh Group</span>
+            <span className="text-sm font-bold text-gray-900">ALAN Beauty Medical Clinic</span>
           </Link>
         </div>
       </div>

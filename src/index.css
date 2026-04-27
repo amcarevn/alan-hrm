@@ -1,5 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap');
 
+/* 
+  Brand Color Palette - Workflow Context:
+  | Vai trò    | Màu       | HEX       |
+  | ---------- | --------- | --------- |
+  | Primary    | Ruby      | #E0115F   |
+  | Hover      | Dark Ruby | #B30E4C   |
+  | Light      | Soft Ruby | #FCE7EF   |
+  | Accent     | Rose Gold | #F2AC91   |
+  | Dark text  | Charcoal  | #1F2937   |
+  | Background | Snow      | #FFF8FB   |
+*/
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

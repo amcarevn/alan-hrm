@@ -76,9 +76,10 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center bg-blue-900 px-4 overflow-hidden">
-      {/* Gradient mesh background — same as LandingPage hero */}
+    <div className="relative min-h-screen flex flex-col items-center justify-center bg-[#0F172A] px-4 overflow-hidden">
+      {/* ── BACKGROUND ── */}
       <div className="absolute inset-0 pointer-events-none">
+        {/* Grid overlay */}
         <div
           className="absolute inset-0 opacity-[0.07]"
           style={{
@@ -86,59 +87,60 @@ export default function Login() {
             backgroundSize: '36px 36px',
           }}
         />
-        <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full bg-blue-500 opacity-20 blur-3xl" />
-        <div className="absolute top-1/2 right-1/3 w-72 h-72 rounded-full bg-indigo-500 opacity-15 blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-blue-700 opacity-25 blur-3xl" />
+        {/* Blurred background blobs - Ruby Theme */}
+        <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full bg-ruby-primary opacity-[0.15] blur-[120px]" />
+        <div className="absolute top-1/2 right-1/3 w-72 h-72 rounded-full bg-ruby-accent opacity-[0.1] blur-[100px]" />
+        <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-ruby-primary opacity-[0.12] blur-[120px]" />
       </div>
 
-      {/* Logo + branding */}
-      <motion.div initial="hidden" animate="visible" className="relative z-10 flex flex-col items-center mb-8">
-        <motion.div custom={0} variants={fadeUp} className="mb-5">
-          <img
-            src="/logo-trung-anh.png"
-            alt="Trung Anh Group"
-            className="h-16 w-auto max-w-[220px] rounded-xl shadow-xl object-contain"
+      {/* ── LOGO + BRANDING ── */}
+      <motion.div initial="hidden" animate="visible" className="relative z-10 flex flex-col items-center mb-10">
+        <motion.div custom={0} variants={fadeUp} className="mb-6">
+          <img 
+            src="/logo-alan.png" 
+            alt="ALAN Beauty Medical Clinic" 
+            className="h-24 w-auto max-w-[280px] rounded-xl shadow-2xl shadow-black/40 object-contain mix-blend-multiply" 
           />
         </motion.div>
-        <motion.p
-          custom={1} variants={fadeUp}
-          className="text-blue-300 text-base mt-1.5"
-        >
-          Hệ thống Quản lý Nhân sự
-        </motion.p>
+        <motion.div custom={1} variants={fadeUp} className="text-center">
+
+          <p className="text-ruby-accent text-sm font-medium mt-1 opacity-80">
+      Hệ thống Quản lý Nhân sự
+          </p>
+        </motion.div>
       </motion.div>
 
-      {/* Card — glassmorphism */}
+      {/* ── LOGIN CARD ── */}
       <motion.div
         custom={2} variants={fadeUp} initial="hidden" animate="visible"
-        className="relative z-10 w-full max-w-sm bg-white/[0.08] backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl p-8"
+        className="relative z-10 w-full max-w-sm bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-3xl shadow-2xl p-10"
       >
-        <form onSubmit={handleSubmit} noValidate className="space-y-5">
+        <form onSubmit={handleSubmit} noValidate className="space-y-6">
           {/* Username */}
           <div>
-            <label className="block text-sm font-medium text-blue-200 mb-1.5">
+             <label className="block text-sm font-semibold text-gray-400 mb-2 px-1">
               Tên đăng nhập
             </label>
             <input
               type="text"
               placeholder="Nhập tên đăng nhập"
               autoComplete="username"
-              className={`block w-full px-3.5 py-2.5 bg-white/90 border rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition ${
+              className={`block w-full px-4 py-3 bg-white/5 border rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-ruby-primary/50 focus:border-ruby-primary/50 transition-all duration-300 ${
                 fieldErrors.username
-                  ? 'border-red-400 focus:ring-red-400'
-                  : 'border-white/30 focus:ring-blue-400'
+                  ? 'border-red-500/50 bg-red-500/5'
+                  : 'border-white/10 hover:border-white/20'
               }`}
               value={formData.username}
               onChange={(e) => handleChange('username', e.target.value)}
             />
             {fieldErrors.username && (
-              <p className="mt-1 text-xs text-red-300">{fieldErrors.username}</p>
+              <p className="mt-1.5 text-xs text-red-400 px-1">{fieldErrors.username}</p>
             )}
           </div>
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-blue-200 mb-1.5">
+            <label className="block text-sm font-semibold text-gray-400 mb-2 px-1">
               Mật khẩu
             </label>
             <div className="relative">
@@ -146,47 +148,55 @@ export default function Login() {
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Nhập mật khẩu"
                 autoComplete="current-password"
-                className={`block w-full px-3.5 py-2.5 pr-10 bg-white/90 border rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition ${
+                className={`block w-full px-4 py-3 pr-11 bg-white/5 border rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-ruby-primary/50 focus:border-ruby-primary/50 transition-all duration-300 ${
                   fieldErrors.password
-                    ? 'border-red-400 focus:ring-red-400'
-                    : 'border-white/30 focus:ring-blue-400'
+                    ? 'border-red-500/50 bg-red-500/5'
+                    : 'border-white/10 hover:border-white/20'
                 }`}
                 value={formData.password}
                 onChange={(e) => handleChange('password', e.target.value)}
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-500 hover:text-ruby-primary transition-colors"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword
-                  ? <EyeSlashIcon className="h-4 w-4 text-blue-400" />
-                  : <EyeIcon className="h-4 w-4 text-blue-400" />
+                  ? <EyeSlashIcon className="h-5 w-5" />
+                  : <EyeIcon className="h-5 w-5" />
                 }
               </button>
             </div>
             {fieldErrors.password && (
-              <p className="mt-1 text-xs text-red-300">{fieldErrors.password}</p>
+              <p className="mt-1.5 text-xs text-red-400 px-1">{fieldErrors.password}</p>
             )}
           </div>
 
           {/* Server error */}
           {serverError && (
-            <div className="text-red-300 text-sm bg-red-500/10 border border-red-400/30 rounded-lg px-3 py-2">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3"
+            >
               {serverError}
-            </div>
+            </motion.div>
           )}
 
           <button
             type="submit"
             disabled={isLoggingIn}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-60 text-white text-base font-bold rounded-xl transition-colors mt-1 shadow-lg shadow-blue-900/40"
+            className="w-full py-3 px-4 bg-ruby-primary hover:bg-ruby-hover active:bg-[#9B0B42] disabled:opacity-60 text-white text-base font-bold rounded-xl transition-colors mt-1 shadow-lg shadow-ruby-primary/30"
           >
-            {isLoggingIn ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {isLoggingIn ? (
+              <>
+                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Đang xử lý...
+              </>
+            ) : 'Đăng nhập'}
           </button>
         </form>
       </motion.div>
-
     </div>
   );
 }
