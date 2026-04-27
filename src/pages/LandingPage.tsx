@@ -99,7 +99,7 @@ export default function LandingPage() {
             <img
               src="/logo-alan.png"
               alt="Alan HRM"
-              className="h-10 w-auto max-w-[160px] rounded-lg object-contain mix-blend-multiply"
+              className="h-10 w-auto max-w-[160px] rounded-lg object-contain"
             />
             <span className="text-blue-300 text-xs hidden sm:block">Hệ thống Quản lý Nhân sự</span>
           </div>
@@ -377,7 +377,7 @@ export default function LandingPage() {
               <img
                 src="/logo-alan.png"
                 alt="Alan HRM"
-                className="h-8 w-auto max-w-[130px] rounded-lg object-contain mix-blend-multiply"
+                className="h-8 w-auto max-w-[130px] rounded-lg object-contain"
               />
               <span className="text-gray-500 text-xs hidden sm:block">Hệ thống Quản lý Nhân sự</span>
             </div>
