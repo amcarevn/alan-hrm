@@ -1,22 +1,22 @@
 export default function Footer() {
   return (
-    <footer className="bg-blue-900">
+    <footer className="bg-[#0F172A] border-t border-white/5">
       <div className="mx-auto max-w-7xl px-6 py-12 lg:px-8">
         <div className="xl:grid xl:grid-cols-3 xl:gap-8">
           {/* Brand */}
           <div className="space-y-6">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
-                <span className="text-blue-900 font-black text-sm tracking-tight">TAG</span>
+               <div className="h-9 w-9 rounded-lg bg-ruby-primary flex items-center justify-center flex-shrink-0 shadow-lg shadow-ruby-primary/20">
+                <span className="text-white font-black text-sm tracking-tight">ALAN</span>
               </div>
               <div>
-                <div className="text-white font-bold text-sm leading-tight">Trung Anh Group</div>
-                <div className="text-blue-300 text-xs">Hệ thống Quản lý Nhân sự</div>
+                <div className="text-white font-bold text-sm leading-tight uppercase tracking-wide">ALAN Beauty Medical Clinic</div>
+                <div className="text-ruby-accent text-[10px] uppercase font-semibold tracking-widest opacity-70">Hệ thống Quản trị Nội bộ</div>
               </div>
             </div>
-            <p className="text-sm leading-6 text-blue-300">
-              Hệ thống Quản lý Hành chính Nhân sự nội bộ của Trung Anh Group —
-              quản lý nhân sự, chấm công, tính lương và tài sản tập trung.
+            <p className="text-sm leading-6 text-gray-400">
+              Hệ thống Quản lý Hành chính Nhân sự nội bộ của ALAN Beauty Medical Clinic —
+              tối ưu hóa quy trình chấm công, tính lương và quản trị tài sản tập trung.
             </p>
           </div>
 
@@ -29,7 +29,7 @@ export default function Footer() {
                   <li>
                     <a
                       href="#"
-                      className="text-sm leading-6 text-blue-300 hover:text-white transition-colors"
+                      className="text-sm leading-6 text-ruby-accent/60 hover:text-ruby-primary transition-all duration-300"
                     >
                       Các phân hệ
                     </a>
@@ -37,7 +37,7 @@ export default function Footer() {
                   <li>
                     <a
                       href="#demo"
-                      className="text-sm leading-6 text-blue-300 hover:text-white transition-colors"
+                      className="text-sm leading-6 text-ruby-accent/60 hover:text-ruby-primary transition-all duration-300"
                     >
                       Demo giao diện
                     </a>
@@ -45,7 +45,7 @@ export default function Footer() {
                   <li>
                     <a
                       href="/login"
-                      className="text-sm leading-6 text-blue-300 hover:text-white transition-colors"
+                      className="text-sm leading-6 text-ruby-accent/60 hover:text-ruby-primary transition-all duration-300"
                     >
                       Đăng nhập
                     </a>
@@ -58,7 +58,7 @@ export default function Footer() {
                   <li>
                     <a
                       href="#"
-                      className="text-sm leading-6 text-blue-300 hover:text-white transition-colors"
+                      className="text-sm leading-6 text-ruby-accent/60 hover:text-ruby-primary transition-all duration-300"
                     >
                       Hướng dẫn sử dụng
                     </a>
@@ -66,7 +66,7 @@ export default function Footer() {
                   <li>
                     <a
                       href="mailto:it@trunganhgroup.vn"
-                      className="text-sm leading-6 text-blue-300 hover:text-white transition-colors"
+                      className="text-sm leading-6 text-ruby-accent/60 hover:text-ruby-primary transition-all duration-300"
                     >
                       Liên hệ phòng IT
                     </a>
@@ -74,7 +74,7 @@ export default function Footer() {
                   <li>
                     <a
                       href="/login"
-                      className="text-sm leading-6 text-blue-300 hover:text-white transition-colors"
+                      className="text-sm leading-6 text-ruby-accent/60 hover:text-ruby-primary transition-all duration-300"
                     >
                       Quên mật khẩu
                     </a>
@@ -85,9 +85,9 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-16 border-t border-blue-800 pt-8 sm:mt-20 lg:mt-24">
-          <p className="text-xs leading-5 text-blue-400 text-center">
-            &copy; 2026 Trung Anh Group. All rights reserved.
+        <div className="mt-16 border-t border-white/5 pt-8 sm:mt-20 lg:mt-24">
+          <p className="text-xs leading-5 text-gray-500 text-center tracking-wide">
+            &copy; 2026 ALAN Beauty Medical Clinic. All rights reserved.
           </p>
         </div>
       </div>
