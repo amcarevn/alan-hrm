@@ -783,19 +783,7 @@ const Home: React.FC = () => {
         </div>
       </div>
 
-      {/* Music Order Floating Bubble */}
-      <a
-        href="https://music-player.thammytrunganh.com/"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
-        title="Order nhạc ở đây"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-        </svg>
-        <span className="text-sm font-medium whitespace-nowrap">Order nhạc ở đây</span>
-      </a>
+
 
       {/* Birthday Wish Modal */}
       {wishModal.open && wishModal.employee && (
