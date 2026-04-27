@@ -97,8 +97,8 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="/logo-trung-anh.png"
-              alt="Trung Anh Group"
+              src="/logo-alan.png"
+              alt="Alan HRM"
               className="h-10 w-auto max-w-[160px] rounded-lg object-contain"
             />
             <span className="text-blue-300 text-xs hidden sm:block">Hệ thống Quản lý Nhân sự</span>
@@ -373,13 +373,13 @@ export default function LandingPage() {
           <div className="mx-auto max-w-7xl px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <img
-                src="/logo-trung-anh.png"
-                alt="Trung Anh Group"
+                src="/logo-alan.png"
+                alt="Alan HRM"
                 className="h-8 w-auto max-w-[130px] rounded-lg object-contain"
               />
               <span className="text-blue-600 text-xs hidden sm:block">Hệ thống Quản lý Nhân sự</span>
             </div>
-            <span className="text-blue-500 text-xs">© 2026 Trung Anh Group. All rights reserved.</span>
+            <span className="text-blue-500 text-xs">© 2026 Alan HRM. All rights reserved.</span>
           </div>
         </div>
       </section>

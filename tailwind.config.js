@@ -16,6 +16,14 @@ module.exports = {
           800: '#1e40af',
           900: '#1e3a8a',
         },
+        ruby: {
+          primary: '#E0115F',
+          hover: '#B30E4C',
+          light: '#FCE7EF',
+          accent: '#F2AC91',
+          charcoal: '#1F2937',
+          snow: '#FFF8FB',
+        },
       },
       animation: {
         fadeIn: 'fadeIn 0.3s ease-out forwards',

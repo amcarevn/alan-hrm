@@ -120,7 +120,7 @@ export default function Header() {
         <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-2">
-              <img src="/logo-trung-anh.png" alt="Trung Anh Group" className="h-8 w-auto max-w-[130px] object-contain" />
+              <img src="/logo-alan.png" alt="Alan HRM" className="h-8 w-auto max-w-[130px] object-contain" />
             </Link>
           </div>
           <form className="relative flex flex-1" action="#" method="GET">

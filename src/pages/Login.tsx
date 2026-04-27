@@ -95,8 +95,8 @@ export default function Login() {
       <motion.div initial="hidden" animate="visible" className="relative z-10 flex flex-col items-center mb-8">
         <motion.div custom={0} variants={fadeUp} className="mb-5">
           <img
-            src="/logo-trung-anh.png"
-            alt="Trung Anh Group"
+            src="/logo-alan.png"
+            alt="Alan HRM"
             className="h-16 w-auto max-w-[220px] rounded-xl shadow-xl object-contain"
           />
         </motion.div>
