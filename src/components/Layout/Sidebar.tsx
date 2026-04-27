@@ -490,7 +490,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
           <div className="flex h-16 items-center justify-between px-4">
             <Link to="/" className="flex items-center gap-2">
-              <img src="/logo-alan.png" alt="Alan HRM" className="h-8 w-auto max-w-[130px] object-contain" />
+              <img src="/logo-alan.png" alt="Alan HRM" className="h-8 w-auto max-w-[130px] rounded-xl object-contain" />
             </Link>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -552,7 +552,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
           <div className="relative flex h-16 items-center justify-center">
             {!isCollapsed && (
               <Link to="/" className="flex items-center justify-center">
-                <img src="/logo-alan.png" alt="Alan HRM" className="h-10 w-auto object-contain" />
+                <img src="/logo-alan.png" alt="Alan HRM" className="h-10 w-auto rounded-xl object-contain" />
               </Link>
             )}
             <button
