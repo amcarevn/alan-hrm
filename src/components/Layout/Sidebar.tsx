@@ -574,18 +574,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
           {/* User Info Section */}
           {!isCollapsed && user && (
             <div className="border-t border-gray-200 px-2 py-3">
-              {/* Music Order Badge - above user info */}
-              <a
-                href="https://music-player.thammytrunganh.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mb-2 flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 transition-colors w-fit"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-white flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                </svg>
-                <span className="text-xs font-medium text-white">Order nhạc ở đây</span>
-              </a>
+
               <Link to="/dashboard/settings" className="block">
                 <div className="flex items-center space-x-3 hover:bg-gray-50 p-2 rounded-lg transition-colors">
                   {user.hrm_user?.avatar_url ? (
