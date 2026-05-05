@@ -11,6 +11,7 @@ import {
 import { SelectBox } from '@/components/LandingLayout/SelectBox';
 import { WORK_LOCATION_OPTIONS } from '../constants/onboarding';
 import onboardingService from '../services/onboarding.service';
+import { toDisplayDate, toApiDate } from '../utils/dateUtils';
 
 // ============================================
 // CONSTANTS
@@ -270,7 +271,7 @@ const EmployeeEdit: React.FC = () => {
         employee_id: e.employee_id || '',
         full_name: e.full_name || '',
         gender: e.gender || 'M',
-        date_of_birth: e.date_of_birth || '',
+        date_of_birth: toDisplayDate(e.date_of_birth),
         phone_number: e.phone_number || '',
         personal_email: e.personal_email || '',
         ethnicity: e.ethnicity || '',
@@ -279,8 +280,8 @@ const EmployeeEdit: React.FC = () => {
         facebook_link: e.facebook_link || ei.facebook_link || '',
 
         employment_status: e.employment_status || 'ACTIVE',
-        start_date: e.start_date || '',
-        end_date: e.end_date || '',
+        start_date: toDisplayDate(e.start_date),
+        end_date: toDisplayDate(e.end_date),
         position_id: e.position?.id,
         department_id: e.department?.id,
         manager_id: typeof e.manager === 'number' ? e.manager : e.manager?.id,
@@ -288,7 +289,7 @@ const EmployeeEdit: React.FC = () => {
         section: e.section || '',
         doctor_team: e.doctor_team || '',
         work_form: e.work_form || '',
-        official_start_date: e.official_start_date || '',
+        official_start_date: toDisplayDate(e.official_start_date),
         work_location: e.work_location || '',
         region: e.region || '',
         block: e.block || '',
@@ -299,7 +300,7 @@ const EmployeeEdit: React.FC = () => {
         employment_status_notes: e.employment_status_notes || '',
 
         cccd_number: e.cccd_number || '',
-        cccd_issue_date: e.cccd_issue_date || '',
+        cccd_issue_date: toDisplayDate(e.cccd_issue_date),
         cccd_issue_place: e.cccd_issue_place || '',
         old_id_number: e.old_id_number || ei.old_id_number || '',
         birth_place: e.birth_place || '',
@@ -319,10 +320,10 @@ const EmployeeEdit: React.FC = () => {
         allowance: e.allowance ?? '',
         contract_type: e.contract_type || '',
         probation_months: e.probation_months ?? '',
-        probation_end_date: e.probation_end_date || '',
+        probation_end_date: toDisplayDate(e.probation_end_date),
         probation_rate: e.probation_rate || '',
-        contract_start_date: e.contract_start_date || '',
-        contract_end_date: e.contract_end_date || '',
+        contract_start_date: toDisplayDate(e.contract_start_date),
+        contract_end_date: toDisplayDate(e.contract_end_date),
         revenue_percentage: e.revenue_percentage || '',
         profit_percentage: e.profit_percentage || '',
 
@@ -337,7 +338,7 @@ const EmployeeEdit: React.FC = () => {
         emergency_contact_name: e.emergency_contact_name || '',
         emergency_contact_relationship: e.emergency_contact_relationship || '',
         emergency_contact_phone: e.emergency_contact_phone || '',
-        emergency_contact_dob: e.emergency_contact_dob || '',
+        emergency_contact_dob: toDisplayDate(e.emergency_contact_dob),
         emergency_contact_occupation: e.emergency_contact_occupation || '',
         emergency_contact_address: e.emergency_contact_address || '',
       });
@@ -422,7 +423,7 @@ const EmployeeEdit: React.FC = () => {
         if (val !== '' && val !== null && val !== undefined) payload[key] = val;
       };
 
-      add('date_of_birth', formData.date_of_birth);
+      add('date_of_birth', toApiDate(formData.date_of_birth));
       add('phone_number', formData.phone_number?.trim());
       add('personal_email', formData.personal_email?.trim());
       add('ethnicity', formData.ethnicity?.trim());
@@ -430,8 +431,8 @@ const EmployeeEdit: React.FC = () => {
       add('marital_status', formData.marital_status);
       add('facebook_link', formData.facebook_link?.trim());
 
-      add('start_date', formData.start_date);
-      add('end_date', formData.end_date);
+      add('start_date', toApiDate(formData.start_date));
+      add('end_date', toApiDate(formData.end_date));
       add('position_id', formData.position_id);
       add('department_id', formData.department_id);
       if (formData.manager_id !== undefined) payload['manager_id'] = formData.manager_id;
@@ -453,14 +454,14 @@ const EmployeeEdit: React.FC = () => {
         };
         payload['extra_info'] = JSON.stringify(nextExtra);
       }
-      add('official_start_date', formData.official_start_date);
+      add('official_start_date', toApiDate(formData.official_start_date));
       add('education_level', formData.education_level);
 
       add('termination_reason', formData.termination_reason?.trim());
       add('employment_status_notes', formData.employment_status_notes?.trim());
 
       add('cccd_number', formData.cccd_number?.trim());
-      add('cccd_issue_date', formData.cccd_issue_date);
+      add('cccd_issue_date', toApiDate(formData.cccd_issue_date));
       add('cccd_issue_place', formData.cccd_issue_place);
       add('old_id_number', formData.old_id_number?.trim());
       add('birth_place', formData.birth_place?.trim());
@@ -480,10 +481,10 @@ const EmployeeEdit: React.FC = () => {
       if (formData.allowance !== '') payload['allowance'] = Number(formData.allowance);
       add('contract_type', formData.contract_type);
       if (formData.probation_months !== '') payload['probation_months'] = Number(formData.probation_months);
-      add('probation_end_date', formData.probation_end_date);
+      add('probation_end_date', toApiDate(formData.probation_end_date));
       add('probation_rate', formData.probation_rate);
-      add('contract_start_date', formData.contract_start_date);
-      add('contract_end_date', formData.contract_end_date);
+      add('contract_start_date', toApiDate(formData.contract_start_date));
+      add('contract_end_date', toApiDate(formData.contract_end_date));
       add('revenue_percentage', formData.revenue_percentage);
       add('profit_percentage', formData.profit_percentage);
 
@@ -497,7 +498,7 @@ const EmployeeEdit: React.FC = () => {
       add('emergency_contact_name', formData.emergency_contact_name?.trim());
       add('emergency_contact_relationship', formData.emergency_contact_relationship?.trim());
       add('emergency_contact_phone', formData.emergency_contact_phone?.trim());
-      add('emergency_contact_dob', formData.emergency_contact_dob);
+      add('emergency_contact_dob', toApiDate(formData.emergency_contact_dob));
       add('emergency_contact_occupation', formData.emergency_contact_occupation?.trim());
       add('emergency_contact_address', formData.emergency_contact_address?.trim());
 
@@ -588,7 +589,7 @@ const EmployeeEdit: React.FC = () => {
             />
 
             <Field label="Ngày sinh">
-              <input type="date" name="date_of_birth" value={formData.date_of_birth}
+              <input type="text" placeholder="DD/MM/YYYY" name="date_of_birth" value={formData.date_of_birth}
                 onChange={handleInput} className={inputClass} />
             </Field>
 
@@ -648,17 +649,17 @@ const EmployeeEdit: React.FC = () => {
             />
 
             <Field label="Ngày bắt đầu">
-              <input type="date" name="start_date" value={formData.start_date}
+              <input type="text" placeholder="DD/MM/YYYY" name="start_date" value={formData.start_date}
                 onChange={handleInput} className={inputClass} />
             </Field>
 
             <Field label="Ngày nghỉ việc">
-              <input type="date" name="end_date" value={formData.end_date}
+              <input type="text" placeholder="DD/MM/YYYY" name="end_date" value={formData.end_date}
                 onChange={handleInput} className={inputClass} />
             </Field>
 
             <Field label="Ngày lên chính thức">
-              <input type="date" name="official_start_date" value={formData.official_start_date}
+              <input type="text" placeholder="DD/MM/YYYY" name="official_start_date" value={formData.official_start_date}
                 onChange={handleInput} className={inputClass} />
             </Field>
 
@@ -808,7 +809,7 @@ const EmployeeEdit: React.FC = () => {
             </Field>
 
             <Field label="Ngày cấp CCCD">
-              <input type="date" name="cccd_issue_date" value={formData.cccd_issue_date}
+              <input type="text" placeholder="DD/MM/YYYY" name="cccd_issue_date" value={formData.cccd_issue_date}
                 onChange={handleInput} className={inputClass} />
             </Field>
 
@@ -925,7 +926,7 @@ const EmployeeEdit: React.FC = () => {
             </Field>
 
             <Field label="Ngày kết thúc thử việc">
-              <input type="date" name="probation_end_date" value={formData.probation_end_date}
+              <input type="text" placeholder="DD/MM/YYYY" name="probation_end_date" value={formData.probation_end_date}
                 onChange={handleInput} className={inputClass} />
             </Field>
 
@@ -938,12 +939,12 @@ const EmployeeEdit: React.FC = () => {
             />
 
             <Field label="Ngày bắt đầu hợp đồng">
-              <input type="date" name="contract_start_date" value={formData.contract_start_date}
+              <input type="text" placeholder="DD/MM/YYYY" name="contract_start_date" value={formData.contract_start_date}
                 onChange={handleInput} className={inputClass} />
             </Field>
 
             <Field label="Ngày kết thúc hợp đồng">
-              <input type="date" name="contract_end_date" value={formData.contract_end_date}
+              <input type="text" placeholder="DD/MM/YYYY" name="contract_end_date" value={formData.contract_end_date}
                 onChange={handleInput} className={inputClass} />
             </Field>
 
@@ -1022,7 +1023,7 @@ const EmployeeEdit: React.FC = () => {
             </Field>
 
             <Field label="Ngày sinh">
-              <input type="date" name="emergency_contact_dob" value={formData.emergency_contact_dob}
+              <input type="text" placeholder="DD/MM/YYYY" name="emergency_contact_dob" value={formData.emergency_contact_dob}
                 onChange={handleInput} className={inputClass} />
             </Field>
 

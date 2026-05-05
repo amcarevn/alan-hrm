@@ -9,6 +9,7 @@ import { ruleEngineAPI } from '../utils/ruleEngineApi';
 import { useNavigate } from 'react-router-dom';
 import { SelectBox, SelectOption } from '@/components/LandingLayout/SelectBox';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { toApiDate } from '../utils/dateUtils';
 
 const genderOptions: SelectOption<'M' | 'F' | 'O'>[] = [
   { value: 'M', label: 'Nam' },
@@ -165,7 +166,7 @@ const EmployeeCreate: React.FC = () => {
         password: formData.password,
         employment_status: formData.employment_status,
         ...(formData.date_of_birth && {
-          date_of_birth: formData.date_of_birth,
+          date_of_birth: toApiDate(formData.date_of_birth),
         }),
         ...(formData.phone_number && {
           phone_number: formData.phone_number.trim(),
@@ -180,7 +181,7 @@ const EmployeeCreate: React.FC = () => {
         ...(formData.bank_account && {
           bank_account: formData.bank_account.trim(),
         }),
-        ...(formData.start_date && { start_date: formData.start_date }),
+        ...(formData.start_date && { start_date: toApiDate(formData.start_date) }),
         ...(formData.end_date && { end_date: formData.end_date }),
         ...(formData.position_id && {
           position_id: Number(formData.position_id),
@@ -305,7 +306,7 @@ const EmployeeCreate: React.FC = () => {
                   Ngày sinh
                 </label>
                 <input
-                  type="date"
+                  type="text" placeholder="DD/MM/YYYY"
                   name="date_of_birth"
                   value={formData.date_of_birth}
                   onChange={handleInputChange}
@@ -430,7 +431,7 @@ const EmployeeCreate: React.FC = () => {
                   Ngày bắt đầu
                 </label>
                 <input
-                  type="date"
+                  type="text" placeholder="DD/MM/YYYY"
                   name="start_date"
                   value={formData.start_date}
                   onChange={handleInputChange}
