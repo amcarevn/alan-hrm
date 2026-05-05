@@ -97,9 +97,7 @@ const formatDate = (dateStr: string | null | undefined): string => {
   if (!dateStr) return 'Chưa có dữ liệu';
   const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (match) return `${match[3]}/${match[2]}/${match[1]}`;
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return dateStr;
 };
 
 const safeDisplay = (value: any, fallback = 'Chưa có dữ liệu'): string => {
