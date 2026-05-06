@@ -68,6 +68,12 @@ interface SalaryConfigurationValues {
     unpaidLeaveDays: number;
     lateEarlyCount: number;
   };
+  taxPolicy: {
+    region: 'I' | 'II' | 'III' | 'IV';
+    dependentCount: number;
+    insuranceSalaryMode: 'official' | 'custom';
+    insuranceSalaryOverride: number;
+  };
   deductions: {
     pit: number;
     socialInsurance: number;
@@ -99,6 +105,17 @@ interface SalaryConfigEvent {
 
 interface PayrollOutput {
   grossIncome: number;
+  pit: number;
+  socialInsurance: number;
+  healthInsurance: number;
+  unemploymentInsurance: number;
+  attendancePenalty: number;
+  taxableIncome: number;
+  insuranceSalaryBase: number;
+  personalDeduction: number;
+  dependentDeduction: number;
+  regionalMinimum: number;
+  baseSalaryReference: number;
   totalDeductions: number;
   netSalary: number;
 }
@@ -111,6 +128,48 @@ interface LunchAllowancePolicy {
 }
 
 const MAX_LUNCH_ALLOWANCE_CAP = 500000;
+const BASE_SALARY_EFFECTIVE_2024_07_01 = 2340000;
+const BASE_SALARY_BEFORE_2024_07_01 = 1800000;
+const PERSONAL_DEDUCTION_2026 = 15500000;
+const PERSONAL_DEDUCTION_LEGACY = 11000000;
+const DEPENDENT_DEDUCTION_2026 = 6200000;
+const DEPENDENT_DEDUCTION_LEGACY = 4400000;
+
+const REGIONAL_MINIMUM_2026: Record<'I' | 'II' | 'III' | 'IV', number> = {
+  I: 5310000,
+  II: 4730000,
+  III: 4140000,
+  IV: 3700000,
+};
+
+const REGIONAL_MINIMUM_2024: Record<'I' | 'II' | 'III' | 'IV', number> = {
+  I: 4960000,
+  II: 4410000,
+  III: 3860000,
+  IV: 3450000,
+};
+
+const EMPLOYEE_SOCIAL_INSURANCE_RATE = 0.08;
+const EMPLOYEE_HEALTH_INSURANCE_RATE = 0.015;
+const EMPLOYEE_UNEMPLOYMENT_INSURANCE_RATE = 0.01;
+
+const PIT_BRACKETS_2026 = [
+  { limit: 10000000, rate: 0.05 },
+  { limit: 30000000, rate: 0.1 },
+  { limit: 60000000, rate: 0.2 },
+  { limit: 100000000, rate: 0.3 },
+  { limit: Number.POSITIVE_INFINITY, rate: 0.35 },
+];
+
+const PIT_BRACKETS_LEGACY = [
+  { limit: 5000000, rate: 0.05 },
+  { limit: 10000000, rate: 0.1 },
+  { limit: 18000000, rate: 0.15 },
+  { limit: 32000000, rate: 0.2 },
+  { limit: 52000000, rate: 0.25 },
+  { limit: 80000000, rate: 0.3 },
+  { limit: Number.POSITIVE_INFINITY, rate: 0.35 },
+];
 
 const DEFAULT_SALARY_CONFIG: SalaryConfigurationValues = {
   effectiveDate: new Date().toISOString().slice(0, 10),
@@ -156,6 +215,12 @@ const DEFAULT_SALARY_CONFIG: SalaryConfigurationValues = {
     unpaidLeaveDays: 0,
     lateEarlyCount: 0,
   },
+  taxPolicy: {
+    region: 'I',
+    dependentCount: 0,
+    insuranceSalaryMode: 'official',
+    insuranceSalaryOverride: 0,
+  },
   deductions: {
     pit: 0,
     socialInsurance: 0,
@@ -181,6 +246,56 @@ const DEFAULT_SALARY_CONFIG: SalaryConfigurationValues = {
 const toNumber = (value: unknown, fallback = 0) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const parseDate = (dateText: string) => {
+  const date = new Date(dateText);
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+};
+
+const getTaxYear = (effectiveDate: string) => parseDate(effectiveDate).getFullYear();
+
+const getBaseSalaryByEffectiveDate = (effectiveDate: string) => {
+  const effective = parseDate(effectiveDate);
+  const policyDate = new Date('2024-07-01');
+  return effective >= policyDate ? BASE_SALARY_EFFECTIVE_2024_07_01 : BASE_SALARY_BEFORE_2024_07_01;
+};
+
+const getRegionalMinimumByEffectiveDate = (effectiveDate: string, region: 'I' | 'II' | 'III' | 'IV') => {
+  const effective = parseDate(effectiveDate);
+  const policyDate = new Date('2026-01-01');
+  if (effective >= policyDate) {
+    return REGIONAL_MINIMUM_2026[region];
+  }
+  return REGIONAL_MINIMUM_2024[region];
+};
+
+const inferRegionByMinimum = (regionalMinimum: number): 'I' | 'II' | 'III' | 'IV' => {
+  const regions: Array<'I' | 'II' | 'III' | 'IV'> = ['I', 'II', 'III', 'IV'];
+  if (regions.some((region) => REGIONAL_MINIMUM_2026[region] === regionalMinimum)) {
+    return regions.find((region) => REGIONAL_MINIMUM_2026[region] === regionalMinimum) || 'I';
+  }
+  if (regions.some((region) => REGIONAL_MINIMUM_2024[region] === regionalMinimum)) {
+    return regions.find((region) => REGIONAL_MINIMUM_2024[region] === regionalMinimum) || 'I';
+  }
+  return 'I';
+};
+
+const calculateProgressiveTax = (taxableIncome: number, brackets: Array<{ limit: number; rate: number }>) => {
+  let remaining = Math.max(taxableIncome, 0);
+  let previousLimit = 0;
+  let totalTax = 0;
+
+  for (const bracket of brackets) {
+    if (remaining <= 0) break;
+    const bracketRange = bracket.limit - previousLimit;
+    const taxableAtThisBracket = Math.min(remaining, bracketRange);
+    totalTax += taxableAtThisBracket * bracket.rate;
+    remaining -= taxableAtThisBracket;
+    previousLimit = bracket.limit;
+  }
+
+  return Math.max(totalTax, 0);
 };
 
 const asRecord = (value: unknown): Record<string, any> => {
@@ -228,6 +343,9 @@ const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValue
     ),
   };
 
+  const taxPolicyConfig = asRecord(savedConfig.taxPolicy);
+  const inferredRegion = inferRegionByMinimum(toNumber(savedConfig.baseSalary?.regionalMinimum));
+
   return {
     effectiveDate:
       (savedConfig.effectiveDate as string | undefined) ||
@@ -265,7 +383,13 @@ const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValue
       factor: toNumber(savedConfig.baseSalary?.factor, DEFAULT_SALARY_CONFIG.baseSalary.factor),
       regionalMinimum: toNumber(
         savedConfig.baseSalary?.regionalMinimum,
-        DEFAULT_SALARY_CONFIG.baseSalary.regionalMinimum
+        getRegionalMinimumByEffectiveDate(
+          (savedConfig.effectiveDate as string | undefined) ||
+            employee.official_start_date ||
+            employee.start_date ||
+            DEFAULT_SALARY_CONFIG.effectiveDate,
+          inferredRegion
+        )
       ),
     },
     allowances: {
@@ -291,6 +415,18 @@ const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValue
       paidLeaveDays: toNumber(savedConfig.timeAttendance?.paidLeaveDays),
       unpaidLeaveDays: toNumber(savedConfig.timeAttendance?.unpaidLeaveDays),
       lateEarlyCount: toNumber(savedConfig.timeAttendance?.lateEarlyCount),
+    },
+    taxPolicy: {
+      region:
+        taxPolicyConfig.region === 'I' ||
+        taxPolicyConfig.region === 'II' ||
+        taxPolicyConfig.region === 'III' ||
+        taxPolicyConfig.region === 'IV'
+          ? taxPolicyConfig.region
+          : inferredRegion,
+      dependentCount: Math.max(toNumber(taxPolicyConfig.dependentCount), 0),
+      insuranceSalaryMode: taxPolicyConfig.insuranceSalaryMode === 'custom' ? 'custom' : 'official',
+      insuranceSalaryOverride: Math.max(toNumber(taxPolicyConfig.insuranceSalaryOverride), 0),
     },
     deductions: {
       pit: toNumber(savedConfig.deductions?.pit),
@@ -335,13 +471,51 @@ const calculatePayrollOutput = (config: SalaryConfigurationValues): PayrollOutpu
   const attendancePenalty =
     config.timeAttendance.unpaidLeaveDays * 200000 + config.timeAttendance.lateEarlyCount * 50000;
 
+  const baseSalaryReference = getBaseSalaryByEffectiveDate(config.effectiveDate);
+  const regionalMinimum = getRegionalMinimumByEffectiveDate(config.effectiveDate, config.taxPolicy.region);
+  const taxYear = getTaxYear(config.effectiveDate);
+  const personalDeduction = taxYear >= 2026 ? PERSONAL_DEDUCTION_2026 : PERSONAL_DEDUCTION_LEGACY;
+  const dependentDeductionPerPerson = taxYear >= 2026 ? DEPENDENT_DEDUCTION_2026 : DEPENDENT_DEDUCTION_LEGACY;
+  const dependentDeduction = Math.max(config.taxPolicy.dependentCount, 0) * dependentDeductionPerPerson;
+  const insuranceSalaryRaw =
+    config.taxPolicy.insuranceSalaryMode === 'custom'
+      ? Math.max(config.taxPolicy.insuranceSalaryOverride, 0)
+      : Math.max(config.baseSalary.amount * config.baseSalary.factor, 0);
+  const socialInsuranceSalaryCap = 20 * baseSalaryReference;
+  const unemploymentInsuranceSalaryCap = 20 * regionalMinimum;
+  const insuranceSalaryForSocialAndHealth = Math.min(insuranceSalaryRaw, socialInsuranceSalaryCap);
+  const insuranceSalaryForUnemployment = Math.min(insuranceSalaryRaw, unemploymentInsuranceSalaryCap);
+
+  const socialInsurance = insuranceSalaryForSocialAndHealth * EMPLOYEE_SOCIAL_INSURANCE_RATE;
+  const healthInsurance = insuranceSalaryForSocialAndHealth * EMPLOYEE_HEALTH_INSURANCE_RATE;
+  const unemploymentInsurance = insuranceSalaryForUnemployment * EMPLOYEE_UNEMPLOYMENT_INSURANCE_RATE;
+
   const grossIncome = config.baseSalary.amount * config.baseSalary.factor + allowanceTotal + variableTotal + adjustmentTotal;
+  const taxableIncome = Math.max(
+    grossIncome - socialInsurance - healthInsurance - unemploymentInsurance - personalDeduction - dependentDeduction,
+    0
+  );
+  const pit = calculateProgressiveTax(taxableIncome, taxYear >= 2026 ? PIT_BRACKETS_2026 : PIT_BRACKETS_LEGACY);
+
+  const configuredDeductions =
+    config.deductions.unionFee + config.deductions.advancePenaltyCompensation;
   const totalDeductions =
-    Object.values(config.deductions).reduce((sum, value) => sum + value, 0) + attendancePenalty;
+    pit + socialInsurance + healthInsurance + unemploymentInsurance + configuredDeductions + attendancePenalty;
   const netSalary = Math.max(grossIncome - totalDeductions, 0);
 
   return {
     grossIncome,
+    pit,
+    socialInsurance,
+    healthInsurance,
+    unemploymentInsurance,
+    attendancePenalty,
+    taxableIncome,
+    insuranceSalaryBase: insuranceSalaryRaw,
+    personalDeduction,
+    dependentDeduction,
+    regionalMinimum,
+    baseSalaryReference,
     totalDeductions,
     netSalary,
   };
@@ -459,9 +633,20 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
 
     const normalizedConfig: SalaryConfigurationValues = {
       ...config,
+      baseSalary: {
+        ...config.baseSalary,
+        regionalMinimum: payrollOutput.regionalMinimum,
+      },
       allowances: {
         ...config.allowances,
         lunch: config.lunchAllowancePolicy.mode === 'fixed' ? lunchPreview : 0,
+      },
+      deductions: {
+        ...config.deductions,
+        pit: payrollOutput.pit,
+        socialInsurance: payrollOutput.socialInsurance,
+        healthInsurance: payrollOutput.healthInsurance,
+        unemploymentInsurance: payrollOutput.unemploymentInsurance,
       },
       lunchAllowancePolicy: {
         ...config.lunchAllowancePolicy,
@@ -619,17 +804,14 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
                 }
                 step="0.1"
               />
-              <NumberField
-                label="Mức lương tối thiểu vùng"
-                value={config.baseSalary.regionalMinimum}
-                onChange={(value) =>
-                  updateGroup('baseSalary', {
-                    ...config.baseSalary,
-                    regionalMinimum: value,
-                  })
-                }
-              />
+              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-xs text-gray-500">Mức lương tối thiểu vùng ({config.taxPolicy.region})</p>
+                <p className="text-base font-semibold text-gray-900">{formatCurrency(payrollOutput.regionalMinimum)}</p>
+              </div>
             </div>
+            <p className="text-xs text-gray-500">
+              Tự động theo vùng lương và ngày hiệu lực (NĐ 293/2025/NĐ-CP, áp dụng từ 01/01/2026).
+            </p>
           </SectionCard>
 
           <SectionCard title="3. Thu nhập bổ sung (Allowances & Earnings)">
@@ -816,26 +998,94 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
 
           <SectionCard title="6. Khấu trừ (Deductions)">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Vùng lương tối thiểu</label>
+                <select
+                  value={config.taxPolicy.region}
+                  onChange={(event) =>
+                    updateGroup('taxPolicy', {
+                      ...config.taxPolicy,
+                      region: event.target.value as SalaryConfigurationValues['taxPolicy']['region'],
+                    })
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="I">Vùng I</option>
+                  <option value="II">Vùng II</option>
+                  <option value="III">Vùng III</option>
+                  <option value="IV">Vùng IV</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mức lương đóng bảo hiểm</label>
+                <select
+                  value={config.taxPolicy.insuranceSalaryMode}
+                  onChange={(event) =>
+                    updateGroup('taxPolicy', {
+                      ...config.taxPolicy,
+                      insuranceSalaryMode: event.target.value as SalaryConfigurationValues['taxPolicy']['insuranceSalaryMode'],
+                    })
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="official">Trên lương chính thức</option>
+                  <option value="custom">Khác</option>
+                </select>
+              </div>
+              {config.taxPolicy.insuranceSalaryMode === 'custom' ? (
+                <NumberField
+                  label="Mức lương đóng BH tùy chỉnh"
+                  value={config.taxPolicy.insuranceSalaryOverride}
+                  onChange={(value) =>
+                    updateGroup('taxPolicy', {
+                      ...config.taxPolicy,
+                      insuranceSalaryOverride: value,
+                    })
+                  }
+                />
+              ) : (
+                <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                  <p className="text-xs text-gray-500">Mức lương đóng BH</p>
+                  <p className="text-base font-semibold text-gray-900">{formatCurrency(payrollOutput.insuranceSalaryBase)}</p>
+                </div>
+              )}
+
               <NumberField
-                label="Thuế TNCN (PIT)"
-                value={config.deductions.pit}
-                onChange={(value) => updateGroup('deductions', { ...config.deductions, pit: value })}
+                label="Số người phụ thuộc"
+                value={config.taxPolicy.dependentCount}
+                onChange={(value) =>
+                  updateGroup('taxPolicy', {
+                    ...config.taxPolicy,
+                    dependentCount: Math.max(Math.floor(value), 0),
+                  })
+                }
+                step="1"
               />
-              <NumberField
-                label="BHXH"
-                value={config.deductions.socialInsurance}
-                onChange={(value) => updateGroup('deductions', { ...config.deductions, socialInsurance: value })}
-              />
-              <NumberField
-                label="BHYT"
-                value={config.deductions.healthInsurance}
-                onChange={(value) => updateGroup('deductions', { ...config.deductions, healthInsurance: value })}
-              />
-              <NumberField
-                label="BHTN"
-                value={config.deductions.unemploymentInsurance}
-                onChange={(value) => updateGroup('deductions', { ...config.deductions, unemploymentInsurance: value })}
-              />
+
+              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-xs text-gray-500">Giảm trừ bản thân</p>
+                <p className="text-base font-semibold text-gray-900">{formatCurrency(payrollOutput.personalDeduction)}</p>
+              </div>
+              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-xs text-gray-500">Giảm trừ người phụ thuộc</p>
+                <p className="text-base font-semibold text-gray-900">{formatCurrency(payrollOutput.dependentDeduction)}</p>
+              </div>
+
+              <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
+                <p className="text-xs text-blue-700">Thu nhập tính thuế</p>
+                <p className="text-base font-semibold text-blue-800">{formatCurrency(payrollOutput.taxableIncome)}</p>
+              </div>
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2">
+                <p className="text-xs text-red-700">Thuế TNCN tự tính</p>
+                <p className="text-base font-semibold text-red-800">{formatCurrency(payrollOutput.pit)}</p>
+              </div>
+              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-xs text-gray-500">BHXH / BHYT / BHTN</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {formatCurrency(payrollOutput.socialInsurance)} / {formatCurrency(payrollOutput.healthInsurance)} / {formatCurrency(payrollOutput.unemploymentInsurance)}
+                </p>
+              </div>
+
               <NumberField
                 label="Công đoàn phí"
                 value={config.deductions.unionFee}
@@ -852,6 +1102,10 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
                 }
               />
             </div>
+            <p className="text-xs text-gray-500">
+              Áp dụng tự động: lương cơ sở 2.340.000đ (từ 01/07/2024), lương tối thiểu vùng mới (từ 01/01/2026),
+              giảm trừ gia cảnh 15.500.000đ + 6.200.000đ/người phụ thuộc, biểu thuế lũy tiến 5 bậc cho kỳ thuế 2026.
+            </p>
           </SectionCard>
 
           <SectionCard title="7. Đóng góp từ công ty (Employer Contributions)">
