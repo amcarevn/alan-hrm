@@ -68,6 +68,11 @@ class SalaryService {
     return response.data;
   }
 
+  async getEmployeeSalaryConfig(employeeId: number): Promise<Employee> {
+    const response = await managementApi.get(`/api-hrm/employees/${employeeId}/`);
+    return response.data;
+  }
+
   async listEmployeeSalaries(params: {
     page?: number;
     page_size?: number;

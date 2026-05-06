@@ -52,6 +52,7 @@ interface SalaryConfigurationValues {
     responsibility: number;
     hazardous: number;
   };
+  lunchAllowancePolicy: LunchAllowancePolicy;
   variablePay: {
     salesCommission: number;
     kpiBonus: number;
@@ -102,6 +103,15 @@ interface PayrollOutput {
   netSalary: number;
 }
 
+interface LunchAllowancePolicy {
+  mode: 'fixed' | 'actual_working_day';
+  fixed_amount: number;
+  amount_per_work_day: number;
+  monthly_cap: number;
+}
+
+const MAX_LUNCH_ALLOWANCE_CAP = 500000;
+
 const DEFAULT_SALARY_CONFIG: SalaryConfigurationValues = {
   effectiveDate: new Date().toISOString().slice(0, 10),
   baseProfile: {
@@ -124,6 +134,12 @@ const DEFAULT_SALARY_CONFIG: SalaryConfigurationValues = {
     housing: 0,
     responsibility: 0,
     hazardous: 0,
+  },
+  lunchAllowancePolicy: {
+    mode: 'fixed',
+    fixed_amount: 0,
+    amount_per_work_day: 0,
+    monthly_cap: MAX_LUNCH_ALLOWANCE_CAP,
   },
   variablePay: {
     salesCommission: 0,
@@ -184,9 +200,33 @@ const formatNumber = (value: number | null | undefined) => {
   return value.toLocaleString('vi-VN');
 };
 
+const calculateLunchAllowance = (policy: LunchAllowancePolicy, actualWorkDays: number) => {
+  const cap = Math.min(Math.max(toNumber(policy.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP), 0), MAX_LUNCH_ALLOWANCE_CAP);
+  if (policy.mode === 'actual_working_day') {
+    const amount = Math.max(actualWorkDays, 0) * Math.max(toNumber(policy.amount_per_work_day), 0);
+    return Math.min(amount, cap);
+  }
+  return Math.min(Math.max(toNumber(policy.fixed_amount), 0), cap);
+};
+
+const calculateActualWorkDays = (timeAttendance: SalaryConfigurationValues['timeAttendance']) => {
+  return Math.max(timeAttendance.workingDays - timeAttendance.unpaidLeaveDays, 0);
+};
+
 const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValues => {
   const adjustments = asRecord(employee.salary_adjustments);
   const savedConfig = asRecord(adjustments.payroll_config);
+  const savedLunchPolicy = asRecord(savedConfig.lunchAllowancePolicy);
+
+  const lunchPolicy: LunchAllowancePolicy = {
+    mode: savedLunchPolicy.mode === 'actual_working_day' ? 'actual_working_day' : 'fixed',
+    fixed_amount: toNumber(savedLunchPolicy.fixed_amount, toNumber(savedConfig.allowances?.lunch)),
+    amount_per_work_day: toNumber(savedLunchPolicy.amount_per_work_day),
+    monthly_cap: Math.min(
+      Math.max(toNumber(savedLunchPolicy.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP), 0),
+      MAX_LUNCH_ALLOWANCE_CAP
+    ),
+  };
 
   return {
     effectiveDate:
@@ -236,6 +276,7 @@ const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValue
       responsibility: toNumber(savedConfig.allowances?.responsibility, employee.allowance ?? 0),
       hazardous: toNumber(savedConfig.allowances?.hazardous),
     },
+    lunchAllowancePolicy: lunchPolicy,
     variablePay: {
       salesCommission: toNumber(savedConfig.variablePay?.salesCommission),
       kpiBonus: toNumber(savedConfig.variablePay?.kpiBonus),
@@ -275,7 +316,15 @@ const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValue
 };
 
 const calculatePayrollOutput = (config: SalaryConfigurationValues): PayrollOutput => {
-  const allowanceTotal = Object.values(config.allowances).reduce((sum, value) => sum + value, 0);
+  const actualWorkDays = calculateActualWorkDays(config.timeAttendance);
+  const lunchAllowance = calculateLunchAllowance(config.lunchAllowancePolicy, actualWorkDays);
+  const allowanceTotal =
+    config.allowances.transport +
+    config.allowances.phone +
+    config.allowances.housing +
+    config.allowances.responsibility +
+    config.allowances.hazardous +
+    lunchAllowance;
   const variableTotal = Object.values(config.variablePay).reduce((sum, value) => sum + value, 0);
   const adjustmentTotal =
     config.adjustments.retroactivePay +
@@ -350,9 +399,11 @@ interface EditModalProps {
 }
 
 const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, saving }) => {
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [config, setConfig] = useState<SalaryConfigurationValues>(() => parseEmployeeSalaryConfig(employee));
 
   useEffect(() => {
+    setValidationError(null);
     setConfig(parseEmployeeSalaryConfig(employee));
   }, [employee]);
 
@@ -362,13 +413,31 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
     setConfig((previous) => ({ ...previous, [group]: value }));
   };
 
-  const allowanceTotal = useMemo(
-    () => Object.values(config.allowances).reduce((sum, value) => sum + value, 0),
-    [config.allowances]
+  const lunchPreview = useMemo(
+    () => calculateLunchAllowance(config.lunchAllowancePolicy, calculateActualWorkDays(config.timeAttendance)),
+    [config.lunchAllowancePolicy, config.timeAttendance]
   );
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setValidationError(null);
+
+    if (config.lunchAllowancePolicy.monthly_cap > MAX_LUNCH_ALLOWANCE_CAP) {
+      setValidationError('Trần phụ cấp ăn trưa không được vượt quá 500.000đ/tháng.');
+      return;
+    }
+
+    const fixedAllowanceWithoutLunch =
+      config.allowances.transport +
+      config.allowances.phone +
+      config.allowances.housing +
+      config.allowances.responsibility +
+      config.allowances.hazardous;
+
+    const persistedAllowance =
+      config.lunchAllowancePolicy.mode === 'actual_working_day'
+        ? fixedAllowanceWithoutLunch
+        : fixedAllowanceWithoutLunch + lunchPreview;
 
     const existingAdjustments = asRecord(employee.salary_adjustments);
     const salaryEvents = Array.isArray(existingAdjustments.salary_events)
@@ -379,17 +448,38 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
       type: 'salary_config_updated',
       effective_date: config.effectiveDate,
       changed_at: new Date().toISOString(),
-      payload: config,
+      payload: {
+        ...config,
+        allowances: {
+          ...config.allowances,
+          lunch: config.lunchAllowancePolicy.mode === 'fixed' ? lunchPreview : 0,
+        },
+      },
+    };
+
+    const normalizedConfig: SalaryConfigurationValues = {
+      ...config,
+      allowances: {
+        ...config.allowances,
+        lunch: config.lunchAllowancePolicy.mode === 'fixed' ? lunchPreview : 0,
+      },
+      lunchAllowancePolicy: {
+        ...config.lunchAllowancePolicy,
+        monthly_cap: Math.min(config.lunchAllowancePolicy.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP),
+      },
     };
 
     const data: SalaryFormulaUpdateData = {
       basic_salary: config.baseSalary.amount,
-      allowance: allowanceTotal,
+      allowance: persistedAllowance,
       salary_notes: `Hiệu lực từ ${config.effectiveDate}`,
-      allowance_notes: `Tổng phụ cấp: ${allowanceTotal.toLocaleString('vi-VN')}đ`,
+      allowance_notes:
+        config.lunchAllowancePolicy.mode === 'actual_working_day'
+          ? `Phụ cấp trưa: theo ngày công thực tế (${config.lunchAllowancePolicy.amount_per_work_day.toLocaleString('vi-VN')}đ/ngày), trần ${Math.min(config.lunchAllowancePolicy.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP).toLocaleString('vi-VN')}đ/tháng`
+          : `Phụ cấp trưa cố định: ${lunchPreview.toLocaleString('vi-VN')}đ/tháng`,
       salary_adjustments: {
         ...existingAdjustments,
-        payroll_config: config,
+        payroll_config: normalizedConfig,
         payroll_output_preview: payrollOutput,
         salary_events: [...salaryEvents, nextEvent],
       },
@@ -412,6 +502,12 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 overflow-y-auto max-h-[calc(90vh-72px)] space-y-4">
+          {validationError && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {validationError}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ngày hiệu lực</label>
@@ -538,11 +634,87 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
 
           <SectionCard title="3. Thu nhập bổ sung (Allowances & Earnings)">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <NumberField
-                label="Phụ cấp ăn trưa"
-                value={config.allowances.lunch}
-                onChange={(value) => updateGroup('allowances', { ...config.allowances, lunch: value })}
-              />
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 md:col-span-3">
+                <p className="text-sm font-medium text-amber-900 mb-2">Phụ cấp ăn trưa</p>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cơ chế chi trả</label>
+                    <select
+                      value={config.lunchAllowancePolicy.mode}
+                      onChange={(event) =>
+                        updateGroup('lunchAllowancePolicy', {
+                          ...config.lunchAllowancePolicy,
+                          mode: event.target.value as LunchAllowancePolicy['mode'],
+                        })
+                      }
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="fixed">Cố định theo tháng</option>
+                      <option value="actual_working_day">Theo ngày công thực tế</option>
+                    </select>
+                  </div>
+
+                  {config.lunchAllowancePolicy.mode === 'actual_working_day' ? (
+                    <>
+                      <NumberField
+                        label="Mức chi mỗi ngày công"
+                        value={config.lunchAllowancePolicy.amount_per_work_day}
+                        onChange={(value) =>
+                          updateGroup('lunchAllowancePolicy', {
+                            ...config.lunchAllowancePolicy,
+                            amount_per_work_day: value,
+                          })
+                        }
+                      />
+                      <NumberField
+                        label="Trần/tháng (tối đa 500.000)"
+                        value={config.lunchAllowancePolicy.monthly_cap}
+                        onChange={(value) =>
+                          updateGroup('lunchAllowancePolicy', {
+                            ...config.lunchAllowancePolicy,
+                            monthly_cap: Math.min(Math.max(value, 0), MAX_LUNCH_ALLOWANCE_CAP),
+                          })
+                        }
+                      />
+                      <div className="rounded-md border border-amber-200 bg-white px-3 py-2">
+                        <p className="text-xs text-gray-500">Tạm tính phụ cấp trưa</p>
+                        <p className="text-base font-semibold text-amber-700">{formatCurrency(lunchPreview)}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Ngày công thực tế: {formatNumber(calculateActualWorkDays(config.timeAttendance))}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <NumberField
+                        label="Mức cố định/tháng"
+                        value={config.lunchAllowancePolicy.fixed_amount}
+                        onChange={(value) =>
+                          updateGroup('lunchAllowancePolicy', {
+                            ...config.lunchAllowancePolicy,
+                            fixed_amount: value,
+                          })
+                        }
+                      />
+                      <NumberField
+                        label="Trần/tháng (tối đa 500.000)"
+                        value={config.lunchAllowancePolicy.monthly_cap}
+                        onChange={(value) =>
+                          updateGroup('lunchAllowancePolicy', {
+                            ...config.lunchAllowancePolicy,
+                            monthly_cap: Math.min(Math.max(value, 0), MAX_LUNCH_ALLOWANCE_CAP),
+                          })
+                        }
+                      />
+                      <div className="rounded-md border border-amber-200 bg-white px-3 py-2">
+                        <p className="text-xs text-gray-500">Tạm tính phụ cấp trưa</p>
+                        <p className="text-base font-semibold text-amber-700">{formatCurrency(lunchPreview)}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
               <NumberField
                 label="Phụ cấp đi lại / xăng xe"
                 value={config.allowances.transport}
@@ -824,6 +996,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [loadingEmployeeConfig, setLoadingEmployeeConfig] = useState<number | null>(null);
 
   const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>([]);
   const [loadingSalary, setLoadingSalary] = useState(false);
@@ -922,6 +1095,19 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       setSaveError('Không thể cập nhật. Vui lòng thử lại.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleOpenConfig = async (employee: Employee) => {
+    setSaveError(null);
+    setLoadingEmployeeConfig(employee.id);
+    try {
+      const freshEmployee = await salaryService.getEmployeeSalaryConfig(employee.id);
+      setEditEmployee(freshEmployee);
+    } catch {
+      setEditEmployee(employee);
+    } finally {
+      setLoadingEmployeeConfig(null);
     }
   };
 
@@ -1087,11 +1273,15 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                             </td>
                             <td className="px-4 py-3 text-center">
                               <button
-                                onClick={() => setEditEmployee(employee)}
+                                onClick={() => handleOpenConfig(employee)}
                                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-md transition-colors"
                               >
-                                <PencilIcon className="h-3.5 w-3.5" />
-                                Cấu hình
+                                {loadingEmployeeConfig === employee.id ? (
+                                  <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <PencilIcon className="h-3.5 w-3.5" />
+                                )}
+                                {loadingEmployeeConfig === employee.id ? 'Đang tải...' : 'Cấu hình'}
                               </button>
                             </td>
                           </tr>
