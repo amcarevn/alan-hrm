@@ -202,9 +202,23 @@ const navigationItems: NavigationItem[] = [
   // --- Lương ---
   {
     name: 'Quản lý tính lương',
-    href: '/dashboard/salary-management',
+    href: '/dashboard/salary-management/config',
     icon: CurrencyDollarIcon,
     roles: ['ADMIN'],
+    children: [
+      {
+        name: 'Bảng lương',
+        href: '/dashboard/salary-management/payroll',
+        icon: TableCellsIcon,
+        roles: ['ADMIN'],
+      },
+      {
+        name: 'Cấu hình tính lương',
+        href: '/dashboard/salary-management/config',
+        icon: CurrencyDollarIcon,
+        roles: ['ADMIN'],
+      },
+    ],
   },
 
   // --- Tài sản ---
