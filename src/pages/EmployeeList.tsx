@@ -911,6 +911,95 @@ const EmployeeList: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportErrors = async () => {
+    if (!importResult || importResult.errors.length === 0 || !importFile) return;
+
+    const ExcelJS = (await import('exceljs')).default;
+    const arrayBuffer = await importFile.arrayBuffer();
+    const srcWorkbook = new ExcelJS.Workbook();
+    const ext = importFile.name.split('.').pop()?.toLowerCase();
+
+    if (ext === 'xlsx' || ext === 'xls') {
+      await srcWorkbook.xlsx.load(arrayBuffer);
+    } else {
+      // CSV fallback
+      const text = new TextDecoder().decode(arrayBuffer);
+      const lines = text.split('\n').map(l => l.split(','));
+      const outWb = new ExcelJS.Workbook();
+      const outWs = outWb.addWorksheet('Lỗi import');
+      const errorRowNums = new Set(importResult.errors.map(e => e.row));
+      const errorMap = new Map(importResult.errors.map(e => [e.row, (e.errors || e.warnings || []).join('; ')]));
+      if (lines.length > 0) {
+        outWs.addRow([...lines[0], 'Lỗi / Cảnh báo']);
+        outWs.getRow(1).font = { bold: true };
+        outWs.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+      }
+      lines.slice(1).forEach((cells, i) => {
+        const rowNum = i + 2;
+        if (errorRowNums.has(rowNum)) {
+          const r = outWs.addRow([...cells, errorMap.get(rowNum) || '']);
+          r.getCell(cells.length + 1).font = { color: { argb: 'FFCC0000' } };
+        }
+      });
+      const buf = await outWb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `loi-import-nhan-vien-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click(); URL.revokeObjectURL(url);
+      return;
+    }
+
+    const srcSheet = srcWorkbook.worksheets[0];
+    const errorRowNums = new Set(importResult.errors.map(e => e.row));
+    const errorMap = new Map(importResult.errors.map(e => [e.row, (e.errors || e.warnings || []).join('; ')]));
+
+    const outWorkbook = new ExcelJS.Workbook();
+    const outSheet = outWorkbook.addWorksheet('Lỗi import');
+
+    const headerRow = srcSheet.getRow(1);
+    const headers: string[] = [];
+    headerRow.eachCell({ includeEmpty: true }, (cell) => {
+      headers.push(String(cell.value ?? ''));
+    });
+    headers.push('Lỗi / Cảnh báo');
+
+    const outHeader = outSheet.addRow(headers);
+    outHeader.font = { bold: true };
+    outHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+
+    outSheet.columns = headers.map((h, i) => ({
+      key: String(i),
+      width: i === headers.length - 1 ? 60 : Math.max(h.length + 2, 15),
+    }));
+
+    srcSheet.eachRow({ includeEmpty: false }, (srcRow, rowNumber) => {
+      if (rowNumber === 1) return;
+      if (!errorRowNums.has(rowNumber)) return;
+
+      const values: (string | number | null)[] = [];
+      srcRow.eachCell({ includeEmpty: true }, (cell) => {
+        const v = cell.value;
+        if (v === null || v === undefined) { values.push(''); return; }
+        if (typeof v === 'object' && 'result' in v) { values.push(String((v as any).result ?? '')); return; }
+        values.push(v as string | number);
+      });
+      values.push(errorMap.get(rowNumber) || '');
+
+      const outRow = outSheet.addRow(values);
+      outRow.getCell(values.length).font = { color: { argb: 'FFCC0000' } };
+    });
+
+    const buffer = await outWorkbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `loi-import-nhan-vien-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleImportSubmit = async () => {
     if (!importFile) return;
     setIsImporting(true);
@@ -1472,8 +1561,18 @@ const EmployeeList: React.FC = () => {
                 </div>
                 {importResult.errors.length > 0 && (
                   <div className="border rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600 border-b">
-                      Chi tiết lỗi / cảnh báo
+                    <div className="bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600 border-b flex items-center justify-between">
+                      <span>Chi tiết lỗi / cảnh báo</span>
+                      <button
+                        onClick={handleExportErrors}
+                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                        title="Xuất danh sách lỗi ra file Excel"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Xuất file
+                      </button>
                     </div>
                     <div className="max-h-40 overflow-y-auto">
                       {importResult.errors.map((err, idx) => (
