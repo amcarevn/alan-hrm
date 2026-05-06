@@ -11,6 +11,8 @@ import {
   TableCellsIcon,
   ExclamationCircleIcon,
   FunnelIcon,
+  EyeIcon,
+  PrinterIcon,
 } from '@heroicons/react/24/outline';
 import { departmentsAPI, employeesAPI } from '../utils/api';
 import type { Department, Employee } from '../utils/api';
@@ -23,6 +25,269 @@ const TABS = [
 ];
 
 type SalaryTabKey = 'config' | 'view';
+
+// ─── Payslip Detail Modal ────────────────────────────────────────────────────
+
+interface PayslipDetailModalProps {
+  record: SalaryRecord;
+  onClose: () => void;
+}
+
+const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose }) => {
+  const stdDays = 26;
+  const luongNgayCong = record.tong_cong > 0
+    ? Math.round((record.luong_co_ban / stdDays) * record.tong_cong)
+    : 0;
+  // Allowances breakdown
+  const phuCapGuiXe = record.phu_cap_gui_xe ?? 0;
+  const phuCapKhac = (record.phu_cap ?? 0) - phuCapGuiXe;
+  // Overtime pay (if any, estimated from tang_ca; backend may provide or be 0)
+  const luongTangCa = (record as unknown as Record<string, number>)['luong_tang_ca'] ?? 0;
+  const luongDoanhSo = (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
+  const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
+  const thuong = (record as unknown as Record<string, number>)['thuong'] ?? 0;
+  const tongLuongIII = luongNgayCong + luongDoanhSo + luongTangCa + thuNhapKhac;
+  const tongPhuCapIV = record.phu_cap ?? 0;
+  const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
+  const bhxh = Math.round((record.luong_co_ban ?? 0) * 0.08);
+  const phat = Math.max(0, (record.tong_phat ?? 0) - bhxh);
+  const tongGiamTruVII = record.tong_phat ?? 0;
+  const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
+  const luongThucLinh = record.luong_thuc_linh ?? 0;
+  const tamUng = (record as unknown as Record<string, number>)['tam_ung'] ?? 0;
+  const thue = (record as unknown as Record<string, number>)['thue_tncn'] ?? 0;
+  const conPhaiTT = luongThucLinh - tamUng - thue;
+
+  const fmt = (v: number) => v ? v.toLocaleString('vi-VN') : '—';
+
+  const monthLabel = `Tháng ${String(record.month).padStart(2, '0')}.${record.year}`;
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-indigo-50 rounded-t-xl print:hidden">
+          <div>
+            <h2 className="text-base font-bold text-indigo-800 uppercase tracking-wide">
+              Phiếu thanh toán lương {monthLabel}
+            </h2>
+            <p className="text-sm text-indigo-600 mt-0.5">{record.ho_va_ten} · {record.ma_nv}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrint}
+              className="p-2 rounded-lg text-gray-500 hover:bg-indigo-100 hover:text-indigo-700 transition-colors"
+              title="In phiếu lương"
+            >
+              <PrinterIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg text-gray-500 hover:bg-red-100 hover:text-red-600 transition-colors"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Payslip body */}
+        <div className="px-6 py-4">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 px-3 py-2 text-center text-xs font-semibold text-gray-600 w-10">STT</th>
+                <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold text-gray-600">DANH MỤC</th>
+                <th className="border border-gray-300 px-3 py-2 text-right text-xs font-semibold text-gray-600 w-36">TIỀN LƯƠNG</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Section I */}
+              <tr className="bg-indigo-50">
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-indigo-700">I</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-700" colSpan={2}>THÔNG TIN NHÂN VIÊN</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">1</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Mã nhân viên</td>
+                <td className="border border-gray-300 px-3 py-2 text-right font-mono text-gray-800">{record.ma_nv}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">2</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Họ và tên</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{record.ho_va_ten}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">3</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Phòng ban</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{record.phong_ban ?? '—'}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">4</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Chức vụ</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{record.vi_tri ?? '—'}</td>
+              </tr>
+
+              {/* Section II */}
+              <tr className="bg-indigo-50">
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-indigo-700">II</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-700" colSpan={2}>THÔNG TIN TÍNH LƯƠNG</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">5</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Công chuẩn tính lương</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{stdDays} công</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">6</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương cơ bản</td>
+                <td className="border border-gray-300 px-3 py-2 text-right font-medium text-gray-800">{fmt(record.luong_co_ban)}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">7</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Ngày công thực tế</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{record.tong_cong}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">8</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Số giờ tăng ca</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{record.tang_ca ?? 0}</td>
+              </tr>
+
+              {/* Section III */}
+              <tr className="bg-blue-50">
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-blue-700">III</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-blue-700" colSpan={2}>CÁC KHOẢN LƯƠNG TRONG THÁNG</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">9</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương ngày công thực tế</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(luongNgayCong)}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">10</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương doanh số</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-400">{luongDoanhSo ? fmt(luongDoanhSo) : '—'}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">11</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương tăng ca</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-400">{luongTangCa ? fmt(luongTangCa) : '—'}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">12</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương trực ca</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-400">{record.truc_toi ? fmt(record.truc_toi) : '—'}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">13</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Thu nhập khác</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-400">{thuNhapKhac ? fmt(thuNhapKhac) : '—'}</td>
+              </tr>
+
+              {/* Section IV */}
+              <tr className="bg-green-50">
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-green-700">IV</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-green-700" colSpan={2}>CÁC KHOẢN PHỤ CẤP</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">14</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Phụ cấp gửi xe, ăn tối</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{phuCapGuiXe ? fmt(phuCapGuiXe) : '—'}</td>
+              </tr>
+              {phuCapKhac > 0 && (
+                <tr>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">15</td>
+                  <td className="border border-gray-300 px-3 py-2 text-gray-700">Phụ cấp khác</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(phuCapKhac)}</td>
+                </tr>
+              )}
+
+              {/* Section V */}
+              <tr className="bg-yellow-50">
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-yellow-700">V</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-yellow-700">THƯỞNG</td>
+                <td className="border border-gray-300 px-3 py-2 text-right font-medium text-yellow-700">{thuong ? fmt(thuong) : '—'}</td>
+              </tr>
+
+              {/* Section VI */}
+              <tr className="bg-indigo-100">
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-indigo-800">VI</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">TỔNG THU NHẬP (III+IV+V)</td>
+                <td className="border border-gray-300 px-3 py-2 text-right font-bold text-indigo-800">{fmt(tongThuNhapVI)}</td>
+              </tr>
+
+              {/* Section VII */}
+              <tr className="bg-red-50">
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-red-700">VII</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-red-700" colSpan={2}>CÁC KHOẢN GIẢM TRỪ</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">16</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">BHXH 10.5%</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(bhxh)}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">17</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Phạt đi muộn + phạt biên bản</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{phat > 0 ? fmt(phat) : '—'}</td>
+              </tr>
+              <tr className="bg-red-50">
+                <td className="border border-gray-300 px-3 py-2 text-center font-semibold text-red-700" colSpan={2}>
+                  <span className="text-xs">Tổng giảm trừ (VII)</span>
+                </td>
+                <td className="border border-gray-300 px-3 py-2 text-right font-semibold text-red-700">{fmt(tongGiamTruVII)}</td>
+              </tr>
+
+              {/* Section VIII */}
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-gray-700">VIII</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-gray-700">ĐIỀU CHỈNH LƯƠNG</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-500">{dieuChinhVIII ? fmt(dieuChinhVIII) : '—'}</td>
+              </tr>
+
+              {/* Section IX */}
+              <tr className="bg-indigo-100">
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-indigo-800">IX</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">LƯƠNG THỰC LĨNH (VI−VII+VIII)</td>
+                <td className="border border-gray-300 px-3 py-2 text-right font-bold text-indigo-800">{fmt(luongThucLinh)}</td>
+              </tr>
+
+              {/* Section X */}
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">X</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">TẠM ỨNG LƯƠNG</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-500">{tamUng ? fmt(tamUng) : '—'}</td>
+              </tr>
+
+              {/* Section XI */}
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">XI</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">THUẾ TNCN</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-500">{thue ? fmt(thue) : '—'}</td>
+              </tr>
+
+              {/* Section XII */}
+              <tr className="bg-green-100">
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-green-800">XII</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-green-800">CÒN PHẢI THANH TOÁN (IX−X−XI)</td>
+                <td className="border border-gray-300 px-3 py-2 text-right font-bold text-lg text-green-800">{fmt(conPhaiTT)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface SalaryManagementProps {
   defaultTab?: SalaryTabKey;
@@ -1253,6 +1518,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [loadingEmployeeConfig, setLoadingEmployeeConfig] = useState<number | null>(null);
 
   const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>([]);
+  const [payslipRecord, setPayslipRecord] = useState<SalaryRecord | null>(null);
   const [loadingSalary, setLoadingSalary] = useState(false);
   const [salaryError, setSalaryError] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
@@ -1682,6 +1948,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                         <th className="px-3 py-3 text-right text-xs font-medium text-gray-900 uppercase tracking-wider bg-indigo-50">
                           Thực lĩnh
                         </th>
+                        <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Chi tiết
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-100">
@@ -1700,6 +1969,16 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           <td className="px-3 py-3 text-right font-semibold text-indigo-700 bg-indigo-50">
                             {formatCurrency(record.luong_thuc_linh)}
                           </td>
+                          <td className="px-3 py-3 text-center">
+                            <button
+                              onClick={() => setPayslipRecord(record)}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 hover:text-indigo-800 transition-colors"
+                              title="Xem phiếu lương chi tiết"
+                            >
+                              <EyeIcon className="h-3.5 w-3.5" />
+                              Xem
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1717,6 +1996,13 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           onClose={() => setEditEmployee(null)}
           onSave={handleSave}
           saving={saving}
+        />
+      )}
+
+      {payslipRecord && (
+        <PayslipDetailModal
+          record={payslipRecord}
+          onClose={() => setPayslipRecord(null)}
         />
       )}
     </div>
