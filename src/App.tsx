@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout/Layout';
@@ -86,7 +86,8 @@ import DocumentTemplates from './pages/DocumentTemplates';
 import PasswordReset from './pages/PasswordReset';
 import ShiftConfiguration from './pages/ShiftConfiguration';
 import AIChat from './pages/AIChat';
-import SalaryManagement from './pages/SalaryManagement';
+import SalaryPayroll from './pages/SalaryPayroll';
+import SalaryEmployeeConfig from './pages/SalaryEmployeeConfig';
 import AttendanceRanking from './pages/AttendanceRanking';
 import RecruitmentNeeds from './pages/recruitment/RecruitmentNeeds';
 import RecruitmentJobs from './pages/recruitment/RecruitmentJobs';
@@ -949,7 +950,27 @@ function App() {
             element={
               <ProtectedRoute>
                 <Layout>
-                  <SalaryManagement />
+                  <Navigate to="/dashboard/salary-management/config" replace />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/salary-management/config"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <SalaryEmployeeConfig />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/salary-management/payroll"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <SalaryPayroll />
                 </Layout>
               </ProtectedRoute>
             }
