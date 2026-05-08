@@ -24,6 +24,15 @@ const TABS = [
   { key: 'view', label: 'Bảng lương', icon: TableCellsIcon },
 ];
 
+function getStandardWorkDays(year: number, month: number): number {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  let sundays = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    if (new Date(year, month - 1, d).getDay() === 0) sundays++;
+  }
+  return daysInMonth - sundays;
+}
+
 type SalaryTabKey = 'config' | 'view';
 
 // ─── Payslip Detail Modal ────────────────────────────────────────────────────
@@ -34,7 +43,7 @@ interface PayslipDetailModalProps {
 }
 
 const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose }) => {
-  const stdDays = 26;
+  const stdDays = getStandardWorkDays(record.year, record.month);
   const luongNgayCong = record.tong_cong > 0
     ? Math.round((record.luong_co_ban / stdDays) * record.tong_cong)
     : 0;
