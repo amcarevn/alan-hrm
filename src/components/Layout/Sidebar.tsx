@@ -220,7 +220,7 @@ const navigationItems: NavigationItem[] = [
         roles: ['ADMIN'],
       },
       {
-        name: 'Phạt Biên Bản',
+        name: 'Dữ liệu',
         href: '/dashboard/salary-management/penalty',
         icon: ExclamationCircleIcon,
         roles: ['ADMIN'],
