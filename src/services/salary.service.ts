@@ -96,6 +96,27 @@ export interface BulkImportPenaltyResponse {
   errors: BulkImportPenaltyErrorItem[];
 }
 
+export interface CommissionRecord {
+  id: number;
+  employee: number;
+  employee_name: string;
+  employee_code: string;
+  year: number;
+  month: number;
+  amount: number;
+  notes: string;
+}
+
+export interface BulkImportCommissionRecord {
+  employee_code: string;
+  commission_amount: number;
+}
+
+export interface BulkImportCommissionResponse {
+  success: { employee_code: string; employee_name: string; commission_amount: number; created: boolean }[];
+  errors:  { employee_code: string; error: string }[];
+}
+
 class SalaryService {
   async getSalaryByDepartment(params: {
     year: number;
@@ -171,6 +192,29 @@ class SalaryService {
     records: BulkImportPenaltyRecord[];
   }): Promise<BulkImportPenaltyResponse> {
     const response = await managementApi.post('/api/v1/salary/penalties/bulk-import/', params);
+    return response.data;
+  }
+
+  async listCommissions(params: { year: number; month: number }): Promise<CommissionRecord[]> {
+    const response = await managementApi.get('/api/v1/salary/commissions/', { params: { ...params, page_size: 500 } });
+    return response.data.results ?? response.data;
+  }
+
+  async updateCommission(id: number, data: { amount: number; notes?: string }): Promise<CommissionRecord> {
+    const response = await managementApi.patch(`/api/v1/salary/commissions/${id}/`, data);
+    return response.data;
+  }
+
+  async deleteCommission(id: number): Promise<void> {
+    await managementApi.delete(`/api/v1/salary/commissions/${id}/`);
+  }
+
+  async bulkImportCommissions(params: {
+    year: number;
+    month: number;
+    records: BulkImportCommissionRecord[];
+  }): Promise<BulkImportCommissionResponse> {
+    const response = await managementApi.post('/api/v1/salary/commissions/bulk-import/', params);
     return response.data;
   }
 }
