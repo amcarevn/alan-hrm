@@ -49,6 +49,74 @@ export interface SalaryFormulaUpdateData {
   salary_adjustments?: Record<string, unknown>;
 }
 
+export interface KPIRecord {
+  id: number;
+  employee: number;
+  employee_name: string;
+  employee_code: string;
+  year: number;
+  month: number;
+  commission_amount: number;
+  notes: string;
+}
+
+export interface PenaltyRecord {
+  id: number;
+  employee: number;
+  employee_name: string;
+  employee_code: string;
+  year: number;
+  month: number;
+  amount: number;
+  reason: string;
+  notes: string;
+}
+
+export interface BulkImportPenaltyRecord {
+  employee_code: string;
+  amount: number;
+  reason: string;
+}
+
+export interface BulkImportPenaltySuccessItem {
+  id: number;
+  employee_code: string;
+  employee_name: string;
+  amount: number;
+  reason: string;
+}
+
+export interface BulkImportPenaltyErrorItem {
+  employee_code: string;
+  error: string;
+}
+
+export interface BulkImportPenaltyResponse {
+  success: BulkImportPenaltySuccessItem[];
+  errors: BulkImportPenaltyErrorItem[];
+}
+
+export interface CommissionRecord {
+  id: number;
+  employee: number;
+  employee_name: string;
+  employee_code: string;
+  year: number;
+  month: number;
+  amount: number;
+  notes: string;
+}
+
+export interface BulkImportCommissionRecord {
+  employee_code: string;
+  commission_amount: number;
+}
+
+export interface BulkImportCommissionResponse {
+  success: { employee_code: string; employee_name: string; commission_amount: number; created: boolean }[];
+  errors:  { employee_code: string; error: string }[];
+}
+
 class SalaryService {
   async getSalaryByDepartment(params: {
     year: number;
@@ -87,6 +155,66 @@ class SalaryService {
     results: Employee[];
   }> {
     const response = await managementApi.get('/api-hrm/employees/', { params });
+    return response.data;
+  }
+
+  async listKPIRecords(params: { year: number; month: number }): Promise<KPIRecord[]> {
+    const response = await managementApi.get('/api/v1/salary/kpi-records/', { params: { ...params, page_size: 500 } });
+    return response.data.results ?? response.data;
+  }
+
+  async updateKPIRecord(id: number, data: { commission_amount: number; notes?: string }): Promise<KPIRecord> {
+    const response = await managementApi.patch(`/api/v1/salary/kpi-records/${id}/`, data);
+    return response.data;
+  }
+
+  async deleteKPIRecord(id: number): Promise<void> {
+    await managementApi.delete(`/api/v1/salary/kpi-records/${id}/`);
+  }
+
+  async listPenalties(params: { year: number; month: number }): Promise<PenaltyRecord[]> {
+    const response = await managementApi.get('/api/v1/salary/penalties/', { params: { ...params, page_size: 500 } });
+    return response.data.results ?? response.data;
+  }
+
+  async updatePenalty(id: number, data: { amount: number; reason: string; notes?: string }): Promise<PenaltyRecord> {
+    const response = await managementApi.patch(`/api/v1/salary/penalties/${id}/`, data);
+    return response.data;
+  }
+
+  async deletePenalty(id: number): Promise<void> {
+    await managementApi.delete(`/api/v1/salary/penalties/${id}/`);
+  }
+
+  async bulkImportPenalties(params: {
+    year: number;
+    month: number;
+    records: BulkImportPenaltyRecord[];
+  }): Promise<BulkImportPenaltyResponse> {
+    const response = await managementApi.post('/api/v1/salary/penalties/bulk-import/', params);
+    return response.data;
+  }
+
+  async listCommissions(params: { year: number; month: number }): Promise<CommissionRecord[]> {
+    const response = await managementApi.get('/api/v1/salary/commissions/', { params: { ...params, page_size: 500 } });
+    return response.data.results ?? response.data;
+  }
+
+  async updateCommission(id: number, data: { amount: number; notes?: string }): Promise<CommissionRecord> {
+    const response = await managementApi.patch(`/api/v1/salary/commissions/${id}/`, data);
+    return response.data;
+  }
+
+  async deleteCommission(id: number): Promise<void> {
+    await managementApi.delete(`/api/v1/salary/commissions/${id}/`);
+  }
+
+  async bulkImportCommissions(params: {
+    year: number;
+    month: number;
+    records: BulkImportCommissionRecord[];
+  }): Promise<BulkImportCommissionResponse> {
+    const response = await managementApi.post('/api/v1/salary/commissions/bulk-import/', params);
     return response.data;
   }
 }

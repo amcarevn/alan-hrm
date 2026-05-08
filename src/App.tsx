@@ -88,6 +88,7 @@ import ShiftConfiguration from './pages/ShiftConfiguration';
 import AIChat from './pages/AIChat';
 import SalaryPayroll from './pages/SalaryPayroll';
 import SalaryEmployeeConfig from './pages/SalaryEmployeeConfig';
+import SalaryData from './pages/SalaryData';
 import AttendanceRanking from './pages/AttendanceRanking';
 import RecruitmentNeeds from './pages/recruitment/RecruitmentNeeds';
 import RecruitmentJobs from './pages/recruitment/RecruitmentJobs';
@@ -971,6 +972,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <SalaryPayroll />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/salary-management/penalty"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <SalaryData />
                 </Layout>
               </ProtectedRoute>
             }
