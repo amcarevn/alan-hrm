@@ -41,8 +41,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   // Allowances breakdown
   const phuCapGuiXe = record.phu_cap_gui_xe ?? 0;
   const phuCapKhac = (record.phu_cap ?? 0) - phuCapGuiXe;
-  // Overtime pay (if any, estimated from tang_ca; backend may provide or be 0)
-  const luongTangCa = (record as unknown as Record<string, number>)['luong_tang_ca'] ?? 0;
+  const luongTangCa = record.luong_tang_ca ?? 0;
   const luongDoanhSo = (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
   const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
   const thuong = (record as unknown as Record<string, number>)['thuong'] ?? 0;
