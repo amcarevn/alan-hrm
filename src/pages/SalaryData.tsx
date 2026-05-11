@@ -180,6 +180,12 @@ const SalaryData: React.FC = () => {
   const [pDeleting,       setPDeleting]       = useState(false);
   const pFileRef = useRef<HTMLInputElement>(null);
 
+  // ── Per-tab import errors (detailed) ──
+  const [cImportErr, setCImportErr] = useState<{ errors: {employee_code:string;error:string}[]; failedRows: ParsedCommissionRow[] } | null>(null);
+  const [pImportErr, setPImportErr] = useState<{ errors: {employee_code:string;error:string}[]; failedRows: ParsedPenaltyRow[] } | null>(null);
+  const [aImportErr, setAImportErr] = useState<{ errors: {employee_code:string;error:string}[]; failedRows: ParsedAdvanceRow[] } | null>(null);
+  const [oImportErr, setOImportErr] = useState<{ errors: {employee_code:string;error:string}[]; failedRows: ParsedOtherAllowanceRow[] } | null>(null);
+
   // ── Shared toasts ──
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg,   setErrorMsg]   = useState<string | null>(null);
@@ -252,20 +258,15 @@ const SalaryData: React.FC = () => {
 
   // ─── Month/Year handlers ───────────────────────────────────────────────────
 
-  const handleMonthChange = (v: number) => {
-    setSelectedMonth(v);
-    setCParsedRows(null); setCFile(null); if (cFileRef.current) cFileRef.current.value = '';
-    setPParsedRows(null); setPFile(null); if (pFileRef.current) pFileRef.current.value = '';
-    setAParsedRows(null); setAFile(null); if (aFileRef.current) aFileRef.current.value = '';
-    setOParsedRows(null); setOFile(null); if (oFileRef.current) oFileRef.current.value = '';
+  const clearImportState = () => {
+    setCParsedRows(null); setCFile(null); setCImportErr(null); if (cFileRef.current) cFileRef.current.value = '';
+    setPParsedRows(null); setPFile(null); setPImportErr(null); if (pFileRef.current) pFileRef.current.value = '';
+    setAParsedRows(null); setAFile(null); setAImportErr(null); if (aFileRef.current) aFileRef.current.value = '';
+    setOParsedRows(null); setOFile(null); setOImportErr(null); if (oFileRef.current) oFileRef.current.value = '';
   };
-  const handleYearChange = (v: number) => {
-    setSelectedYear(v);
-    setCParsedRows(null); setCFile(null); if (cFileRef.current) cFileRef.current.value = '';
-    setPParsedRows(null); setPFile(null); if (pFileRef.current) pFileRef.current.value = '';
-    setAParsedRows(null); setAFile(null); if (aFileRef.current) aFileRef.current.value = '';
-    setOParsedRows(null); setOFile(null); if (oFileRef.current) oFileRef.current.value = '';
-  };
+
+  const handleMonthChange = (v: number) => { setSelectedMonth(v); clearImportState(); };
+  const handleYearChange  = (v: number) => { setSelectedYear(v);  clearImportState(); };
 
   // ─── Commission: template ──────────────────────────────────────────────────
 
@@ -330,7 +331,11 @@ const SalaryData: React.FC = () => {
       const records: BulkImportCommissionRecord[] = valid.map((r) => ({ employee_code: r.employee_code, commission_amount: r.amount }));
       const res = await salaryService.bulkImportCommissions({ year: selectedYear, month: selectedMonth, records });
       if (res.success.length > 0) setSuccessMsg(`Import thành công ${res.success.length} hoa hồng.`);
-      if (res.errors.length > 0)  setErrorMsg(`${res.errors.length} dòng lỗi: ${res.errors.map((e) => e.employee_code).join(', ')}`);
+      if (res.errors.length > 0) {
+        const errorCodes = new Set(res.errors.map((e) => e.employee_code));
+        const failedRows = (cParsedRows ?? []).filter((r) => errorCodes.has(r.employee_code));
+        setCImportErr({ errors: res.errors, failedRows });
+      }
       setCParsedRows(null); setCFile(null); if (cFileRef.current) cFileRef.current.value = '';
       await loadCommissions();
     } catch { setErrorMsg('Lỗi kết nối máy chủ.'); }
@@ -428,7 +433,11 @@ const SalaryData: React.FC = () => {
       const records: BulkImportPenaltyRecord[] = valid.map((r) => ({ employee_code: r.employee_code, amount: r.amount, reason: r.reason }));
       const res = await salaryService.bulkImportPenalties({ year: selectedYear, month: selectedMonth, records });
       if (res.success.length > 0) setSuccessMsg(`Import thành công ${res.success.length} bản ghi phạt.`);
-      if (res.errors.length > 0)  setErrorMsg(`${res.errors.length} dòng lỗi: ${res.errors.map((e) => e.employee_code).join(', ')}`);
+      if (res.errors.length > 0) {
+        const errorCodes = new Set(res.errors.map((e) => e.employee_code));
+        const failedRows = (pParsedRows ?? []).filter((r) => errorCodes.has(r.employee_code));
+        setPImportErr({ errors: res.errors, failedRows });
+      }
       setPParsedRows(null); setPFile(null); if (pFileRef.current) pFileRef.current.value = '';
       await loadPenalties();
     } catch { setErrorMsg('Lỗi kết nối máy chủ.'); }
@@ -524,7 +533,11 @@ const SalaryData: React.FC = () => {
       const records: BulkImportAdvanceRecord[] = valid.map((r) => ({ employee_code: r.employee_code, amount: r.amount }));
       const res = await salaryService.bulkImportAdvances({ year: selectedYear, month: selectedMonth, records });
       if (res.success.length > 0) setSuccessMsg(`Import thành công ${res.success.length} tạm ứng.`);
-      if (res.errors.length > 0)  setErrorMsg(`${res.errors.length} dòng lỗi: ${res.errors.map((e) => e.employee_code).join(', ')}`);
+      if (res.errors.length > 0) {
+        const errorCodes = new Set(res.errors.map((e) => e.employee_code));
+        const failedRows = (aParsedRows ?? []).filter((r) => errorCodes.has(r.employee_code));
+        setAImportErr({ errors: res.errors, failedRows });
+      }
       setAParsedRows(null); setAFile(null); if (aFileRef.current) aFileRef.current.value = '';
       await loadAdvances();
     } catch { setErrorMsg('Lỗi kết nối máy chủ.'); }
@@ -622,7 +635,11 @@ const SalaryData: React.FC = () => {
       const records: BulkImportOtherAllowanceRecord[] = valid.map((r) => ({ employee_code: r.employee_code, amount: r.amount, description: r.description }));
       const res = await salaryService.bulkImportOtherAllowances({ year: selectedYear, month: selectedMonth, records });
       if (res.success.length > 0) setSuccessMsg(`Import thành công ${res.success.length} phụ cấp.`);
-      if (res.errors.length > 0)  setErrorMsg(`${res.errors.length} dòng lỗi: ${res.errors.map((e) => e.employee_code).join(', ')}`);
+      if (res.errors.length > 0) {
+        const errorCodes = new Set(res.errors.map((e) => e.employee_code));
+        const failedRows = (oParsedRows ?? []).filter((r) => errorCodes.has(r.employee_code));
+        setOImportErr({ errors: res.errors, failedRows });
+      }
       setOParsedRows(null); setOFile(null); if (oFileRef.current) oFileRef.current.value = '';
       await loadOtherAllowances();
     } catch { setErrorMsg('Lỗi kết nối máy chủ.'); }
@@ -653,6 +670,118 @@ const SalaryData: React.FC = () => {
       setODeletingId(null); setSuccessMsg('Đã xoá phụ cấp.');
     } catch { setErrorMsg('Không thể xoá.'); }
     finally { setODeleting(false); }
+  };
+
+  // ─── Export error helpers ─────────────────────────────────────────────────
+
+  const buildErrorExcel = async (
+    sheetName: string,
+    headerColor: string,
+    cols: { header: string; key: string; width: number }[],
+    dataRows: (string | number)[][],
+  ) => {
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(sheetName);
+    ws.columns = cols;
+    const borderStyle = { style: 'thin' as const, color: { argb: 'FFD1D5DB' } };
+    const allBorders = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
+    ws.getRow(1).eachCell({ includeEmpty: true }, (cell) => {
+      cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerColor } };
+      cell.font      = { color: { argb: 'FFFFFFFF' }, bold: true, size: 12 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border    = allBorders;
+    });
+    ws.getRow(1).height = 28;
+    dataRows.forEach((values, idx) => {
+      const exRow = ws.getRow(idx + 2);
+      values.forEach((v, ci) => {
+        const cell = exRow.getCell(ci + 1);
+        cell.value    = v as any;
+        cell.border   = allBorders;
+        cell.alignment = { vertical: 'middle' };
+      });
+      exRow.commit();
+    });
+    return wb;
+  };
+
+  const handleExportCommissionErrors = async () => {
+    if (!cImportErr?.errors.length) return;
+    const rowMap = new Map(cImportErr.failedRows.map((r) => [r.employee_code, r]));
+    const cols = [
+      { header: 'Mã nhân viên',   key: 'a', width: 20 },
+      { header: 'Lương hoa hồng', key: 'b', width: 22 },
+      { header: 'Lý do lỗi',      key: 'c', width: 44 },
+    ];
+    const dataRows = cImportErr.errors.map((e) => {
+      const orig = rowMap.get(e.employee_code);
+      return [e.employee_code, orig?.amount ?? '', e.error];
+    });
+    const wb = await buildErrorExcel('Hoa Hồng', 'FF4F46E5', cols, dataRows);
+    const buf = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const a = document.createElement('a'); a.href = url; a.download = `hoa_hong_loi_T${selectedMonth}_${selectedYear}.xlsx`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPenaltyErrors = async () => {
+    if (!pImportErr?.errors.length) return;
+    const rowMap = new Map(pImportErr.failedRows.map((r) => [r.employee_code, r]));
+    const cols = [
+      { header: 'Mã nhân viên',  key: 'a', width: 20 },
+      { header: 'Số tiền phạt',  key: 'b', width: 20 },
+      { header: 'Lý do vi phạm', key: 'c', width: 40 },
+      { header: 'Lý do lỗi',     key: 'd', width: 44 },
+    ];
+    const dataRows = pImportErr.errors.map((e) => {
+      const orig = rowMap.get(e.employee_code);
+      return [e.employee_code, orig?.amount ?? '', orig?.reason ?? '', e.error];
+    });
+    const wb = await buildErrorExcel('Phạt Biên Bản', 'FFD93D1A', cols, dataRows);
+    const buf = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const a = document.createElement('a'); a.href = url; a.download = `phat_bien_ban_loi_T${selectedMonth}_${selectedYear}.xlsx`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportAdvanceErrors = async () => {
+    if (!aImportErr?.errors.length) return;
+    const rowMap = new Map(aImportErr.failedRows.map((r) => [r.employee_code, r]));
+    const cols = [
+      { header: 'Mã nhân viên',    key: 'a', width: 20 },
+      { header: 'Số tiền tạm ứng', key: 'b', width: 22 },
+      { header: 'Lý do lỗi',       key: 'c', width: 44 },
+    ];
+    const dataRows = aImportErr.errors.map((e) => {
+      const orig = rowMap.get(e.employee_code);
+      return [e.employee_code, orig?.amount ?? '', e.error];
+    });
+    const wb = await buildErrorExcel('Tạm Ứng', 'FF0E7490', cols, dataRows);
+    const buf = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const a = document.createElement('a'); a.href = url; a.download = `tam_ung_loi_T${selectedMonth}_${selectedYear}.xlsx`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportOtherAllowanceErrors = async () => {
+    if (!oImportErr?.errors.length) return;
+    const rowMap = new Map(oImportErr.failedRows.map((r) => [r.employee_code, r]));
+    const cols = [
+      { header: 'Mã nhân viên',    key: 'a', width: 20 },
+      { header: 'Số tiền phụ cấp', key: 'b', width: 22 },
+      { header: 'Mô tả phụ cấp',   key: 'c', width: 30 },
+      { header: 'Lý do lỗi',        key: 'd', width: 44 },
+    ];
+    const dataRows = oImportErr.errors.map((e) => {
+      const orig = rowMap.get(e.employee_code);
+      return [e.employee_code, orig?.amount ?? '', orig?.description ?? '', e.error];
+    });
+    const wb = await buildErrorExcel('Phụ Cấp Khác', 'FF7C3AED', cols, dataRows);
+    const buf = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const a = document.createElement('a'); a.href = url; a.download = `phu_cap_khac_loi_T${selectedMonth}_${selectedYear}.xlsx`; a.click();
+    URL.revokeObjectURL(url);
   };
 
   // ─── Derived ──────────────────────────────────────────────────────────────
@@ -691,6 +820,54 @@ const SalaryData: React.FC = () => {
       <span className="text-xs font-semibold">{name?.charAt(0).toUpperCase()}</span>
     </div>
   );
+
+  const renderImportErrors = (
+    errState: { errors: {employee_code:string;error:string}[]; failedRows: unknown[] } | null,
+    onExport: () => void,
+    onClear: () => void,
+  ) => {
+    if (!errState?.errors.length) return null;
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2 bg-red-100">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-red-700">
+            <ExclamationCircleIcon className="h-4 w-4" />
+            {errState.errors.length} dòng không import được
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onExport}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-3 w-3" />
+              Tải file lỗi để sửa
+            </button>
+            <button onClick={onClear} className="p-1 hover:bg-red-200 rounded transition-colors">
+              <XMarkIcon className="h-3.5 w-3.5 text-red-500" />
+            </button>
+          </div>
+        </div>
+        <div className="max-h-40 overflow-y-auto">
+          <table className="min-w-full text-xs">
+            <thead className="bg-red-50 sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium text-red-700 w-32">Mã nhân viên</th>
+                <th className="px-3 py-2 text-left font-medium text-red-700">Lý do lỗi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-red-100 bg-white">
+              {errState.errors.map((e, i) => (
+                <tr key={i}>
+                  <td className="px-3 py-1.5 font-mono font-medium text-red-700">{e.employee_code}</td>
+                  <td className="px-3 py-1.5 text-red-600">{e.error}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -791,6 +968,7 @@ const SalaryData: React.FC = () => {
                 )}
               </div>
               {cParseError && <p className="flex items-center gap-1 text-sm text-red-600"><ExclamationCircleIcon className="h-4 w-4" />{cParseError}</p>}
+              {renderImportErrors(cImportErr, handleExportCommissionErrors, () => setCImportErr(null))}
 
               {/* Preview */}
               {cParsedRows && !cParsing && (
@@ -941,6 +1119,7 @@ const SalaryData: React.FC = () => {
                 )}
               </div>
               {oParseError && <p className="flex items-center gap-1 text-sm text-red-600"><ExclamationCircleIcon className="h-4 w-4" />{oParseError}</p>}
+              {renderImportErrors(oImportErr, handleExportOtherAllowanceErrors, () => setOImportErr(null))}
 
               {/* Preview */}
               {oParsedRows && !oParsing && (
@@ -1102,6 +1281,7 @@ const SalaryData: React.FC = () => {
                 )}
               </div>
               {aParseError && <p className="flex items-center gap-1 text-sm text-red-600"><ExclamationCircleIcon className="h-4 w-4" />{aParseError}</p>}
+              {renderImportErrors(aImportErr, handleExportAdvanceErrors, () => setAImportErr(null))}
 
               {/* Preview */}
               {aParsedRows && !aParsing && (
@@ -1252,6 +1432,7 @@ const SalaryData: React.FC = () => {
                 )}
               </div>
               {pParseError && <p className="flex items-center gap-1 text-sm text-red-600"><ExclamationCircleIcon className="h-4 w-4" />{pParseError}</p>}
+              {renderImportErrors(pImportErr, handleExportPenaltyErrors, () => setPImportErr(null))}
 
               {/* Preview */}
               {pParsedRows && !pParsing && (
