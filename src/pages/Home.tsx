@@ -295,7 +295,7 @@ const Home: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-primary-600 to-primary-800 rounded-2xl p-8 text-white">
+      <div className="bg-gradient-to-r from-ruby-primary to-ruby-hover rounded-2xl p-8 text-white">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold">Chào mừng trở lại, {user?.username || 'Nhân viên'}!</h1>
