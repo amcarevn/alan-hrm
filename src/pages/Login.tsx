@@ -186,11 +186,11 @@ export default function Login() {
           <button
             type="submit"
             disabled={isLoggingIn}
-            className="w-full py-3 px-4 bg-ruby-primary hover:bg-ruby-hover active:bg-[#9B0B42] disabled:opacity-60 text-white text-base font-bold rounded-xl transition-colors mt-1 shadow-lg shadow-ruby-primary/30"
+            className="w-full py-3 px-4 bg-ruby-primary hover:bg-ruby-hover active:bg-[#9B0B42] disabled:opacity-60 text-white text-base font-bold rounded-xl transition-colors mt-1 shadow-lg shadow-ruby-primary/30 flex items-center justify-center gap-2"
           >
             {isLoggingIn ? (
               <>
-                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
                 Đang xử lý...
               </>
             ) : 'Đăng nhập'}
