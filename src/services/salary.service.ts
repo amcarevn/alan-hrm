@@ -28,6 +28,8 @@ export interface SalaryRecord {
   phu_cap_khac: number;
   tong_cong: number;
   tong_phat: number;
+  tong_phat_bienban: number;
+  bh_deduction: number;
   luong_tang_ca: number;
   tam_ung: number;
   luong_thuc_linh: number;

@@ -52,17 +52,18 @@ interface PayslipDetailModalProps {
 const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose, employee, penalties, commissions }) => {
   useLockBodyScroll(true);
   const stdDays = getStandardWorkDays(record.year, record.month);
-  const luongNgayCong = record.tong_cong > 0
-    ? Math.round((record.luong_co_ban / stdDays) * record.tong_cong)
-    : 0;
-  // Allowances breakdown
-  const luongTangCa = record.luong_tang_ca ?? 0;
+
+  // Section III
+  const luongCoBan   = record.luong_co_ban ?? 0;
+  const luongNgayCongThucTe = stdDays > 0 ? Math.round(luongCoBan / stdDays * (record.ngay_cong ?? 0)) : 0;
+  const luongTangCa  = record.luong_tang_ca ?? 0;
+  const luongTrucCa  = record.truc_toi ?? 0;
   const luongDoanhSo = commissions
     ? commissions.reduce((sum, c) => sum + Math.round(parseFloat(String(c.amount)) || 0), 0)
     : (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
-  const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
-  const thuong = (record as unknown as Record<string, number>)['thuong'] ?? 0;
-  const tongLuongIII = luongNgayCong + luongDoanhSo + luongTangCa + thuNhapKhac;
+  const thuNhapKhac  = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
+  const thuong       = (record as unknown as Record<string, number>)['thuong'] ?? 0;
+  const tongLuongIII = luongCoBan + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
   const tongPhuCapIV = record.phu_cap ?? 0;
   const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
 
@@ -106,7 +107,13 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
 
   const phuCapKhacRemainder = Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0);
 
-  const mucLuongDongBH = savedOutput?.insuranceSalaryBase ?? (record.luong_co_ban ?? 0);
+  const savedTaxPolicy = savedConfig?.taxPolicy as Record<string, unknown> | undefined;
+  const savedBaseSalary = savedConfig?.baseSalary as Record<string, unknown> | undefined;
+  const mucLuongDongBHFromConfig = savedTaxPolicy?.insuranceSalaryMode === 'custom'
+    ? toNumber(savedTaxPolicy.insuranceSalaryOverride)
+    : toNumber(savedBaseSalary?.amount) * Math.max(toNumber(savedBaseSalary?.factor, 1), 1);
+  const mucLuongDongBH = savedOutput?.insuranceSalaryBase
+    ?? (mucLuongDongBHFromConfig || (record.luong_co_ban ?? 0));
   const bhxh = Math.round(savedOutput?.socialInsurance ?? mucLuongDongBH * 0.08);
   const bhyt = Math.round(savedOutput?.healthInsurance ?? mucLuongDongBH * 0.015);
   const bhtn = Math.round(savedOutput?.unemploymentInsurance ?? mucLuongDongBH * 0.01);
@@ -117,9 +124,11 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const phatBienBan = penalties ? penalties.reduce((sum, p) => sum + Math.round(parseFloat(String(p.amount)) || 0), 0) : 0;
   const tongGiamTruVII = tongBH + congDoan + phatDiMuon + phatBienBan;
   const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
-  const luongThucLinh = record.luong_thuc_linh ?? 0;
-  const tamUng = (record as unknown as Record<string, number>)['tam_ung'] ?? 0;
-  const thue = (record as unknown as Record<string, number>)['thue_tncn'] ?? 0;
+  const tamUng = record.tam_ung ?? 0;
+  const thue = Math.round(savedOutput?.pit ?? 0);
+  // IX = VI − VII + VIII (tính đúng: trừ BH/CĐ/phạt)
+  const luongThucLinh = tongThuNhapVI - tongGiamTruVII + dieuChinhVIII;
+  // XII = IX − X − XI
   const conPhaiTT = luongThucLinh - tamUng - thue;
 
   const fmt = (v: number) => v ? v.toLocaleString('vi-VN') : '—';
@@ -133,11 +142,11 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-indigo-50 rounded-t-xl print:hidden">
+        {/* Header — sticky */}
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-indigo-50 rounded-t-xl print:hidden">
           <div>
             <h2 className="text-base font-bold text-indigo-800 uppercase tracking-wide">
               Phiếu thanh toán lương {monthLabel}
@@ -162,7 +171,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
         </div>
 
         {/* Payslip body */}
-        <div className="px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="bg-gray-100">
@@ -232,7 +241,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">9</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương ngày công thực tế</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(luongNgayCong)}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(luongNgayCongThucTe)}</td>
               </tr>
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">10</td>
@@ -247,7 +256,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">12</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương trực ca</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{record.truc_toi ? fmt(record.truc_toi) : '—'}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{luongTrucCa ? fmt(luongTrucCa) : '—'}</td>
               </tr>
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">13</td>
@@ -315,24 +324,14 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 font-bold text-red-700" colSpan={2}>CÁC KHOẢN GIẢM TRỪ</td>
               </tr>
               <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">16</td>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">18</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Mức lương đóng BH</td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(mucLuongDongBH)}</td>
               </tr>
               <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">17</td>
-                <td className="border border-gray-300 px-3 py-2 text-gray-700">BHXH</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(bhxh)}</td>
-              </tr>
-              <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">18</td>
-                <td className="border border-gray-300 px-3 py-2 text-gray-700">BHYT</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(bhyt)}</td>
-              </tr>
-              <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">19</td>
-                <td className="border border-gray-300 px-3 py-2 text-gray-700">BHTN</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(bhtn)}</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">BHXH (10.5%)</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(tongBH)}</td>
               </tr>
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">20</td>
@@ -361,7 +360,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               {/* Section IX */}
               <tr className="bg-indigo-100">
                 <td className="border border-gray-300 px-3 py-2 text-center font-bold text-indigo-800">IX</td>
-                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">LƯƠNG THỰC LĨNH (VI−VII+VIII)</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">LƯƠNG THỰC LĨNH (VI − VII + VIII)</td>
                 <td className="border border-gray-300 px-3 py-2 text-right font-bold text-indigo-800">{fmt(luongThucLinh)}</td>
               </tr>
 
@@ -369,7 +368,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">X</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">TẠM ỨNG LƯƠNG</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-gray-500">{tamUng ? fmt(tamUng) : '—'}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{tamUng ? fmt(tamUng) : '—'}</td>
               </tr>
 
               {/* Section XI */}
@@ -382,7 +381,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               {/* Section XII */}
               <tr className="bg-green-100">
                 <td className="border border-gray-300 px-3 py-2 text-center font-bold text-green-800">XII</td>
-                <td className="border border-gray-300 px-3 py-2 font-bold text-green-800">CÒN PHẢI THANH TOÁN (IX−X−XI)</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-green-800">CÒN PHẢI THANH TOÁN (IX − X − XI)</td>
                 <td className="border border-gray-300 px-3 py-2 text-right font-bold text-lg text-green-800">{fmt(conPhaiTT)}</td>
               </tr>
             </tbody>
@@ -2052,7 +2051,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [scParsing,        setScParsing]          = useState(false);
   const [scParseError,     setScParseError]       = useState<string | null>(null);
   const [scImporting,      setScImporting]        = useState(false);
-  const [scImportMsg,      setScImportMsg]        = useState<{ ok: string | null; err: string | null }>({ ok: null, err: null });
+  const [scImportMsg,      setScImportMsg]        = useState<{ ok: string | null; err: string | null; errors: { employee_code: string; error: string }[]; failedRows: ParsedSalaryConfigRow[] }>({ ok: null, err: null, errors: [], failedRows: [] });
   const scFileRef = React.useRef<HTMLInputElement>(null);
 
   const PAGE_SIZE = 20;
@@ -2074,7 +2073,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     const f = e.target.files?.[0];
     if (!f) return;
     if (!f.name.match(/\.xlsx$/i)) { setScParseError('Chỉ chấp nhận file .xlsx'); return; }
-    setScFile(f); setScParseError(null); setScParsedRows(null); setScImportMsg({ ok: null, err: null }); setScParsing(true);
+    setScFile(f); setScParseError(null); setScParsedRows(null); setScImportMsg({ ok: null, err: null, errors: [], failedRows: [] }); setScParsing(true);
     const { rows, error } = await parseSalaryConfigExcel(f);
     setScParsing(false);
     if (error) { setScParseError(error); return; }
@@ -2106,22 +2105,120 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       });
       const res = await salaryService.bulkImportSalaryConfig(records);
       const ok  = res.success.length > 0 ? `Cập nhật thành công ${res.success.length} nhân viên.` : null;
-      const err = res.errors.length   > 0 ? `${res.errors.length} lỗi: ${res.errors.map((e) => e.employee_code).join(', ')}` : null;
-      setScImportMsg({ ok, err });
+      const err = res.errors.length   > 0 ? `${res.errors.length} dòng lỗi — xem chi tiết bên dưới.` : null;
+      // Map error codes → original parsed row để có thể export lại
+      const errorCodeSet = new Set(res.errors.map((e) => e.employee_code));
+      const failedRows = (scParsedRows ?? []).filter((r) => errorCodeSet.has(r.employee_code));
+      setScImportMsg({ ok, err, errors: res.errors, failedRows });
       setScParsedRows(null); setScFile(null);
       if (scFileRef.current) scFileRef.current.value = '';
       if (res.success.length > 0) loadEmployees();
     } catch {
-      setScImportMsg({ ok: null, err: 'Lỗi kết nối máy chủ.' });
+      setScImportMsg({ ok: null, err: 'Lỗi kết nối máy chủ.', errors: [], failedRows: [] });
     } finally {
       setScImporting(false);
     }
   };
 
+  const handleExportErrors = async () => {
+    const { errors, failedRows } = scImportMsg;
+    if (!errors.length) return;
+
+    const LUNCH_R: Record<string, string> = { fixed: 'Cố định theo tháng', actual_working_day: 'Theo ngày công thực tế' };
+    const PARK_R: Record<string, string>  = { none: 'Không có', daily: 'Vé ngày', monthly: 'Vé tháng' };
+    const RESP_R: Record<string, string>  = { none: 'Không có', fixed: 'Cố định theo tháng', actual_working_day: 'Theo ngày công thực tế' };
+    const INS_R: Record<string, string>   = { official: 'Theo lương chính thức', custom: 'Tùy chỉnh' };
+
+    const errorMap = new Map(errors.map((e) => [e.employee_code, e.error]));
+    const rowMap   = new Map(failedRows.map((r) => [r.employee_code, r]));
+
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Cấu Hình Lương');
+
+    const COLS = [
+      { header: 'Mã nhân viên',                key: 'a', width: 18 },
+      { header: 'Ngày hiệu lực (YYYY-MM-DD)',   key: 'b', width: 22 },
+      { header: 'Lương cơ bản',                key: 'c', width: 18 },
+      { header: 'Hệ số lương',                 key: 'd', width: 14 },
+      { header: 'PC Ăn trưa - Chế độ',         key: 'e', width: 26 },
+      { header: 'PC Ăn trưa - Mức/tháng',      key: 'f', width: 22 },
+      { header: 'PC Gửi xe - Chế độ',          key: 'g', width: 22 },
+      { header: 'PC Gửi xe - Giá vé',          key: 'h', width: 18 },
+      { header: 'PC Trách nhiệm - Chế độ',     key: 'i', width: 26 },
+      { header: 'PC Trách nhiệm - Mức/tháng',  key: 'j', width: 26 },
+      { header: 'Vùng lương tối thiểu',         key: 'k', width: 20 },
+      { header: 'Chế độ đóng bảo hiểm',        key: 'l', width: 26 },
+      { header: 'Mức lương đóng BH tùy chỉnh', key: 'm', width: 28 },
+      { header: 'Số người phụ thuộc',           key: 'n', width: 20 },
+      { header: 'Phí công đoàn',               key: 'o', width: 16 },
+      { header: 'Lý do lỗi',                   key: 'p', width: 44 },
+    ];
+    ws.columns = COLS;
+
+    const borderStyle = { style: 'thin' as const, color: { argb: 'FFD1D5DB' } };
+    const allBorders = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
+
+    // Header row — giống template gốc (xanh tím), cột "Lý do lỗi" cũng xanh
+    ws.getRow(1).eachCell({ includeEmpty: true }, (cell) => {
+      cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } };
+      cell.font      = { color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border    = allBorders;
+    });
+    ws.getRow(1).height = 36;
+
+    // Data rows — không tô màu, chỉ có border
+    errors.forEach((e, idx) => {
+      const orig   = rowMap.get(e.employee_code);
+      const rowIdx = idx + 2;
+      const values = [
+        e.employee_code,
+        orig?.effective_date        ?? '',
+        orig?.basic_salary          ?? '',
+        orig?.salary_factor         ?? '',
+        orig?.lunch_mode            ? (LUNCH_R[orig.lunch_mode]            ?? orig.lunch_mode)            : '',
+        orig?.lunch_amount          ?? '',
+        orig?.parking_mode          ? (PARK_R[orig.parking_mode]           ?? orig.parking_mode)          : '',
+        orig?.parking_rate          ?? '',
+        orig?.responsibility_mode   ? (RESP_R[orig.responsibility_mode]    ?? orig.responsibility_mode)   : '',
+        orig?.responsibility_amount ?? '',
+        orig?.region                ?? '',
+        orig?.insurance_mode        ? (INS_R[orig.insurance_mode]          ?? orig.insurance_mode)        : '',
+        orig?.insurance_override    ?? '',
+        orig?.dependent_count       ?? '',
+        orig?.union_fee             ?? '',
+        errorMap.get(e.employee_code) ?? '',
+      ];
+      const exRow = ws.getRow(rowIdx);
+      values.forEach((v, ci) => {
+        const cell    = exRow.getCell(ci + 1);
+        cell.value    = v as any;
+        cell.border   = allBorders;
+        cell.alignment = { vertical: 'middle' };
+      });
+      exRow.commit();
+    });
+
+    // Data validation sau khi ghi data (tránh offset)
+    for (let r = 2; r <= errors.length + 1; r++) {
+      ws.getCell(`E${r}`).dataValidation = { type: 'list', formulae: ['"Cố định theo tháng,Theo ngày công thực tế"'], showErrorMessage: true };
+      ws.getCell(`G${r}`).dataValidation = { type: 'list', formulae: ['"Không có,Vé ngày,Vé tháng"'], showErrorMessage: true };
+      ws.getCell(`I${r}`).dataValidation = { type: 'list', formulae: ['"Không có,Cố định theo tháng,Theo ngày công thực tế"'], showErrorMessage: true };
+      ws.getCell(`K${r}`).dataValidation = { type: 'list', formulae: ['"I,II,III,IV"'], showErrorMessage: true };
+      ws.getCell(`L${r}`).dataValidation = { type: 'list', formulae: ['"Theo lương chính thức,Tùy chỉnh"'], showErrorMessage: true };
+    }
+
+    const buf = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const a = document.createElement('a'); a.href = url; a.download = 'cau_hinh_luong_loi.xlsx'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleCloseImportDialog = () => {
     setShowImportDialog(false);
     setScParsedRows(null); setScFile(null); setScParseError(null);
-    setScImportMsg({ ok: null, err: null });
+    setScImportMsg({ ok: null, err: null, errors: [], failedRows: [] });
     if (scFileRef.current) scFileRef.current.value = '';
   };
 
@@ -2298,7 +2395,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   />
                 </div>
                 <button
-                  onClick={() => { setShowImportDialog(true); setScImportMsg({ ok: null, err: null }); }}
+                  onClick={() => { setShowImportDialog(true); setScImportMsg({ ok: null, err: null, errors: [], failedRows: [] }); }}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors whitespace-nowrap"
                 >
                   <ArrowUpTrayIcon className="h-4 w-4" />
@@ -2552,8 +2649,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           <td className="px-3 py-3 text-right text-gray-700">{formatCurrency(record.luong_co_ban)}</td>
                           <td className="px-3 py-3 text-right text-gray-700">{formatCurrency(record.phu_cap)}</td>
                           <td className="px-3 py-3 text-right text-gray-700">{formatNumber(record.tong_cong)}</td>
-                          <td className="px-3 py-3 text-right text-blue-600">{formatNumber(record.tang_ca)}</td>
-                          <td className="px-3 py-3 text-right text-red-600">{formatCurrency(record.tong_phat)}</td>
+                          <td className="px-3 py-3 text-right text-blue-600">{formatCurrency(record.luong_tang_ca)}</td>
+                          <td className="px-3 py-3 text-right text-red-600">{formatCurrency((record.tong_phat ?? 0) + (record.tong_phat_bienban ?? 0))}</td>
                           <td className="px-3 py-3 text-right font-semibold text-indigo-700 bg-indigo-50">
                             {formatCurrency(record.luong_thuc_linh)}
                           </td>
@@ -2599,23 +2696,25 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         )}
       </div>
 
-      {editEmployee && (
+      {editEmployee && createPortal(
         <EditSalaryModal
           employee={editEmployee}
           onClose={() => setEditEmployee(null)}
           onSave={handleSave}
           saving={saving}
-        />
+        />,
+        document.body,
       )}
 
-      {payslipRecord && (
+      {payslipRecord && createPortal(
         <PayslipDetailModal
           record={payslipRecord}
           employee={payslipEmployee ?? undefined}
           penalties={payslipPenalties}
           commissions={payslipCommissions}
           onClose={() => { setPayslipRecord(null); setPayslipEmployee(null); setPayslipPenalties([]); setPayslipCommissions([]); }}
-        />
+        />,
+        document.body,
       )}
 
       {/* ── Import cấu hình lương dialog ── */}
@@ -2643,9 +2742,44 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 </div>
               )}
               {scImportMsg.err && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
-                  <ExclamationCircleIcon className="h-4 w-4 flex-shrink-0" />{scImportMsg.err}
-                  <button className="ml-auto" onClick={() => setScImportMsg((m) => ({ ...m, err: null }))}><XMarkIcon className="h-4 w-4" /></button>
+                <div className="bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm overflow-hidden">
+                  <div className="flex items-center gap-2 p-3">
+                    <ExclamationCircleIcon className="h-4 w-4 flex-shrink-0" />
+                    {scImportMsg.err}
+                    <button className="ml-auto" onClick={() => setScImportMsg((m) => ({ ...m, err: null, errors: [] }))}><XMarkIcon className="h-4 w-4" /></button>
+                  </div>
+                  {scImportMsg.errors.length > 0 && (
+                    <div className="border-t border-red-200">
+                      <div className="flex items-center justify-between px-3 py-2 bg-red-100">
+                        <span className="text-xs font-medium text-red-700">{scImportMsg.errors.length} dòng không import được</span>
+                        <button
+                          onClick={handleExportErrors}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors"
+                        >
+                          <ArrowDownTrayIcon className="h-3 w-3" />
+                          Tải file lỗi để sửa
+                        </button>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        <table className="min-w-full text-xs">
+                          <thead className="bg-red-50 sticky top-0">
+                            <tr>
+                              <th className="px-3 py-2 text-left font-medium text-red-700 w-32">Mã nhân viên</th>
+                              <th className="px-3 py-2 text-left font-medium text-red-700">Lý do lỗi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-red-100">
+                            {scImportMsg.errors.map((e, i) => (
+                              <tr key={i} className="bg-white">
+                                <td className="px-3 py-1.5 font-mono font-medium text-red-700">{e.employee_code}</td>
+                                <td className="px-3 py-1.5 text-red-600">{e.error}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
