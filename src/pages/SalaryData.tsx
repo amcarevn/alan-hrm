@@ -18,6 +18,10 @@ import {
   type BulkImportCommissionRecord,
   type PenaltyRecord,
   type BulkImportPenaltyRecord,
+  type AdvanceRecord,
+  type BulkImportAdvanceRecord,
+  type OtherAllowanceRecord,
+  type BulkImportOtherAllowanceRecord,
 } from '../services/salary.service';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
 
@@ -38,11 +42,28 @@ interface ParsedPenaltyRow {
   parseError?: string;
 }
 
-type TabKey = 'commission' | 'penalty';
+interface ParsedAdvanceRow {
+  employee_code: string;
+  amount: number;
+  rowIndex: number;
+  parseError?: string;
+}
+
+interface ParsedOtherAllowanceRow {
+  employee_code: string;
+  amount: number;
+  description: string;
+  rowIndex: number;
+  parseError?: string;
+}
+
+type TabKey = 'commission' | 'penalty' | 'advance' | 'other_allowance';
 
 const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
-  { key: 'commission', label: 'Hoa Hồng',      icon: CurrencyDollarIcon },
-  { key: 'penalty',   label: 'Phạt Biên Bản',  icon: ExclamationCircleIcon },
+  { key: 'commission',      label: 'Hoa Hồng',      icon: CurrencyDollarIcon },
+  { key: 'penalty',         label: 'Phạt Biên Bản', icon: ExclamationCircleIcon },
+  { key: 'advance',         label: 'Tạm Ứng Lương', icon: CurrencyDollarIcon },
+  { key: 'other_allowance', label: 'Phụ Cấp Khác',  icon: CurrencyDollarIcon },
 ];
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -108,6 +129,40 @@ const SalaryData: React.FC = () => {
   const [cDeleting,          setCDeleting]          = useState(false);
   const cFileRef = useRef<HTMLInputElement>(null);
 
+  // ── OtherAllowance state ──
+  const [oRecords,    setORecords]    = useState<OtherAllowanceRecord[]>([]);
+  const [loadingO,    setLoadingO]    = useState(false);
+  const [oLoaded,     setOLoaded]     = useState(false);
+  const [oParsedRows, setOParsedRows] = useState<ParsedOtherAllowanceRow[] | null>(null);
+  const [oFile,       setOFile]       = useState<File | null>(null);
+  const [oParsing,    setOParsing]    = useState(false);
+  const [oParseError, setOParseError] = useState<string | null>(null);
+  const [oImporting,  setOImporting]  = useState(false);
+  const [oSearch,     setOSearch]     = useState('');
+  const [oEditingId,  setOEditingId]  = useState<number | null>(null);
+  const [oEditValues, setOEditValues] = useState({ amount: '', description: '' });
+  const [oSaving,     setOSaving]     = useState(false);
+  const [oDeletingId, setODeletingId] = useState<number | null>(null);
+  const [oDeleting,   setODeleting]   = useState(false);
+  const oFileRef = useRef<HTMLInputElement>(null);
+
+  // ── Advance state ──
+  const [advanceRecords,  setAdvanceRecords]  = useState<AdvanceRecord[]>([]);
+  const [loadingAdvance,  setLoadingAdvance]  = useState(false);
+  const [advanceLoaded,   setAdvanceLoaded]   = useState(false);
+  const [aParsedRows,     setAParsedRows]     = useState<ParsedAdvanceRow[] | null>(null);
+  const [aFile,           setAFile]           = useState<File | null>(null);
+  const [aParsing,        setAParsing]        = useState(false);
+  const [aParseError,     setAParseError]     = useState<string | null>(null);
+  const [aImporting,      setAImporting]      = useState(false);
+  const [aSearch,         setASearch]         = useState('');
+  const [aEditingId,      setAEditingId]      = useState<number | null>(null);
+  const [aEditAmount,     setAEditAmount]     = useState('');
+  const [aSaving,         setASaving]         = useState(false);
+  const [aDeletingId,     setADeletingId]     = useState<number | null>(null);
+  const [aDeleting,       setADeleting]       = useState(false);
+  const aFileRef = useRef<HTMLInputElement>(null);
+
   // ── Penalty state ──
   const [penaltyRecords,  setPenaltyRecords]  = useState<PenaltyRecord[]>([]);
   const [loadingPenalty,  setLoadingPenalty]  = useState(false);
@@ -159,10 +214,40 @@ const SalaryData: React.FC = () => {
     }
   }, [selectedMonth, selectedYear]);
 
+  const loadOtherAllowances = useCallback(async (month = selectedMonth, year = selectedYear) => {
+    setLoadingO(true);
+    setOLoaded(false);
+    try {
+      const data = await salaryService.listOtherAllowances({ year, month });
+      setORecords(data);
+      setOLoaded(true);
+    } catch {
+      setErrorMsg('Không thể tải danh sách phụ cấp khác.');
+    } finally {
+      setLoadingO(false);
+    }
+  }, [selectedMonth, selectedYear]);
+
+  const loadAdvances = useCallback(async (month = selectedMonth, year = selectedYear) => {
+    setLoadingAdvance(true);
+    setAdvanceLoaded(false);
+    try {
+      const data = await salaryService.listAdvances({ year, month });
+      setAdvanceRecords(data);
+      setAdvanceLoaded(true);
+    } catch {
+      setErrorMsg('Không thể tải danh sách tạm ứng.');
+    } finally {
+      setLoadingAdvance(false);
+    }
+  }, [selectedMonth, selectedYear]);
+
   // Auto-load khi đổi tab / tháng / năm
   useEffect(() => {
     if (activeTab === 'commission') loadCommissions(selectedMonth, selectedYear);
-    else loadPenalties(selectedMonth, selectedYear);
+    else if (activeTab === 'penalty') loadPenalties(selectedMonth, selectedYear);
+    else if (activeTab === 'advance') loadAdvances(selectedMonth, selectedYear);
+    else loadOtherAllowances(selectedMonth, selectedYear);
   }, [activeTab, selectedMonth, selectedYear]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Month/Year handlers ───────────────────────────────────────────────────
@@ -171,11 +256,15 @@ const SalaryData: React.FC = () => {
     setSelectedMonth(v);
     setCParsedRows(null); setCFile(null); if (cFileRef.current) cFileRef.current.value = '';
     setPParsedRows(null); setPFile(null); if (pFileRef.current) pFileRef.current.value = '';
+    setAParsedRows(null); setAFile(null); if (aFileRef.current) aFileRef.current.value = '';
+    setOParsedRows(null); setOFile(null); if (oFileRef.current) oFileRef.current.value = '';
   };
   const handleYearChange = (v: number) => {
     setSelectedYear(v);
     setCParsedRows(null); setCFile(null); if (cFileRef.current) cFileRef.current.value = '';
     setPParsedRows(null); setPFile(null); if (pFileRef.current) pFileRef.current.value = '';
+    setAParsedRows(null); setAFile(null); if (aFileRef.current) aFileRef.current.value = '';
+    setOParsedRows(null); setOFile(null); if (oFileRef.current) oFileRef.current.value = '';
   };
 
   // ─── Commission: template ──────────────────────────────────────────────────
@@ -372,6 +461,200 @@ const SalaryData: React.FC = () => {
     finally { setPDeleting(false); }
   };
 
+  // ─── Advance: template ─────────────────────────────────────────────────────
+
+  const handleDownloadAdvanceTemplate = async () => {
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Tạm Ứng Lương');
+    ws.columns = [
+      { header: 'Mã nhân viên',     key: 'employee_code', width: 20 },
+      { header: 'Số tiền tạm ứng',  key: 'amount',        width: 22 },
+    ];
+    ws.getRow(1).eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7490' } };
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 12 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+    ws.getRow(1).height = 28;
+    ws.addRow({ employee_code: 'NV001', amount: 3000000 });
+    ws.addRow({ employee_code: 'NV002', amount: 5000000 });
+    const buf = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = `template_tam_ung_T${selectedMonth}_${selectedYear}.xlsx`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ─── Advance: parse Excel ──────────────────────────────────────────────────
+
+  const handleAdvanceFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.name.match(/\.xlsx$/i)) { setAParseError('Chỉ chấp nhận file Excel (.xlsx)'); return; }
+    setAFile(f); setAParseError(null); setAParsedRows(null); setSuccessMsg(null); setErrorMsg(null); setAParsing(true);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(await f.arrayBuffer());
+      const ws = wb.worksheets[0];
+      if (!ws) { setAParseError('File không có sheet nào.'); return; }
+      const rows: ParsedAdvanceRow[] = [];
+      ws.eachRow((row, idx) => {
+        if (idx === 1) return;
+        const code = row.getCell(1).value != null ? String(row.getCell(1).value).trim() : '';
+        if (!code) return;
+        const amount = extractCellNumber(row.getCell(2).value);
+        rows.push({ employee_code: code, amount, rowIndex: idx, parseError: amount < 0 ? 'Số tiền không hợp lệ' : undefined });
+      });
+      if (!rows.length) { setAParseError('File không có dữ liệu.'); return; }
+      setAParsedRows(rows);
+    } catch { setAParseError('Không thể đọc file.'); }
+    finally { setAParsing(false); }
+  };
+
+  // ─── Advance: import ───────────────────────────────────────────────────────
+
+  const handleAdvanceImport = async () => {
+    if (!aParsedRows) return;
+    const valid = aParsedRows.filter((r) => !r.parseError);
+    if (!valid.length) return;
+    setAImporting(true);
+    try {
+      const records: BulkImportAdvanceRecord[] = valid.map((r) => ({ employee_code: r.employee_code, amount: r.amount }));
+      const res = await salaryService.bulkImportAdvances({ year: selectedYear, month: selectedMonth, records });
+      if (res.success.length > 0) setSuccessMsg(`Import thành công ${res.success.length} tạm ứng.`);
+      if (res.errors.length > 0)  setErrorMsg(`${res.errors.length} dòng lỗi: ${res.errors.map((e) => e.employee_code).join(', ')}`);
+      setAParsedRows(null); setAFile(null); if (aFileRef.current) aFileRef.current.value = '';
+      await loadAdvances();
+    } catch { setErrorMsg('Lỗi kết nối máy chủ.'); }
+    finally { setAImporting(false); }
+  };
+
+  // ─── Advance: edit/delete ──────────────────────────────────────────────────
+
+  const startAEdit = (rec: AdvanceRecord) => { setAEditingId(rec.id); setAEditAmount(String(Number(rec.amount))); setADeletingId(null); };
+  const cancelAEdit = () => setAEditingId(null);
+
+  const handleASave = async (id: number) => {
+    const amount = parseFloat(aEditAmount.replace(/,/g, '')) || 0;
+    setASaving(true);
+    try {
+      const updated = await salaryService.updateAdvance(id, { amount });
+      setAdvanceRecords((prev) => prev.map((r) => r.id === id ? { ...r, ...updated } : r));
+      setAEditingId(null); setSuccessMsg('Đã cập nhật tạm ứng.');
+    } catch { setErrorMsg('Không thể cập nhật.'); }
+    finally { setASaving(false); }
+  };
+
+  const handleADelete = async (id: number) => {
+    setADeleting(true);
+    try {
+      await salaryService.deleteAdvance(id);
+      setAdvanceRecords((prev) => prev.filter((r) => r.id !== id));
+      setADeletingId(null); setSuccessMsg('Đã xoá tạm ứng.');
+    } catch { setErrorMsg('Không thể xoá.'); }
+    finally { setADeleting(false); }
+  };
+
+  // ─── OtherAllowance: template ──────────────────────────────────────────────
+
+  const handleDownloadOtherAllowanceTemplate = async () => {
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Phụ Cấp Khác');
+    ws.columns = [
+      { header: 'Mã nhân viên',   key: 'employee_code', width: 20 },
+      { header: 'Số tiền phụ cấp', key: 'amount',       width: 22 },
+      { header: 'Mô tả phụ cấp',  key: 'description',   width: 30 },
+    ];
+    ws.getRow(1).eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } };
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 12 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+    ws.getRow(1).height = 28;
+    ws.addRow({ employee_code: 'NV001', amount: 200000, description: 'Phụ cấp điện thoại' });
+    ws.addRow({ employee_code: 'NV002', amount: 500000, description: 'Phụ cấp xăng xe' });
+    const buf = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = `template_phu_cap_khac_T${selectedMonth}_${selectedYear}.xlsx`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ─── OtherAllowance: parse Excel ──────────────────────────────────────────
+
+  const handleOtherAllowanceFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.name.match(/\.xlsx$/i)) { setOParseError('Chỉ chấp nhận file Excel (.xlsx)'); return; }
+    setOFile(f); setOParseError(null); setOParsedRows(null); setSuccessMsg(null); setErrorMsg(null); setOParsing(true);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(await f.arrayBuffer());
+      const ws = wb.worksheets[0];
+      if (!ws) { setOParseError('File không có sheet nào.'); return; }
+      const rows: ParsedOtherAllowanceRow[] = [];
+      ws.eachRow((row, idx) => {
+        if (idx === 1) return;
+        const code = row.getCell(1).value != null ? String(row.getCell(1).value).trim() : '';
+        if (!code) return;
+        const amount = extractCellNumber(row.getCell(2).value);
+        const description = extractCellString(row.getCell(3).value);
+        rows.push({ employee_code: code, amount, description, rowIndex: idx, parseError: amount < 0 ? 'Số tiền không hợp lệ' : undefined });
+      });
+      if (!rows.length) { setOParseError('File không có dữ liệu.'); return; }
+      setOParsedRows(rows);
+    } catch { setOParseError('Không thể đọc file.'); }
+    finally { setOParsing(false); }
+  };
+
+  // ─── OtherAllowance: import ────────────────────────────────────────────────
+
+  const handleOtherAllowanceImport = async () => {
+    if (!oParsedRows) return;
+    const valid = oParsedRows.filter((r) => !r.parseError);
+    if (!valid.length) return;
+    setOImporting(true);
+    try {
+      const records: BulkImportOtherAllowanceRecord[] = valid.map((r) => ({ employee_code: r.employee_code, amount: r.amount, description: r.description }));
+      const res = await salaryService.bulkImportOtherAllowances({ year: selectedYear, month: selectedMonth, records });
+      if (res.success.length > 0) setSuccessMsg(`Import thành công ${res.success.length} phụ cấp.`);
+      if (res.errors.length > 0)  setErrorMsg(`${res.errors.length} dòng lỗi: ${res.errors.map((e) => e.employee_code).join(', ')}`);
+      setOParsedRows(null); setOFile(null); if (oFileRef.current) oFileRef.current.value = '';
+      await loadOtherAllowances();
+    } catch { setErrorMsg('Lỗi kết nối máy chủ.'); }
+    finally { setOImporting(false); }
+  };
+
+  // ─── OtherAllowance: edit/delete ───────────────────────────────────────────
+
+  const startOEdit = (rec: OtherAllowanceRecord) => { setOEditingId(rec.id); setOEditValues({ amount: String(Number(rec.amount)), description: rec.description }); setODeletingId(null); };
+  const cancelOEdit = () => setOEditingId(null);
+
+  const handleOSave = async (id: number) => {
+    const amount = parseFloat(oEditValues.amount.replace(/,/g, '')) || 0;
+    setOSaving(true);
+    try {
+      const updated = await salaryService.updateOtherAllowance(id, { amount, description: oEditValues.description });
+      setORecords((prev) => prev.map((r) => r.id === id ? { ...r, ...updated } : r));
+      setOEditingId(null); setSuccessMsg('Đã cập nhật phụ cấp.');
+    } catch { setErrorMsg('Không thể cập nhật.'); }
+    finally { setOSaving(false); }
+  };
+
+  const handleODelete = async (id: number) => {
+    setODeleting(true);
+    try {
+      await salaryService.deleteOtherAllowance(id);
+      setORecords((prev) => prev.filter((r) => r.id !== id));
+      setODeletingId(null); setSuccessMsg('Đã xoá phụ cấp.');
+    } catch { setErrorMsg('Không thể xoá.'); }
+    finally { setODeleting(false); }
+  };
+
   // ─── Derived ──────────────────────────────────────────────────────────────
 
   const filteredCommissions = commissionRecords.filter((r) =>
@@ -379,6 +662,12 @@ const SalaryData: React.FC = () => {
   );
   const filteredPenalties = penaltyRecords.filter((r) =>
     !pSearch || r.employee_code.toLowerCase().includes(pSearch.toLowerCase()) || r.employee_name.toLowerCase().includes(pSearch.toLowerCase())
+  );
+  const filteredAdvances = advanceRecords.filter((r) =>
+    !aSearch || r.employee_code.toLowerCase().includes(aSearch.toLowerCase()) || r.employee_name.toLowerCase().includes(aSearch.toLowerCase())
+  );
+  const filteredOtherAllowances = oRecords.filter((r) =>
+    !oSearch || r.employee_code.toLowerCase().includes(oSearch.toLowerCase()) || r.employee_name.toLowerCase().includes(oSearch.toLowerCase())
   );
 
   // ─── Render helpers ────────────────────────────────────────────────────────
@@ -437,11 +726,11 @@ const SalaryData: React.FC = () => {
             <SelectBox<number> label="Năm" value={selectedYear} options={YEARS.map((y) => ({ value: y, label: String(y) }))} onChange={handleYearChange} />
           </div>
           <button
-            onClick={() => activeTab === 'commission' ? loadCommissions() : loadPenalties()}
-            disabled={loadingCommission || loadingPenalty}
+            onClick={() => activeTab === 'commission' ? loadCommissions() : activeTab === 'penalty' ? loadPenalties() : activeTab === 'advance' ? loadAdvances() : loadOtherAllowances()}
+            disabled={loadingCommission || loadingPenalty || loadingAdvance || loadingO}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-60 transition-colors"
           >
-            <ArrowPathIcon className={`h-4 w-4 ${(loadingCommission || loadingPenalty) ? 'animate-spin' : ''}`} />
+            <ArrowPathIcon className={`h-4 w-4 ${(loadingCommission || loadingPenalty || loadingAdvance || loadingO) ? 'animate-spin' : ''}`} />
             Tải dữ liệu
           </button>
         </div>
@@ -624,6 +913,317 @@ const SalaryData: React.FC = () => {
             </>
           )}
 
+          {/* ═══ TAB PHỤ CẤP KHÁC ═══ */}
+          {activeTab === 'other_allowance' && (
+            <>
+              {/* Action bar */}
+              <div className="flex flex-wrap gap-3 items-center">
+                <button onClick={handleDownloadOtherAllowanceTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+                  <ArrowDownTrayIcon className="h-4 w-4" />Tải file mẫu
+                </button>
+                <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-purple-300 text-purple-700 bg-purple-50 rounded-md hover:bg-purple-100 cursor-pointer transition-colors">
+                  <ArrowUpTrayIcon className="h-4 w-4" />
+                  {oFile ? oFile.name : 'Chọn file Excel'}
+                  <input ref={oFileRef} type="file" accept=".xlsx" className="hidden" onChange={handleOtherAllowanceFileChange} />
+                </label>
+                {oParsedRows && oParsedRows.filter((r) => !r.parseError).length > 0 && (
+                  <button onClick={handleOtherAllowanceImport} disabled={oImporting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-60 transition-colors">
+                    {oImporting ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
+                    {oImporting ? 'Đang import...' : `Xác nhận import (${oParsedRows.filter((r) => !r.parseError).length})`}
+                  </button>
+                )}
+                {oLoaded && (
+                  <div className="flex-1 relative min-w-48">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input type="text" placeholder="Tìm nhân viên..." value={oSearch} onChange={(e) => setOSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                  </div>
+                )}
+              </div>
+              {oParseError && <p className="flex items-center gap-1 text-sm text-red-600"><ExclamationCircleIcon className="h-4 w-4" />{oParseError}</p>}
+
+              {/* Preview */}
+              {oParsedRows && !oParsing && (
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex justify-between text-sm">
+                    <span className="font-medium text-gray-700">Xem trước — {oParsedRows.length} dòng
+                      {oParsedRows.filter((r) => r.parseError).length > 0 && <span className="text-red-500"> · {oParsedRows.filter((r) => r.parseError).length} lỗi</span>}
+                    </span>
+                    <span className="text-gray-500">Tháng {selectedMonth}/{selectedYear}</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NV</th>
+                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mô tả phụ cấp</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {oParsedRows.map((row, i) => (
+                          <tr key={row.rowIndex} className={row.parseError ? 'bg-red-50' : 'hover:bg-gray-50'}>
+                            <td className="px-4 py-2 text-gray-400 text-xs">{i + 1}</td>
+                            <td className="px-4 py-2 font-mono font-medium text-gray-800">{row.employee_code}</td>
+                            <td className="px-4 py-2 text-right text-purple-700 font-medium">{row.amount > 0 ? row.amount.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
+                            <td className="px-4 py-2 text-gray-600 max-w-xs truncate">{row.description || '—'}</td>
+                            <td className="px-4 py-2">
+                              {row.parseError
+                                ? <span className="inline-flex items-center gap-1 text-xs text-red-600"><ExclamationCircleIcon className="h-3.5 w-3.5" />{row.parseError}</span>
+                                : <span className="inline-flex items-center gap-1 text-xs text-green-600"><CheckIcon className="h-3.5 w-3.5" />Hợp lệ</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* OtherAllowance list */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between">
+                  <p className="text-sm font-medium text-gray-700">
+                    Danh sách phụ cấp khác — Tháng {selectedMonth}/{selectedYear}
+                    <span className="ml-2 font-normal text-gray-500">{filteredOtherAllowances.length} nhân viên</span>
+                  </p>
+                </div>
+                {loadingO ? renderLoading('primary') :
+                 filteredOtherAllowances.length === 0 ? renderEmpty(oRecords.length === 0 ? 'Chưa có dữ liệu phụ cấp tháng này.' : 'Không tìm thấy nhân viên.') : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhân viên</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mô tả phụ cấp</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {filteredOtherAllowances.map((rec, i) => {
+                          const isEditing  = oEditingId  === rec.id;
+                          const isDeleting = oDeletingId === rec.id;
+                          return (
+                            <tr key={rec.id} className={isDeleting ? 'bg-red-50' : 'hover:bg-gray-50 transition-colors'}>
+                              <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  {renderAvatar(rec.employee_name, 'bg-purple-50 text-purple-700')}
+                                  <div><p className="font-medium text-gray-900">{rec.employee_name}</p><p className="text-xs text-gray-500 font-mono">{rec.employee_code}</p></div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                {isEditing ? (
+                                  <input type="text" value={oEditValues.amount} onChange={(e) => setOEditValues((v) => ({ ...v, amount: e.target.value }))}
+                                    className="w-36 text-right border border-purple-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" placeholder="0" />
+                                ) : (
+                                  <span className="font-medium text-purple-700">{fmtMoney(rec.amount)}</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                {isEditing ? (
+                                  <input type="text" value={oEditValues.description} onChange={(e) => setOEditValues((v) => ({ ...v, description: e.target.value }))}
+                                    className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Mô tả phụ cấp..." />
+                                ) : (
+                                  <span className="text-gray-700">{rec.description || '—'}</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {isDeleting ? (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <span className="text-xs text-red-600">Xác nhận xoá?</span>
+                                    <button onClick={() => handleODelete(rec.id)} disabled={oDeleting} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-60">
+                                      {oDeleting ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Xoá
+                                    </button>
+                                    <button onClick={() => setODeletingId(null)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-md hover:bg-gray-50">
+                                      <XMarkIcon className="h-3 w-3" />Huỷ
+                                    </button>
+                                  </div>
+                                ) : isEditing ? (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button onClick={() => handleOSave(rec.id)} disabled={oSaving} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-60">
+                                      {oSaving ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Lưu
+                                    </button>
+                                    <button onClick={cancelOEdit} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-md hover:bg-gray-50">
+                                      <XMarkIcon className="h-3 w-3" />Huỷ
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button onClick={() => startOEdit(rec)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 transition-colors">
+                                      <PencilIcon className="h-3.5 w-3.5" />Sửa
+                                    </button>
+                                    <button onClick={() => { setODeletingId(rec.id); setOEditingId(null); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors">
+                                      <TrashIcon className="h-3.5 w-3.5" />Xoá
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ═══ TAB TẠM ỨNG LƯƠNG ═══ */}
+          {activeTab === 'advance' && (
+            <>
+              {/* Action bar */}
+              <div className="flex flex-wrap gap-3 items-center">
+                <button onClick={handleDownloadAdvanceTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+                  <ArrowDownTrayIcon className="h-4 w-4" />Tải file mẫu
+                </button>
+                <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-cyan-300 text-cyan-700 bg-cyan-50 rounded-md hover:bg-cyan-100 cursor-pointer transition-colors">
+                  <ArrowUpTrayIcon className="h-4 w-4" />
+                  {aFile ? aFile.name : 'Chọn file Excel'}
+                  <input ref={aFileRef} type="file" accept=".xlsx" className="hidden" onChange={handleAdvanceFileChange} />
+                </label>
+                {aParsedRows && aParsedRows.filter((r) => !r.parseError).length > 0 && (
+                  <button onClick={handleAdvanceImport} disabled={aImporting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-cyan-600 rounded-md hover:bg-cyan-700 disabled:opacity-60 transition-colors">
+                    {aImporting ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
+                    {aImporting ? 'Đang import...' : `Xác nhận import (${aParsedRows.filter((r) => !r.parseError).length})`}
+                  </button>
+                )}
+                {advanceLoaded && (
+                  <div className="flex-1 relative min-w-48">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input type="text" placeholder="Tìm nhân viên..." value={aSearch} onChange={(e) => setASearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                  </div>
+                )}
+              </div>
+              {aParseError && <p className="flex items-center gap-1 text-sm text-red-600"><ExclamationCircleIcon className="h-4 w-4" />{aParseError}</p>}
+
+              {/* Preview */}
+              {aParsedRows && !aParsing && (
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex justify-between text-sm">
+                    <span className="font-medium text-gray-700">Xem trước — {aParsedRows.length} dòng
+                      {aParsedRows.filter((r) => r.parseError).length > 0 && <span className="text-red-500"> · {aParsedRows.filter((r) => r.parseError).length} lỗi</span>}
+                    </span>
+                    <span className="text-gray-500">Tháng {selectedMonth}/{selectedYear}</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NV</th>
+                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền tạm ứng</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {aParsedRows.map((row, i) => (
+                          <tr key={row.rowIndex} className={row.parseError ? 'bg-red-50' : 'hover:bg-gray-50'}>
+                            <td className="px-4 py-2 text-gray-400 text-xs">{i + 1}</td>
+                            <td className="px-4 py-2 font-mono font-medium text-gray-800">{row.employee_code}</td>
+                            <td className="px-4 py-2 text-right text-cyan-700 font-medium">{row.amount > 0 ? row.amount.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
+                            <td className="px-4 py-2">
+                              {row.parseError
+                                ? <span className="inline-flex items-center gap-1 text-xs text-red-600"><ExclamationCircleIcon className="h-3.5 w-3.5" />{row.parseError}</span>
+                                : <span className="inline-flex items-center gap-1 text-xs text-green-600"><CheckIcon className="h-3.5 w-3.5" />Hợp lệ</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Advance list */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between">
+                  <p className="text-sm font-medium text-gray-700">
+                    Danh sách tạm ứng — Tháng {selectedMonth}/{selectedYear}
+                    <span className="ml-2 font-normal text-gray-500">{filteredAdvances.length} nhân viên</span>
+                  </p>
+                </div>
+                {loadingAdvance ? renderLoading('primary') :
+                 filteredAdvances.length === 0 ? renderEmpty(advanceRecords.length === 0 ? 'Chưa có dữ liệu tạm ứng tháng này.' : 'Không tìm thấy nhân viên.') : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhân viên</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền tạm ứng</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {filteredAdvances.map((rec, i) => {
+                          const isEditing  = aEditingId  === rec.id;
+                          const isDeleting = aDeletingId === rec.id;
+                          return (
+                            <tr key={rec.id} className={isDeleting ? 'bg-red-50' : 'hover:bg-gray-50 transition-colors'}>
+                              <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  {renderAvatar(rec.employee_name, 'bg-cyan-50 text-cyan-700')}
+                                  <div><p className="font-medium text-gray-900">{rec.employee_name}</p><p className="text-xs text-gray-500 font-mono">{rec.employee_code}</p></div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                {isEditing ? (
+                                  <input type="text" value={aEditAmount} onChange={(e) => setAEditAmount(e.target.value)}
+                                    className="w-36 text-right border border-cyan-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400" placeholder="0" />
+                                ) : (
+                                  <span className="font-medium text-cyan-700">{fmtMoney(rec.amount)}</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {isDeleting ? (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <span className="text-xs text-red-600">Xác nhận xoá?</span>
+                                    <button onClick={() => handleADelete(rec.id)} disabled={aDeleting} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-60">
+                                      {aDeleting ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Xoá
+                                    </button>
+                                    <button onClick={() => setADeletingId(null)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-md hover:bg-gray-50">
+                                      <XMarkIcon className="h-3 w-3" />Huỷ
+                                    </button>
+                                  </div>
+                                ) : isEditing ? (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button onClick={() => handleASave(rec.id)} disabled={aSaving} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-cyan-600 rounded-md hover:bg-cyan-700 disabled:opacity-60">
+                                      {aSaving ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Lưu
+                                    </button>
+                                    <button onClick={cancelAEdit} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-md hover:bg-gray-50">
+                                      <XMarkIcon className="h-3 w-3" />Huỷ
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button onClick={() => startAEdit(rec)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-md hover:bg-cyan-100 transition-colors">
+                                      <PencilIcon className="h-3.5 w-3.5" />Sửa
+                                    </button>
+                                    <button onClick={() => { setADeletingId(rec.id); setAEditingId(null); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors">
+                                      <TrashIcon className="h-3.5 w-3.5" />Xoá
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
           {/* ═══ TAB PHẠT BIÊN BẢN ═══ */}
           {activeTab === 'penalty' && (
             <>
@@ -784,6 +1384,7 @@ const SalaryData: React.FC = () => {
               </div>
             </>
           )}
+
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   BuildingOfficeIcon,
   BriefcaseIcon,
@@ -435,312 +436,338 @@ const OvertimeRateConfigPage: React.FC = () => {
       </div>
 
       {/* ── Modal ── */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+      {showModal && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50"
+          onClick={() => setShowModal(false)}
+        >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]"
             onClick={e => e.stopPropagation()}
           >
-            {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-indigo-50 rounded-t-xl">
-              <div>
-                <h2 className="text-base font-bold text-indigo-800">
+            {/* ── Header ── */}
+            <div className="shrink-0 flex items-center gap-4 px-6 py-4 border-b border-gray-100">
+              <div className="h-10 w-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                <AdjustmentsHorizontalIcon className="h-5 w-5 text-indigo-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base font-bold text-gray-900 leading-tight">
                   {editTarget ? 'Sửa cấu hình tăng ca' : 'Thêm cấu hình tăng ca'}
                 </h2>
-                <p className="text-sm text-indigo-600 mt-0.5">
-                  {TABS.find(t => t.key === activeTab)?.label}
-                </p>
+                <p className="text-xs text-indigo-500 mt-0.5">{TABS.find(t => t.key === activeTab)?.label}</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-2 rounded-lg text-gray-500 hover:bg-indigo-100 hover:text-indigo-700 transition-colors">
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-4">
+            {/* ── Body ── */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <div className="grid grid-cols-5 divide-x divide-gray-100 min-h-full">
 
-              {/* Section 1: Áp dụng cho */}
-              {activeTab !== 'all' && (
-                <SectionCard title={`1. Áp dụng cho — ${TABS.find(t => t.key === activeTab)?.label}`}>
-                  {activeTab === 'department' && (
-                    <div className="border border-gray-200 rounded-lg max-h-44 overflow-y-auto divide-y divide-gray-100 bg-white">
-                      {departments.map(d => (
-                        <label key={d.id} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm">
-                          <input
-                            type="checkbox"
-                            className="rounded border-gray-300 text-primary-600"
-                            checked={form.department_ids.includes(d.id)}
-                            onChange={() => setForm(f => ({ ...f, department_ids: toggleId(f.department_ids, d.id) }))}
-                          />
-                          <span className="font-medium">{d.name}</span>
-                          {d.is_section && <span className="text-xs text-gray-400">(Bộ phận)</span>}
-                        </label>
-                      ))}
+                {/* ── Cột trái: Áp dụng cho ── */}
+                <div className="col-span-2 p-5 flex flex-col gap-3">
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Áp dụng cho</p>
+
+                  {activeTab === 'all' ? (
+                    <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                      <AdjustmentsHorizontalIcon className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800">Cấu hình mặc định</p>
+                        <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                          Áp dụng cho tất cả nhân viên chưa có cấu hình cá nhân, vị trí, hoặc phòng ban.
+                        </p>
+                      </div>
                     </div>
-                  )}
-
-                  {activeTab === 'position' && (
-                    <div className="border border-gray-200 rounded-lg max-h-44 overflow-y-auto divide-y divide-gray-100 bg-white">
-                      {positions.map(p => (
-                        <label key={p.id} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm">
-                          <input
-                            type="checkbox"
-                            className="rounded border-gray-300 text-primary-600"
-                            checked={form.position_ids.includes(p.id)}
-                            onChange={() => setForm(f => ({ ...f, position_ids: toggleId(f.position_ids, p.id) }))}
-                          />
-                          <span>{p.title}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-
-                  {activeTab === 'employee' && (
+                  ) : (
                     <>
+                      {/* Search */}
                       <div className="relative">
                         <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <input
                           type="text"
-                          placeholder="Tìm theo tên hoặc mã nhân viên..."
+                          placeholder={
+                            activeTab === 'department' ? 'Tìm phòng ban...' :
+                            activeTab === 'position'   ? 'Tìm vị trí...' :
+                            'Tìm tên hoặc mã NV...'
+                          }
                           value={empSearch}
                           onChange={e => setEmpSearch(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
                         />
                       </div>
-                      <div className="border border-gray-200 rounded-lg max-h-44 overflow-y-auto divide-y divide-gray-100 bg-white">
-                        {filteredEmps.map(e => (
-                          <label key={e.id} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm">
+
+                      {/* Selected badge */}
+                      {(activeTab === 'department' ? form.department_ids.length :
+                        activeTab === 'position'   ? form.position_ids.length :
+                        form.employee_ids.length) > 0 && (
+                        <p className="text-xs text-indigo-600 font-medium">
+                          Đã chọn:{' '}
+                          {activeTab === 'department' ? form.department_ids.length :
+                           activeTab === 'position'   ? form.position_ids.length :
+                           form.employee_ids.length}
+                        </p>
+                      )}
+
+                      {/* List */}
+                      <div className="border border-gray-100 rounded-xl overflow-y-auto max-h-[300px] divide-y divide-gray-50 bg-white flex-1">
+                        {activeTab === 'department' && departments
+                          .filter(d => !empSearch || d.name.toLowerCase().includes(empSearch.toLowerCase()))
+                          .map(d => (
+                            <label key={d.id} className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-indigo-50 cursor-pointer text-sm transition-colors">
+                              <input
+                                type="checkbox"
+                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-400"
+                                checked={form.department_ids.includes(d.id)}
+                                onChange={() => setForm(f => ({ ...f, department_ids: toggleId(f.department_ids, d.id) }))}
+                              />
+                              <span className="font-medium text-gray-800 truncate">{d.name}</span>
+                              {d.is_section && <span className="text-[10px] text-gray-400 shrink-0">(Bộ phận)</span>}
+                            </label>
+                          ))
+                        }
+                        {activeTab === 'position' && positions
+                          .filter(p => !empSearch || p.title.toLowerCase().includes(empSearch.toLowerCase()))
+                          .map(p => (
+                            <label key={p.id} className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-indigo-50 cursor-pointer text-sm transition-colors">
+                              <input
+                                type="checkbox"
+                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-400"
+                                checked={form.position_ids.includes(p.id)}
+                                onChange={() => setForm(f => ({ ...f, position_ids: toggleId(f.position_ids, p.id) }))}
+                              />
+                              <span className="text-gray-800 truncate">{p.title}</span>
+                            </label>
+                          ))
+                        }
+                        {activeTab === 'employee' && filteredEmps.map(e => (
+                          <label key={e.id} className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-indigo-50 cursor-pointer text-sm transition-colors">
                             <input
                               type="checkbox"
-                              className="rounded border-gray-300 text-primary-600"
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-400"
                               checked={form.employee_ids.includes(e.id)}
                               onChange={() => setForm(f => ({ ...f, employee_ids: toggleId(f.employee_ids, e.id) }))}
                             />
-                            <span className="font-mono text-xs text-gray-500 w-16 shrink-0">{e.employee_id}</span>
-                            <span className="font-medium">{e.full_name}</span>
+                            <span className="font-mono text-[11px] text-gray-400 w-14 shrink-0">{e.employee_id}</span>
+                            <span className="font-medium text-gray-800 truncate">{e.full_name}</span>
                           </label>
                         ))}
                       </div>
                     </>
                   )}
-                </SectionCard>
-              )}
-
-              {activeTab === 'all' && (
-                <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                  <AdjustmentsHorizontalIcon className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-800">Cấu hình mặc định</p>
-                    <p className="text-xs text-amber-700 mt-0.5">Áp dụng cho tất cả nhân viên chưa có cấu hình cá nhân, vị trí, hoặc phòng ban.</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Section 2: Đơn giá */}
-              <SectionCard title="2. Đơn giá tăng ca">
-                {/* Calc method */}
-                <div className="grid grid-cols-2 gap-2">
-                  {(['FIXED', 'FROM_BASIC'] as const).map(method => (
-                    <button
-                      key={method}
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, calc_method: method }))}
-                      className={`px-3 py-2.5 text-sm rounded-lg border-2 transition-colors text-left ${
-                        form.calc_method === method
-                          ? 'border-primary-600 bg-primary-50 text-primary-700'
-                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                      }`}
-                    >
-                      <span className="block font-medium">
-                        {method === 'FIXED' ? 'Cố định' : 'Từ lương cơ bản'}
-                      </span>
-                      <span className="text-xs opacity-70">
-                        {method === 'FIXED' ? 'Nhập đơn giá trực tiếp' : 'LC ÷ công chuẩn ÷ 7.5h'}
-                      </span>
-                    </button>
-                  ))}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div>
-                    {form.calc_method === 'FIXED' ? (
-                      <>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Đơn giá / giờ <span className="text-red-500">*</span></label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={form.rate_per_hour || ''}
-                          onChange={e => setForm(f => ({ ...f, rate_per_hour: Number(e.target.value) }))}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          placeholder="VD: 20000"
-                        />
-                      </>
-                    ) : (
-                      <div className="flex items-center h-full bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
-                        <p className="text-xs text-blue-700 leading-relaxed">
-                          <span className="font-medium block">LC ÷ công chuẩn ÷ 7.5h</span>
-                          Tự động theo lương cơ bản từng nhân viên
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Hệ số nhân
-                      <span className="text-gray-400 font-normal ml-1">(mặc định 1)</span>
-                    </label>
-                    <input
-                      type="number"
-                      min={0.1}
-                      step={0.1}
-                      value={form.multiplier}
-                      onChange={e => setForm(f => ({ ...f, multiplier: Number(e.target.value) || 1 }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    {form.calc_method === 'FIXED' && form.multiplier !== 1 && form.rate_per_hour > 0 && (
-                      <p className="text-xs text-primary-600 mt-1">
-                        = {(form.rate_per_hour * form.multiplier).toLocaleString('vi-VN')}đ/h
-                      </p>
-                    )}
-                    {form.calc_method === 'FROM_BASIC' && form.multiplier !== 1 && (
-                      <p className="text-xs text-primary-600 mt-1">
-                        = LC ÷ công ÷ 7.5h × {form.multiplier}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </SectionCard>
+                {/* ── Cột phải: Cấu hình ── */}
+                <div className="col-span-3 p-5 space-y-4">
 
-              {/* Section 3: KPI */}
-              <SectionCard title="3. Hệ số KPI (tuỳ chọn)">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-700">Áp dụng hệ số khác khi đạt KPI</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, use_kpi: !f.use_kpi }))}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.use_kpi ? 'bg-primary-600' : 'bg-gray-300'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${form.use_kpi ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-
-                {form.use_kpi && (
-                  <div className="space-y-3 pt-1">
+                  {/* Đơn giá tăng ca */}
+                  <div className="rounded-xl border border-gray-100 p-4 space-y-3">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Đơn giá tăng ca</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(['FIXED', 'FROM_BASIC'] as const).map(method => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, calc_method: method }))}
+                          className={`px-3 py-2.5 text-sm rounded-lg border-2 transition-colors text-left ${
+                            form.calc_method === method
+                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                              : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                          }`}
+                        >
+                          <span className="block font-medium text-sm">
+                            {method === 'FIXED' ? 'Cố định' : 'Từ lương cơ bản'}
+                          </span>
+                          <span className="text-xs opacity-60">
+                            {method === 'FIXED' ? 'Nhập đơn giá trực tiếp' : 'LC ÷ công chuẩn ÷ 7.5h'}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Hệ số × khi đạt KPI <span className="text-gray-400">(VD: 1.5)</span>
+                        {form.calc_method === 'FIXED' ? (
+                          <>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Đơn giá / giờ <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={form.rate_per_hour || ''}
+                              onChange={e => setForm(f => ({ ...f, rate_per_hour: Number(e.target.value) }))}
+                              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                              placeholder="VD: 20000"
+                            />
+                          </>
+                        ) : (
+                          <div className="flex items-center h-full bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                            <p className="text-xs text-blue-700 leading-relaxed">
+                              <span className="font-semibold block">LC ÷ công chuẩn ÷ 7.5h</span>
+                              Tự động theo lương cơ bản từng nhân viên
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Hệ số nhân <span className="text-gray-400 font-normal">(mặc định 1)</span>
                         </label>
                         <input
                           type="number"
-                          min={0}
+                          min={0.1}
                           step={0.1}
-                          value={form.kpi_multiplier ?? ''}
-                          onChange={e => setForm(f => ({ ...f, kpi_multiplier: e.target.value ? Number(e.target.value) : null }))}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          placeholder="VD: 1.5"
+                          value={form.multiplier}
+                          onChange={e => setForm(f => ({ ...f, multiplier: Number(e.target.value) || 1 }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
                         />
-                        <p className="text-xs text-gray-400 mt-0.5">= đơn giá × hệ số</p>
+                        {form.calc_method === 'FIXED' && form.multiplier !== 1 && form.rate_per_hour > 0 && (
+                          <p className="text-xs text-indigo-600 mt-1">= {(form.rate_per_hour * form.multiplier).toLocaleString('vi-VN')}đ/h</p>
+                        )}
+                        {form.calc_method === 'FROM_BASIC' && form.multiplier !== 1 && (
+                          <p className="text-xs text-indigo-600 mt-1">= LC ÷ công ÷ 7.5h × {form.multiplier}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* KPI */}
+                  <div className="rounded-xl border border-gray-100 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Hệ số KPI</p>
+                      <button
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, use_kpi: !f.use_kpi }))}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.use_kpi ? 'bg-indigo-500' : 'bg-gray-200'}`}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${form.use_kpi ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
+                    {!form.use_kpi && (
+                      <p className="text-xs text-gray-400">Bật để áp dụng hệ số khác khi nhân viên đạt KPI.</p>
+                    )}
+                    {form.use_kpi && (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Hệ số × khi đạt KPI</label>
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.1}
+                              value={form.kpi_multiplier ?? ''}
+                              onChange={e => setForm(f => ({ ...f, kpi_multiplier: e.target.value ? Number(e.target.value) : null }))}
+                              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                              placeholder="VD: 1.5"
+                            />
+                            <p className="text-[10px] text-gray-400 mt-0.5">= đơn giá × hệ số</p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Ngưỡng KPI (%)</label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={form.kpi_threshold}
+                              onChange={e => setForm(f => ({ ...f, kpi_threshold: Number(e.target.value) }))}
+                              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            Đơn giá cố định / giờ khi đạt KPI
+                            <span className="text-gray-400 font-normal ml-1">(nếu không dùng hệ số ×)</span>
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={form.kpi_rate_per_hour ?? ''}
+                            onChange={e => setForm(f => ({ ...f, kpi_rate_per_hour: e.target.value ? Number(e.target.value) : null }))}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            placeholder="VD: 30000"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Thời gian hiệu lực */}
+                  <div className="rounded-xl border border-gray-100 p-4 space-y-3">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Thời gian hiệu lực</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Từ ngày <span className="text-red-500">*</span></label>
+                        <input
+                          type="date"
+                          value={form.effective_from}
+                          onChange={e => setForm(f => ({ ...f, effective_from: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Ngưỡng KPI (%)</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Đến ngày <span className="text-gray-400 font-normal">(trống = vô hạn)</span>
+                        </label>
                         <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={form.kpi_threshold}
-                          onChange={e => setForm(f => ({ ...f, kpi_threshold: Number(e.target.value) }))}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          type="date"
+                          value={form.effective_to}
+                          onChange={e => setForm(f => ({ ...f, effective_to: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
                         />
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Hoặc: đơn giá cố định / giờ khi đạt KPI
-                        <span className="text-gray-400 font-normal ml-1">(dùng nếu không nhập hệ số ×)</span>
-                      </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
                       <input
-                        type="number"
-                        min={0}
-                        value={form.kpi_rate_per_hour ?? ''}
-                        onChange={e => setForm(f => ({ ...f, kpi_rate_per_hour: e.target.value ? Number(e.target.value) : null }))}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        placeholder="VD: 30000"
+                        id="is_active"
+                        type="checkbox"
+                        checked={form.is_active}
+                        onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-400"
                       />
-                    </div>
-                  </div>
-                )}
-              </SectionCard>
-
-              {/* Section 4: Thời gian hiệu lực */}
-              <SectionCard title="4. Thời gian hiệu lực">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Từ ngày <span className="text-red-500">*</span></label>
-                    <input
-                      type="date"
-                      value={form.effective_from}
-                      onChange={e => setForm(f => ({ ...f, effective_from: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Đến ngày
-                      <span className="text-gray-400 font-normal ml-1">(để trống = vô hạn)</span>
+                      <span className="text-sm text-gray-700">Đang áp dụng</span>
                     </label>
-                    <input
-                      type="date"
-                      value={form.effective_to}
-                      onChange={e => setForm(f => ({ ...f, effective_to: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  </div>
+
+                  {/* Ghi chú */}
+                  <div className="rounded-xl border border-gray-100 p-4 space-y-2">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Ghi chú</p>
+                    <textarea
+                      value={form.notes}
+                      onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                      rows={2}
+                      placeholder="Ghi chú thêm về cấu hình này..."
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
                     />
                   </div>
-                </div>
-                <div className="flex items-center gap-3 pt-1">
-                  <input
-                    id="is_active"
-                    type="checkbox"
-                    checked={form.is_active}
-                    onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
-                    className="rounded border-gray-300 text-primary-600"
-                  />
-                  <label htmlFor="is_active" className="text-sm text-gray-700">Đang áp dụng</label>
-                </div>
-              </SectionCard>
 
-              {/* Section 5: Ghi chú */}
-              <SectionCard title="5. Ghi chú">
-                <textarea
-                  value={form.notes}
-                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  rows={2}
-                  placeholder="Ghi chú thêm về cấu hình này..."
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-                />
-              </SectionCard>
-
-              {modalError && (
-                <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  <ExclamationCircleIcon className="h-4 w-4 flex-shrink-0" />
-                  {modalError}
+                  {/* Error */}
+                  {modalError && (
+                    <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                      <ExclamationCircleIcon className="h-4 w-4 flex-shrink-0" />
+                      {modalError}
+                    </div>
+                  )}
                 </div>
-              )}
+
+              </div>
             </div>
 
-            {/* Modal footer */}
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-200">
+            {/* ── Footer ── */}
+            <div className="shrink-0 flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Huỷ
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-5 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
               >
                 {saving
                   ? <><ArrowPathIcon className="h-4 w-4 animate-spin" />Đang lưu...</>
@@ -749,7 +776,8 @@ const OvertimeRateConfigPage: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
