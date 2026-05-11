@@ -225,6 +225,12 @@ const navigationItems: NavigationItem[] = [
         icon: ExclamationCircleIcon,
         roles: ['ADMIN'],
       },
+      {
+        name: 'Cấu hình tăng ca',
+        href: '/dashboard/salary-management/overtime',
+        icon: ClockIcon,
+        roles: ['ADMIN'],
+      },
     ],
   },
 

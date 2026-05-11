@@ -27,6 +27,7 @@ export interface SalaryRecord {
   phu_cap_gui_xe: number;
   tong_cong: number;
   tong_phat: number;
+  luong_tang_ca: number;
   luong_thuc_linh: number;
   year: number;
   month: number;
@@ -116,6 +117,32 @@ export interface BulkImportCommissionResponse {
   success: { employee_code: string; employee_name: string; commission_amount: number; created: boolean }[];
   errors:  { employee_code: string; error: string }[];
 }
+
+export interface OvertimeRateConfig {
+  id: number;
+  department_ids:    number[];
+  department_names:  string[];
+  position_ids:      number[];
+  position_names:    string[];
+  employee_ids:      number[];
+  employee_names:    { id: number; name: string; code: string }[];
+  apply_to_all:      boolean;
+  calc_method:       'FIXED' | 'FROM_BASIC';
+  rate_per_hour:     number;
+  multiplier:        number;
+  use_kpi:           boolean;
+  kpi_multiplier:    number | null;
+  kpi_rate_per_hour: number | null;
+  kpi_threshold:     number;
+  effective_from:    string;
+  effective_to:      string | null;
+  is_active:         boolean;
+  notes:             string;
+  created_at:        string;
+  updated_at:        string;
+}
+
+export type OvertimeRateLevel = 'department' | 'position' | 'employee' | 'all';
 
 class SalaryService {
   async getSalaryByDepartment(params: {
@@ -216,6 +243,28 @@ class SalaryService {
   }): Promise<BulkImportCommissionResponse> {
     const response = await managementApi.post('/api/v1/salary/commissions/bulk-import/', params);
     return response.data;
+  }
+
+  // --- OvertimeRateConfig ---
+
+  async listOvertimeRates(level?: OvertimeRateLevel): Promise<OvertimeRateConfig[]> {
+    const params = level ? { level } : {};
+    const response = await managementApi.get('/api/v1/salary/overtime-rates/', { params });
+    return response.data.results ?? response.data;
+  }
+
+  async createOvertimeRate(data: Omit<OvertimeRateConfig, 'id' | 'created_at' | 'updated_at'>): Promise<OvertimeRateConfig> {
+    const response = await managementApi.post('/api/v1/salary/overtime-rates/', data);
+    return response.data;
+  }
+
+  async updateOvertimeRate(id: number, data: Partial<Omit<OvertimeRateConfig, 'id' | 'created_at' | 'updated_at'>>): Promise<OvertimeRateConfig> {
+    const response = await managementApi.patch(`/api/v1/salary/overtime-rates/${id}/`, data);
+    return response.data;
+  }
+
+  async deleteOvertimeRate(id: number): Promise<void> {
+    await managementApi.delete(`/api/v1/salary/overtime-rates/${id}/`);
   }
 }
 
