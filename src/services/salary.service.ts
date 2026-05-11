@@ -25,9 +25,11 @@ export interface SalaryRecord {
   truc_toi: number;
   lam_them_gio: number;
   phu_cap_gui_xe: number;
+  phu_cap_khac: number;
   tong_cong: number;
   tong_phat: number;
   luong_tang_ca: number;
+  tam_ung: number;
   luong_thuc_linh: number;
   year: number;
   month: number;
@@ -118,6 +120,50 @@ export interface BulkImportCommissionResponse {
   errors:  { employee_code: string; error: string }[];
 }
 
+export interface AdvanceRecord {
+  id: number;
+  employee: number;
+  employee_name: string;
+  employee_code: string;
+  year: number;
+  month: number;
+  amount: number;
+  notes: string;
+}
+
+export interface BulkImportAdvanceRecord {
+  employee_code: string;
+  amount: number;
+}
+
+export interface BulkImportAdvanceResponse {
+  success: { employee_code: string; employee_name: string; amount: number; created: boolean }[];
+  errors:  { employee_code: string; error: string }[];
+}
+
+export interface OtherAllowanceRecord {
+  id: number;
+  employee: number;
+  employee_name: string;
+  employee_code: string;
+  year: number;
+  month: number;
+  amount: number;
+  description: string;
+  notes: string;
+}
+
+export interface BulkImportOtherAllowanceRecord {
+  employee_code: string;
+  amount: number;
+  description: string;
+}
+
+export interface BulkImportOtherAllowanceResponse {
+  success: { employee_code: string; employee_name: string; amount: number; description: string; created: boolean }[];
+  errors:  { employee_code: string; error: string }[];
+}
+
 export interface OvertimeRateConfig {
   id: number;
   department_ids:    number[];
@@ -143,6 +189,29 @@ export interface OvertimeRateConfig {
 }
 
 export type OvertimeRateLevel = 'department' | 'position' | 'employee' | 'all';
+
+export interface BulkSalaryConfigRecord {
+  employee_code: string;
+  effective_date: string;
+  basic_salary?: number;
+  salary_factor?: number;
+  lunch_mode?: string;
+  lunch_amount?: number;
+  parking_mode?: string;
+  parking_rate?: number;
+  responsibility_mode?: string;
+  responsibility_amount?: number;
+  region?: string;
+  insurance_mode?: string;
+  insurance_override?: number;
+  dependent_count?: number;
+  union_fee?: number;
+}
+
+export interface BulkSalaryConfigResponse {
+  success: { employee_code: string; employee_name: string }[];
+  errors: { employee_code: string; error: string }[];
+}
 
 class SalaryService {
   async getSalaryByDepartment(params: {
@@ -265,6 +334,57 @@ class SalaryService {
 
   async deleteOvertimeRate(id: number): Promise<void> {
     await managementApi.delete(`/api/v1/salary/overtime-rates/${id}/`);
+  }
+
+  async listAdvances(params: { year: number; month: number }): Promise<AdvanceRecord[]> {
+    const response = await managementApi.get('/api/v1/salary/advances/', { params: { ...params, page_size: 500 } });
+    return response.data.results ?? response.data;
+  }
+
+  async updateAdvance(id: number, data: { amount: number; notes?: string }): Promise<AdvanceRecord> {
+    const response = await managementApi.patch(`/api/v1/salary/advances/${id}/`, data);
+    return response.data;
+  }
+
+  async deleteAdvance(id: number): Promise<void> {
+    await managementApi.delete(`/api/v1/salary/advances/${id}/`);
+  }
+
+  async bulkImportAdvances(params: {
+    year: number;
+    month: number;
+    records: BulkImportAdvanceRecord[];
+  }): Promise<BulkImportAdvanceResponse> {
+    const response = await managementApi.post('/api/v1/salary/advances/bulk-import/', params);
+    return response.data;
+  }
+
+  async listOtherAllowances(params: { year: number; month: number }): Promise<OtherAllowanceRecord[]> {
+    const response = await managementApi.get('/api/v1/salary/other-allowances/', { params: { ...params, page_size: 500 } });
+    return response.data.results ?? response.data;
+  }
+
+  async updateOtherAllowance(id: number, data: { amount: number; description?: string; notes?: string }): Promise<OtherAllowanceRecord> {
+    const response = await managementApi.patch(`/api/v1/salary/other-allowances/${id}/`, data);
+    return response.data;
+  }
+
+  async deleteOtherAllowance(id: number): Promise<void> {
+    await managementApi.delete(`/api/v1/salary/other-allowances/${id}/`);
+  }
+
+  async bulkImportOtherAllowances(params: {
+    year: number;
+    month: number;
+    records: BulkImportOtherAllowanceRecord[];
+  }): Promise<BulkImportOtherAllowanceResponse> {
+    const response = await managementApi.post('/api/v1/salary/other-allowances/bulk-import/', params);
+    return response.data;
+  }
+
+  async bulkImportSalaryConfig(records: BulkSalaryConfigRecord[]): Promise<BulkSalaryConfigResponse> {
+    const response = await managementApi.post('/api-hrm/employees/bulk-salary-config/', { records });
+    return response.data;
   }
 }
 

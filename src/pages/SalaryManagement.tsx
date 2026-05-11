@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   MagnifyingGlassIcon,
   BuildingOfficeIcon,
@@ -13,11 +14,14 @@ import {
   FunnelIcon,
   EyeIcon,
   PrinterIcon,
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline';
 import { departmentsAPI, employeesAPI } from '../utils/api';
 import type { Department, Employee } from '../utils/api';
-import { salaryService, SalaryFormulaUpdateData, SalaryRecord } from '../services/salary.service';
+import { salaryService, SalaryFormulaUpdateData, SalaryRecord, PenaltyRecord, CommissionRecord, type BulkSalaryConfigRecord } from '../services/salary.service';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 
 const TABS = [
   { key: 'config', label: 'Cấu hình tính lương', icon: CurrencyDollarIcon },
@@ -40,26 +44,78 @@ type SalaryTabKey = 'config' | 'view';
 interface PayslipDetailModalProps {
   record: SalaryRecord;
   onClose: () => void;
+  employee?: Employee;
+  penalties?: PenaltyRecord[];
+  commissions?: CommissionRecord[];
 }
 
-const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose }) => {
+const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose, employee, penalties, commissions }) => {
+  useLockBodyScroll(true);
   const stdDays = getStandardWorkDays(record.year, record.month);
   const luongNgayCong = record.tong_cong > 0
     ? Math.round((record.luong_co_ban / stdDays) * record.tong_cong)
     : 0;
   // Allowances breakdown
-  const phuCapGuiXe = record.phu_cap_gui_xe ?? 0;
-  const phuCapKhac = (record.phu_cap ?? 0) - phuCapGuiXe;
   const luongTangCa = record.luong_tang_ca ?? 0;
-  const luongDoanhSo = (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
+  const luongDoanhSo = commissions
+    ? commissions.reduce((sum, c) => sum + Math.round(parseFloat(String(c.amount)) || 0), 0)
+    : (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
   const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
   const thuong = (record as unknown as Record<string, number>)['thuong'] ?? 0;
   const tongLuongIII = luongNgayCong + luongDoanhSo + luongTangCa + thuNhapKhac;
   const tongPhuCapIV = record.phu_cap ?? 0;
   const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
-  const bhxh = Math.round((record.luong_co_ban ?? 0) * 0.08);
-  const phat = Math.max(0, (record.tong_phat ?? 0) - bhxh);
-  const tongGiamTruVII = record.tong_phat ?? 0;
+
+  // Deductions: use saved payroll config if available, otherwise calculate from standard rates
+  const savedAdjustments = employee ? (employee.salary_adjustments as Record<string, unknown> | undefined) : undefined;
+  const savedOutput = savedAdjustments?.payroll_output_preview as Record<string, number> | undefined;
+  const savedConfig = savedAdjustments?.payroll_config as Record<string, unknown> | undefined;
+
+  // Parking allowance: recalculate from policy if configured, else use stored value
+  const savedParkingPolicyRaw = savedConfig?.parkingAllowancePolicy as Record<string, unknown> | undefined;
+  const parkingPolicy: ParkingAllowancePolicy | null = savedParkingPolicyRaw
+    ? {
+        mode: savedParkingPolicyRaw.mode === 'daily' ? 'daily' : savedParkingPolicyRaw.mode === 'monthly' ? 'monthly' : 'none',
+        daily_rate: toNumber(savedParkingPolicyRaw.daily_rate, 5000),
+        monthly_rate: toNumber(savedParkingPolicyRaw.monthly_rate, 0),
+      }
+    : null;
+  const phuCapGuiXe = parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : (record.phu_cap_gui_xe ?? 0);
+
+  // Lunch allowance: recalculate from policy + actual work days
+  const savedLunchPolicyRaw = (savedConfig?.lunchAllowancePolicy as Record<string, unknown> | undefined);
+  const lunchPolicy: LunchAllowancePolicy | null = savedLunchPolicyRaw
+    ? {
+        mode: savedLunchPolicyRaw.mode === 'actual_working_day' ? 'actual_working_day' : 'fixed',
+        fixed_amount: toNumber(savedLunchPolicyRaw.fixed_amount),
+        amount_per_work_day: toNumber(savedLunchPolicyRaw.amount_per_work_day),
+        monthly_cap: toNumber(savedLunchPolicyRaw.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP),
+      }
+    : null;
+  const phuCapAnTrua = lunchPolicy ? calculateLunchAllowance(lunchPolicy, record.ngay_cong, stdDays) : 0;
+
+  // Responsibility allowance: recalculate from policy
+  const savedRespPolicyRaw = savedConfig?.responsibilityAllowancePolicy as Record<string, unknown> | undefined;
+  const respPolicy: ResponsibilityAllowancePolicy | null = savedRespPolicyRaw
+    ? {
+        mode: savedRespPolicyRaw.mode === 'fixed' ? 'fixed' : savedRespPolicyRaw.mode === 'actual_working_day' ? 'actual_working_day' : 'none',
+        monthly_max: toNumber(savedRespPolicyRaw.monthly_max),
+      }
+    : null;
+  const phuCapTrachNhiem = respPolicy ? calculateResponsibilityAllowance(respPolicy, record.ngay_cong, stdDays) : 0;
+
+  const phuCapKhacRemainder = Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0);
+
+  const mucLuongDongBH = savedOutput?.insuranceSalaryBase ?? (record.luong_co_ban ?? 0);
+  const bhxh = Math.round(savedOutput?.socialInsurance ?? mucLuongDongBH * 0.08);
+  const bhyt = Math.round(savedOutput?.healthInsurance ?? mucLuongDongBH * 0.015);
+  const bhtn = Math.round(savedOutput?.unemploymentInsurance ?? mucLuongDongBH * 0.01);
+  const tongBH = bhxh + bhyt + bhtn;
+  const congDoanRaw = (savedConfig?.deductions as Record<string, number> | undefined)?.unionFee;
+  const congDoan = congDoanRaw != null ? Math.round(congDoanRaw) : Math.round(mucLuongDongBH * 0.01);
+  const phatDiMuon = record.tong_phat ?? 0;
+  const phatBienBan = penalties ? penalties.reduce((sum, p) => sum + Math.round(parseFloat(String(p.amount)) || 0), 0) : 0;
+  const tongGiamTruVII = tongBH + congDoan + phatDiMuon + phatBienBan;
   const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
   const luongThucLinh = record.luong_thuc_linh ?? 0;
   const tamUng = (record as unknown as Record<string, number>)['tam_ung'] ?? 0;
@@ -181,22 +237,22 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">10</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương doanh số</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-gray-400">{luongDoanhSo ? fmt(luongDoanhSo) : '—'}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{luongDoanhSo ? fmt(luongDoanhSo) : '—'}</td>
               </tr>
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">11</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương tăng ca</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-gray-400">{luongTangCa ? fmt(luongTangCa) : '—'}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{luongTangCa ? fmt(luongTangCa) : '—'}</td>
               </tr>
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">12</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương trực ca</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-gray-400">{record.truc_toi ? fmt(record.truc_toi) : '—'}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{record.truc_toi ? fmt(record.truc_toi) : '—'}</td>
               </tr>
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">13</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Thu nhập khác</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-gray-400">{thuNhapKhac ? fmt(thuNhapKhac) : '—'}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{thuNhapKhac ? fmt(thuNhapKhac) : '—'}</td>
               </tr>
 
               {/* Section IV */}
@@ -206,16 +262,38 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               </tr>
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">14</td>
-                <td className="border border-gray-300 px-3 py-2 text-gray-700">Phụ cấp gửi xe, ăn tối</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">
+                  {parkingPolicy?.mode === 'daily'
+                    ? `Phụ cấp gửi xe (${Math.ceil(record.ngay_cong)} ngày × ${parkingPolicy.daily_rate.toLocaleString('vi-VN')}đ)`
+                    : parkingPolicy?.mode === 'monthly'
+                    ? 'Phụ cấp gửi xe (vé tháng)'
+                    : 'Phụ cấp gửi xe'}
+                </td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{phuCapGuiXe ? fmt(phuCapGuiXe) : '—'}</td>
               </tr>
-              {phuCapKhac > 0 && (
-                <tr>
-                  <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">15</td>
-                  <td className="border border-gray-300 px-3 py-2 text-gray-700">Phụ cấp khác</td>
-                  <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(phuCapKhac)}</td>
-                </tr>
-              )}
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">15</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">
+                  {lunchPolicy?.mode === 'actual_working_day'
+                    ? `Phụ cấp ăn trưa (${record.ngay_cong}/${stdDays} công × ${Math.round(Math.min(toNumber(lunchPolicy.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP), MAX_LUNCH_ALLOWANCE_CAP) / stdDays).toLocaleString('vi-VN')}đ)`
+                    : 'Phụ cấp ăn trưa'}
+                </td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{phuCapAnTrua ? fmt(phuCapAnTrua) : '—'}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">16</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">
+                  {respPolicy?.mode === 'actual_working_day'
+                    ? `Phụ cấp trách nhiệm (${record.ngay_cong}/${stdDays} công × ${Math.round(respPolicy.monthly_max / stdDays).toLocaleString('vi-VN')}đ)`
+                    : 'Phụ cấp trách nhiệm / chức vụ'}
+                </td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{phuCapTrachNhiem ? fmt(phuCapTrachNhiem) : '—'}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">17</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Phụ cấp khác</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{phuCapKhacRemainder ? fmt(phuCapKhacRemainder) : '—'}</td>
+              </tr>
 
               {/* Section V */}
               <tr className="bg-yellow-50">
@@ -238,13 +316,33 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               </tr>
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">16</td>
-                <td className="border border-gray-300 px-3 py-2 text-gray-700">BHXH 10.5%</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(bhxh)}</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Mức lương đóng BH</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(mucLuongDongBH)}</td>
               </tr>
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">17</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">BHXH</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(bhxh)}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">18</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">BHYT</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(bhyt)}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">19</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">BHTN</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(bhtn)}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">20</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Công đoàn</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(congDoan)}</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">21</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Phạt đi muộn + phạt biên bản</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{phat > 0 ? fmt(phat) : '—'}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{(phatDiMuon + phatBienBan) > 0 ? fmt(phatDiMuon + phatBienBan) : '—'}</td>
               </tr>
               <tr className="bg-red-50">
                 <td className="border border-gray-300 px-3 py-2 text-center font-semibold text-red-700" colSpan={2}>
@@ -302,6 +400,26 @@ interface SalaryManagementProps {
   lockTab?: boolean;
 }
 
+interface ParsedSalaryConfigRow {
+  employee_code: string;
+  effective_date: string;
+  basic_salary?: number;
+  salary_factor?: number;
+  lunch_mode?: string;
+  lunch_amount?: number;
+  parking_mode?: string;
+  parking_rate?: number;
+  responsibility_mode?: string;
+  responsibility_amount?: number;
+  region?: string;
+  insurance_mode?: string;
+  insurance_override?: number;
+  dependent_count?: number;
+  union_fee?: number;
+  rowIndex: number;
+  parseError?: string;
+}
+
 interface SalaryConfigurationValues {
   effectiveDate: string;
   baseProfile: {
@@ -326,6 +444,8 @@ interface SalaryConfigurationValues {
     hazardous: number;
   };
   lunchAllowancePolicy: LunchAllowancePolicy;
+  parkingAllowancePolicy: ParkingAllowancePolicy;
+  responsibilityAllowancePolicy: ResponsibilityAllowancePolicy;
   variablePay: {
     salesCommission: number;
     kpiBonus: number;
@@ -398,6 +518,17 @@ interface LunchAllowancePolicy {
   fixed_amount: number;
   amount_per_work_day: number;
   monthly_cap: number;
+}
+
+interface ParkingAllowancePolicy {
+  mode: 'none' | 'daily' | 'monthly';
+  daily_rate: number;
+  monthly_rate: number;
+}
+
+interface ResponsibilityAllowancePolicy {
+  mode: 'none' | 'fixed' | 'actual_working_day';
+  monthly_max: number;
 }
 
 const MAX_LUNCH_ALLOWANCE_CAP = 500000;
@@ -473,6 +604,15 @@ const DEFAULT_SALARY_CONFIG: SalaryConfigurationValues = {
     amount_per_work_day: 0,
     monthly_cap: MAX_LUNCH_ALLOWANCE_CAP,
   },
+  parkingAllowancePolicy: {
+    mode: 'none',
+    daily_rate: 5000,
+    monthly_rate: 0,
+  },
+  responsibilityAllowancePolicy: {
+    mode: 'none',
+    monthly_max: 0,
+  },
   variablePay: {
     salesCommission: 0,
     kpiBonus: 0,
@@ -516,9 +656,11 @@ const DEFAULT_SALARY_CONFIG: SalaryConfigurationValues = {
   },
 };
 
-const toNumber = (value: unknown, fallback = 0) => {
+const toNumber = (value: unknown, fallback: unknown = 0): number => {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  if (Number.isFinite(parsed)) return parsed;
+  const parsedFallback = Number(fallback);
+  return Number.isFinite(parsedFallback) ? parsedFallback : 0;
 };
 
 const parseDate = (dateText: string) => {
@@ -588,17 +730,57 @@ const formatNumber = (value: number | null | undefined) => {
   return value.toLocaleString('vi-VN');
 };
 
-const calculateLunchAllowance = (policy: LunchAllowancePolicy, actualWorkDays: number) => {
+const calculateLunchAllowance = (policy: LunchAllowancePolicy, actualWorkDays: number, standardWorkDays: number) => {
   const cap = Math.min(Math.max(toNumber(policy.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP), 0), MAX_LUNCH_ALLOWANCE_CAP);
   if (policy.mode === 'actual_working_day') {
-    const amount = Math.max(actualWorkDays, 0) * Math.max(toNumber(policy.amount_per_work_day), 0);
-    return Math.min(amount, cap);
+    const ratePerDay = standardWorkDays > 0 ? cap / standardWorkDays : 0;
+    return Math.min(Math.max(actualWorkDays, 0) * ratePerDay, cap);
   }
   return Math.min(Math.max(toNumber(policy.fixed_amount), 0), cap);
 };
 
+const calculateResponsibilityAllowance = (policy: ResponsibilityAllowancePolicy, actualWorkDays: number, standardWorkDays: number): number => {
+  const max = Math.max(policy.monthly_max, 0);
+  if (policy.mode === 'fixed') return max;
+  if (policy.mode === 'actual_working_day') {
+    const rate = standardWorkDays > 0 ? max / standardWorkDays : 0;
+    return Math.min(Math.max(actualWorkDays, 0) * rate, max);
+  }
+  return 0;
+};
+
+const calculateParkingAllowance = (policy: ParkingAllowancePolicy, actualWorkDays: number): number => {
+  if (policy.mode === 'daily') return Math.ceil(Math.max(actualWorkDays, 0)) * Math.max(policy.daily_rate, 0);
+  if (policy.mode === 'monthly') return Math.max(policy.monthly_rate, 0);
+  return 0;
+};
+
 const calculateActualWorkDays = (timeAttendance: SalaryConfigurationValues['timeAttendance']) => {
   return Math.max(timeAttendance.workingDays - timeAttendance.unpaidLeaveDays, 0);
+};
+
+const CONTRACT_TYPE_LABELS: Record<string, string> = {
+  PROBATION: 'Hợp đồng thử việc',
+  INTERN: 'Hợp đồng thực tập sinh',
+  COLLABORATOR: 'Hợp đồng cộng tác viên',
+  ONE_YEAR: 'Hợp đồng lao động 12 tháng',
+  TWO_YEAR: 'Hợp đồng lao động 24 tháng',
+  INDEFINITE: 'Hợp đồng vô thời hạn',
+  SERVICE: 'Hợp đồng dịch vụ',
+  CONFIDENTIALITY: 'Thoả thuận bảo mật',
+  COMPANY_RULES: 'Cam kết đọc hiểu nội quy công ty',
+  NURSING_COMMITMENT: 'Cam kết của CBNV Điều dưỡng',
+};
+
+const WORK_LOCATION_LABELS: Record<string, string> = {
+  '789_LE_HONG_PHONG': '789/C9 Lê Hồng Phong, Q.10, TP.HCM',
+  '16_NGUYEN_NHU_DO': '16 Nguyễn Như Đổ, Đống Đa, Hà Nội',
+  '61_VU_THANH': '61 Vũ Thạnh, Đống Đa, Hà Nội',
+  '9_SU_VAN_HANH': '9 Sư Vạn Hạnh, Q.5, TP.HCM',
+  '355_AN_DUONG_VUONG': '355 An Dương Vương',
+  '1E_TRUONG_TRINH': 'Số 1E Trường Trinh, Hà Nội',
+  '50_TRUNG_PHUNG': 'Số 50 Trung Phụng, Hà Nội',
+  '219_TRUNG_KINH': 'Số 219 Trung Kính, Cầu Giấy, Hà Nội',
 };
 
 const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValues => {
@@ -640,11 +822,13 @@ const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValue
         '',
       contractType:
         (savedConfig.baseProfile?.contractType as string | undefined) ||
+        employee.contract_type_display ||
+        (employee.contract_type ? CONTRACT_TYPE_LABELS[employee.contract_type] : undefined) ||
         employee.contract_type ||
         DEFAULT_SALARY_CONFIG.baseProfile.contractType,
       workLocation:
         (savedConfig.baseProfile?.workLocation as string | undefined) ||
-        employee.work_location ||
+        (employee.work_location ? WORK_LOCATION_LABELS[employee.work_location] ?? employee.work_location : '') ||
         '',
     },
     baseSalary: {
@@ -674,6 +858,23 @@ const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValue
       hazardous: toNumber(savedConfig.allowances?.hazardous),
     },
     lunchAllowancePolicy: lunchPolicy,
+    parkingAllowancePolicy: (() => {
+      const p = asRecord(savedConfig.parkingAllowancePolicy);
+      const mode = p.mode as string | undefined;
+      return {
+        mode: (mode === 'daily' || mode === 'monthly' ? mode : 'none') as ParkingAllowancePolicy['mode'],
+        daily_rate: toNumber(p.daily_rate, 5000),
+        monthly_rate: toNumber(p.monthly_rate, 0),
+      };
+    })(),
+    responsibilityAllowancePolicy: (() => {
+      const p = asRecord(savedConfig.responsibilityAllowancePolicy);
+      const mode = p.mode as string | undefined;
+      return {
+        mode: (mode === 'fixed' || mode === 'actual_working_day' ? mode : 'none') as ResponsibilityAllowancePolicy['mode'],
+        monthly_max: toNumber(p.monthly_max, toNumber(savedConfig.allowances?.responsibility, 0)),
+      };
+    })(),
     variablePay: {
       salesCommission: toNumber(savedConfig.variablePay?.salesCommission),
       kpiBonus: toNumber(savedConfig.variablePay?.kpiBonus),
@@ -726,14 +927,17 @@ const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValue
 
 const calculatePayrollOutput = (config: SalaryConfigurationValues): PayrollOutput => {
   const actualWorkDays = calculateActualWorkDays(config.timeAttendance);
-  const lunchAllowance = calculateLunchAllowance(config.lunchAllowancePolicy, actualWorkDays);
+  const lunchAllowance = calculateLunchAllowance(config.lunchAllowancePolicy, actualWorkDays, config.timeAttendance.workingDays);
+  const parkingAllowance = calculateParkingAllowance(config.parkingAllowancePolicy, actualWorkDays);
+  const responsibilityAllowance = calculateResponsibilityAllowance(config.responsibilityAllowancePolicy, actualWorkDays, config.timeAttendance.workingDays);
   const allowanceTotal =
     config.allowances.transport +
     config.allowances.phone +
     config.allowances.housing +
-    config.allowances.responsibility +
     config.allowances.hazardous +
-    lunchAllowance;
+    lunchAllowance +
+    parkingAllowance +
+    responsibilityAllowance;
   const variableTotal = Object.values(config.variablePay).reduce((sum, value) => sum + value, 0);
   const adjustmentTotal =
     config.adjustments.retroactivePay +
@@ -798,13 +1002,19 @@ const TextField: React.FC<{
   label: string;
   value: string;
   onChange: (value: string) => void;
-}> = ({ label, value, onChange }) => (
+  disabled?: boolean;
+}> = ({ label, value, onChange, disabled }) => (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
     <input
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+      disabled={disabled}
+      className={`w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+        disabled
+          ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+          : 'border-gray-300'
+      }`}
     />
   </div>
 );
@@ -814,19 +1024,39 @@ const NumberField: React.FC<{
   value: number;
   onChange: (value: number) => void;
   step?: string;
-}> = ({ label, value, onChange, step = '1000' }) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-    <input
-      type="number"
-      min="0"
-      step={step}
-      value={value}
-      onChange={(event) => onChange(toNumber(event.target.value))}
-      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-    />
-  </div>
-);
+}> = ({ label, value, onChange }) => {
+  const [focused, setFocused] = React.useState(false);
+  const [rawInput, setRawInput] = React.useState('');
+
+  const displayValue = focused
+    ? rawInput
+    : value === 0
+    ? ''
+    : value.toLocaleString('vi-VN');
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={displayValue}
+        placeholder="0"
+        onFocus={() => {
+          setRawInput(value === 0 ? '' : String(value));
+          setFocused(true);
+        }}
+        onChange={(event) => {
+          const raw = event.target.value.replace(/[^0-9]/g, '');
+          setRawInput(raw);
+          onChange(raw === '' ? 0 : Number(raw));
+        }}
+        onBlur={() => setFocused(false)}
+        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+      />
+    </div>
+  );
+};
 
 const SectionCard: React.FC<{
   title: string;
@@ -846,6 +1076,7 @@ interface EditModalProps {
 }
 
 const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, saving }) => {
+  useLockBodyScroll(true);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [config, setConfig] = useState<SalaryConfigurationValues>(() => parseEmployeeSalaryConfig(employee));
 
@@ -861,7 +1092,11 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
   };
 
   const lunchPreview = useMemo(
-    () => calculateLunchAllowance(config.lunchAllowancePolicy, calculateActualWorkDays(config.timeAttendance)),
+    () => calculateLunchAllowance(
+      config.lunchAllowancePolicy,
+      calculateActualWorkDays(config.timeAttendance),
+      config.timeAttendance.workingDays,
+    ),
     [config.lunchAllowancePolicy, config.timeAttendance]
   );
 
@@ -878,7 +1113,6 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
       config.allowances.transport +
       config.allowances.phone +
       config.allowances.housing +
-      config.allowances.responsibility +
       config.allowances.hazardous;
 
     const persistedAllowance =
@@ -933,7 +1167,7 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
       salary_notes: `Hiệu lực từ ${config.effectiveDate}`,
       allowance_notes:
         config.lunchAllowancePolicy.mode === 'actual_working_day'
-          ? `Phụ cấp trưa: theo ngày công thực tế (${config.lunchAllowancePolicy.amount_per_work_day.toLocaleString('vi-VN')}đ/ngày), trần ${Math.min(config.lunchAllowancePolicy.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP).toLocaleString('vi-VN')}đ/tháng`
+          ? `Phụ cấp trưa: theo ngày công thực tế, tối đa ${Math.min(config.lunchAllowancePolicy.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP).toLocaleString('vi-VN')}đ/tháng (${config.timeAttendance.workingDays} công chuẩn)`
           : `Phụ cấp trưa cố định: ${lunchPreview.toLocaleString('vi-VN')}đ/tháng`,
       salary_adjustments: {
         ...existingAdjustments,
@@ -976,23 +1210,21 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Loại trả lương</label>
-              <select
-                value={config.baseSalary.payType}
-                onChange={(event) =>
-                  updateGroup('baseSalary', {
-                    ...config.baseSalary,
-                    payType: event.target.value as SalaryConfigurationValues['baseSalary']['payType'],
-                  })
-                }
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="monthly">Theo tháng</option>
-                <option value="hourly">Theo giờ</option>
-                <option value="daily">Theo ngày</option>
-              </select>
-            </div>
+            <SelectBox
+              label="Loại trả lương"
+              value={config.baseSalary.payType}
+              options={[
+                { value: 'monthly', label: 'Theo tháng' },
+                { value: 'hourly', label: 'Theo giờ' },
+                { value: 'daily', label: 'Theo ngày' },
+              ]}
+              onChange={(value) =>
+                updateGroup('baseSalary', {
+                  ...config.baseSalary,
+                  payType: value as SalaryConfigurationValues['baseSalary']['payType'],
+                })
+              }
+            />
             <div className="rounded-md bg-indigo-50 border border-indigo-100 px-3 py-2 text-sm">
               <p className="text-indigo-700">Net preview</p>
               <p className="text-lg font-semibold text-indigo-800">{formatCurrency(payrollOutput.netSalary)}</p>
@@ -1004,52 +1236,32 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
               <TextField
                 label="Vị trí công việc"
                 value={config.baseProfile.jobTitle}
-                onChange={(value) =>
-                  updateGroup('baseProfile', {
-                    ...config.baseProfile,
-                    jobTitle: value,
-                  })
-                }
+                onChange={(value) => updateGroup('baseProfile', { ...config.baseProfile, jobTitle: value })}
+                disabled
               />
               <TextField
                 label="Cấp bậc"
                 value={config.baseProfile.level}
-                onChange={(value) =>
-                  updateGroup('baseProfile', {
-                    ...config.baseProfile,
-                    level: value,
-                  })
-                }
+                onChange={(value) => updateGroup('baseProfile', { ...config.baseProfile, level: value })}
+                disabled
               />
               <TextField
                 label="Phòng ban"
                 value={config.baseProfile.department}
-                onChange={(value) =>
-                  updateGroup('baseProfile', {
-                    ...config.baseProfile,
-                    department: value,
-                  })
-                }
+                onChange={(value) => updateGroup('baseProfile', { ...config.baseProfile, department: value })}
+                disabled
               />
               <TextField
                 label="Loại hợp đồng"
                 value={config.baseProfile.contractType}
-                onChange={(value) =>
-                  updateGroup('baseProfile', {
-                    ...config.baseProfile,
-                    contractType: value,
-                  })
-                }
+                onChange={(value) => updateGroup('baseProfile', { ...config.baseProfile, contractType: value })}
+                disabled
               />
               <TextField
                 label="Địa điểm làm việc"
                 value={config.baseProfile.workLocation}
-                onChange={(value) =>
-                  updateGroup('baseProfile', {
-                    ...config.baseProfile,
-                    workLocation: value,
-                  })
-                }
+                onChange={(value) => updateGroup('baseProfile', { ...config.baseProfile, workLocation: value })}
+                disabled
               />
             </div>
           </SectionCard>
@@ -1088,113 +1300,228 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
           </SectionCard>
 
           <SectionCard title="3. Thu nhập bổ sung (Allowances & Earnings)">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 md:col-span-3">
-                <p className="text-sm font-medium text-amber-900 mb-2">Phụ cấp ăn trưa</p>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Cơ chế chi trả</label>
-                    <select
+            <div className="space-y-4">
+
+              {/* Phụ cấp cố định — 4 cột */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <NumberField
+                  label="Phụ cấp đi lại / xăng xe"
+                  value={config.allowances.transport}
+                  onChange={(value) => updateGroup('allowances', { ...config.allowances, transport: value })}
+                />
+                <NumberField
+                  label="Phụ cấp điện thoại"
+                  value={config.allowances.phone}
+                  onChange={(value) => updateGroup('allowances', { ...config.allowances, phone: value })}
+                />
+                <NumberField
+                  label="Phụ cấp nhà ở"
+                  value={config.allowances.housing}
+                  onChange={(value) => updateGroup('allowances', { ...config.allowances, housing: value })}
+                />
+                <NumberField
+                  label="Phụ cấp độc hại / nguy hiểm"
+                  value={config.allowances.hazardous}
+                  onChange={(value) => updateGroup('allowances', { ...config.allowances, hazardous: value })}
+                />
+              </div>
+
+              {/* Phụ cấp ăn trưa */}
+              <div className="rounded-lg border border-amber-200 bg-amber-50">
+                <div className="px-4 py-3 space-y-3">
+                  <p className="text-sm font-semibold text-amber-800">Phụ cấp ăn trưa</p>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <SelectBox
+                      label="Cơ chế chi trả"
                       value={config.lunchAllowancePolicy.mode}
-                      onChange={(event) =>
+                      options={[
+                        { value: 'fixed', label: 'Cố định theo tháng' },
+                        { value: 'actual_working_day', label: 'Theo ngày công thực tế' },
+                      ]}
+                      onChange={(value) =>
                         updateGroup('lunchAllowancePolicy', {
                           ...config.lunchAllowancePolicy,
-                          mode: event.target.value as LunchAllowancePolicy['mode'],
+                          mode: value as LunchAllowancePolicy['mode'],
                         })
                       }
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="fixed">Cố định theo tháng</option>
-                      <option value="actual_working_day">Theo ngày công thực tế</option>
-                    </select>
+                    />
+                    {config.lunchAllowancePolicy.mode === 'actual_working_day' ? (
+                      <>
+                        <NumberField
+                          label="Mức tối đa/tháng"
+                          value={config.lunchAllowancePolicy.monthly_cap}
+                          onChange={(value) =>
+                            updateGroup('lunchAllowancePolicy', {
+                              ...config.lunchAllowancePolicy,
+                              monthly_cap: Math.min(Math.max(value, 0), MAX_LUNCH_ALLOWANCE_CAP),
+                            })
+                          }
+                        />
+                        <div className="rounded-md border border-amber-200 bg-white px-3 py-2">
+                          <p className="text-xs text-gray-500">Mức/ngày công</p>
+                          <p className="text-sm font-semibold text-amber-700">
+                            {config.timeAttendance.workingDays > 0
+                              ? formatCurrency(Math.round(Math.min(config.lunchAllowancePolicy.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP) / config.timeAttendance.workingDays))
+                              : '—'}
+                          </p>
+                          <p className="text-xs text-gray-400">{config.timeAttendance.workingDays} công chuẩn</p>
+                        </div>
+                        <div className="rounded-md border border-amber-300 bg-amber-100 px-3 py-2">
+                          <p className="text-xs text-gray-500">Tạm tính</p>
+                          <p className="text-sm font-bold text-amber-800">{formatCurrency(lunchPreview)}</p>
+                          <p className="text-xs text-gray-500">{formatNumber(calculateActualWorkDays(config.timeAttendance))} ngày công</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <NumberField
+                          label="Mức cố định/tháng"
+                          value={config.lunchAllowancePolicy.fixed_amount}
+                          onChange={(value) =>
+                            updateGroup('lunchAllowancePolicy', {
+                              ...config.lunchAllowancePolicy,
+                              fixed_amount: value,
+                            })
+                          }
+                        />
+                        <NumberField
+                          label="Trần/tháng (tối đa 500.000)"
+                          value={config.lunchAllowancePolicy.monthly_cap}
+                          onChange={(value) =>
+                            updateGroup('lunchAllowancePolicy', {
+                              ...config.lunchAllowancePolicy,
+                              monthly_cap: Math.min(Math.max(value, 0), MAX_LUNCH_ALLOWANCE_CAP),
+                            })
+                          }
+                        />
+                        <div className="rounded-md border border-amber-300 bg-amber-100 px-3 py-2">
+                          <p className="text-xs text-gray-500">Tạm tính</p>
+                          <p className="text-sm font-bold text-amber-800">{formatCurrency(lunchPreview)}</p>
+                        </div>
+                      </>
+                    )}
                   </div>
-
-                  {config.lunchAllowancePolicy.mode === 'actual_working_day' ? (
-                    <>
-                      <NumberField
-                        label="Mức chi mỗi ngày công"
-                        value={config.lunchAllowancePolicy.amount_per_work_day}
-                        onChange={(value) =>
-                          updateGroup('lunchAllowancePolicy', {
-                            ...config.lunchAllowancePolicy,
-                            amount_per_work_day: value,
-                          })
-                        }
-                      />
-                      <NumberField
-                        label="Trần/tháng (tối đa 500.000)"
-                        value={config.lunchAllowancePolicy.monthly_cap}
-                        onChange={(value) =>
-                          updateGroup('lunchAllowancePolicy', {
-                            ...config.lunchAllowancePolicy,
-                            monthly_cap: Math.min(Math.max(value, 0), MAX_LUNCH_ALLOWANCE_CAP),
-                          })
-                        }
-                      />
-                      <div className="rounded-md border border-amber-200 bg-white px-3 py-2">
-                        <p className="text-xs text-gray-500">Tạm tính phụ cấp trưa</p>
-                        <p className="text-base font-semibold text-amber-700">{formatCurrency(lunchPreview)}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Ngày công thực tế: {formatNumber(calculateActualWorkDays(config.timeAttendance))}
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <NumberField
-                        label="Mức cố định/tháng"
-                        value={config.lunchAllowancePolicy.fixed_amount}
-                        onChange={(value) =>
-                          updateGroup('lunchAllowancePolicy', {
-                            ...config.lunchAllowancePolicy,
-                            fixed_amount: value,
-                          })
-                        }
-                      />
-                      <NumberField
-                        label="Trần/tháng (tối đa 500.000)"
-                        value={config.lunchAllowancePolicy.monthly_cap}
-                        onChange={(value) =>
-                          updateGroup('lunchAllowancePolicy', {
-                            ...config.lunchAllowancePolicy,
-                            monthly_cap: Math.min(Math.max(value, 0), MAX_LUNCH_ALLOWANCE_CAP),
-                          })
-                        }
-                      />
-                      <div className="rounded-md border border-amber-200 bg-white px-3 py-2">
-                        <p className="text-xs text-gray-500">Tạm tính phụ cấp trưa</p>
-                        <p className="text-base font-semibold text-amber-700">{formatCurrency(lunchPreview)}</p>
-                      </div>
-                    </>
-                  )}
                 </div>
               </div>
 
-              <NumberField
-                label="Phụ cấp đi lại / xăng xe"
-                value={config.allowances.transport}
-                onChange={(value) => updateGroup('allowances', { ...config.allowances, transport: value })}
-              />
-              <NumberField
-                label="Phụ cấp điện thoại"
-                value={config.allowances.phone}
-                onChange={(value) => updateGroup('allowances', { ...config.allowances, phone: value })}
-              />
-              <NumberField
-                label="Phụ cấp nhà ở"
-                value={config.allowances.housing}
-                onChange={(value) => updateGroup('allowances', { ...config.allowances, housing: value })}
-              />
-              <NumberField
-                label="Phụ cấp trách nhiệm / chức vụ"
-                value={config.allowances.responsibility}
-                onChange={(value) => updateGroup('allowances', { ...config.allowances, responsibility: value })}
-              />
-              <NumberField
-                label="Phụ cấp độc hại / nguy hiểm"
-                value={config.allowances.hazardous}
-                onChange={(value) => updateGroup('allowances', { ...config.allowances, hazardous: value })}
-              />
+              {/* Phụ cấp gửi xe */}
+              <div className="rounded-lg border border-blue-200 bg-blue-50">
+                <div className="px-4 py-3 space-y-3">
+                  <p className="text-sm font-semibold text-blue-800">Phụ cấp gửi xe</p>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <SelectBox
+                      label="Hình thức"
+                      value={config.parkingAllowancePolicy.mode}
+                      options={[
+                        { value: 'none', label: 'Không có' },
+                        { value: 'daily', label: 'Vé ngày' },
+                        { value: 'monthly', label: 'Vé tháng' },
+                      ]}
+                      onChange={(value) =>
+                        updateGroup('parkingAllowancePolicy', {
+                          ...config.parkingAllowancePolicy,
+                          mode: value as ParkingAllowancePolicy['mode'],
+                        })
+                      }
+                    />
+                    {config.parkingAllowancePolicy.mode === 'daily' && (
+                      <>
+                        <NumberField
+                          label="Giá vé/ngày"
+                          value={config.parkingAllowancePolicy.daily_rate}
+                          onChange={(value) =>
+                            updateGroup('parkingAllowancePolicy', { ...config.parkingAllowancePolicy, daily_rate: value })
+                          }
+                        />
+                        <div className="rounded-md border border-blue-300 bg-blue-100 px-3 py-2">
+                          <p className="text-xs text-gray-500">Tạm tính</p>
+                          <p className="text-sm font-bold text-blue-800">
+                            {formatCurrency(calculateParkingAllowance(config.parkingAllowancePolicy, calculateActualWorkDays(config.timeAttendance)))}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {Math.ceil(calculateActualWorkDays(config.timeAttendance))} ngày × {config.parkingAllowancePolicy.daily_rate.toLocaleString('vi-VN')}đ
+                          </p>
+                        </div>
+                      </>
+                    )}
+                    {config.parkingAllowancePolicy.mode === 'monthly' && (
+                      <>
+                        <NumberField
+                          label="Giá vé tháng"
+                          value={config.parkingAllowancePolicy.monthly_rate}
+                          onChange={(value) =>
+                            updateGroup('parkingAllowancePolicy', { ...config.parkingAllowancePolicy, monthly_rate: value })
+                          }
+                        />
+                        <div className="rounded-md border border-blue-300 bg-blue-100 px-3 py-2">
+                          <p className="text-xs text-gray-500">Cố định/tháng</p>
+                          <p className="text-sm font-bold text-blue-800">{formatCurrency(config.parkingAllowancePolicy.monthly_rate)}</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Phụ cấp trách nhiệm */}
+              <div className="rounded-lg border border-purple-200 bg-purple-50">
+                <div className="px-4 py-3 space-y-3">
+                  <p className="text-sm font-semibold text-purple-800">Phụ cấp trách nhiệm / chức vụ</p>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <SelectBox
+                      label="Cơ chế chi trả"
+                      value={config.responsibilityAllowancePolicy.mode}
+                      options={[
+                        { value: 'none', label: 'Không có' },
+                        { value: 'fixed', label: 'Cố định theo tháng' },
+                        { value: 'actual_working_day', label: 'Theo ngày công thực tế' },
+                      ]}
+                      onChange={(value) =>
+                        updateGroup('responsibilityAllowancePolicy', {
+                          ...config.responsibilityAllowancePolicy,
+                          mode: value as ResponsibilityAllowancePolicy['mode'],
+                        })
+                      }
+                    />
+                    {config.responsibilityAllowancePolicy.mode !== 'none' && (
+                      <>
+                        <NumberField
+                          label={config.responsibilityAllowancePolicy.mode === 'fixed' ? 'Mức cố định/tháng' : 'Mức tối đa/tháng'}
+                          value={config.responsibilityAllowancePolicy.monthly_max}
+                          onChange={(value) =>
+                            updateGroup('responsibilityAllowancePolicy', { ...config.responsibilityAllowancePolicy, monthly_max: value })
+                          }
+                        />
+                        {config.responsibilityAllowancePolicy.mode === 'actual_working_day' && (
+                          <div className="rounded-md border border-purple-200 bg-white px-3 py-2">
+                            <p className="text-xs text-gray-500">Mức/ngày công</p>
+                            <p className="text-sm font-semibold text-purple-700">
+                              {config.timeAttendance.workingDays > 0
+                                ? formatCurrency(Math.round(config.responsibilityAllowancePolicy.monthly_max / config.timeAttendance.workingDays))
+                                : '—'}
+                            </p>
+                            <p className="text-xs text-gray-400">{config.timeAttendance.workingDays} công chuẩn</p>
+                          </div>
+                        )}
+                        <div className="rounded-md border border-purple-300 bg-purple-100 px-3 py-2">
+                          <p className="text-xs text-gray-500">Tạm tính</p>
+                          <p className="text-sm font-bold text-purple-800">
+                            {formatCurrency(calculateResponsibilityAllowance(
+                              config.responsibilityAllowancePolicy,
+                              calculateActualWorkDays(config.timeAttendance),
+                              config.timeAttendance.workingDays,
+                            ))}
+                          </p>
+                          {config.responsibilityAllowancePolicy.mode === 'actual_working_day' && (
+                            <p className="text-xs text-gray-500">{formatNumber(calculateActualWorkDays(config.timeAttendance))} ngày công</p>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
             </div>
           </SectionCard>
 
@@ -1271,40 +1598,36 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
 
           <SectionCard title="6. Khấu trừ (Deductions)">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Vùng lương tối thiểu</label>
-                <select
-                  value={config.taxPolicy.region}
-                  onChange={(event) =>
-                    updateGroup('taxPolicy', {
-                      ...config.taxPolicy,
-                      region: event.target.value as SalaryConfigurationValues['taxPolicy']['region'],
-                    })
-                  }
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="I">Vùng I</option>
-                  <option value="II">Vùng II</option>
-                  <option value="III">Vùng III</option>
-                  <option value="IV">Vùng IV</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mức lương đóng bảo hiểm</label>
-                <select
-                  value={config.taxPolicy.insuranceSalaryMode}
-                  onChange={(event) =>
-                    updateGroup('taxPolicy', {
-                      ...config.taxPolicy,
-                      insuranceSalaryMode: event.target.value as SalaryConfigurationValues['taxPolicy']['insuranceSalaryMode'],
-                    })
-                  }
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="official">Trên lương chính thức</option>
-                  <option value="custom">Khác</option>
-                </select>
-              </div>
+              <SelectBox
+                label="Vùng lương tối thiểu"
+                value={config.taxPolicy.region}
+                options={[
+                  { value: 'I', label: 'Vùng I' },
+                  { value: 'II', label: 'Vùng II' },
+                  { value: 'III', label: 'Vùng III' },
+                  { value: 'IV', label: 'Vùng IV' },
+                ]}
+                onChange={(value) =>
+                  updateGroup('taxPolicy', {
+                    ...config.taxPolicy,
+                    region: value as SalaryConfigurationValues['taxPolicy']['region'],
+                  })
+                }
+              />
+              <SelectBox
+                label="Mức lương đóng bảo hiểm"
+                value={config.taxPolicy.insuranceSalaryMode}
+                options={[
+                  { value: 'official', label: 'Trên lương chính thức' },
+                  { value: 'custom', label: 'Khác' },
+                ]}
+                onChange={(value) =>
+                  updateGroup('taxPolicy', {
+                    ...config.taxPolicy,
+                    insuranceSalaryMode: value as SalaryConfigurationValues['taxPolicy']['insuranceSalaryMode'],
+                  })
+                }
+              />
               {config.taxPolicy.insuranceSalaryMode === 'custom' ? (
                 <NumberField
                   label="Mức lương đóng BH tùy chỉnh"
@@ -1506,6 +1829,189 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
   );
 };
 
+// ─── Salary Config Import helpers ────────────────────────────────────────────
+
+function extractScCellNumber(raw: unknown): number {
+  if (raw === null || raw === undefined) return 0;
+  if (typeof raw === 'number') return raw;
+  if (typeof raw === 'object' && 'result' in (raw as object))
+    return extractScCellNumber((raw as { result: unknown }).result);
+  if (typeof raw === 'string') {
+    let s = raw.replace(/\s/g, '');
+    // 60.000.000 hoặc 60.000.000,50  →  dấu chấm là phân cách hàng nghìn
+    if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    // 60,000,000 hoặc 60,000,000.50  →  dấu phẩy là phân cách hàng nghìn
+    } else if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) {
+      s = s.replace(/,/g, '');
+    // 60000000 hoặc 60000.5  →  không có phân cách, giữ nguyên
+    }
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
+  return 0;
+}
+
+function extractScCellString(raw: unknown): string {
+  if (raw === null || raw === undefined) return '';
+  if (typeof raw === 'string') return raw.trim();
+  if (typeof raw === 'object' && 'result' in (raw as object))
+    return extractScCellString((raw as { result: unknown }).result);
+  return String(raw).trim();
+}
+
+/** Chuẩn hoá ngày hiệu lực về YYYY-MM-DD.
+ *  Nhận: Date object, "2026-01-15", "15/01/2026", "15-01-2026", "2026/01/15" */
+function normalizeEffectiveDate(raw: unknown): string {
+  if (raw === null || raw === undefined) return '';
+
+  // ExcelJS trả về Date object khi cell được format kiểu Date
+  if (raw instanceof Date) {
+    if (isNaN(raw.getTime())) return '';
+    const y = raw.getFullYear();
+    const m = String(raw.getMonth() + 1).padStart(2, '0');
+    const d = String(raw.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  if (typeof raw === 'object' && 'result' in (raw as object)) {
+    return normalizeEffectiveDate((raw as { result: unknown }).result);
+  }
+
+  const s = String(raw).trim();
+  if (!s) return '';
+
+  // YYYY-MM-DD hoặc YYYY/MM/DD
+  const isoMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  // DD/MM/YYYY hoặc DD-MM-YYYY (định dạng Việt Nam phổ biến)
+  const vnMatch = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (vnMatch) {
+    const [, d, m, y] = vnMatch;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  return s; // trả về nguyên bản để validate báo lỗi
+}
+
+const SC_LUNCH_MODE_MAP: Record<string, string> = {
+  'Cố định theo tháng': 'fixed',
+  'Theo ngày công thực tế': 'actual_working_day',
+};
+const SC_PARKING_MODE_MAP: Record<string, string> = {
+  'Không có': 'none', 'Vé ngày': 'daily', 'Vé tháng': 'monthly',
+};
+const SC_RESP_MODE_MAP: Record<string, string> = {
+  'Không có': 'none', 'Cố định theo tháng': 'fixed', 'Theo ngày công thực tế': 'actual_working_day',
+};
+const SC_INS_MODE_MAP: Record<string, string> = {
+  'Theo lương chính thức': 'official', 'Tùy chỉnh': 'custom',
+};
+
+async function downloadSalaryConfigTemplate() {
+  const ExcelJS = (await import('exceljs')).default;
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Cấu Hình Lương');
+  ws.columns = [
+    { header: 'Mã nhân viên',               key: 'a', width: 18 },
+    { header: 'Ngày hiệu lực (YYYY-MM-DD)',  key: 'b', width: 22 },
+    { header: 'Lương cơ bản',               key: 'c', width: 18 },
+    { header: 'Hệ số lương',                key: 'd', width: 14 },
+    { header: 'PC Ăn trưa - Chế độ',        key: 'e', width: 26 },
+    { header: 'PC Ăn trưa - Mức/tháng',     key: 'f', width: 22 },
+    { header: 'PC Gửi xe - Chế độ',         key: 'g', width: 22 },
+    { header: 'PC Gửi xe - Giá vé',         key: 'h', width: 18 },
+    { header: 'PC Trách nhiệm - Chế độ',    key: 'i', width: 26 },
+    { header: 'PC Trách nhiệm - Mức/tháng', key: 'j', width: 26 },
+    { header: 'Vùng lương tối thiểu',        key: 'k', width: 20 },
+    { header: 'Chế độ đóng bảo hiểm',       key: 'l', width: 26 },
+    { header: 'Mức lương đóng BH tùy chỉnh', key: 'm', width: 28 },
+    { header: 'Số người phụ thuộc',          key: 'n', width: 20 },
+    { header: 'Phí công đoàn',              key: 'o', width: 16 },
+  ];
+  ws.getRow(1).eachCell((cell) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } };
+    cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+  });
+  ws.getRow(1).height = 36;
+  for (let r = 2; r <= 500; r++) {
+    ws.getCell(`E${r}`).dataValidation = { type: 'list', formulae: ['"Cố định theo tháng,Theo ngày công thực tế"'], showErrorMessage: true };
+    ws.getCell(`G${r}`).dataValidation = { type: 'list', formulae: ['"Không có,Vé ngày,Vé tháng"'], showErrorMessage: true };
+    ws.getCell(`I${r}`).dataValidation = { type: 'list', formulae: ['"Không có,Cố định theo tháng,Theo ngày công thực tế"'], showErrorMessage: true };
+    ws.getCell(`K${r}`).dataValidation = { type: 'list', formulae: ['"I,II,III,IV"'], showErrorMessage: true };
+    ws.getCell(`L${r}`).dataValidation = { type: 'list', formulae: ['"Theo lương chính thức,Tùy chỉnh"'], showErrorMessage: true };
+  }
+  const exRow = ws.addRow(['NV001', '2026-01-01', 8000000, 1, 'Theo ngày công thực tế', 500000, 'Vé ngày', 20000, 'Cố định theo tháng', 1000000, 'I', 'Theo lương chính thức', 0, 0, 10000]);
+  exRow.eachCell((cell) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+    cell.font = { color: { argb: 'FF9CA3AF' }, italic: true };
+  });
+  const buf = await wb.xlsx.writeBuffer();
+  const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const a = document.createElement('a'); a.href = url; a.download = 'template_cau_hinh_luong.xlsx'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function parseSalaryConfigExcel(file: File): Promise<{ rows: ParsedSalaryConfigRow[]; error: string | null }> {
+  try {
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await file.arrayBuffer());
+    const ws = wb.worksheets[0];
+    if (!ws) return { rows: [], error: 'File không có sheet nào.' };
+    const rows: ParsedSalaryConfigRow[] = [];
+    ws.eachRow((row, idx) => {
+      if (idx === 1) return;
+      const code = row.getCell(1).value != null ? String(row.getCell(1).value).trim() : '';
+      if (!code) return;
+      const effectiveDate = normalizeEffectiveDate(row.getCell(2).value);
+      const errors: string[] = [];
+      if (!effectiveDate) {
+        errors.push('Thiếu ngày hiệu lực');
+      } else if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) {
+        errors.push(`Ngày hiệu lực không hợp lệ: "${effectiveDate}" (dùng YYYY-MM-DD hoặc DD/MM/YYYY)`);
+      }
+      const lunchRaw   = extractScCellString(row.getCell(5).value);
+      const parkRaw    = extractScCellString(row.getCell(7).value);
+      const respRaw    = extractScCellString(row.getCell(9).value);
+      const regionRaw  = extractScCellString(row.getCell(11).value);
+      const insRaw     = extractScCellString(row.getCell(12).value);
+      if (lunchRaw  && !SC_LUNCH_MODE_MAP[lunchRaw])   errors.push(`PC ăn trưa: "${lunchRaw}" không hợp lệ`);
+      if (parkRaw   && !SC_PARKING_MODE_MAP[parkRaw])  errors.push(`PC gửi xe: "${parkRaw}" không hợp lệ`);
+      if (respRaw   && !SC_RESP_MODE_MAP[respRaw])     errors.push(`PC TN: "${respRaw}" không hợp lệ`);
+      if (regionRaw && !['I','II','III','IV'].includes(regionRaw)) errors.push(`Vùng: "${regionRaw}" không hợp lệ`);
+      if (insRaw    && !SC_INS_MODE_MAP[insRaw])       errors.push(`BH: "${insRaw}" không hợp lệ`);
+      const parsed: ParsedSalaryConfigRow = {
+        employee_code: code, effective_date: effectiveDate, rowIndex: idx,
+        parseError: errors.length ? errors.join('; ') : undefined,
+      };
+      const bs = extractScCellNumber(row.getCell(3).value); if (bs > 0) parsed.basic_salary = bs;
+      const sf = extractScCellNumber(row.getCell(4).value); if (sf > 0) parsed.salary_factor = sf;
+      if (lunchRaw)  { parsed.lunch_mode = SC_LUNCH_MODE_MAP[lunchRaw] ?? lunchRaw; }
+      const la = extractScCellNumber(row.getCell(6).value);  if (la > 0) parsed.lunch_amount = la;
+      if (parkRaw)   { parsed.parking_mode = SC_PARKING_MODE_MAP[parkRaw] ?? parkRaw; }
+      const pr = extractScCellNumber(row.getCell(8).value);  if (pr > 0) parsed.parking_rate = pr;
+      if (respRaw)   { parsed.responsibility_mode = SC_RESP_MODE_MAP[respRaw] ?? respRaw; }
+      const ra = extractScCellNumber(row.getCell(10).value); if (ra > 0) parsed.responsibility_amount = ra;
+      if (regionRaw) parsed.region = regionRaw;
+      if (insRaw)    parsed.insurance_mode = SC_INS_MODE_MAP[insRaw] ?? insRaw;
+      const io = extractScCellNumber(row.getCell(13).value); if (io > 0) parsed.insurance_override = io;
+      const dc = row.getCell(14).value; if (dc != null) parsed.dependent_count = extractScCellNumber(dc);
+      const uf = row.getCell(15).value; if (uf != null) parsed.union_fee = extractScCellNumber(uf);
+      rows.push(parsed);
+    });
+    if (!rows.length) return { rows: [], error: 'File không có dữ liệu.' };
+    return { rows, error: null };
+  } catch {
+    return { rows: [], error: 'Không thể đọc file.' };
+  }
+}
+
 const SalaryManagement: React.FC<SalaryManagementProps> = ({
   defaultTab = 'config',
   lockTab = false,
@@ -1527,6 +2033,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
   const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>([]);
   const [payslipRecord, setPayslipRecord] = useState<SalaryRecord | null>(null);
+  const [payslipEmployee, setPayslipEmployee] = useState<Employee | null>(null);
+  const [payslipPenalties, setPayslipPenalties] = useState<PenaltyRecord[]>([]);
+  const [payslipCommissions, setPayslipCommissions] = useState<CommissionRecord[]>([]);
   const [loadingSalary, setLoadingSalary] = useState(false);
   const [salaryError, setSalaryError] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
@@ -1535,6 +2044,16 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [searchSalary, setSearchSalary] = useState('');
 
   const [departments, setDepartments] = useState<Department[]>([]);
+
+  // ── Import cấu hình lương dialog ──
+  const [showImportDialog, setShowImportDialog]   = useState(false);
+  const [scFile,           setScFile]             = useState<File | null>(null);
+  const [scParsedRows,     setScParsedRows]       = useState<ParsedSalaryConfigRow[] | null>(null);
+  const [scParsing,        setScParsing]          = useState(false);
+  const [scParseError,     setScParseError]       = useState<string | null>(null);
+  const [scImporting,      setScImporting]        = useState(false);
+  const [scImportMsg,      setScImportMsg]        = useState<{ ok: string | null; err: string | null }>({ ok: null, err: null });
+  const scFileRef = React.useRef<HTMLInputElement>(null);
 
   const PAGE_SIZE = 20;
 
@@ -1548,6 +2067,63 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       .then((res) => setDepartments(res.results))
       .catch(() => undefined);
   }, []);
+
+  // ── Import config handlers ─────────────────────────────────────────────────
+
+  const handleScFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.name.match(/\.xlsx$/i)) { setScParseError('Chỉ chấp nhận file .xlsx'); return; }
+    setScFile(f); setScParseError(null); setScParsedRows(null); setScImportMsg({ ok: null, err: null }); setScParsing(true);
+    const { rows, error } = await parseSalaryConfigExcel(f);
+    setScParsing(false);
+    if (error) { setScParseError(error); return; }
+    setScParsedRows(rows);
+  };
+
+  const handleScImport = async () => {
+    if (!scParsedRows) return;
+    const valid = scParsedRows.filter((r) => !r.parseError);
+    if (!valid.length) return;
+    setScImporting(true);
+    try {
+      const records: BulkSalaryConfigRecord[] = valid.map((r) => {
+        const rec: BulkSalaryConfigRecord = { employee_code: r.employee_code, effective_date: r.effective_date };
+        if (r.basic_salary         !== undefined) rec.basic_salary         = r.basic_salary;
+        if (r.salary_factor        !== undefined) rec.salary_factor        = r.salary_factor;
+        if (r.lunch_mode           !== undefined) rec.lunch_mode           = r.lunch_mode;
+        if (r.lunch_amount         !== undefined) rec.lunch_amount         = r.lunch_amount;
+        if (r.parking_mode         !== undefined) rec.parking_mode         = r.parking_mode;
+        if (r.parking_rate         !== undefined) rec.parking_rate         = r.parking_rate;
+        if (r.responsibility_mode  !== undefined) rec.responsibility_mode  = r.responsibility_mode;
+        if (r.responsibility_amount !== undefined) rec.responsibility_amount = r.responsibility_amount;
+        if (r.region               !== undefined) rec.region               = r.region;
+        if (r.insurance_mode       !== undefined) rec.insurance_mode       = r.insurance_mode;
+        if (r.insurance_override   !== undefined) rec.insurance_override   = r.insurance_override;
+        if (r.dependent_count      !== undefined) rec.dependent_count      = r.dependent_count;
+        if (r.union_fee            !== undefined) rec.union_fee            = r.union_fee;
+        return rec;
+      });
+      const res = await salaryService.bulkImportSalaryConfig(records);
+      const ok  = res.success.length > 0 ? `Cập nhật thành công ${res.success.length} nhân viên.` : null;
+      const err = res.errors.length   > 0 ? `${res.errors.length} lỗi: ${res.errors.map((e) => e.employee_code).join(', ')}` : null;
+      setScImportMsg({ ok, err });
+      setScParsedRows(null); setScFile(null);
+      if (scFileRef.current) scFileRef.current.value = '';
+      if (res.success.length > 0) loadEmployees();
+    } catch {
+      setScImportMsg({ ok: null, err: 'Lỗi kết nối máy chủ.' });
+    } finally {
+      setScImporting(false);
+    }
+  };
+
+  const handleCloseImportDialog = () => {
+    setShowImportDialog(false);
+    setScParsedRows(null); setScFile(null); setScParseError(null);
+    setScImportMsg({ ok: null, err: null });
+    if (scFileRef.current) scFileRef.current.value = '';
+  };
 
   const loadEmployees = useCallback(
     async (page = 1) => {
@@ -1698,8 +2274,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         {activeTab === 'config' && (
           <div className="space-y-4">
             <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 relative">
+              <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+                <div className="flex-1 relative min-w-48">
                   <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
@@ -1711,19 +2287,23 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                   <FunnelIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                  <select
+                  <SelectBox
+                    label=""
                     value={deptFilterConfig}
-                    onChange={(event) => setDeptFilterConfig(event.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-                  >
-                    <option value="">Tất cả phòng ban</option>
-                    {departments.map((department) => (
-                      <option key={department.id} value={String(department.id)}>
-                        {department.name}
-                      </option>
-                    ))}
-                  </select>
+                    options={[
+                      { value: '', label: 'Tất cả phòng ban' },
+                      ...departments.map((d) => ({ value: String(d.id), label: d.name })),
+                    ]}
+                    onChange={(value) => setDeptFilterConfig(value)}
+                  />
                 </div>
+                <button
+                  onClick={() => { setShowImportDialog(true); setScImportMsg({ ok: null, err: null }); }}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors whitespace-nowrap"
+                >
+                  <ArrowUpTrayIcon className="h-4 w-4" />
+                  Nhập cấu hình lương
+                </button>
               </div>
             </div>
 
@@ -1979,7 +2559,28 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           </td>
                           <td className="px-3 py-3 text-center">
                             <button
-                              onClick={() => setPayslipRecord(record)}
+                              onClick={async () => {
+                                setPayslipRecord(record);
+                                setPayslipEmployee(null);
+                                setPayslipPenalties([]);
+                                setPayslipCommissions([]);
+                                const [emp, allPenalties, allCommissions] = await Promise.allSettled([
+                                  salaryService.getEmployeeSalaryConfig(record.employee_id),
+                                  salaryService.listPenalties({ year: record.year, month: record.month }),
+                                  salaryService.listCommissions({ year: record.year, month: record.month }),
+                                ]);
+                                if (emp.status === 'fulfilled') setPayslipEmployee(emp.value);
+                                if (allPenalties.status === 'fulfilled') {
+                                  setPayslipPenalties(
+                                    allPenalties.value.filter((p) => p.employee === record.employee_id)
+                                  );
+                                }
+                                if (allCommissions.status === 'fulfilled') {
+                                  setPayslipCommissions(
+                                    allCommissions.value.filter((c) => c.employee === record.employee_id)
+                                  );
+                                }
+                              }}
                               className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 hover:text-indigo-800 transition-colors"
                               title="Xem phiếu lương chi tiết"
                             >
@@ -2010,8 +2611,180 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       {payslipRecord && (
         <PayslipDetailModal
           record={payslipRecord}
-          onClose={() => setPayslipRecord(null)}
+          employee={payslipEmployee ?? undefined}
+          penalties={payslipPenalties}
+          commissions={payslipCommissions}
+          onClose={() => { setPayslipRecord(null); setPayslipEmployee(null); setPayslipPenalties([]); setPayslipCommissions([]); }}
         />
+      )}
+
+      {/* ── Import cấu hình lương dialog ── */}
+      {showImportDialog && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50" onClick={handleCloseImportDialog}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Nhập cấu hình lương</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Cập nhật hàng loạt cấu hình tính lương từ file Excel</p>
+              </div>
+              <button onClick={handleCloseImportDialog} className="p-1.5 rounded-md hover:bg-gray-100 transition-colors">
+                <XMarkIcon className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              {/* Toast messages */}
+              {scImportMsg.ok && (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+                  <CheckIcon className="h-4 w-4 flex-shrink-0" />{scImportMsg.ok}
+                  <button className="ml-auto" onClick={() => setScImportMsg((m) => ({ ...m, ok: null }))}><XMarkIcon className="h-4 w-4" /></button>
+                </div>
+              )}
+              {scImportMsg.err && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+                  <ExclamationCircleIcon className="h-4 w-4 flex-shrink-0" />{scImportMsg.err}
+                  <button className="ml-auto" onClick={() => setScImportMsg((m) => ({ ...m, err: null }))}><XMarkIcon className="h-4 w-4" /></button>
+                </div>
+              )}
+
+              {/* Action bar */}
+              <div className="flex flex-wrap gap-3 items-center">
+                <button
+                  onClick={downloadSalaryConfigTemplate}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4" />Tải file mẫu
+                </button>
+                <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-indigo-300 text-indigo-700 bg-indigo-50 rounded-md hover:bg-indigo-100 cursor-pointer transition-colors">
+                  <ArrowUpTrayIcon className="h-4 w-4" />
+                  {scFile ? scFile.name : 'Chọn file Excel (.xlsx)'}
+                  <input ref={scFileRef} type="file" accept=".xlsx" className="hidden" onChange={handleScFileChange} />
+                </label>
+                {scParsing && (
+                  <span className="flex items-center gap-1.5 text-sm text-gray-500">
+                    <ArrowPathIcon className="h-4 w-4 animate-spin" />Đang đọc file...
+                  </span>
+                )}
+              </div>
+
+              {scParseError && (
+                <p className="flex items-center gap-1 text-sm text-red-600">
+                  <ExclamationCircleIcon className="h-4 w-4" />{scParseError}
+                </p>
+              )}
+
+              {/* Preview table */}
+              {scParsedRows && !scParsing && (
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex justify-between text-sm">
+                    <span className="font-medium text-gray-700">
+                      Xem trước — {scParsedRows.length} dòng
+                      {scParsedRows.filter((r) => r.parseError).length > 0 && (
+                        <span className="text-red-500"> · {scParsedRows.filter((r) => r.parseError).length} lỗi</span>
+                      )}
+                      {scParsedRows.filter((r) => !r.parseError).length > 0 && (
+                        <span className="text-green-600"> · {scParsedRows.filter((r) => !r.parseError).length} hợp lệ</span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-8">#</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mã NV</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ngày HL</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lương CB</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Hệ số</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">PC Ăn trưa</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">PC Gửi xe</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">PC Trách nhiệm</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Vùng</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">BH</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Người PT</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">CĐ</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {scParsedRows.map((row, i) => (
+                          <tr key={row.rowIndex} className={row.parseError ? 'bg-red-50' : 'hover:bg-gray-50'}>
+                            <td className="px-3 py-2 text-gray-400 text-xs">{i + 1}</td>
+                            <td className="px-3 py-2 font-mono font-medium text-gray-800">{row.employee_code}</td>
+                            <td className="px-3 py-2 text-gray-700">{row.effective_date || '—'}</td>
+                            <td className="px-3 py-2 text-right text-gray-700">{row.basic_salary ? row.basic_salary.toLocaleString('vi-VN') : '—'}</td>
+                            <td className="px-3 py-2 text-right text-gray-700">{row.salary_factor ?? '—'}</td>
+                            <td className="px-3 py-2 text-gray-700 text-xs">
+                              {row.lunch_mode
+                                ? `${row.lunch_mode === 'fixed' ? 'Cố định' : 'Thực tế'}${row.lunch_amount ? ' / ' + row.lunch_amount.toLocaleString('vi-VN') : ''}`
+                                : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-gray-700 text-xs">
+                              {row.parking_mode
+                                ? `${row.parking_mode === 'none' ? 'Không' : row.parking_mode === 'daily' ? 'Ngày' : 'Tháng'}${row.parking_rate ? ' / ' + row.parking_rate.toLocaleString('vi-VN') : ''}`
+                                : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-gray-700 text-xs">
+                              {row.responsibility_mode
+                                ? `${row.responsibility_mode === 'none' ? 'Không' : row.responsibility_mode === 'fixed' ? 'Cố định' : 'Thực tế'}${row.responsibility_amount ? ' / ' + row.responsibility_amount.toLocaleString('vi-VN') : ''}`
+                                : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-gray-700">{row.region ?? '—'}</td>
+                            <td className="px-3 py-2 text-gray-700 text-xs">
+                              {row.insurance_mode === 'official' ? 'Chính thức' : row.insurance_mode === 'custom' ? 'Tùy chỉnh' : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-right text-gray-700">{row.dependent_count ?? '—'}</td>
+                            <td className="px-3 py-2 text-right text-gray-700">
+                              {row.union_fee != null ? row.union_fee.toLocaleString('vi-VN') : '—'}
+                            </td>
+                            <td className="px-3 py-2">
+                              {row.parseError
+                                ? <span className="inline-flex items-center gap-1 text-xs text-red-600"><ExclamationCircleIcon className="h-3.5 w-3.5" />{row.parseError}</span>
+                                : <span className="inline-flex items-center gap-1 text-xs text-green-600"><CheckIcon className="h-3.5 w-3.5" />Hợp lệ</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Info note khi chưa có file */}
+              {!scParsedRows && !scParsing && !scParseError && (
+                <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-4 text-sm text-indigo-700">
+                  <p className="font-medium mb-1">Hướng dẫn</p>
+                  <ul className="list-disc list-inside space-y-1 text-indigo-600">
+                    <li>Tải file mẫu, điền thông tin — dropdown đã có danh sách chọn sẵn</li>
+                    <li>Chỉ cần điền các cột muốn cập nhật; cột bỏ trống giữ nguyên cấu hình cũ</li>
+                    <li><strong>Mã nhân viên</strong> và <strong>Ngày hiệu lực</strong> là bắt buộc</li>
+                    <li>PC Gửi xe — Giá vé: nhập giá vé ngày (Vé ngày) hoặc giá vé tháng (Vé tháng)</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button onClick={handleCloseImportDialog} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+                Đóng
+              </button>
+              {scParsedRows && scParsedRows.filter((r) => !r.parseError).length > 0 && (
+                <button
+                  onClick={handleScImport}
+                  disabled={scImporting}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+                >
+                  {scImporting ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
+                  {scImporting ? 'Đang cập nhật...' : `Xác nhận import (${scParsedRows.filter((r) => !r.parseError).length} dòng)`}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
