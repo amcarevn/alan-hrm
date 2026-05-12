@@ -1,5 +1,5 @@
 import { managementApi } from '../utils/api';
-import type { Employee } from '../utils/api';
+import type { Department, Employee } from '../utils/api';
 
 export interface SalaryFormulaConfig {
   employee_id: number;
@@ -227,6 +227,11 @@ export interface BulkSalaryConfigResponse {
 }
 
 class SalaryService {
+  async listSalaryDepartments(): Promise<Pick<Department, 'id' | 'name' | 'code'>[]> {
+    const response = await managementApi.get('/api/v1/salary/records/departments/');
+    return response.data;
+  }
+
   async getSalaryByDepartment(params: {
     year: number;
     month: number;

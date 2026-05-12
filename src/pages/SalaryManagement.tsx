@@ -18,7 +18,7 @@ import {
   ArrowUpTrayIcon,
   QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
-import { departmentsAPI, employeesAPI } from '../utils/api';
+import { employeesAPI } from '../utils/api';
 import type { Department, Employee } from '../utils/api';
 import { salaryService, SalaryFormulaUpdateData, SalaryRecord, PenaltyRecord, CommissionRecord, type BulkSalaryConfigRecord } from '../services/salary.service';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
@@ -2481,9 +2481,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   }, [defaultTab]);
 
   useEffect(() => {
-    departmentsAPI
-      .list({ page_size: 100 })
-      .then((res) => setDepartments(res.results))
+    salaryService
+      .listSalaryDepartments()
+      .then((res) => setDepartments(res as Department[]))
       .catch(() => undefined);
   }, []);
 
