@@ -2347,7 +2347,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loadingEmployeeConfig, setLoadingEmployeeConfig] = useState<number | null>(null);
 
+  const SALARY_PAGE_SIZE = 20;
   const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>([]);
+  const [salaryPage, setSalaryPage] = useState(1);
   const [payslipRecord, setPayslipRecord] = useState<SalaryRecord | null>(null);
   const [payslipEmployee, setPayslipEmployee] = useState<Employee | null>(null);
   const [payslipPenalties, setPayslipPenalties] = useState<PenaltyRecord[]>([]);
@@ -2581,6 +2583,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         employee_code: searchSalary || undefined,
       });
       setSalaryRecords(res.results ?? []);
+      setSalaryPage(1);
     } catch (error: unknown) {
       const normalizedError = error as { response?: { status?: number } };
       if (normalizedError?.response?.status === 404) {
@@ -2630,6 +2633,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   };
 
   const totalConfigPages = Math.ceil(configTotal / PAGE_SIZE);
+  const totalSalaryPages = Math.ceil(salaryRecords.length / SALARY_PAGE_SIZE);
+  const pagedSalaryRecords = salaryRecords.slice((salaryPage - 1) * SALARY_PAGE_SIZE, salaryPage * SALARY_PAGE_SIZE);
   const yearOptions = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -2959,7 +2964,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-100">
-                      {salaryRecords.map((record) => {
+                      {pagedSalaryRecords.map((record) => {
                         const employee = employees.find((e) => e.id === record.employee_id);
                         const recordTaxComputation = calculatePayrollTaxFromRecord(record, employee);
                         const recordTax = recordTaxComputation.taxAmount;
@@ -3019,6 +3024,30 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       })}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {totalSalaryPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+                  <p className="text-sm text-gray-500">
+                    Trang {salaryPage} / {totalSalaryPages} · {salaryRecords.length} nhân viên
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSalaryPage((p) => p - 1)}
+                      disabled={salaryPage === 1}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50"
+                    >
+                      Trước
+                    </button>
+                    <button
+                      onClick={() => setSalaryPage((p) => p + 1)}
+                      disabled={salaryPage === totalSalaryPages}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50"
+                    >
+                      Sau
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
