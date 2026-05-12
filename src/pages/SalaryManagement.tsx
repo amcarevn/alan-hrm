@@ -974,7 +974,8 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
     ? toNumber(savedTaxPolicy.insuranceSalaryOverride)
     : toNumber(savedBaseSalary?.amount) * Math.max(toNumber(savedBaseSalary?.factor, 1), 1);
 
-  const mucLuongDongBH = savedOutput?.insuranceSalaryBase
+  const mucLuongDongBH = (record as unknown as Record<string, number>)['muc_luong_dong_bh']
+    ?? savedOutput?.insuranceSalaryBase
     ?? (mucLuongDongBHFromConfig || (record.luong_co_ban ?? 0));
 
   const socialInsurance = Math.round(savedOutput?.socialInsurance ?? mucLuongDongBH * EMPLOYEE_SOCIAL_INSURANCE_RATE);
