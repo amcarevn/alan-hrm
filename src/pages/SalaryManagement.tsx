@@ -2461,6 +2461,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   } | null>(null);
   const [loadingTotalSalary, setLoadingTotalSalary] = useState(false);
   const [totalSalaryError, setTotalSalaryError] = useState<string | null>(null);
+  const [exportingPayroll, setExportingPayroll] = useState(false);
+  const [showPayrollPreviewModal, setShowPayrollPreviewModal] = useState(false);
 
   // ── Import cấu hình lương dialog ──
   const [showImportDialog, setShowImportDialog]   = useState(false);
@@ -2631,6 +2633,396 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
     const a = document.createElement('a'); a.href = url; a.download = 'cau_hinh_luong_loi.xlsx'; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const payrollDetailRows = useMemo(() => {
+    return salaryRecords.map((record) => {
+      const employee = employees.find((e) => e.id === record.employee_id);
+      const recordCommissions = salaryCommissions.filter((item) => item.employee === record.employee_id);
+      const payslipComputation = calculatePayslipNetPayable(record, employee, recordCommissions);
+      const payrollTax = payslipComputation.payrollTax;
+
+      const stdDays = getStandardWorkDays(record.year, record.month);
+      const luongCoBan = record.luong_co_ban ?? 0;
+      const luongNgayCongThucTe = stdDays > 0 ? Math.round((luongCoBan / stdDays) * (record.tong_cong ?? 0)) : 0;
+      const luongTangCa = record.luong_tang_ca ?? 0;
+      const luongTrucCa = record.truc_toi ?? 0;
+      const luongDoanhSo = getSalesCommissionAmount(record, recordCommissions);
+      const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
+      const thuong = (record as unknown as Record<string, number>)['thuong'] ?? 0;
+      const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
+
+      const savedAdjustments = employee ? (employee.salary_adjustments as Record<string, unknown> | undefined) : undefined;
+      const savedConfig = savedAdjustments?.payroll_config as Record<string, unknown> | undefined;
+
+      const savedParkingPolicyRaw = savedConfig?.parkingAllowancePolicy as Record<string, unknown> | undefined;
+      const parkingPolicy: ParkingAllowancePolicy | null = savedParkingPolicyRaw
+        ? {
+            mode: savedParkingPolicyRaw.mode === 'daily' ? 'daily' : savedParkingPolicyRaw.mode === 'monthly' ? 'monthly' : 'none',
+            daily_rate: toNumber(savedParkingPolicyRaw.daily_rate, 5000),
+            monthly_rate: toNumber(savedParkingPolicyRaw.monthly_rate, 0),
+          }
+        : null;
+      const phuCapGuiXe = parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : (record.phu_cap_gui_xe ?? 0);
+
+      const savedLunchPolicyRaw = (savedConfig?.lunchAllowancePolicy as Record<string, unknown> | undefined);
+      const lunchPolicy: LunchAllowancePolicy | null = savedLunchPolicyRaw
+        ? {
+            mode: savedLunchPolicyRaw.mode === 'actual_working_day' ? 'actual_working_day' : 'fixed',
+            fixed_amount: toNumber(savedLunchPolicyRaw.fixed_amount),
+            amount_per_work_day: toNumber(savedLunchPolicyRaw.amount_per_work_day),
+            monthly_cap: toNumber(savedLunchPolicyRaw.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP),
+          }
+        : null;
+      const phuCapAnTrua = toNumber(
+        (record as unknown as Record<string, unknown>)['phu_cap_an_trua'],
+        lunchPolicy ? calculateLunchAllowance(lunchPolicy, record.tong_cong ?? 0, stdDays) : 0,
+      );
+
+      const savedRespPolicyRaw = savedConfig?.responsibilityAllowancePolicy as Record<string, unknown> | undefined;
+      const respPolicy: ResponsibilityAllowancePolicy | null = savedRespPolicyRaw
+        ? {
+            mode: savedRespPolicyRaw.mode === 'fixed' ? 'fixed' : savedRespPolicyRaw.mode === 'actual_working_day' ? 'actual_working_day' : 'none',
+            monthly_max: toNumber(savedRespPolicyRaw.monthly_max),
+          }
+        : null;
+      const phuCapTrachNhiem = respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0;
+
+      const phuCapKhacFromRecord = (record as unknown as Record<string, number>)['phu_cap_khac'] ?? 0;
+      const phuCapKhacRemainder = Math.max(
+        phuCapKhacFromRecord,
+        Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0),
+      );
+      const tongPhuCapIV = phuCapGuiXe + phuCapAnTrua + phuCapTrachNhiem + phuCapKhacRemainder;
+      const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
+
+      const bhxh = payrollTax.socialInsurance;
+      const bhyt = payrollTax.healthInsurance;
+      const bhtn = payrollTax.unemploymentInsurance;
+      const tongBH = payrollTax.insuranceTotal;
+      const congDoan = toNumber((record as unknown as Record<string, number>)['cong_doan'],
+        (savedConfig?.deductions as Record<string, number> | undefined)?.unionFee ?? 0);
+      const tongPhat = record.tong_phat ?? 0;
+      const tongPhatBienBan = record.tong_phat_bienban ?? 0;
+      const tongGiamTruVII = tongBH + congDoan + tongPhat + tongPhatBienBan;
+      const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
+      const tamUng = record.tam_ung ?? 0;
+      const thue = payrollTax.taxAmount;
+
+      return {
+        ma_nv: record.ma_nv,
+        ho_va_ten: record.ho_va_ten,
+        phong_ban: record.phong_ban ?? '',
+        year: record.year,
+        month: record.month,
+        luong_co_ban: Math.round(luongCoBan),
+        cong_chuan: stdDays,
+        tong_cong: Math.round(record.tong_cong ?? 0),
+        luong_ngay_cong: Math.round(luongNgayCongThucTe),
+        luong_doanh_so: Math.round(luongDoanhSo),
+        luong_tang_ca: Math.round(luongTangCa),
+        luong_truc_ca: Math.round(luongTrucCa),
+        thu_nhap_khac: Math.round(thuNhapKhac),
+        tong_luong_iii: Math.round(tongLuongIII),
+        phu_cap_gui_xe: Math.round(phuCapGuiXe),
+        phu_cap_an_trua: Math.round(phuCapAnTrua),
+        phu_cap_trach_nhiem: Math.round(phuCapTrachNhiem),
+        phu_cap_khac: Math.round(phuCapKhacRemainder),
+        tong_phu_cap_iv: Math.round(tongPhuCapIV),
+        thuong: Math.round(thuong),
+        tong_thu_nhap_vi: Math.round(tongThuNhapVI),
+        bhxh: Math.round(bhxh),
+        bhyt: Math.round(bhyt),
+        bhtn: Math.round(bhtn),
+        tong_bh: Math.round(tongBH),
+        cong_doan: Math.round(congDoan),
+        tong_phat: Math.round(tongPhat),
+        tong_phat_bienban: Math.round(tongPhatBienBan),
+        tong_giam_tru_vii: Math.round(tongGiamTruVII),
+        dieu_chinh: Math.round(dieuChinhVIII),
+        thue_tncn: Math.round(thue),
+        tam_ung: Math.round(tamUng),
+        luong_thuc_linh: Math.round(payslipComputation.luongThucLinh),
+        con_phai_thanh_toan: Math.round(payslipComputation.conPhaiThanhToan),
+      };
+    });
+  }, [salaryRecords, employees, salaryCommissions]);
+
+  const handleExportPayrollExcel = async () => {
+    if (!salaryRecords.length || exportingPayroll) return;
+
+    setExportingPayroll(true);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('Bang Luong Chi Tiet');
+
+      ws.columns = [
+        { header: 'Mã NV', key: 'ma_nv', width: 14 },
+        { header: 'Họ và tên', key: 'ho_va_ten', width: 24 },
+        { header: 'Phòng ban', key: 'phong_ban', width: 18 },
+        { header: 'Năm', key: 'year', width: 8 },
+        { header: 'Tháng', key: 'month', width: 8 },
+        { header: 'Lương cơ bản', key: 'luong_co_ban', width: 16 },
+        { header: 'Công chuẩn', key: 'cong_chuan', width: 12 },
+        { header: 'Tổng công', key: 'tong_cong', width: 12 },
+        { header: 'Lương ngày công thực tế', key: 'luong_ngay_cong', width: 20 },
+        { header: 'Lương doanh số', key: 'luong_doanh_so', width: 16 },
+        { header: 'Lương tăng ca', key: 'luong_tang_ca', width: 14 },
+        { header: 'Lương trực ca', key: 'luong_truc_ca', width: 14 },
+        { header: 'Thu nhập khác', key: 'thu_nhap_khac', width: 14 },
+        { header: 'Tổng khoản lương (III)', key: 'tong_luong_iii', width: 18 },
+        { header: 'PC gửi xe', key: 'phu_cap_gui_xe', width: 14 },
+        { header: 'PC ăn trưa', key: 'phu_cap_an_trua', width: 14 },
+        { header: 'PC trách nhiệm', key: 'phu_cap_trach_nhiem', width: 16 },
+        { header: 'PC khác', key: 'phu_cap_khac', width: 14 },
+        { header: 'Tổng phụ cấp (IV)', key: 'tong_phu_cap_iv', width: 16 },
+        { header: 'Thưởng', key: 'thuong', width: 12 },
+        { header: 'Tổng thu nhập (VI)', key: 'tong_thu_nhap_vi', width: 18 },
+        { header: 'BHXH', key: 'bhxh', width: 12 },
+        { header: 'BHYT', key: 'bhyt', width: 12 },
+        { header: 'BHTN', key: 'bhtn', width: 12 },
+        { header: 'Tổng BH', key: 'tong_bh', width: 12 },
+        { header: 'Công đoàn', key: 'cong_doan', width: 12 },
+        { header: 'Phạt đi muộn', key: 'tong_phat', width: 14 },
+        { header: 'Phạt biên bản', key: 'tong_phat_bienban', width: 14 },
+        { header: 'Tổng giảm trừ (VII)', key: 'tong_giam_tru_vii', width: 18 },
+        { header: 'Điều chỉnh (VIII)', key: 'dieu_chinh', width: 16 },
+        { header: 'Thuế TNCN (X)', key: 'thue_tncn', width: 14 },
+        { header: 'Tạm ứng (XI)', key: 'tam_ung', width: 14 },
+        { header: 'Lương thực lĩnh (IX)', key: 'luong_thuc_linh', width: 18 },
+        { header: 'Còn phải thanh toán (XII)', key: 'con_phai_thanh_toan', width: 22 },
+      ];
+
+      ws.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      });
+      ws.getRow(1).height = 30;
+
+      const totals = {
+        luong_co_ban: 0,
+        luong_ngay_cong: 0,
+        luong_doanh_so: 0,
+        luong_tang_ca: 0,
+        luong_truc_ca: 0,
+        thu_nhap_khac: 0,
+        tong_luong_iii: 0,
+        phu_cap_gui_xe: 0,
+        phu_cap_an_trua: 0,
+        phu_cap_trach_nhiem: 0,
+        phu_cap_khac: 0,
+        tong_phu_cap_iv: 0,
+        thuong: 0,
+        tong_thu_nhap_vi: 0,
+        bhxh: 0,
+        bhyt: 0,
+        bhtn: 0,
+        tong_bh: 0,
+        cong_doan: 0,
+        tong_phat: 0,
+        tong_phat_bienban: 0,
+        tong_giam_tru_vii: 0,
+        dieu_chinh: 0,
+        thue_tncn: 0,
+        tam_ung: 0,
+        luong_thuc_linh: 0,
+        con_phai_thanh_toan: 0,
+      };
+
+      salaryRecords.forEach((record) => {
+        const employee = employees.find((e) => e.id === record.employee_id);
+        const recordCommissions = salaryCommissions.filter((item) => item.employee === record.employee_id);
+        const payslipComputation = calculatePayslipNetPayable(record, employee, recordCommissions);
+        const payrollTax = payslipComputation.payrollTax;
+
+        const stdDays = getStandardWorkDays(record.year, record.month);
+        const luongCoBan = record.luong_co_ban ?? 0;
+        const luongNgayCongThucTe = stdDays > 0 ? Math.round((luongCoBan / stdDays) * (record.tong_cong ?? 0)) : 0;
+        const luongTangCa = record.luong_tang_ca ?? 0;
+        const luongTrucCa = record.truc_toi ?? 0;
+        const luongDoanhSo = getSalesCommissionAmount(record, recordCommissions);
+        const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
+        const thuong = (record as unknown as Record<string, number>)['thuong'] ?? 0;
+        const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
+
+        const savedAdjustments = employee ? (employee.salary_adjustments as Record<string, unknown> | undefined) : undefined;
+        const savedConfig = savedAdjustments?.payroll_config as Record<string, unknown> | undefined;
+
+        const savedParkingPolicyRaw = savedConfig?.parkingAllowancePolicy as Record<string, unknown> | undefined;
+        const parkingPolicy: ParkingAllowancePolicy | null = savedParkingPolicyRaw
+          ? {
+              mode: savedParkingPolicyRaw.mode === 'daily' ? 'daily' : savedParkingPolicyRaw.mode === 'monthly' ? 'monthly' : 'none',
+              daily_rate: toNumber(savedParkingPolicyRaw.daily_rate, 5000),
+              monthly_rate: toNumber(savedParkingPolicyRaw.monthly_rate, 0),
+            }
+          : null;
+        const phuCapGuiXe = parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : (record.phu_cap_gui_xe ?? 0);
+
+        const savedLunchPolicyRaw = (savedConfig?.lunchAllowancePolicy as Record<string, unknown> | undefined);
+        const lunchPolicy: LunchAllowancePolicy | null = savedLunchPolicyRaw
+          ? {
+              mode: savedLunchPolicyRaw.mode === 'actual_working_day' ? 'actual_working_day' : 'fixed',
+              fixed_amount: toNumber(savedLunchPolicyRaw.fixed_amount),
+              amount_per_work_day: toNumber(savedLunchPolicyRaw.amount_per_work_day),
+              monthly_cap: toNumber(savedLunchPolicyRaw.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP),
+            }
+          : null;
+        const phuCapAnTrua = toNumber(
+          (record as unknown as Record<string, unknown>)['phu_cap_an_trua'],
+          lunchPolicy ? calculateLunchAllowance(lunchPolicy, record.tong_cong ?? 0, stdDays) : 0,
+        );
+
+        const savedRespPolicyRaw = savedConfig?.responsibilityAllowancePolicy as Record<string, unknown> | undefined;
+        const respPolicy: ResponsibilityAllowancePolicy | null = savedRespPolicyRaw
+          ? {
+              mode: savedRespPolicyRaw.mode === 'fixed' ? 'fixed' : savedRespPolicyRaw.mode === 'actual_working_day' ? 'actual_working_day' : 'none',
+              monthly_max: toNumber(savedRespPolicyRaw.monthly_max),
+            }
+          : null;
+        const phuCapTrachNhiem = respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0;
+
+        const phuCapKhacFromRecord = (record as unknown as Record<string, number>)['phu_cap_khac'] ?? 0;
+        const phuCapKhacRemainder = Math.max(
+          phuCapKhacFromRecord,
+          Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0),
+        );
+        const tongPhuCapIV = phuCapGuiXe + phuCapAnTrua + phuCapTrachNhiem + phuCapKhacRemainder;
+        const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
+
+        const bhxh = payrollTax.socialInsurance;
+        const bhyt = payrollTax.healthInsurance;
+        const bhtn = payrollTax.unemploymentInsurance;
+        const tongBH = payrollTax.insuranceTotal;
+        const congDoan = toNumber((record as unknown as Record<string, number>)['cong_doan'],
+          (savedConfig?.deductions as Record<string, number> | undefined)?.unionFee ?? 0);
+        const tongPhat = record.tong_phat ?? 0;
+        const tongPhatBienBan = record.tong_phat_bienban ?? 0;
+        const tongGiamTruVII = tongBH + congDoan + tongPhat + tongPhatBienBan;
+        const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
+        const tamUng = record.tam_ung ?? 0;
+        const thue = payrollTax.taxAmount;
+
+        const rowData = {
+          ma_nv: record.ma_nv,
+          ho_va_ten: record.ho_va_ten,
+          phong_ban: record.phong_ban ?? '',
+          year: record.year,
+          month: record.month,
+          luong_co_ban: Math.round(luongCoBan),
+          cong_chuan: stdDays,
+          tong_cong: record.tong_cong ?? 0,
+          luong_ngay_cong: Math.round(luongNgayCongThucTe),
+          luong_doanh_so: Math.round(luongDoanhSo),
+          luong_tang_ca: Math.round(luongTangCa),
+          luong_truc_ca: Math.round(luongTrucCa),
+          thu_nhap_khac: Math.round(thuNhapKhac),
+          tong_luong_iii: Math.round(tongLuongIII),
+          phu_cap_gui_xe: Math.round(phuCapGuiXe),
+          phu_cap_an_trua: Math.round(phuCapAnTrua),
+          phu_cap_trach_nhiem: Math.round(phuCapTrachNhiem),
+          phu_cap_khac: Math.round(phuCapKhacRemainder),
+          tong_phu_cap_iv: Math.round(tongPhuCapIV),
+          thuong: Math.round(thuong),
+          tong_thu_nhap_vi: Math.round(tongThuNhapVI),
+          bhxh: Math.round(bhxh),
+          bhyt: Math.round(bhyt),
+          bhtn: Math.round(bhtn),
+          tong_bh: Math.round(tongBH),
+          cong_doan: Math.round(congDoan),
+          tong_phat: Math.round(tongPhat),
+          tong_phat_bienban: Math.round(tongPhatBienBan),
+          tong_giam_tru_vii: Math.round(tongGiamTruVII),
+          dieu_chinh: Math.round(dieuChinhVIII),
+          thue_tncn: Math.round(thue),
+          tam_ung: Math.round(tamUng),
+          luong_thuc_linh: Math.round(payslipComputation.luongThucLinh),
+          con_phai_thanh_toan: Math.round(payslipComputation.conPhaiThanhToan),
+        };
+
+        ws.addRow(rowData);
+
+        totals.luong_co_ban += rowData.luong_co_ban;
+        totals.luong_ngay_cong += rowData.luong_ngay_cong;
+        totals.luong_doanh_so += rowData.luong_doanh_so;
+        totals.luong_tang_ca += rowData.luong_tang_ca;
+        totals.luong_truc_ca += rowData.luong_truc_ca;
+        totals.thu_nhap_khac += rowData.thu_nhap_khac;
+        totals.tong_luong_iii += rowData.tong_luong_iii;
+        totals.phu_cap_gui_xe += rowData.phu_cap_gui_xe;
+        totals.phu_cap_an_trua += rowData.phu_cap_an_trua;
+        totals.phu_cap_trach_nhiem += rowData.phu_cap_trach_nhiem;
+        totals.phu_cap_khac += rowData.phu_cap_khac;
+        totals.tong_phu_cap_iv += rowData.tong_phu_cap_iv;
+        totals.thuong += rowData.thuong;
+        totals.tong_thu_nhap_vi += rowData.tong_thu_nhap_vi;
+        totals.bhxh += rowData.bhxh;
+        totals.bhyt += rowData.bhyt;
+        totals.bhtn += rowData.bhtn;
+        totals.tong_bh += rowData.tong_bh;
+        totals.cong_doan += rowData.cong_doan;
+        totals.tong_phat += rowData.tong_phat;
+        totals.tong_phat_bienban += rowData.tong_phat_bienban;
+        totals.tong_giam_tru_vii += rowData.tong_giam_tru_vii;
+        totals.dieu_chinh += rowData.dieu_chinh;
+        totals.thue_tncn += rowData.thue_tncn;
+        totals.tam_ung += rowData.tam_ung;
+        totals.luong_thuc_linh += rowData.luong_thuc_linh;
+        totals.con_phai_thanh_toan += rowData.con_phai_thanh_toan;
+      });
+
+      const totalRow = ws.addRow({
+        ma_nv: 'TỔNG CỘNG',
+        ho_va_ten: `Số nhân viên: ${salaryRecords.length}`,
+        luong_co_ban: totals.luong_co_ban,
+        luong_ngay_cong: totals.luong_ngay_cong,
+        luong_doanh_so: totals.luong_doanh_so,
+        luong_tang_ca: totals.luong_tang_ca,
+        luong_truc_ca: totals.luong_truc_ca,
+        thu_nhap_khac: totals.thu_nhap_khac,
+        tong_luong_iii: totals.tong_luong_iii,
+        phu_cap_gui_xe: totals.phu_cap_gui_xe,
+        phu_cap_an_trua: totals.phu_cap_an_trua,
+        phu_cap_trach_nhiem: totals.phu_cap_trach_nhiem,
+        phu_cap_khac: totals.phu_cap_khac,
+        tong_phu_cap_iv: totals.tong_phu_cap_iv,
+        thuong: totals.thuong,
+        tong_thu_nhap_vi: totals.tong_thu_nhap_vi,
+        bhxh: totals.bhxh,
+        bhyt: totals.bhyt,
+        bhtn: totals.bhtn,
+        tong_bh: totals.tong_bh,
+        cong_doan: totals.cong_doan,
+        tong_phat: totals.tong_phat,
+        tong_phat_bienban: totals.tong_phat_bienban,
+        tong_giam_tru_vii: totals.tong_giam_tru_vii,
+        dieu_chinh: totals.dieu_chinh,
+        thue_tncn: totals.thue_tncn,
+        tam_ung: totals.tam_ung,
+        luong_thuc_linh: totals.luong_thuc_linh,
+        con_phai_thanh_toan: totals.con_phai_thanh_toan,
+      });
+
+      totalRow.eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE9FE' } };
+      });
+
+      const monthText = String(selectedMonth).padStart(2, '0');
+      const fileName = `bang_luong_chi_tiet_${selectedYear}_${monthText}.xlsx`;
+      const buf = await wb.xlsx.writeBuffer();
+      const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setSalaryError('Không thể xuất file Excel bảng lương. Vui lòng thử lại.');
+    } finally {
+      setExportingPayroll(false);
+    }
   };
 
   const handleCloseImportDialog = () => {
@@ -3047,6 +3439,26 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   <CurrencyDollarIcon className="h-4 w-4" />
                   Tổng lương công ty
                 </button>
+                <button
+                  onClick={handleExportPayrollExcel}
+                  disabled={salaryRecords.length === 0 || exportingPayroll || loadingSalary}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {exportingPayroll ? (
+                    <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ArrowDownTrayIcon className="h-4 w-4" />
+                  )}
+                  {exportingPayroll ? 'Đang xuất Excel...' : 'Xuất Excel bảng lương'}
+                </button>
+                <button
+                  onClick={() => setShowPayrollPreviewModal(true)}
+                  disabled={salaryRecords.length === 0 || loadingSalary}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <EyeIcon className="h-4 w-4" />
+                  Xem trước
+                </button>
               </div>
             </div>
 
@@ -3414,6 +3826,116 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   {scImporting ? 'Đang cập nhật...' : `Xác nhận import (${scParsedRows.filter((r) => !r.parseError).length} dòng)`}
                 </button>
               )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showPayrollPreviewModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50" onClick={() => setShowPayrollPreviewModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[95vw] max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Xem trước bảng lương chi tiết</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Tháng {String(selectedMonth).padStart(2, '0')}.{selectedYear} · {payrollDetailRows.length} nhân viên</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportPayrollExcel}
+                  disabled={exportingPayroll || payrollDetailRows.length === 0}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md hover:bg-emerald-100 disabled:opacity-50"
+                >
+                  {exportingPayroll ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <ArrowDownTrayIcon className="h-4 w-4" />}
+                  {exportingPayroll ? 'Đang tải...' : 'Tải Excel'}
+                </button>
+                <button onClick={() => setShowPayrollPreviewModal(false)} className="p-1.5 rounded-md hover:bg-gray-100 transition-colors">
+                  <XMarkIcon className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mã NV</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Họ tên</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Phòng ban</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Năm</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tháng</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lương CB</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Công chuẩn</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng công</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lương ngày công</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lương doanh số</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lương tăng ca</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lương trực ca</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Thu nhập khác</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng lương III</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">PC gửi xe</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">PC ăn trưa</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">PC trách nhiệm</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">PC khác</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng phụ cấp IV</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Thưởng</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng thu nhập VI</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">BHXH</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">BHYT</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">BHTN</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng BH</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Công đoàn</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Phạt đi muộn</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Phạt biên bản</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng giảm trừ VII</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Điều chỉnh VIII</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Thuế TNCN X</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tạm ứng XI</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Thực lĩnh IX</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-indigo-700 uppercase bg-indigo-50">Còn phải TT XII</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {payrollDetailRows.map((row) => (
+                    <tr key={row.ma_nv} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 font-mono text-gray-700">{row.ma_nv}</td>
+                      <td className="px-3 py-2 text-gray-900">{row.ho_va_ten}</td>
+                      <td className="px-3 py-2 text-gray-700">{row.phong_ban || '—'}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{row.year}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{row.month}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.luong_co_ban)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatNumber(row.cong_chuan)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatNumber(row.tong_cong)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.luong_ngay_cong)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.luong_doanh_so)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.luong_tang_ca)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.luong_truc_ca)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.thu_nhap_khac)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_luong_iii)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.phu_cap_gui_xe)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.phu_cap_an_trua)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.phu_cap_trach_nhiem)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.phu_cap_khac)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_phu_cap_iv)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.thuong)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_thu_nhap_vi)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.bhxh)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.bhyt)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.bhtn)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_bh)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.cong_doan)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_phat)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_phat_bienban)}</td>
+                      <td className="px-3 py-2 text-right text-red-700">{formatCurrency(row.tong_giam_tru_vii)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.dieu_chinh)}</td>
+                      <td className="px-3 py-2 text-right text-red-700">{formatCurrency(row.thue_tncn)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tam_ung)}</td>
+                      <td className="px-3 py-2 text-right text-gray-800 font-medium">{formatCurrency(row.luong_thuc_linh)}</td>
+                      <td className="px-3 py-2 text-right text-indigo-700 font-semibold bg-indigo-50">{formatCurrency(row.con_phai_thanh_toan)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>,
