@@ -152,10 +152,18 @@ interface PayslipDetailModalProps {
   commissions?: CommissionRecord[];
 }
 
+const getSalesCommissionAmount = (record: SalaryRecord, commissions?: CommissionRecord[]) => {
+  const commissionTotal = commissions?.reduce((sum, item) => {
+    return item.employee === record.employee_id ? sum + toNumber(item.amount) : sum;
+  }, 0) ?? 0;
+  if (commissionTotal > 0) return commissionTotal;
+  return (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
+};
+
 const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose, employee, penalties, commissions }) => {
   useLockBodyScroll(true);
   const stdDays = getStandardWorkDays(record.year, record.month);
-  const payslipComputation = calculatePayslipNetPayable(record, employee);
+  const payslipComputation = calculatePayslipNetPayable(record, employee, commissions);
   const payrollTax = payslipComputation.payrollTax;
   const nptCount = payrollTax.dependentCount;
   const mucLuongDongBH = payrollTax.insuranceSalaryBase;
@@ -165,7 +173,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const luongNgayCongThucTe = stdDays > 0 ? Math.round(luongCoBan / stdDays * (record.tong_cong ?? 0)) : 0;
   const luongTangCa  = record.luong_tang_ca ?? 0;
   const luongTrucCa  = record.truc_toi ?? 0;
-  const luongDoanhSo = (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
+  const luongDoanhSo = getSalesCommissionAmount(record, commissions);
   const thuNhapKhac  = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
   const thuong       = (record as unknown as Record<string, number>)['thuong'] ?? 0;
   const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
@@ -1025,13 +1033,13 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
   };
 };
 
-const calculatePayslipNetPayable = (record: SalaryRecord, employee?: Employee) => {
+const calculatePayslipNetPayable = (record: SalaryRecord, employee?: Employee, commissions?: CommissionRecord[]) => {
   const stdDays = getStandardWorkDays(record.year, record.month);
   const luongCoBan = record.luong_co_ban ?? 0;
   const luongNgayCongThucTe = stdDays > 0 ? Math.round((luongCoBan / stdDays) * (record.tong_cong ?? 0)) : 0;
   const luongTangCa = record.luong_tang_ca ?? 0;
   const luongTrucCa = record.truc_toi ?? 0;
-  const luongDoanhSo = (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
+  const luongDoanhSo = getSalesCommissionAmount(record, commissions);
   const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
   const thuong = (record as unknown as Record<string, number>)['thuong'] ?? 0;
   const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
@@ -2421,6 +2429,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
   const SALARY_PAGE_SIZE = 20;
   const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>([]);
+  const [salaryCommissions, setSalaryCommissions] = useState<CommissionRecord[]>([]);
   const [salaryPage, setSalaryPage] = useState(1);
   const [payslipRecord, setPayslipRecord] = useState<SalaryRecord | null>(null);
   const [payslipEmployee, setPayslipEmployee] = useState<Employee | null>(null);
@@ -2648,13 +2657,21 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     setLoadingSalary(true);
     setSalaryError(null);
     try {
-      const res = await salaryService.getSalaryByDepartment({
-        year: selectedYear,
-        month: selectedMonth,
-        department_id: deptFilterView ? parseInt(deptFilterView, 10) : undefined,
-        employee_code: searchSalary || undefined,
-      });
+      const [salaryRes, commissionRes] = await Promise.allSettled([
+        salaryService.getSalaryByDepartment({
+          year: selectedYear,
+          month: selectedMonth,
+          department_id: deptFilterView ? parseInt(deptFilterView, 10) : undefined,
+          employee_code: searchSalary || undefined,
+        }),
+        salaryService.listCommissions({ year: selectedYear, month: selectedMonth }),
+      ]);
+
+      if (salaryRes.status !== 'fulfilled') throw salaryRes.reason;
+
+      const res = salaryRes.value;
       setSalaryRecords(res.results ?? []);
+      setSalaryCommissions(commissionRes.status === 'fulfilled' ? commissionRes.value : []);
       setSalaryPage(1);
     } catch (error: unknown) {
       const normalizedError = error as { response?: { status?: number } };
@@ -2664,6 +2681,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         setSalaryError('Không thể tải dữ liệu bảng lương. Vui lòng thử lại.');
       }
       setSalaryRecords([]);
+      setSalaryCommissions([]);
     } finally {
       setLoadingSalary(false);
     }
@@ -3038,7 +3056,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <tbody className="bg-white divide-y divide-gray-100">
                       {pagedSalaryRecords.map((record) => {
                         const employee = employees.find((e) => e.id === record.employee_id);
-                        const payslipComputation = calculatePayslipNetPayable(record, employee);
+                        const recordCommissions = salaryCommissions.filter((item) => item.employee === record.employee_id);
+                        const payslipComputation = calculatePayslipNetPayable(record, employee, recordCommissions);
                         const recordTaxComputation = payslipComputation.payrollTax;
                         const recordTax = recordTaxComputation.taxAmount;
                         const recordNetPayable = payslipComputation.conPhaiThanhToan;
@@ -3066,24 +3085,16 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                             <button
                               onClick={async () => {
                                 setPayslipRecord(record);
-                                setPayslipEmployee(null);
+                                setPayslipEmployee(employee ?? null);
                                 setPayslipPenalties([]);
-                                setPayslipCommissions([]);
-                                const [emp, allPenalties, allCommissions] = await Promise.allSettled([
-                                  salaryService.getEmployeeSalaryConfig(record.employee_id),
-                                  salaryService.listPenalties({ year: record.year, month: record.month }),
-                                  salaryService.listCommissions({ year: record.year, month: record.month }),
-                                ]);
-                                if (emp.status === 'fulfilled') setPayslipEmployee(emp.value);
-                                if (allPenalties.status === 'fulfilled') {
+                                setPayslipCommissions(salaryCommissions.filter((item) => item.employee === record.employee_id));
+                                try {
+                                  const allPenalties = await salaryService.listPenalties({ year: record.year, month: record.month });
                                   setPayslipPenalties(
-                                    allPenalties.value.filter((p) => p.employee === record.employee_id)
+                                    allPenalties.filter((p) => p.employee === record.employee_id)
                                   );
-                                }
-                                if (allCommissions.status === 'fulfilled') {
-                                  setPayslipCommissions(
-                                    allCommissions.value.filter((c) => c.employee === record.employee_id)
-                                  );
+                                } catch {
+                                  setPayslipPenalties([]);
                                 }
                               }}
                               className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 hover:text-indigo-800 transition-colors"
