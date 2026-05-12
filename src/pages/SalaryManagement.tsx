@@ -230,8 +230,8 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const bhyt = payrollTax.healthInsurance;
   const bhtn = payrollTax.unemploymentInsurance;
   const tongBH = payrollTax.insuranceTotal;
-  const congDoanRaw = (savedConfig?.deductions as Record<string, number> | undefined)?.unionFee;
-  const congDoan = congDoanRaw != null ? Math.round(congDoanRaw) : 0;
+  const congDoan = toNumber((record as unknown as Record<string, number>)['cong_doan'], 
+    (savedConfig?.deductions as Record<string, number> | undefined)?.unionFee ?? 0);
   const phatDiMuon = record.tong_phat ?? 0;
   const phatBienBan = record.tong_phat_bienban ?? 0;
   const tongGiamTruVII = tongBH + congDoan + phatDiMuon + phatBienBan;
@@ -1090,8 +1090,8 @@ const calculatePayslipNetPayable = (record: SalaryRecord, employee?: Employee, c
   const tongPhuCapIV = phuCapGuiXe + phuCapAnTrua + phuCapTrachNhiem + phuCapKhacRemainder;
   const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
 
-  const congDoanRaw = (savedConfig?.deductions as Record<string, number> | undefined)?.unionFee;
-  const congDoan = congDoanRaw != null ? Math.round(congDoanRaw) : 0;
+  const congDoan = toNumber((record as unknown as Record<string, number>)['cong_doan'],
+    (savedConfig?.deductions as Record<string, number> | undefined)?.unionFee ?? 0);
 
   const tongGiamTruVII = payrollTax.insuranceTotal + congDoan + (record.tong_phat ?? 0) + (record.tong_phat_bienban ?? 0);
   const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
@@ -3035,6 +3035,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           Phụ cấp
                         </th>
                         <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          PC ăn trưa
+                        </th>
+                        <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Tổng công
                         </th>
                         <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -3072,6 +3075,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           <td className="px-3 py-3 text-gray-600">{record.phong_ban ?? '—'}</td>
                           <td className="px-3 py-3 text-right text-gray-700">{formatCurrency(record.luong_co_ban)}</td>
                           <td className="px-3 py-3 text-right text-gray-700">{formatCurrency(record.phu_cap)}</td>
+                          <td className="px-3 py-3 text-right text-gray-700">{formatCurrency((record as unknown as Record<string, number>)['phu_cap_an_trua'] ?? 0)}</td>
                           <td className="px-3 py-3 text-right text-gray-700">{formatNumber(record.tong_cong)}</td>
                           <td className="px-3 py-3 text-right text-blue-600">{formatCurrency(record.luong_tang_ca)}</td>
                           <td className="px-3 py-3 text-right text-red-600">{formatCurrency((record.tong_phat ?? 0) + (record.tong_phat_bienban ?? 0))}</td>
