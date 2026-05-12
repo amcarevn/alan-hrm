@@ -2445,6 +2445,23 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
   const [departments, setDepartments] = useState<Department[]>([]);
 
+  // ── Tổng lương công ty ──
+  const [showTotalSalaryModal, setShowTotalSalaryModal] = useState(false);
+  const [totalSalaryData, setTotalSalaryData] = useState<{
+    year: number;
+    month: number;
+    department_id: number | null;
+    total_basic_salary: number;
+    total_allowance: number;
+    total_gross_income: number;
+    total_pit: number;
+    total_insurances: number;
+    total_net_salary: number;
+    employee_count: number;
+  } | null>(null);
+  const [loadingTotalSalary, setLoadingTotalSalary] = useState(false);
+  const [totalSalaryError, setTotalSalaryError] = useState<string | null>(null);
+
   // ── Import cấu hình lương dialog ──
   const [showImportDialog, setShowImportDialog]   = useState(false);
   const [scFile,           setScFile]             = useState<File | null>(null);
@@ -2709,6 +2726,26 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       setSaving(false);
     }
   };
+
+  // ── Tính toán tổng lương từ API ──
+  const loadTotalSalary = useCallback(async () => {
+    setLoadingTotalSalary(true);
+    setTotalSalaryError(null);
+    setTotalSalaryData(null);
+    try {
+      const data = await salaryService.getTotalSalarySummary({
+        year: selectedYear,
+        month: selectedMonth,
+        department: deptFilterView ? parseInt(deptFilterView) : undefined,
+      });
+      setTotalSalaryData(data);
+    } catch (error: unknown) {
+      setTotalSalaryError('Không thể tải dữ liệu tổng lương. Vui lòng thử lại.');
+      console.error(error);
+    } finally {
+      setLoadingTotalSalary(false);
+    }
+  }, [selectedYear, selectedMonth, deptFilterView]);
 
   const handleOpenConfig = async (employee: Employee) => {
     setSaveError(null);
@@ -2996,6 +3033,19 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 >
                   <ArrowPathIcon className="h-4 w-4" />
                   Tải dữ liệu
+                </button>
+                <button
+                  onClick={async () => {
+                    setTotalSalaryData(null);
+                    setTotalSalaryError(null);
+                    await loadTotalSalary();
+                    setShowTotalSalaryModal(true);
+                  }}
+                  disabled={salaryRecords.length === 0}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <CurrencyDollarIcon className="h-4 w-4" />
+                  Tổng lương công ty
                 </button>
               </div>
             </div>
@@ -3364,6 +3414,96 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   {scImporting ? 'Đang cập nhật...' : `Xác nhận import (${scParsedRows.filter((r) => !r.parseError).length} dòng)`}
                 </button>
               )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Modal tổng lương công ty ── */}
+      {showTotalSalaryModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50" onClick={() => setShowTotalSalaryModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Báo cáo tổng lương công ty</h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Tháng {String(selectedMonth).padStart(2, '0')}.{selectedYear}
+                  {deptFilterView && departments.find(d => String(d.id) === deptFilterView) && (
+                    <> · {departments.find(d => String(d.id) === deptFilterView)?.name}</>
+                  )}
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowTotalSalaryModal(false)} 
+                className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+              >
+                <XMarkIcon className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-6 space-y-4">
+              {loadingTotalSalary ? (
+                <div className="flex items-center justify-center py-12">
+                  <ArrowPathIcon className="h-6 w-6 text-primary-400 animate-spin" />
+                  <span className="ml-2 text-sm text-gray-500">Đang tính toán...</span>
+                </div>
+              ) : totalSalaryError ? (
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+                  <ExclamationCircleIcon className="h-4 w-4 flex-shrink-0" />
+                  {totalSalaryError}
+                </div>
+              ) : totalSalaryData ? (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+                      <p className="text-xs text-blue-600 font-medium mb-1">LƯƠNG CƠ BẢN</p>
+                      <p className="text-2xl font-bold text-blue-900">{formatCurrency(totalSalaryData.total_basic_salary)}</p>
+                    </div>
+                    <div className="rounded-lg bg-green-50 border border-green-200 p-4">
+                      <p className="text-xs text-green-600 font-medium mb-1">PHỤ CẤP</p>
+                      <p className="text-2xl font-bold text-green-900">{formatCurrency(totalSalaryData.total_allowance)}</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-200 pt-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Tổng thu nhập:</span>
+                        <span className="font-semibold text-gray-900">{formatCurrency(totalSalaryData.total_gross_income)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-red-600">
+                        <span className="text-gray-600">Thuế TNCN:</span>
+                        <span className="font-semibold">-{formatCurrency(totalSalaryData.total_pit)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-amber-600">
+                        <span className="text-gray-600">Bảo hiểm + Khác:</span>
+                        <span className="font-semibold">-{formatCurrency(totalSalaryData.total_insurances)}</span>
+                      </div>
+                      <div className="border-t border-gray-200 pt-3 flex items-center justify-between bg-indigo-50 -mx-4 px-4 py-3">
+                        <span className="font-bold text-indigo-900">Tổng phải thanh toán:</span>
+                        <span className="text-2xl font-bold text-indigo-900">{formatCurrency(totalSalaryData.total_net_salary)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 text-sm text-gray-600">
+                    <p>Số lượng nhân viên: <span className="font-semibold text-gray-900">{totalSalaryData.employee_count}</span></p>
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button 
+                onClick={() => setShowTotalSalaryModal(false)} 
+                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Đóng
+              </button>
             </div>
           </div>
         </div>,

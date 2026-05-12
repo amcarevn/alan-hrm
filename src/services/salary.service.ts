@@ -399,6 +399,26 @@ class SalaryService {
     const response = await managementApi.post('/api-hrm/employees/bulk-salary-config/', { records });
     return response.data;
   }
+
+  async getTotalSalarySummary(params: {
+    year: number;
+    month: number;
+    department?: number;
+  }): Promise<{
+    year: number;
+    month: number;
+    department_id: number | null;
+    total_basic_salary: number;
+    total_allowance: number;
+    total_gross_income: number;
+    total_pit: number;
+    total_insurances: number;
+    total_net_salary: number;
+    employee_count: number;
+  }> {
+    const response = await managementApi.get('/api/v1/salary/records/total-summary/', { params });
+    return response.data;
+  }
 }
 
 export const salaryService = new SalaryService();
