@@ -243,7 +243,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const luongThucLinh = payslipComputation.luongThucLinh;
   const conPhaiTT = payslipComputation.conPhaiThanhToan;
 
-  const fmt = (v: number) => v ? v.toLocaleString('vi-VN') : '—';
+  const fmt = (v: number) => v ? Math.round(v).toLocaleString('vi-VN') : '—';
 
   const monthLabel = `Tháng ${String(record.month).padStart(2, '0')}.${record.year}`;
 
