@@ -3859,9 +3859,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mã NV</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Họ tên</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Phòng ban</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 z-20 bg-gray-50 min-w-[120px]">Mã NV</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase sticky left-[120px] z-20 bg-gray-50 min-w-[220px]">Họ tên</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase sticky left-[340px] z-20 bg-gray-50 min-w-[180px]">Phòng ban</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Năm</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tháng</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lương CB</th>
@@ -3896,11 +3896,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
-                  {payrollDetailRows.map((row) => (
-                    <tr key={row.ma_nv} className="hover:bg-gray-50">
-                      <td className="px-3 py-2 font-mono text-gray-700">{row.ma_nv}</td>
-                      <td className="px-3 py-2 text-gray-900">{row.ho_va_ten}</td>
-                      <td className="px-3 py-2 text-gray-700">{row.phong_ban || '—'}</td>
+                  {payrollDetailRows.map((row, idx) => (
+                    <tr key={row.ma_nv} className={`group ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'} hover:!bg-indigo-100`}>
+                      <td className={`px-3 py-2 font-mono text-gray-700 sticky left-0 z-10 group-hover:!bg-indigo-100 min-w-[120px] ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}`}>{row.ma_nv}</td>
+                      <td className={`px-3 py-2 text-gray-900 sticky left-[120px] z-10 group-hover:!bg-indigo-100 min-w-[220px] ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}`}>{row.ho_va_ten}</td>
+                      <td className={`px-3 py-2 text-gray-700 sticky left-[340px] z-10 group-hover:!bg-indigo-100 min-w-[180px] ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}`}>{row.phong_ban || '—'}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{row.year}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{row.month}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.luong_co_ban)}</td>
