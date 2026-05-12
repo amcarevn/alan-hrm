@@ -16,7 +16,6 @@ import {
   PrinterIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
-  InformationCircleIcon,
   QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
 import { departmentsAPI, employeesAPI } from '../utils/api';
@@ -144,15 +143,16 @@ interface PayslipDetailModalProps {
 const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose, employee, penalties, commissions }) => {
   useLockBodyScroll(true);
   const stdDays = getStandardWorkDays(record.year, record.month);
+  const payrollTax = calculatePayrollTaxFromRecord(record, employee);
+  const nptCount = payrollTax.dependentCount;
+  const mucLuongDongBH = payrollTax.insuranceSalaryBase;
 
   // Section III
   const luongCoBan   = record.luong_co_ban ?? 0;
   const luongNgayCongThucTe = stdDays > 0 ? Math.round(luongCoBan / stdDays * (record.tong_cong ?? 0)) : 0;
   const luongTangCa  = record.luong_tang_ca ?? 0;
   const luongTrucCa  = record.truc_toi ?? 0;
-  const luongDoanhSo = commissions
-    ? commissions.reduce((sum, c) => sum + Math.round(parseFloat(String(c.amount)) || 0), 0)
-    : (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
+  const luongDoanhSo = (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
   const thuNhapKhac  = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
   const thuong       = (record as unknown as Record<string, number>)['thuong'] ?? 0;
   const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
@@ -161,7 +161,6 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
 
   // Deductions: use saved payroll config if available, otherwise calculate from standard rates
   const savedAdjustments = employee ? (employee.salary_adjustments as Record<string, unknown> | undefined) : undefined;
-  const savedOutput = savedAdjustments?.payroll_output_preview as Record<string, number> | undefined;
   const savedConfig = savedAdjustments?.payroll_config as Record<string, unknown> | undefined;
 
   // Parking allowance: recalculate from policy if configured, else use stored value
@@ -199,42 +198,19 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
 
   const phuCapKhacRemainder = Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0);
 
-  const savedTaxPolicy = savedConfig?.taxPolicy as Record<string, unknown> | undefined;
-  const savedBaseSalary = savedConfig?.baseSalary as Record<string, unknown> | undefined;
-  const mucLuongDongBHFromConfig = savedTaxPolicy?.insuranceSalaryMode === 'custom'
-    ? toNumber(savedTaxPolicy.insuranceSalaryOverride)
-    : toNumber(savedBaseSalary?.amount) * Math.max(toNumber(savedBaseSalary?.factor, 1), 1);
-  const mucLuongDongBH = savedOutput?.insuranceSalaryBase
-    ?? (mucLuongDongBHFromConfig || (record.luong_co_ban ?? 0));
-  const bhxh = Math.round(savedOutput?.socialInsurance ?? mucLuongDongBH * 0.08);
-  const bhyt = Math.round(savedOutput?.healthInsurance ?? mucLuongDongBH * 0.015);
-  const bhtn = Math.round(savedOutput?.unemploymentInsurance ?? mucLuongDongBH * 0.01);
-  const tongBH = bhxh + bhyt + bhtn;
+  const bhxh = payrollTax.socialInsurance;
+  const bhyt = payrollTax.healthInsurance;
+  const bhtn = payrollTax.unemploymentInsurance;
+  const tongBH = payrollTax.insuranceTotal;
   const congDoanRaw = (savedConfig?.deductions as Record<string, number> | undefined)?.unionFee;
-  const congDoan = congDoanRaw != null ? Math.round(congDoanRaw) : Math.round(mucLuongDongBH * 0.01);
+  const congDoan = congDoanRaw != null ? Math.round(congDoanRaw) : 0;
   const phatDiMuon = record.tong_phat ?? 0;
-  const phatBienBan = penalties ? penalties.reduce((sum, p) => sum + Math.round(parseFloat(String(p.amount)) || 0), 0) : 0;
+  const phatBienBan = record.tong_phat_bienban ?? 0;
   const tongGiamTruVII = tongBH + congDoan + phatDiMuon + phatBienBan;
   const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
   const tamUng = record.tam_ung ?? 0;
-
-  // Calculate tax with breakdown
-  const taxYear = new Date(`${record.year}-${String(record.month).padStart(2, '0')}-01`).getFullYear();
-  const brackets = taxYear >= 2026 ? PIT_BRACKETS_2026 : PIT_BRACKETS_LEGACY;
-  const personalDed = taxYear >= 2026 ? PERSONAL_DEDUCTION_2026 : PERSONAL_DEDUCTION_LEGACY;
-  const dependentDedPerPerson = taxYear >= 2026 ? DEPENDENT_DEDUCTION_2026 : DEPENDENT_DEDUCTION_LEGACY;
-  const dependentCount = toNumber(savedTaxPolicy?.dependentCount, 0);
-  const dependentDed = Math.max(dependentCount, 0) * dependentDedPerPerson;
-
-  const taxDetail = calculateTaxBreakdown(
-    tongThuNhapVI,
-    tongBH,
-    personalDed,
-    dependentDed,
-    brackets,
-    dependentCount
-  );
-  const thue = savedOutput?.pit ?? taxDetail.totalTax;
+  const taxDetail = payrollTax.taxDetail;
+  const thue = payrollTax.taxAmount;
   // IX = VI − VII + VIII (tính đúng: trừ BH/CĐ/phạt)
   const luongThucLinh = tongThuNhapVI - tongGiamTruVII + dieuChinhVIII;
   // XII = IX − X − XI
@@ -483,7 +459,9 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               {/* Section XI */}
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">XI</td>
-                <td className="border border-gray-300 px-3 py-2 text-gray-700">THUẾ TNCN</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">
+                  THUẾ TNCN <span className="text-xs text-gray-500">(NPT: {nptCount} người)</span>
+                </td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-500 flex items-center justify-end gap-2">
                   {thue ? fmt(thue) : '—'}
                   {thue > 0 && <TaxTooltip taxDetail={taxDetail} />}
@@ -843,6 +821,17 @@ interface TaxCalculationDetail {
   breakdown: TaxBracketBreakdown[];
 }
 
+interface PayrollTaxComputation {
+  taxDetail: TaxCalculationDetail;
+  taxAmount: number;
+  dependentCount: number;
+  insuranceSalaryBase: number;
+  socialInsurance: number;
+  healthInsurance: number;
+  unemploymentInsurance: number;
+  insuranceTotal: number;
+}
+
 const calculateTaxBreakdown = (
   grossIncome: number,
   insuranceDeduction: number,
@@ -889,6 +878,87 @@ const calculateTaxBreakdown = (
     taxableIncome: Math.round(taxableIncome),
     totalTax: Math.round(totalTax),
     breakdown,
+  };
+};
+
+const getGrossIncomeForTaxFromRecord = (record: SalaryRecord) => {
+  const stdDays = getStandardWorkDays(record.year, record.month);
+  const luongCoBan = record.luong_co_ban ?? 0;
+  const luongNgayCongThucTe = stdDays > 0 ? Math.round((luongCoBan / stdDays) * (record.tong_cong ?? 0)) : 0;
+  const luongTangCa = record.luong_tang_ca ?? 0;
+  const luongTrucCa = record.truc_toi ?? 0;
+  const luongDoanhSo = (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
+  const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
+  const thuong = (record as unknown as Record<string, number>)['thuong'] ?? 0;
+  const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
+  const tongPhuCapIV = record.phu_cap ?? 0;
+  return tongLuongIII + tongPhuCapIV + thuong;
+};
+
+const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee): PayrollTaxComputation => {
+  const savedAdjustments = employee ? (employee.salary_adjustments as Record<string, unknown> | undefined) : undefined;
+  const savedOutput = savedAdjustments?.payroll_output_preview as Record<string, number> | undefined;
+  const savedConfig = savedAdjustments?.payroll_config as Record<string, unknown> | undefined;
+  const savedTaxPolicy = savedConfig?.taxPolicy as Record<string, unknown> | undefined;
+  const savedBaseSalary = savedConfig?.baseSalary as Record<string, unknown> | undefined;
+
+  const mucLuongDongBHFromConfig = savedTaxPolicy?.insuranceSalaryMode === 'custom'
+    ? toNumber(savedTaxPolicy.insuranceSalaryOverride)
+    : toNumber(savedBaseSalary?.amount) * Math.max(toNumber(savedBaseSalary?.factor, 1), 1);
+
+  const mucLuongDongBH = savedOutput?.insuranceSalaryBase
+    ?? (mucLuongDongBHFromConfig || (record.luong_co_ban ?? 0));
+
+  const socialInsurance = Math.round(savedOutput?.socialInsurance ?? mucLuongDongBH * EMPLOYEE_SOCIAL_INSURANCE_RATE);
+  const healthInsurance = Math.round(savedOutput?.healthInsurance ?? mucLuongDongBH * EMPLOYEE_HEALTH_INSURANCE_RATE);
+  const unemploymentInsurance = Math.round(savedOutput?.unemploymentInsurance ?? mucLuongDongBH * EMPLOYEE_UNEMPLOYMENT_INSURANCE_RATE);
+  const insuranceTotal = socialInsurance + healthInsurance + unemploymentInsurance;
+
+  const taxYear = new Date(`${record.year}-${String(record.month).padStart(2, '0')}-01`).getFullYear();
+  const brackets = taxYear >= 2026 ? PIT_BRACKETS_2026 : PIT_BRACKETS_LEGACY;
+  const personalDeduction = toNumber(
+    record.giam_tru_ban_than,
+    taxYear >= 2026 ? PERSONAL_DEDUCTION_2026 : PERSONAL_DEDUCTION_LEGACY,
+  );
+  const dependentCount = Math.max(
+    toNumber(record.so_nguoi_phu_thuoc, toNumber(savedTaxPolicy?.dependentCount, 0)),
+    0,
+  );
+  const dependentDeduction = toNumber(
+    record.giam_tru_nguoi_phu_thuoc,
+    dependentCount * (taxYear >= 2026 ? DEPENDENT_DEDUCTION_2026 : DEPENDENT_DEDUCTION_LEGACY),
+  );
+  const insuranceForTax = toNumber(record.bao_hiem_bat_buoc, insuranceTotal);
+  const grossIncomeForTax = getGrossIncomeForTaxFromRecord(record);
+
+  const taxDetail = calculateTaxBreakdown(
+    grossIncomeForTax,
+    insuranceForTax,
+    personalDeduction,
+    dependentDeduction,
+    brackets,
+    dependentCount,
+  );
+  const backendTaxAmount = record.thue_tncn != null ? Math.max(toNumber(record.thue_tncn), 0) : null;
+  const backendTaxableIncome = record.thu_nhap_tinh_thue != null ? Math.max(toNumber(record.thu_nhap_tinh_thue), 0) : null;
+  const effectiveTaxDetail: TaxCalculationDetail = backendTaxAmount != null
+    ? {
+        ...taxDetail,
+        taxableIncome: backendTaxableIncome ?? taxDetail.taxableIncome,
+        totalTax: backendTaxAmount,
+        breakdown: backendTaxableIncome != null ? [] : taxDetail.breakdown,
+      }
+    : taxDetail;
+
+  return {
+    taxDetail: effectiveTaxDetail,
+    taxAmount: effectiveTaxDetail.totalTax,
+    dependentCount,
+    insuranceSalaryBase: Math.round(mucLuongDongBH),
+    socialInsurance,
+    healthInsurance,
+    unemploymentInsurance,
+    insuranceTotal,
   };
 };
 
@@ -2823,35 +2893,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-100">
                       {salaryRecords.map((record) => {
-                        // Calculate tax for this record  
-                        const emp = employees.find((e) => e.id === record.employee_id);
-                        const empConfig = emp ? parseEmployeeSalaryConfig(emp) : parseEmployeeSalaryConfig({ id: record.employee_id, basic_salary: record.luong_co_ban, allowance: record.phu_cap } as any);
-                        const empAdjustments = emp ? (emp.salary_adjustments as Record<string, unknown> | undefined) : undefined;
-                        const empSavedOutput = empAdjustments?.payroll_output_preview as Record<string, number> | undefined;
-                        const empTaxYear = new Date(`${record.year}-${String(record.month).padStart(2, '0')}-01`).getFullYear();
-                        const empBrackets = empTaxYear >= 2026 ? PIT_BRACKETS_2026 : PIT_BRACKETS_LEGACY;
-                        
-                        // Get total insurance deduction for this record
-                        const emEstBhxh = empSavedOutput?.socialInsurance?.insurance ?? 0;
-                        const estBhyt = empSavedOutput?.healthInsurance?.insurance ?? 0;
-                        const estBhtn = empSavedOutput?.unemploymentInsurance?.insurance ?? 0;
-                        const estTotalBH = emEstBhxh + estBhyt + estBhtn;
-                        
-                        const recordTaxDetail = calculateTaxBreakdown(
-                          Math.max(
-                            (record.luong_co_ban ?? 0) +
-                            (record.phu_cap ?? 0) +
-                            (record.luong_tang_ca ?? 0) +
-                            (record.tong_cong ?? 0) * 0, // approx
-                            0
-                          ),
-                          estTotalBH,
-                          empTaxYear >= 2026 ? PERSONAL_DEDUCTION_2026 : PERSONAL_DEDUCTION_LEGACY,
-                          (empConfig.taxPolicy.dependentCount || 0) * (empTaxYear >= 2026 ? DEPENDENT_DEDUCTION_2026 : DEPENDENT_DEDUCTION_LEGACY),
-                          empBrackets,
-                          empConfig.taxPolicy.dependentCount || 0
-                        );
-                        const recordTax = empSavedOutput?.pit ?? recordTaxDetail.totalTax;
+                        const employee = employees.find((e) => e.id === record.employee_id);
+                        const recordTaxComputation = calculatePayrollTaxFromRecord(record, employee);
+                        const recordTax = recordTaxComputation.taxAmount;
 
                         return (
                         <tr key={record.employee_id} className="hover:bg-gray-50 transition-colors">
@@ -2867,7 +2911,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           <td className="px-3 py-3 text-right text-red-600">{formatCurrency((record.tong_phat ?? 0) + (record.tong_phat_bienban ?? 0))}</td>
                           <td className="px-3 py-3 text-right font-semibold text-red-700 bg-red-50 flex items-center justify-end gap-2">
                             {formatCurrency(recordTax)}
-                            {recordTax > 0 && <TaxTooltip taxDetail={recordTaxDetail} />}
+                            {recordTax > 0 && <TaxTooltip taxDetail={recordTaxComputation.taxDetail} />}
                           </td>
                           <td className="px-3 py-3 text-right font-semibold text-indigo-700 bg-indigo-50">
                             {formatCurrency(record.luong_thuc_linh)}
