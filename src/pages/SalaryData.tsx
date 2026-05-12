@@ -109,8 +109,10 @@ const fmtMoney = (v: number | string) => {
 
 const SalaryData: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('commission');
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
-  const [selectedYear,  setSelectedYear]  = useState(now.getFullYear());
+  const defaultMonth = now.getDate() >= 15 ? now.getMonth() + 1 : now.getMonth() === 0 ? 12 : now.getMonth();
+  const defaultYear  = now.getDate() < 15 && now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+  const [selectedYear,  setSelectedYear]  = useState(defaultYear);
 
   // ── Commission state ──
   const [commissionRecords,  setCommissionRecords]  = useState<CommissionRecord[]>([]);
