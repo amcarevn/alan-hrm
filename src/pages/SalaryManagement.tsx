@@ -16,6 +16,8 @@ import {
   PrinterIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
+  InformationCircleIcon,
+  QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
 import { departmentsAPI, employeesAPI } from '../utils/api';
 import type { Department, Employee } from '../utils/api';
@@ -38,6 +40,96 @@ function getStandardWorkDays(year: number, month: number): number {
 }
 
 type SalaryTabKey = 'config' | 'view';
+
+// ─── Tax Tooltip Component ───────────────────────────────────────────────────
+
+interface TaxTooltipProps {
+  taxDetail: TaxCalculationDetail;
+}
+
+const TaxTooltip: React.FC<TaxTooltipProps> = ({ taxDetail }) => {
+  const [showDetail, setShowDetail] = useState(false);
+
+  return (
+    <div className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setShowDetail(!showDetail)}
+        className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 transition-colors"
+        title="Xem chi tiết tính thuế"
+      >
+        <QuestionMarkCircleIcon className="h-4 w-4" />
+      </button>
+      {showDetail && (
+        <div className="absolute bottom-full right-0 mb-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-4 space-y-3">
+          <div className="flex items-center justify-between border-b pb-2">
+            <h4 className="font-semibold text-gray-900">Chi tiết tính thuế TNCN</h4>
+            <button
+              onClick={() => setShowDetail(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Tổng thu nhập (Gross):</span>
+              <span className="font-semibold">{formatCurrency(taxDetail.grossIncome)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Trừ BHXH + BHYT + BHTN:</span>
+              <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.insuranceDeduction)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Trừ giảm trừ bản thân:</span>
+              <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.personalDeduction)}</span>
+            </div>
+            {taxDetail.dependentDeduction > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Trừ giảm trừ người phụ thuộc:</span>
+                <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.dependentDeduction)}</span>
+              </div>
+            )}
+            <div className="border-t pt-2 flex justify-between">
+              <span className="font-semibold text-blue-700">Thu nhập tính thuế:</span>
+              <span className="font-bold text-blue-800">{formatCurrency(taxDetail.taxableIncome)}</span>
+            </div>
+          </div>
+
+          {taxDetail.breakdown.length > 0 && (
+            <div className="border-t pt-3">
+              <p className="font-semibold text-gray-900 text-xs mb-2">Áp dụng bảng thuế lũy tiến:</p>
+              <div className="space-y-1 text-xs">
+                {taxDetail.breakdown.map((item) => (
+                  <div key={item.bracketNumber} className="flex justify-between items-center text-gray-700">
+                    <div className="flex-1">
+                      <span className="text-gray-600">
+                        Bậc {item.bracketNumber}: {formatCurrency(item.fromAmount)} đến{' '}
+                        {item.toAmount === Number.POSITIVE_INFINITY ? 'trở lên' : formatCurrency(item.toAmount)} @ {item.rate}%
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-gray-700">
+                        {formatCurrency(item.taxableAmount)} × {item.rate}%
+                      </div>
+                      <div className="font-semibold text-indigo-600">{formatCurrency(item.taxAmount)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="border-t pt-2 flex justify-between bg-indigo-50 p-2 rounded">
+            <span className="font-bold text-indigo-900">Tổng thuế TNCN:</span>
+            <span className="font-bold text-indigo-900">{formatCurrency(taxDetail.totalTax)}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ─── Payslip Detail Modal ────────────────────────────────────────────────────
 
@@ -125,7 +217,24 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const tongGiamTruVII = tongBH + congDoan + phatDiMuon + phatBienBan;
   const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
   const tamUng = record.tam_ung ?? 0;
-  const thue = Math.round(savedOutput?.pit ?? 0);
+
+  // Calculate tax with breakdown
+  const taxYear = new Date(`${record.year}-${String(record.month).padStart(2, '0')}-01`).getFullYear();
+  const brackets = taxYear >= 2026 ? PIT_BRACKETS_2026 : PIT_BRACKETS_LEGACY;
+  const personalDed = taxYear >= 2026 ? PERSONAL_DEDUCTION_2026 : PERSONAL_DEDUCTION_LEGACY;
+  const dependentDedPerPerson = taxYear >= 2026 ? DEPENDENT_DEDUCTION_2026 : DEPENDENT_DEDUCTION_LEGACY;
+  const dependentCount = toNumber(savedTaxPolicy?.dependentCount, 0);
+  const dependentDed = Math.max(dependentCount, 0) * dependentDedPerPerson;
+
+  const taxDetail = calculateTaxBreakdown(
+    tongThuNhapVI,
+    tongBH,
+    personalDed,
+    dependentDed,
+    brackets,
+    dependentCount
+  );
+  const thue = savedOutput?.pit ?? taxDetail.totalTax;
   // IX = VI − VII + VIII (tính đúng: trừ BH/CĐ/phạt)
   const luongThucLinh = tongThuNhapVI - tongGiamTruVII + dieuChinhVIII;
   // XII = IX − X − XI
@@ -375,7 +484,10 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">XI</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">THUẾ TNCN</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-gray-500">{thue ? fmt(thue) : '—'}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-500 flex items-center justify-end gap-2">
+                  {thue ? fmt(thue) : '—'}
+                  {thue > 0 && <TaxTooltip taxDetail={taxDetail} />}
+                </td>
               </tr>
 
               {/* Section XII */}
@@ -710,6 +822,74 @@ const calculateProgressiveTax = (taxableIncome: number, brackets: Array<{ limit:
   }
 
   return Math.max(totalTax, 0);
+};
+
+interface TaxBracketBreakdown {
+  bracketNumber: number;
+  fromAmount: number;
+  toAmount: number;
+  rate: number;
+  taxableAmount: number;
+  taxAmount: number;
+}
+
+interface TaxCalculationDetail {
+  grossIncome: number;
+  insuranceDeduction: number;
+  personalDeduction: number;
+  dependentDeduction: number;
+  taxableIncome: number;
+  totalTax: number;
+  breakdown: TaxBracketBreakdown[];
+}
+
+const calculateTaxBreakdown = (
+  grossIncome: number,
+  insuranceDeduction: number,
+  personalDeduction: number,
+  dependentDeduction: number,
+  brackets: Array<{ limit: number; rate: number }>,
+  dependentCount: number = 0
+): TaxCalculationDetail => {
+  const taxableIncome = Math.max(
+    grossIncome - insuranceDeduction - personalDeduction - dependentDeduction,
+    0
+  );
+
+  let remaining = taxableIncome;
+  let previousLimit = 0;
+  let totalTax = 0;
+  const breakdown: TaxBracketBreakdown[] = [];
+
+  brackets.forEach((bracket, index) => {
+    if (remaining <= 0) return;
+    const bracketRange = bracket.limit - previousLimit;
+    const taxableAtThisBracket = Math.min(remaining, bracketRange);
+    const taxAmount = taxableAtThisBracket * bracket.rate;
+    
+    breakdown.push({
+      bracketNumber: index + 1,
+      fromAmount: previousLimit,
+      toAmount: bracket.limit,
+      rate: bracket.rate * 100,
+      taxableAmount: taxableAtThisBracket,
+      taxAmount: Math.round(taxAmount),
+    });
+
+    totalTax += taxAmount;
+    remaining -= taxableAtThisBracket;
+    previousLimit = bracket.limit;
+  });
+
+  return {
+    grossIncome,
+    insuranceDeduction: Math.round(insuranceDeduction),
+    personalDeduction: Math.round(personalDeduction),
+    dependentDeduction: Math.round(dependentDeduction),
+    taxableIncome: Math.round(taxableIncome),
+    totalTax: Math.round(totalTax),
+    breakdown,
+  };
 };
 
 const asRecord = (value: unknown): Record<string, any> => {
@@ -2630,6 +2810,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                         <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Tổng phạt
                         </th>
+                        <th className="px-3 py-3 text-right text-xs font-medium text-red-600 uppercase tracking-wider bg-red-50">
+                          Thuế TNCN
+                        </th>
                         <th className="px-3 py-3 text-right text-xs font-medium text-gray-900 uppercase tracking-wider bg-indigo-50">
                           Thực lĩnh
                         </th>
@@ -2639,7 +2822,38 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-100">
-                      {salaryRecords.map((record) => (
+                      {salaryRecords.map((record) => {
+                        // Calculate tax for this record  
+                        const emp = employees.find((e) => e.id === record.employee_id);
+                        const empConfig = emp ? parseEmployeeSalaryConfig(emp) : parseEmployeeSalaryConfig({ id: record.employee_id, basic_salary: record.luong_co_ban, allowance: record.phu_cap } as any);
+                        const empAdjustments = emp ? (emp.salary_adjustments as Record<string, unknown> | undefined) : undefined;
+                        const empSavedOutput = empAdjustments?.payroll_output_preview as Record<string, number> | undefined;
+                        const empTaxYear = new Date(`${record.year}-${String(record.month).padStart(2, '0')}-01`).getFullYear();
+                        const empBrackets = empTaxYear >= 2026 ? PIT_BRACKETS_2026 : PIT_BRACKETS_LEGACY;
+                        
+                        // Get total insurance deduction for this record
+                        const emEstBhxh = empSavedOutput?.socialInsurance?.insurance ?? 0;
+                        const estBhyt = empSavedOutput?.healthInsurance?.insurance ?? 0;
+                        const estBhtn = empSavedOutput?.unemploymentInsurance?.insurance ?? 0;
+                        const estTotalBH = emEstBhxh + estBhyt + estBhtn;
+                        
+                        const recordTaxDetail = calculateTaxBreakdown(
+                          Math.max(
+                            (record.luong_co_ban ?? 0) +
+                            (record.phu_cap ?? 0) +
+                            (record.luong_tang_ca ?? 0) +
+                            (record.tong_cong ?? 0) * 0, // approx
+                            0
+                          ),
+                          estTotalBH,
+                          empTaxYear >= 2026 ? PERSONAL_DEDUCTION_2026 : PERSONAL_DEDUCTION_LEGACY,
+                          (empConfig.taxPolicy.dependentCount || 0) * (empTaxYear >= 2026 ? DEPENDENT_DEDUCTION_2026 : DEPENDENT_DEDUCTION_LEGACY),
+                          empBrackets,
+                          empConfig.taxPolicy.dependentCount || 0
+                        );
+                        const recordTax = empSavedOutput?.pit ?? recordTaxDetail.totalTax;
+
+                        return (
                         <tr key={record.employee_id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-3 py-3 sticky left-0 bg-white">
                             <p className="font-medium text-gray-900">{record.ho_va_ten}</p>
@@ -2651,6 +2865,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           <td className="px-3 py-3 text-right text-gray-700">{formatNumber(record.tong_cong)}</td>
                           <td className="px-3 py-3 text-right text-blue-600">{formatCurrency(record.luong_tang_ca)}</td>
                           <td className="px-3 py-3 text-right text-red-600">{formatCurrency((record.tong_phat ?? 0) + (record.tong_phat_bienban ?? 0))}</td>
+                          <td className="px-3 py-3 text-right font-semibold text-red-700 bg-red-50 flex items-center justify-end gap-2">
+                            {formatCurrency(recordTax)}
+                            {recordTax > 0 && <TaxTooltip taxDetail={recordTaxDetail} />}
+                          </td>
                           <td className="px-3 py-3 text-right font-semibold text-indigo-700 bg-indigo-50">
                             {formatCurrency(record.luong_thuc_linh)}
                           </td>
@@ -2686,7 +2904,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                             </button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
