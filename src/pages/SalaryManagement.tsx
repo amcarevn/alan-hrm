@@ -223,10 +223,12 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const tamUng = record.tam_ung ?? 0;
   const taxDetail = payrollTax.taxDetail;
   const thue = payrollTax.taxAmount;
-  // IX = VI − VII + VIII (tính đúng: trừ BH/CĐ/phạt)
-  const luongThucLinh = tongThuNhapVI - tongGiamTruVII + dieuChinhVIII;
-  // XII = IX − X − XI
-  const conPhaiTT = luongThucLinh - tamUng - thue;
+  const contractStatusText = record.contract_status === 'THU_VIEC' ? 'Thử việc' : 'Chính thức';
+  const tongThuNhapChiuThue = toNumber(record.tong_thu_nhap_chiu_thue, Math.max(tongThuNhapVI - phuCapAnTrua, 0));
+  // IX = Thu nhập chịu thuế − VII + VIII
+  const luongThucLinh = tongThuNhapChiuThue - tongGiamTruVII + dieuChinhVIII;
+  // XII = IX − X − XI + phụ cấp ăn trưa (không tính thuế)
+  const conPhaiTT = luongThucLinh - tamUng - thue + phuCapAnTrua;
 
   const fmt = (v: number) => v ? v.toLocaleString('vi-VN') : '—';
 
@@ -249,6 +251,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               Phiếu thanh toán lương {monthLabel}
             </h2>
             <p className="text-sm text-indigo-600 mt-0.5">{record.ho_va_ten} · {record.ma_nv}</p>
+            <p className="text-xs text-indigo-500 mt-0.5">Trạng thái hợp đồng: {contractStatusText}</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -414,6 +417,11 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">TỔNG THU NHẬP (III+IV+V)</td>
                 <td className="border border-gray-300 px-3 py-2 text-right font-bold text-indigo-800">{fmt(tongThuNhapVI)}</td>
               </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">VI.1</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">TỔNG THU NHẬP CHỊU THUẾ (không gồm phụ cấp ăn trưa)</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-blue-700 font-semibold">{fmt(tongThuNhapChiuThue)}</td>
+              </tr>
 
               {/* Section VII */}
               <tr className="bg-red-50">
@@ -457,7 +465,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               {/* Section IX */}
               <tr className="bg-indigo-100">
                 <td className="border border-gray-300 px-3 py-2 text-center font-bold text-indigo-800">IX</td>
-                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">LƯƠNG THỰC LĨNH (VI − VII + VIII)</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">LƯƠNG THỰC LĨNH CHỊU THUẾ (VI.1 − VII + VIII)</td>
                 <td className="border border-gray-300 px-3 py-2 text-right font-bold text-indigo-800">{fmt(luongThucLinh)}</td>
               </tr>
 
@@ -479,11 +487,16 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                   <TaxTooltip taxDetail={taxDetail} />
                 </td>
               </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">XI+</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Phụ cấp ăn trưa (không tính thuế)</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-green-700 font-semibold">{phuCapAnTrua ? fmt(phuCapAnTrua) : '—'}</td>
+              </tr>
 
               {/* Section XII */}
               <tr className="bg-green-100">
                 <td className="border border-gray-300 px-3 py-2 text-center font-bold text-green-800">XII</td>
-                <td className="border border-gray-300 px-3 py-2 font-bold text-green-800">CÒN PHẢI THANH TOÁN (IX − X − XI)</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-green-800">CÒN PHẢI THANH TOÁN (IX − X − XI + XI+)</td>
                 <td className="border border-gray-300 px-3 py-2 text-right font-bold text-lg text-green-800">{fmt(conPhaiTT)}</td>
               </tr>
             </tbody>
@@ -1021,7 +1034,7 @@ const asRecord = (value: unknown): Record<string, any> => {
 
 const formatCurrency = (value: number | null | undefined) => {
   if (value === null || value === undefined) return '—';
-  return value.toLocaleString('vi-VN') + 'đ';
+  return Math.round(value).toLocaleString('vi-VN') + 'đ';
 };
 
 const formatNumber = (value: number | null | undefined) => {

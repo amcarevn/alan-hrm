@@ -32,6 +32,10 @@ export interface SalaryRecord {
   bh_deduction: number;
   so_gio_tang_ca: number;
   luong_tang_ca: number;
+  contract_type?: string;
+  contract_status?: 'CHINH_THUC' | 'THU_VIEC';
+  phu_cap_an_trua?: number;
+  tong_thu_nhap_chiu_thue?: number;
   thue_tncn?: number;
   so_nguoi_phu_thuoc?: number;
   thu_nhap_tinh_thue?: number;
