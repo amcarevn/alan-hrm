@@ -76,7 +76,7 @@ const TaxTooltip: React.FC<TaxTooltipProps> = ({ taxDetail }) => {
               Công thức: Thuế TNCN = Σ(Thu nhập trong từng bậc × Thuế suất bậc đó)
             </p>
             <div className="flex justify-between">
-              <span className="text-gray-600">Tổng thu nhập (Gross):</span>
+              <span className="text-gray-600">Tổng thu nhập không tính phụ cấp ăn trưa:</span>
               <span className="font-semibold">{formatCurrency(taxDetail.grossIncome)}</span>
             </div>
             <div className="flex justify-between">
@@ -155,7 +155,8 @@ interface PayslipDetailModalProps {
 const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose, employee, penalties, commissions }) => {
   useLockBodyScroll(true);
   const stdDays = getStandardWorkDays(record.year, record.month);
-  const payrollTax = calculatePayrollTaxFromRecord(record, employee);
+  const payslipComputation = calculatePayslipNetPayable(record, employee);
+  const payrollTax = payslipComputation.payrollTax;
   const nptCount = payrollTax.dependentCount;
   const mucLuongDongBH = payrollTax.insuranceSalaryBase;
 
@@ -168,8 +169,6 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const thuNhapKhac  = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
   const thuong       = (record as unknown as Record<string, number>)['thuong'] ?? 0;
   const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
-  const tongPhuCapIV = record.phu_cap ?? 0;
-  const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
 
   // Deductions: use saved payroll config if available, otherwise calculate from standard rates
   const savedAdjustments = employee ? (employee.salary_adjustments as Record<string, unknown> | undefined) : undefined;
@@ -196,7 +195,10 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
         monthly_cap: toNumber(savedLunchPolicyRaw.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP),
       }
     : null;
-  const phuCapAnTrua = lunchPolicy ? calculateLunchAllowance(lunchPolicy, record.tong_cong ?? 0, stdDays) : 0;
+  const phuCapAnTrua = toNumber(
+    (record as unknown as Record<string, unknown>)['phu_cap_an_trua'],
+    lunchPolicy ? calculateLunchAllowance(lunchPolicy, record.tong_cong ?? 0, stdDays) : 0,
+  );
 
   // Responsibility allowance: recalculate from policy
   const savedRespPolicyRaw = savedConfig?.responsibilityAllowancePolicy as Record<string, unknown> | undefined;
@@ -208,7 +210,13 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
     : null;
   const phuCapTrachNhiem = respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0;
 
-  const phuCapKhacRemainder = Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0);
+  const phuCapKhacFromRecord = (record as unknown as Record<string, number>)['phu_cap_khac'] ?? 0;
+  const phuCapKhacRemainder = Math.max(
+    phuCapKhacFromRecord,
+    Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0),
+  );
+  const tongPhuCapIV = phuCapGuiXe + phuCapAnTrua + phuCapTrachNhiem + phuCapKhacRemainder;
+  const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
 
   const bhxh = payrollTax.socialInsurance;
   const bhyt = payrollTax.healthInsurance;
@@ -224,11 +232,8 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const taxDetail = payrollTax.taxDetail;
   const thue = payrollTax.taxAmount;
   const contractStatusText = record.contract_status === 'THU_VIEC' ? 'Thử việc' : 'Chính thức';
-  const tongThuNhapChiuThue = toNumber(record.tong_thu_nhap_chiu_thue, Math.max(tongThuNhapVI - phuCapAnTrua, 0));
-  // IX = Thu nhập chịu thuế − VII + VIII
-  const luongThucLinh = tongThuNhapChiuThue - tongGiamTruVII + dieuChinhVIII;
-  // XII = IX − X − XI + phụ cấp ăn trưa (không tính thuế)
-  const conPhaiTT = luongThucLinh - tamUng - thue + phuCapAnTrua;
+  const luongThucLinh = payslipComputation.luongThucLinh;
+  const conPhaiTT = payslipComputation.conPhaiThanhToan;
 
   const fmt = (v: number) => v ? v.toLocaleString('vi-VN') : '—';
 
@@ -390,6 +395,12 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{phuCapAnTrua ? fmt(phuCapAnTrua) : '—'}</td>
               </tr>
               <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-400">*</td>
+                <td className="border border-gray-300 px-3 py-2 text-xs text-gray-500" colSpan={2}>
+                  Ghi chú: Phụ cấp ăn trưa được cộng vào tổng thu nhập (VI) nhưng không dùng để tính thuế TNCN.
+                </td>
+              </tr>
+              <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">16</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">
                   {respPolicy?.mode === 'actual_working_day'
@@ -416,11 +427,6 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 text-center font-bold text-indigo-800">VI</td>
                 <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">TỔNG THU NHẬP (III+IV+V)</td>
                 <td className="border border-gray-300 px-3 py-2 text-right font-bold text-indigo-800">{fmt(tongThuNhapVI)}</td>
-              </tr>
-              <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">VI.1</td>
-                <td className="border border-gray-300 px-3 py-2 text-gray-700">TỔNG THU NHẬP CHỊU THUẾ (không gồm phụ cấp ăn trưa)</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-blue-700 font-semibold">{fmt(tongThuNhapChiuThue)}</td>
               </tr>
 
               {/* Section VII */}
@@ -465,7 +471,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               {/* Section IX */}
               <tr className="bg-indigo-100">
                 <td className="border border-gray-300 px-3 py-2 text-center font-bold text-indigo-800">IX</td>
-                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">LƯƠNG THỰC LĨNH CHỊU THUẾ (VI.1 − VII + VIII)</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">LƯƠNG THỰC LĨNH (VI − VII + VIII)</td>
                 <td className="border border-gray-300 px-3 py-2 text-right font-bold text-indigo-800">{fmt(luongThucLinh)}</td>
               </tr>
 
@@ -487,16 +493,10 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                   <TaxTooltip taxDetail={taxDetail} />
                 </td>
               </tr>
-              <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">XI+</td>
-                <td className="border border-gray-300 px-3 py-2 text-gray-700">Phụ cấp ăn trưa (không tính thuế)</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-green-700 font-semibold">{phuCapAnTrua ? fmt(phuCapAnTrua) : '—'}</td>
-              </tr>
-
               {/* Section XII */}
               <tr className="bg-green-100">
                 <td className="border border-gray-300 px-3 py-2 text-center font-bold text-green-800">XII</td>
-                <td className="border border-gray-300 px-3 py-2 font-bold text-green-800">CÒN PHẢI THANH TOÁN (IX − X − XI + XI+)</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-green-800">CÒN PHẢI THANH TOÁN (IX − X − XI)</td>
                 <td className="border border-gray-300 px-3 py-2 text-right font-bold text-lg text-green-800">{fmt(conPhaiTT)}</td>
               </tr>
             </tbody>
@@ -989,7 +989,7 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
     dependentCount * (taxYear >= 2026 ? DEPENDENT_DEDUCTION_2026 : DEPENDENT_DEDUCTION_LEGACY),
   );
   const insuranceForTax = toNumber(record.bao_hiem_bat_buoc, insuranceTotal);
-  const grossIncomeForTax = getGrossIncomeForTaxFromRecord(record);
+  const grossIncomeForTax = toNumber(record.tong_thu_nhap_chiu_thue, getGrossIncomeForTaxFromRecord(record));
 
   const taxDetail = calculateTaxBreakdown(
     grossIncomeForTax,
@@ -1022,6 +1022,78 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
     healthInsurance,
     unemploymentInsurance,
     insuranceTotal,
+  };
+};
+
+const calculatePayslipNetPayable = (record: SalaryRecord, employee?: Employee) => {
+  const stdDays = getStandardWorkDays(record.year, record.month);
+  const luongCoBan = record.luong_co_ban ?? 0;
+  const luongNgayCongThucTe = stdDays > 0 ? Math.round((luongCoBan / stdDays) * (record.tong_cong ?? 0)) : 0;
+  const luongTangCa = record.luong_tang_ca ?? 0;
+  const luongTrucCa = record.truc_toi ?? 0;
+  const luongDoanhSo = (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
+  const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
+  const thuong = (record as unknown as Record<string, number>)['thuong'] ?? 0;
+  const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
+
+  const payrollTax = calculatePayrollTaxFromRecord(record, employee);
+  const savedAdjustments = employee ? (employee.salary_adjustments as Record<string, unknown> | undefined) : undefined;
+  const savedConfig = savedAdjustments?.payroll_config as Record<string, unknown> | undefined;
+
+  const savedParkingPolicyRaw = savedConfig?.parkingAllowancePolicy as Record<string, unknown> | undefined;
+  const parkingPolicy: ParkingAllowancePolicy | null = savedParkingPolicyRaw
+    ? {
+        mode: savedParkingPolicyRaw.mode === 'daily' ? 'daily' : savedParkingPolicyRaw.mode === 'monthly' ? 'monthly' : 'none',
+        daily_rate: toNumber(savedParkingPolicyRaw.daily_rate, 5000),
+        monthly_rate: toNumber(savedParkingPolicyRaw.monthly_rate, 0),
+      }
+    : null;
+  const phuCapGuiXe = parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : (record.phu_cap_gui_xe ?? 0);
+
+  const savedLunchPolicyRaw = (savedConfig?.lunchAllowancePolicy as Record<string, unknown> | undefined);
+  const lunchPolicy: LunchAllowancePolicy | null = savedLunchPolicyRaw
+    ? {
+        mode: savedLunchPolicyRaw.mode === 'actual_working_day' ? 'actual_working_day' : 'fixed',
+        fixed_amount: toNumber(savedLunchPolicyRaw.fixed_amount),
+        amount_per_work_day: toNumber(savedLunchPolicyRaw.amount_per_work_day),
+        monthly_cap: toNumber(savedLunchPolicyRaw.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP),
+      }
+    : null;
+  const phuCapAnTrua = toNumber(
+    (record as unknown as Record<string, unknown>)['phu_cap_an_trua'],
+    lunchPolicy ? calculateLunchAllowance(lunchPolicy, record.tong_cong ?? 0, stdDays) : 0,
+  );
+
+  const savedRespPolicyRaw = savedConfig?.responsibilityAllowancePolicy as Record<string, unknown> | undefined;
+  const respPolicy: ResponsibilityAllowancePolicy | null = savedRespPolicyRaw
+    ? {
+        mode: savedRespPolicyRaw.mode === 'fixed' ? 'fixed' : savedRespPolicyRaw.mode === 'actual_working_day' ? 'actual_working_day' : 'none',
+        monthly_max: toNumber(savedRespPolicyRaw.monthly_max),
+      }
+    : null;
+  const phuCapTrachNhiem = respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0;
+
+  const phuCapKhacFromRecord = (record as unknown as Record<string, number>)['phu_cap_khac'] ?? 0;
+  const phuCapKhacRemainder = Math.max(
+    phuCapKhacFromRecord,
+    Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0),
+  );
+  const tongPhuCapIV = phuCapGuiXe + phuCapAnTrua + phuCapTrachNhiem + phuCapKhacRemainder;
+  const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
+
+  const congDoanRaw = (savedConfig?.deductions as Record<string, number> | undefined)?.unionFee;
+  const congDoan = congDoanRaw != null ? Math.round(congDoanRaw) : 0;
+
+  const tongGiamTruVII = payrollTax.insuranceTotal + congDoan + (record.tong_phat ?? 0) + (record.tong_phat_bienban ?? 0);
+  const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
+  const tamUng = record.tam_ung ?? 0;
+  const luongThucLinh = tongThuNhapVI - tongGiamTruVII + dieuChinhVIII;
+  const conPhaiThanhToan = luongThucLinh - tamUng - payrollTax.taxAmount;
+
+  return {
+    luongThucLinh,
+    conPhaiThanhToan,
+    payrollTax,
   };
 };
 
@@ -2966,8 +3038,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <tbody className="bg-white divide-y divide-gray-100">
                       {pagedSalaryRecords.map((record) => {
                         const employee = employees.find((e) => e.id === record.employee_id);
-                        const recordTaxComputation = calculatePayrollTaxFromRecord(record, employee);
+                        const payslipComputation = calculatePayslipNetPayable(record, employee);
+                        const recordTaxComputation = payslipComputation.payrollTax;
                         const recordTax = recordTaxComputation.taxAmount;
+                        const recordNetPayable = payslipComputation.conPhaiThanhToan;
 
                         return (
                         <tr key={record.employee_id} className="hover:bg-gray-50 transition-colors">
@@ -2986,7 +3060,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                             <TaxTooltip taxDetail={recordTaxComputation.taxDetail} />
                           </td>
                           <td className="px-3 py-3 text-right font-semibold text-indigo-700 bg-indigo-50">
-                            {formatCurrency(record.luong_thuc_linh)}
+                            {formatCurrency(recordNetPayable)}
                           </td>
                           <td className="px-3 py-3 text-center">
                             <button
