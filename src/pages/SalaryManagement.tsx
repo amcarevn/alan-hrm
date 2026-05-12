@@ -55,7 +55,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
 
   // Section III
   const luongCoBan   = record.luong_co_ban ?? 0;
-  const luongNgayCongThucTe = stdDays > 0 ? Math.round(luongCoBan / stdDays * (record.ngay_cong ?? 0)) : 0;
+  const luongNgayCongThucTe = stdDays > 0 ? Math.round(luongCoBan / stdDays * (record.tong_cong ?? 0)) : 0;
   const luongTangCa  = record.luong_tang_ca ?? 0;
   const luongTrucCa  = record.truc_toi ?? 0;
   const luongDoanhSo = commissions
@@ -63,7 +63,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
     : (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
   const thuNhapKhac  = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
   const thuong       = (record as unknown as Record<string, number>)['thuong'] ?? 0;
-  const tongLuongIII = luongCoBan + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
+  const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
   const tongPhuCapIV = record.phu_cap ?? 0;
   const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
 
@@ -93,7 +93,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
         monthly_cap: toNumber(savedLunchPolicyRaw.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP),
       }
     : null;
-  const phuCapAnTrua = lunchPolicy ? calculateLunchAllowance(lunchPolicy, record.ngay_cong, stdDays) : 0;
+  const phuCapAnTrua = lunchPolicy ? calculateLunchAllowance(lunchPolicy, record.tong_cong ?? 0, stdDays) : 0;
 
   // Responsibility allowance: recalculate from policy
   const savedRespPolicyRaw = savedConfig?.responsibilityAllowancePolicy as Record<string, unknown> | undefined;
@@ -103,7 +103,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
         monthly_max: toNumber(savedRespPolicyRaw.monthly_max),
       }
     : null;
-  const phuCapTrachNhiem = respPolicy ? calculateResponsibilityAllowance(respPolicy, record.ngay_cong, stdDays) : 0;
+  const phuCapTrachNhiem = respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0;
 
   const phuCapKhacRemainder = Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0);
 
@@ -230,7 +230,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">8</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Số giờ tăng ca</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{record.tang_ca ?? 0}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{record.so_gio_tang_ca ?? record.tang_ca ?? 0}</td>
               </tr>
 
               {/* Section III */}
@@ -284,7 +284,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">15</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">
                   {lunchPolicy?.mode === 'actual_working_day'
-                    ? `Phụ cấp ăn trưa (${record.ngay_cong}/${stdDays} công × ${Math.round(Math.min(toNumber(lunchPolicy.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP), MAX_LUNCH_ALLOWANCE_CAP) / stdDays).toLocaleString('vi-VN')}đ)`
+                    ? `Phụ cấp ăn trưa (${record.tong_cong ?? 0}/${stdDays} công × ${Math.round(Math.min(toNumber(lunchPolicy.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP), MAX_LUNCH_ALLOWANCE_CAP) / stdDays).toLocaleString('vi-VN')}đ)`
                     : 'Phụ cấp ăn trưa'}
                 </td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{phuCapAnTrua ? fmt(phuCapAnTrua) : '—'}</td>
@@ -293,7 +293,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">16</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">
                   {respPolicy?.mode === 'actual_working_day'
-                    ? `Phụ cấp trách nhiệm (${record.ngay_cong}/${stdDays} công × ${Math.round(respPolicy.monthly_max / stdDays).toLocaleString('vi-VN')}đ)`
+                    ? `Phụ cấp trách nhiệm (${record.tong_cong ?? 0}/${stdDays} công × ${Math.round(respPolicy.monthly_max / stdDays).toLocaleString('vi-VN')}đ)`
                     : 'Phụ cấp trách nhiệm / chức vụ'}
                 </td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{phuCapTrachNhiem ? fmt(phuCapTrachNhiem) : '—'}</td>
