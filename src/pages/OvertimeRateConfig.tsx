@@ -77,6 +77,18 @@ function fmtMoney(v: number | null | undefined) {
   return Number(v).toLocaleString('vi-VN') + ' ₫';
 }
 
+function formatThousands(v: number | null | undefined): string {
+  if (!v) return '';
+  return Math.round(v).toLocaleString('vi-VN');
+}
+
+function formatMultiplier(v: number | string | null | undefined): string {
+  const n = parseFloat(String(v ?? 1));
+  if (isNaN(n)) return '1.0';
+  return n % 1 === 0 ? n.toFixed(1) : String(n);
+}
+
+
 function fmtDate(s: string | null | undefined) {
   if (!s) return '—';
   const [y, m, d] = s.split('-');
@@ -114,6 +126,12 @@ const OvertimeRateConfigPage: React.FC = () => {
   const [modalError, setModalError] = useState('');
   const [empSearch,  setEmpSearch]  = useState('');
 
+  // display state cho các trường tiền tệ (format 20.000) và hệ số nhân
+  const [rateDisplay,       setRateDisplay]       = useState('');
+  const [kpiRateDisplay,    setKpiRateDisplay]    = useState('');
+  const [multiplierDisplay, setMultiplierDisplay] = useState('1');
+  const [kpiMultiplierDisplay, setKpiMultiplierDisplay] = useState('');
+
   // ── load master data once ──────────────────────────────────
   useEffect(() => {
     departmentsAPI.list({ page_size: 500 }).then(r => setDepartments(r.results));
@@ -149,6 +167,10 @@ const OvertimeRateConfigPage: React.FC = () => {
   function openCreate() {
     setEditTarget(null);
     setForm({ ...EMPTY_FORM, apply_to_all: activeTab === 'all' });
+    setRateDisplay('');
+    setKpiRateDisplay('');
+    setMultiplierDisplay('1.0');
+    setKpiMultiplierDisplay('');
     setEmpSearch('');
     setModalError('');
     setShowModal(true);
@@ -173,6 +195,10 @@ const OvertimeRateConfigPage: React.FC = () => {
       is_active:         row.is_active,
       notes:             row.notes,
     });
+    setRateDisplay(formatThousands(row.rate_per_hour));
+    setKpiRateDisplay(formatThousands(row.kpi_rate_per_hour ?? 0));
+    setMultiplierDisplay(formatMultiplier(row.multiplier ?? 1));
+    setKpiMultiplierDisplay(row.kpi_multiplier != null ? formatMultiplier(row.kpi_multiplier) : '');
     setEmpSearch('');
     setModalError('');
     setShowModal(true);
@@ -595,12 +621,22 @@ const OvertimeRateConfigPage: React.FC = () => {
                               Đơn giá / giờ <span className="text-red-500">*</span>
                             </label>
                             <input
-                              type="number"
-                              min={0}
-                              value={form.rate_per_hour || ''}
-                              onChange={e => setForm(f => ({ ...f, rate_per_hour: Number(e.target.value) }))}
+                              type="text"
+                              inputMode="numeric"
+                              value={rateDisplay}
+                              onChange={e => {
+                                const raw = e.target.value.replace(/\./g, '').replace(/[^\d]/g, '');
+                                setRateDisplay(raw);
+                                setForm(f => ({ ...f, rate_per_hour: Number(raw) || 0 }));
+                              }}
+                              onFocus={e => {
+                                const raw = String(form.rate_per_hour || '');
+                                setRateDisplay(raw === '0' ? '' : raw);
+                                setTimeout(() => e.target.select(), 0);
+                              }}
+                              onBlur={() => setRateDisplay(formatThousands(form.rate_per_hour))}
                               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                              placeholder="VD: 20000"
+                              placeholder="VD: 20.000"
                             />
                           </>
                         ) : (
@@ -617,12 +653,23 @@ const OvertimeRateConfigPage: React.FC = () => {
                           Hệ số nhân <span className="text-gray-400 font-normal">(mặc định 1)</span>
                         </label>
                         <input
-                          type="number"
-                          min={0.1}
-                          step={0.1}
-                          value={form.multiplier}
-                          onChange={e => setForm(f => ({ ...f, multiplier: Number(e.target.value) || 1 }))}
+                          type="text"
+                          inputMode="decimal"
+                          value={multiplierDisplay}
+                          onChange={e => {
+                            const raw = e.target.value.replace(/[^\d.]/g, '');
+                            setMultiplierDisplay(raw);
+                            const n = parseFloat(raw);
+                            if (!isNaN(n)) setForm(f => ({ ...f, multiplier: n }));
+                          }}
+                          onFocus={e => setTimeout(() => e.target.select(), 0)}
+                          onBlur={() => {
+                            const n = parseFloat(multiplierDisplay) || 1;
+                            setForm(f => ({ ...f, multiplier: n }));
+                            setMultiplierDisplay(formatMultiplier(n));
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                          placeholder="VD: 1.5"
                         />
                         {form.calc_method === 'FIXED' && form.multiplier !== 1 && form.rate_per_hour > 0 && (
                           <p className="text-xs text-indigo-600 mt-1">= {(form.rate_per_hour * form.multiplier).toLocaleString('vi-VN')}đ/h</p>
@@ -655,11 +702,25 @@ const OvertimeRateConfigPage: React.FC = () => {
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Hệ số × khi đạt KPI</label>
                             <input
-                              type="number"
-                              min={0}
-                              step={0.1}
-                              value={form.kpi_multiplier ?? ''}
-                              onChange={e => setForm(f => ({ ...f, kpi_multiplier: e.target.value ? Number(e.target.value) : null }))}
+                              type="text"
+                              inputMode="decimal"
+                              value={kpiMultiplierDisplay}
+                              onChange={e => {
+                                const raw = e.target.value.replace(/[^\d.]/g, '');
+                                setKpiMultiplierDisplay(raw);
+                                const n = parseFloat(raw);
+                                setForm(f => ({ ...f, kpi_multiplier: !isNaN(n) ? n : null }));
+                              }}
+                              onFocus={e => setTimeout(() => e.target.select(), 0)}
+                              onBlur={() => {
+                                const n = parseFloat(kpiMultiplierDisplay);
+                                if (!isNaN(n)) {
+                                  setForm(f => ({ ...f, kpi_multiplier: n }));
+                                  setKpiMultiplierDisplay(formatMultiplier(n));
+                                } else {
+                                  setKpiMultiplierDisplay('');
+                                }
+                              }}
                               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
                               placeholder="VD: 1.5"
                             />
@@ -683,12 +744,22 @@ const OvertimeRateConfigPage: React.FC = () => {
                             <span className="text-gray-400 font-normal ml-1">(nếu không dùng hệ số ×)</span>
                           </label>
                           <input
-                            type="number"
-                            min={0}
-                            value={form.kpi_rate_per_hour ?? ''}
-                            onChange={e => setForm(f => ({ ...f, kpi_rate_per_hour: e.target.value ? Number(e.target.value) : null }))}
+                            type="text"
+                            inputMode="numeric"
+                            value={kpiRateDisplay}
+                            onChange={e => {
+                              const raw = e.target.value.replace(/\./g, '').replace(/[^\d]/g, '');
+                              setKpiRateDisplay(raw);
+                              setForm(f => ({ ...f, kpi_rate_per_hour: raw ? Number(raw) : null }));
+                            }}
+                            onFocus={e => {
+                              const raw = form.kpi_rate_per_hour ? String(form.kpi_rate_per_hour) : '';
+                              setKpiRateDisplay(raw);
+                              setTimeout(() => e.target.select(), 0);
+                            }}
+                            onBlur={() => setKpiRateDisplay(formatThousands(form.kpi_rate_per_hour ?? 0))}
                             className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                            placeholder="VD: 30000"
+                            placeholder="VD: 30.000"
                           />
                         </div>
                       </div>
