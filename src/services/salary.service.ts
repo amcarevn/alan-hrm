@@ -19,6 +19,7 @@ export interface SalaryRecord {
   vi_tri: string | null;
   luong_co_ban: number;
   phu_cap: number;
+  thu_nhap_khac?: number;
   ngay_cong: number;
   cong_chinh_thuc: number;
   tang_ca: number;

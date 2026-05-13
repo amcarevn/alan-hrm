@@ -1125,10 +1125,9 @@ const getGrossIncomeForTaxFromRecord = (record: SalaryRecord) => {
   const luongTrucCa = record.truc_toi ?? 0;
   const luongDoanhSo = (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
   const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
-  const thuong = (record as unknown as Record<string, number>)['thuong'] ?? 0;
-  const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
-  const tongPhuCapIV = record.phu_cap ?? 0;
-  return tongLuongIII + tongPhuCapIV + thuong;
+  const phuCapAnTrua = toNumber((record as unknown as Record<string, number>)['phu_cap_an_trua'], 0);
+  const taxableAllowance = Math.max((record.phu_cap ?? 0) - phuCapAnTrua, 0);
+  return luongNgayCongThucTe + taxableAllowance + luongDoanhSo + thuNhapKhac + luongTrucCa + luongTangCa;
 };
 
 const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee): PayrollTaxComputation => {
