@@ -14,6 +14,7 @@ import {
   FunnelIcon,
   EyeIcon,
   PrinterIcon,
+  EnvelopeIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   QuestionMarkCircleIcon,
@@ -162,6 +163,10 @@ const getSalesCommissionAmount = (record: SalaryRecord, commissions?: Commission
 
 const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose, employee, penalties, commissions }) => {
   useLockBodyScroll(true);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailAddr, setEmailAddr] = useState(employee?.personal_email ?? '');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResult, setEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const stdDays = getStandardWorkDays(record.year, record.month);
   const payslipComputation = calculatePayslipNetPayable(record, employee, commissions);
   const payrollTax = payslipComputation.payrollTax;
@@ -251,10 +256,95 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
     window.print();
   };
 
+  const buildEmailBody = () => {
+    const fmtN = (v: number) => v ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—';
+    const lines = [
+      `Kính gửi ${record.ho_va_ten},`,
+      '',
+      `Phòng nhân sự trân trọng gửi phiếu lương ${monthLabel} của bạn.`,
+      '',
+      '════════════════════════════════════════',
+      '  THÔNG TIN NHÂN VIÊN',
+      '────────────────────────────────────────',
+      `  Mã nhân viên      : ${record.ma_nv}`,
+      `  Họ và tên         : ${record.ho_va_ten}`,
+      `  Phòng ban          : ${record.phong_ban ?? '—'}`,
+      `  Chức vụ            : ${record.vi_tri ?? '—'}`,
+      `  HĐ lao động        : ${contractStatusText}`,
+      '────────────────────────────────────────',
+      '  THÔNG TIN CÔNG',
+      '────────────────────────────────────────',
+      `  Công chuẩn         : ${stdDays} công`,
+      `  Ngày công thực tế  : ${record.tong_cong}`,
+      `  Giờ tăng ca        : ${record.so_gio_tang_ca ?? record.tang_ca ?? 0}`,
+      '────────────────────────────────────────',
+      '  CÁC KHOẢN THU NHẬP',
+      '────────────────────────────────────────',
+      `  Lương ngày công    : ${fmtN(luongNgayCongThucTe)}`,
+      ...(luongDoanhSo ? [`  Lương doanh số     : ${fmtN(luongDoanhSo)}`] : []),
+      ...(luongTangCa ? [`  Lương tăng ca      : ${fmtN(luongTangCa)}`] : []),
+      ...(luongTrucCa ? [`  Lương trực ca      : ${fmtN(luongTrucCa)}`] : []),
+      ...(thuNhapKhac ? [`  Thu nhập khác      : ${fmtN(thuNhapKhac)}`] : []),
+      ...(thuong ? [`  Thưởng             : ${fmtN(thuong)}`] : []),
+      '────────────────────────────────────────',
+      '  CÁC KHOẢN PHỤ CẤP',
+      '────────────────────────────────────────',
+      ...(phuCapGuiXe ? [`  Phụ cấp gửi xe     : ${fmtN(phuCapGuiXe)}`] : []),
+      ...(phuCapAnTrua ? [`  Phụ cấp ăn trưa    : ${fmtN(phuCapAnTrua)}`] : []),
+      ...(phuCapTrachNhiem ? [`  Phụ cấp trách nhiệm: ${fmtN(phuCapTrachNhiem)}`] : []),
+      ...(phuCapKhacRemainder ? [`  Phụ cấp khác       : ${fmtN(phuCapKhacRemainder)}`] : []),
+      `  Tổng thu nhập      : ${fmtN(tongThuNhapVI)}`,
+      '────────────────────────────────────────',
+      '  CÁC KHOẢN KHẤU TRỪ',
+      '────────────────────────────────────────',
+      `  BHXH               : -${fmtN(bhxh)}`,
+      `  BHYT               : -${fmtN(bhyt)}`,
+      `  BHTN               : -${fmtN(bhtn)}`,
+      ...(congDoan ? [`  Công đoàn          : -${fmtN(congDoan)}`] : []),
+      ...(phatDiMuon ? [`  Phạt đi muộn       : -${fmtN(phatDiMuon)}`] : []),
+      ...(phatBienBan ? [`  Phạt (biên bản)    : -${fmtN(phatBienBan)}`] : []),
+      ...(thue ? [`  Thuế TNCN          : -${fmtN(thue)}`] : []),
+      ...(tamUng ? [`  Tạm ứng            : -${fmtN(tamUng)}`] : []),
+      '════════════════════════════════════════',
+      `  LƯƠNG THỰC LĨNH    : ${fmtN(luongThucLinh)}`,
+      `  CÒN PHẢI TT        : ${fmtN(conPhaiTT)}`,
+      '════════════════════════════════════════',
+      '',
+      'Nếu có thắc mắc về bảng lương, vui lòng liên hệ phòng Nhân sự.',
+      '',
+      'Trân trọng,',
+      'Phòng Nhân sự',
+    ];
+    return lines.join('\n');
+  };
+
+  const handleOpenEmailModal = () => {
+    setEmailAddr(employee?.personal_email ?? '');
+    setEmailResult(null);
+    setEmailModalOpen(true);
+  };
+
+  const handleConfirmSendEmail = async () => {
+    if (!emailAddr.trim()) return;
+    setEmailSending(true);
+    setEmailResult(null);
+    try {
+      const subject = `[Phiếu lương] ${monthLabel} - ${record.ho_va_ten}`;
+      const body = buildEmailBody();
+      await salaryService.sendPayslipEmail({ email: emailAddr.trim(), subject, body });
+      setEmailResult({ ok: true, msg: `Đã gửi phiếu lương đến ${emailAddr.trim()}.` });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Gửi email thất bại.';
+      setEmailResult({ ok: false, msg });
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header — sticky */}
@@ -267,6 +357,13 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
             <p className="text-xs text-indigo-500 mt-0.5">Trạng thái hợp đồng: {contractStatusText}</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleOpenEmailModal}
+              className="p-2 rounded-lg text-gray-500 hover:bg-blue-100 hover:text-blue-700 transition-colors"
+              title="Gửi phiếu lương qua email"
+            >
+              <EnvelopeIcon className="h-5 w-5" />
+            </button>
             <button
               onClick={handlePrint}
               className="p-2 rounded-lg text-gray-500 hover:bg-indigo-100 hover:text-indigo-700 transition-colors"
@@ -510,6 +607,77 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
             </tbody>
           </table>
         </div>
+
+        {/* ── Email confirmation overlay ── */}
+        {emailModalOpen && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 rounded-xl p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-blue-50 rounded-t-xl">
+                <div className="flex items-center gap-2 text-blue-800 font-semibold text-sm">
+                  <EnvelopeIcon className="h-5 w-5" />
+                  Gửi phiếu lương qua email
+                </div>
+                <button onClick={() => setEmailModalOpen(false)} className="p-1 rounded text-gray-400 hover:text-gray-600">
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="px-5 py-4 flex flex-col gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Địa chỉ email người nhận</label>
+                  <input
+                    type="email"
+                    value={emailAddr}
+                    onChange={(e) => setEmailAddr(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="example@email.com"
+                  />
+                  {!employee?.personal_email && (
+                    <p className="text-xs text-amber-600 mt-1">Nhân viên này chưa có email cá nhân trong hồ sơ.</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Tiêu đề</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`[Phiếu lương] ${monthLabel} - ${record.ho_va_ten}`}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Nội dung preview</label>
+                  <textarea
+                    readOnly
+                    value={buildEmailBody()}
+                    rows={8}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono bg-gray-50 text-gray-600 resize-none"
+                  />
+                </div>
+                {emailResult && (
+                  <p className={`text-sm font-medium ${emailResult.ok ? 'text-green-600' : 'text-red-600'}`}>
+                    {emailResult.msg}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                <button
+                  onClick={() => setEmailModalOpen(false)}
+                  className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleConfirmSendEmail}
+                  disabled={emailSending || !emailAddr.trim() || !!emailResult?.ok}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {emailSending ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <EnvelopeIcon className="h-4 w-4" />}
+                  {emailSending ? 'Đang gửi…' : 'Xác nhận gửi'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

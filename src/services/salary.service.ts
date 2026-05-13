@@ -405,6 +405,11 @@ class SalaryService {
     return response.data;
   }
 
+  async sendPayslipEmail(payload: { email: string; subject: string; body: string }): Promise<{ detail: string }> {
+    const response = await managementApi.post('/api/v1/salary/records/send-payslip-email/', payload);
+    return response.data;
+  }
+
   async getTotalSalarySummary(params: {
     year: number;
     month: number;
