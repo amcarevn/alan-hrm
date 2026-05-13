@@ -419,11 +419,6 @@ class SalaryService {
     year: number;
     month: number;
     department_id: number | null;
-    total_basic_salary: number;
-    total_allowance: number;
-    total_gross_income: number;
-    total_pit: number;
-    total_insurances: number;
     total_net_salary: number;
     employee_count: number;
   }> {

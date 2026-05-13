@@ -2618,11 +2618,6 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     year: number;
     month: number;
     department_id: number | null;
-    total_basic_salary: number;
-    total_allowance: number;
-    total_gross_income: number;
-    total_pit: number;
-    total_insurances: number;
     total_net_salary: number;
     employee_count: number;
   } | null>(null);
@@ -4157,36 +4152,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 </div>
               ) : totalSalaryData ? (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
-                      <p className="text-xs text-blue-600 font-medium mb-1">LƯƠNG CƠ BẢN</p>
-                      <p className="text-2xl font-bold text-blue-900">{formatCurrency(totalSalaryData.total_basic_salary)}</p>
-                    </div>
-                    <div className="rounded-lg bg-green-50 border border-green-200 p-4">
-                      <p className="text-xs text-green-600 font-medium mb-1">PHỤ CẤP</p>
-                      <p className="text-2xl font-bold text-green-900">{formatCurrency(totalSalaryData.total_allowance)}</p>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Tổng thu nhập:</span>
-                        <span className="font-semibold text-gray-900">{formatCurrency(totalSalaryData.total_gross_income)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-red-600">
-                        <span className="text-gray-600">Thuế TNCN:</span>
-                        <span className="font-semibold">-{formatCurrency(totalSalaryData.total_pit)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-amber-600">
-                        <span className="text-gray-600">Bảo hiểm + Khác:</span>
-                        <span className="font-semibold">-{formatCurrency(totalSalaryData.total_insurances)}</span>
-                      </div>
-                      <div className="border-t border-gray-200 pt-3 flex items-center justify-between bg-indigo-50 -mx-4 px-4 py-3">
-                        <span className="font-bold text-indigo-900">Tổng phải thanh toán:</span>
-                        <span className="text-2xl font-bold text-indigo-900">{formatCurrency(totalSalaryData.total_net_salary)}</span>
-                      </div>
-                    </div>
+                  <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-6 text-center">
+                    <p className="text-sm text-indigo-600 font-medium mb-2">TỔNG THỰC LĨNH PHẢI CHUYỂN</p>
+                    <p className="text-4xl font-bold text-indigo-900">{formatCurrency(totalSalaryData.total_net_salary)}</p>
+                    <p className="text-sm text-indigo-500 mt-2">= Tổng số tiền công ty chuyển vào ngày trả lương</p>
                   </div>
 
                   <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 text-sm text-gray-600">
