@@ -3720,9 +3720,20 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                             <button
                               onClick={async () => {
                                 setPayslipRecord(record);
-                                setPayslipEmployee(employee ?? null);
-                                setPayslipPenalties([]);
                                 setPayslipCommissions(salaryCommissions.filter((item) => item.employee === record.employee_id));
+                                setPayslipPenalties([]);
+
+                                // Lấy thông tin nhân viên đầy đủ (có personal_email) nếu chưa có trong danh sách hiện tại
+                                let resolvedEmployee = employee ?? null;
+                                if (!resolvedEmployee) {
+                                  try {
+                                    resolvedEmployee = await salaryService.getEmployeeSalaryConfig(record.employee_id);
+                                  } catch {
+                                    resolvedEmployee = null;
+                                  }
+                                }
+                                setPayslipEmployee(resolvedEmployee);
+
                                 try {
                                   const allPenalties = await salaryService.listPenalties({ year: record.year, month: record.month });
                                   setPayslipPenalties(
