@@ -14,7 +14,6 @@ import {
   FunnelIcon,
   EyeIcon,
   PrinterIcon,
-  EnvelopeIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   QuestionMarkCircleIcon,
@@ -43,26 +42,96 @@ type SalaryTabKey = 'config' | 'view';
 
 // ─── Tax Tooltip Component ───────────────────────────────────────────────────
 
+// Chỉ cho phép 1 tooltip mở tại một thời điểm
+let _closeActiveTaxTooltip: (() => void) | null = null;
+
 interface TaxTooltipProps {
   taxDetail: TaxCalculationDetail;
 }
 
 const TaxTooltip: React.FC<TaxTooltipProps> = ({ taxDetail }) => {
   const [showDetail, setShowDetail] = useState(false);
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
+  const btnRef = React.useRef<HTMLButtonElement>(null);
+  const popupRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (_closeActiveTaxTooltip === closeMe) _closeActiveTaxTooltip = null;
+    };
+  }, []);
+
+  const closeMe = React.useCallback(() => setShowDetail(false), []);
+
+  const handleOpen = () => {
+    // Đóng tooltip khác nếu đang mở
+    if (_closeActiveTaxTooltip && _closeActiveTaxTooltip !== closeMe) {
+      _closeActiveTaxTooltip();
+    }
+
+    if (!showDetail) {
+      _closeActiveTaxTooltip = closeMe;
+      if (btnRef.current) {
+        const rect = btnRef.current.getBoundingClientRect();
+        const POPUP_WIDTH = 384;
+        const left = Math.max(8, Math.min(rect.right - POPUP_WIDTH, window.innerWidth - POPUP_WIDTH - 8));
+        setPopupStyle({ position: 'fixed', top: rect.bottom + 8, left, width: POPUP_WIDTH, visibility: 'hidden' });
+      }
+      setShowDetail(true);
+    } else {
+      _closeActiveTaxTooltip = null;
+      setShowDetail(false);
+    }
+  };
+
+  // Sau khi render, đo chiều cao thực rồi căn lại vị trí
+  React.useLayoutEffect(() => {
+    if (!showDetail || !popupRef.current || !btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const popupH = popupRef.current.offsetHeight;
+    const POPUP_WIDTH = 384;
+    const MARGIN = 8;
+    const left = Math.max(MARGIN, Math.min(rect.right - POPUP_WIDTH, window.innerWidth - POPUP_WIDTH - MARGIN));
+    const spaceBelow = window.innerHeight - rect.bottom - MARGIN;
+    const spaceAbove = rect.top - MARGIN;
+    let top: number;
+    if (spaceBelow >= popupH) {
+      top = rect.bottom + MARGIN;
+    } else if (spaceAbove >= popupH) {
+      top = rect.top - popupH - MARGIN;
+    } else {
+      // Không đủ chỗ cả hai phía: ghim sát trên, dùng max-height + scroll
+      top = MARGIN;
+    }
+    setPopupStyle({
+      position: 'fixed',
+      top,
+      left,
+      width: POPUP_WIDTH,
+      maxHeight: `calc(100vh - ${top + MARGIN}px)`,
+      visibility: 'visible',
+    });
+  }, [showDetail]);
 
   return (
     <div className="relative inline-block">
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setShowDetail(!showDetail)}
+        onClick={handleOpen}
         className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 transition-colors"
         title="Xem chi tiết tính thuế"
       >
         <QuestionMarkCircleIcon className="h-4 w-4" />
       </button>
-      {showDetail && (
-        <div className="absolute bottom-full right-0 mb-2 w-96 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-4 space-y-3">
-          <div className="flex items-center justify-between border-b pb-2">
+      {showDetail && createPortal(
+        <div
+          ref={popupRef}
+          style={popupStyle}
+          className="z-[99999] bg-white border border-gray-200 rounded-lg shadow-xl flex flex-col overflow-hidden"
+        >
+          {/* Header — sticky */}
+          <div className="flex-shrink-0 flex items-center justify-between border-b px-4 py-3">
             <h4 className="font-semibold text-gray-900">Chi tiết tính thuế TNCN</h4>
             <button
               onClick={() => setShowDetail(false)}
@@ -72,72 +141,77 @@ const TaxTooltip: React.FC<TaxTooltipProps> = ({ taxDetail }) => {
             </button>
           </div>
 
-          <div className="space-y-2 text-sm">
-            <p className="text-xs text-indigo-700 bg-indigo-50 rounded px-2 py-1">
-              Công thức: Thuế TNCN = Σ(Thu nhập trong từng bậc × Thuế suất bậc đó)
-            </p>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Tổng thu nhập không tính phụ cấp ăn trưa:</span>
-              <span className="font-semibold">{formatCurrency(taxDetail.grossIncome)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Trừ BHXH + BHYT + BHTN:</span>
-              <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.insuranceDeduction)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Trừ giảm trừ bản thân:</span>
-              <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.personalDeduction)}</span>
-            </div>
-            {taxDetail.dependentDeduction > 0 && (
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            <div className="space-y-2 text-sm">
+              <p className="text-xs text-indigo-700 bg-indigo-50 rounded px-2 py-1">
+                Công thức: Thuế TNCN = Σ(Thu nhập trong từng bậc × Thuế suất bậc đó)
+              </p>
               <div className="flex justify-between">
-                <span className="text-gray-600">Trừ giảm trừ người phụ thuộc:</span>
-                <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.dependentDeduction)}</span>
+                <span className="text-gray-600">Tổng thu nhập không tính phụ cấp ăn trưa:</span>
+                <span className="font-semibold">{formatCurrency(taxDetail.grossIncome)}</span>
               </div>
-            )}
-            <div className="border-t pt-2 flex justify-between">
-              <span className="font-semibold text-blue-700">Thu nhập tính thuế:</span>
-              <span className="font-bold text-blue-800">{formatCurrency(taxDetail.taxableIncome)}</span>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Trừ BHXH + BHYT + BHTN:</span>
+                <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.insuranceDeduction)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Trừ giảm trừ bản thân:</span>
+                <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.personalDeduction)}</span>
+              </div>
+              {taxDetail.dependentDeduction > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Trừ giảm trừ người phụ thuộc:</span>
+                  <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.dependentDeduction)}</span>
+                </div>
+              )}
+              <div className="border-t pt-2 flex justify-between">
+                <span className="font-semibold text-blue-700">Thu nhập tính thuế:</span>
+                <span className="font-bold text-blue-800">{formatCurrency(taxDetail.taxableIncome)}</span>
+              </div>
+            </div>
+
+            <div className="border-t pt-3">
+              <p className="font-semibold text-gray-900 text-xs mb-2">Áp dụng bảng thuế lũy tiến:</p>
+              {taxDetail.breakdown.length > 0 ? (
+                <div className="space-y-2 text-xs">
+                  {taxDetail.breakdown.map((item) => (
+                    <div
+                      key={item.bracketNumber}
+                      className="rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-gray-700"
+                    >
+                      <div className="font-medium text-gray-800">
+                        <span>
+                          Bậc {item.bracketNumber}: {formatCurrency(item.fromAmount)} đến{' '}
+                          {item.toAmount === Number.POSITIVE_INFINITY ? 'trở lên' : formatCurrency(item.toAmount)} · thuế suất {item.rate}%
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between">
+                        <div className="text-gray-600">Thu nhập chịu thuế trong bậc</div>
+                        <div className="font-semibold text-gray-800">{formatCurrency(item.taxableAmount)}</div>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between">
+                        <div className="text-gray-600">
+                          {formatCurrency(item.taxableAmount)} × {item.rate}%
+                        </div>
+                        <div className="font-bold text-indigo-600">{formatCurrency(item.taxAmount)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500">Thu nhập tính thuế không vượt ngưỡng chịu thuế, nên thuế TNCN = 0đ.</p>
+              )}
             </div>
           </div>
 
-          <div className="border-t pt-3">
-            <p className="font-semibold text-gray-900 text-xs mb-2">Áp dụng bảng thuế lũy tiến:</p>
-            {taxDetail.breakdown.length > 0 ? (
-              <div className="space-y-2 text-xs">
-                {taxDetail.breakdown.map((item) => (
-                  <div
-                    key={item.bracketNumber}
-                    className="rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-gray-700"
-                  >
-                    <div className="font-medium text-gray-800">
-                      <span>
-                        Bậc {item.bracketNumber}: {formatCurrency(item.fromAmount)} đến{' '}
-                        {item.toAmount === Number.POSITIVE_INFINITY ? 'trở lên' : formatCurrency(item.toAmount)} · thuế suất {item.rate}%
-                      </span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between">
-                      <div className="text-gray-600">Thu nhập chịu thuế trong bậc</div>
-                      <div className="font-semibold text-gray-800">{formatCurrency(item.taxableAmount)}</div>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between">
-                      <div className="text-gray-600">
-                        {formatCurrency(item.taxableAmount)} × {item.rate}%
-                      </div>
-                      <div className="font-bold text-indigo-600">{formatCurrency(item.taxAmount)}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-500">Thu nhập tính thuế không vượt ngưỡng chịu thuế, nên thuế TNCN = 0đ.</p>
-            )}
-          </div>
-
-          <div className="border-t pt-2 flex justify-between bg-indigo-50 p-2 rounded">
+          {/* Footer — sticky */}
+          <div className="flex-shrink-0 border-t flex justify-between bg-indigo-50 px-4 py-3 rounded-b-lg">
             <span className="font-bold text-indigo-900">Tổng thuế TNCN:</span>
             <span className="font-bold text-indigo-900">{formatCurrency(taxDetail.totalTax)}</span>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -163,10 +237,6 @@ const getSalesCommissionAmount = (record: SalaryRecord, commissions?: Commission
 
 const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose, employee, penalties, commissions }) => {
   useLockBodyScroll(true);
-  const [emailModalOpen, setEmailModalOpen] = useState(false);
-  const [emailAddr, setEmailAddr] = useState(employee?.personal_email ?? '');
-  const [emailSending, setEmailSending] = useState(false);
-  const [emailResult, setEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const stdDays = getStandardWorkDays(record.year, record.month);
   const payslipComputation = calculatePayslipNetPayable(record, employee, commissions);
   const payrollTax = payslipComputation.payrollTax;
@@ -256,95 +326,10 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
     window.print();
   };
 
-  const buildEmailBody = () => {
-    const fmtN = (v: number) => v ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—';
-    const lines = [
-      `Kính gửi ${record.ho_va_ten},`,
-      '',
-      `Phòng nhân sự trân trọng gửi phiếu lương ${monthLabel} của bạn.`,
-      '',
-      '════════════════════════════════════════',
-      '  THÔNG TIN NHÂN VIÊN',
-      '────────────────────────────────────────',
-      `  Mã nhân viên      : ${record.ma_nv}`,
-      `  Họ và tên         : ${record.ho_va_ten}`,
-      `  Phòng ban          : ${record.phong_ban ?? '—'}`,
-      `  Chức vụ            : ${record.vi_tri ?? '—'}`,
-      `  HĐ lao động        : ${contractStatusText}`,
-      '────────────────────────────────────────',
-      '  THÔNG TIN CÔNG',
-      '────────────────────────────────────────',
-      `  Công chuẩn         : ${stdDays} công`,
-      `  Ngày công thực tế  : ${record.tong_cong}`,
-      `  Giờ tăng ca        : ${record.so_gio_tang_ca ?? record.tang_ca ?? 0}`,
-      '────────────────────────────────────────',
-      '  CÁC KHOẢN THU NHẬP',
-      '────────────────────────────────────────',
-      `  Lương ngày công    : ${fmtN(luongNgayCongThucTe)}`,
-      ...(luongDoanhSo ? [`  Lương doanh số     : ${fmtN(luongDoanhSo)}`] : []),
-      ...(luongTangCa ? [`  Lương tăng ca      : ${fmtN(luongTangCa)}`] : []),
-      ...(luongTrucCa ? [`  Lương trực ca      : ${fmtN(luongTrucCa)}`] : []),
-      ...(thuNhapKhac ? [`  Thu nhập khác      : ${fmtN(thuNhapKhac)}`] : []),
-      ...(thuong ? [`  Thưởng             : ${fmtN(thuong)}`] : []),
-      '────────────────────────────────────────',
-      '  CÁC KHOẢN PHỤ CẤP',
-      '────────────────────────────────────────',
-      ...(phuCapGuiXe ? [`  Phụ cấp gửi xe     : ${fmtN(phuCapGuiXe)}`] : []),
-      ...(phuCapAnTrua ? [`  Phụ cấp ăn trưa    : ${fmtN(phuCapAnTrua)}`] : []),
-      ...(phuCapTrachNhiem ? [`  Phụ cấp trách nhiệm: ${fmtN(phuCapTrachNhiem)}`] : []),
-      ...(phuCapKhacRemainder ? [`  Phụ cấp khác       : ${fmtN(phuCapKhacRemainder)}`] : []),
-      `  Tổng thu nhập      : ${fmtN(tongThuNhapVI)}`,
-      '────────────────────────────────────────',
-      '  CÁC KHOẢN KHẤU TRỪ',
-      '────────────────────────────────────────',
-      `  BHXH               : -${fmtN(bhxh)}`,
-      `  BHYT               : -${fmtN(bhyt)}`,
-      `  BHTN               : -${fmtN(bhtn)}`,
-      ...(congDoan ? [`  Công đoàn          : -${fmtN(congDoan)}`] : []),
-      ...(phatDiMuon ? [`  Phạt đi muộn       : -${fmtN(phatDiMuon)}`] : []),
-      ...(phatBienBan ? [`  Phạt (biên bản)    : -${fmtN(phatBienBan)}`] : []),
-      ...(thue ? [`  Thuế TNCN          : -${fmtN(thue)}`] : []),
-      ...(tamUng ? [`  Tạm ứng            : -${fmtN(tamUng)}`] : []),
-      '════════════════════════════════════════',
-      `  LƯƠNG THỰC LĨNH    : ${fmtN(luongThucLinh)}`,
-      `  CÒN PHẢI TT        : ${fmtN(conPhaiTT)}`,
-      '════════════════════════════════════════',
-      '',
-      'Nếu có thắc mắc về bảng lương, vui lòng liên hệ phòng Nhân sự.',
-      '',
-      'Trân trọng,',
-      'Phòng Nhân sự',
-    ];
-    return lines.join('\n');
-  };
-
-  const handleOpenEmailModal = () => {
-    setEmailAddr(employee?.personal_email ?? '');
-    setEmailResult(null);
-    setEmailModalOpen(true);
-  };
-
-  const handleConfirmSendEmail = async () => {
-    if (!emailAddr.trim()) return;
-    setEmailSending(true);
-    setEmailResult(null);
-    try {
-      const subject = `[Phiếu lương] ${monthLabel} - ${record.ho_va_ten}`;
-      const body = buildEmailBody();
-      await salaryService.sendPayslipEmail({ email: emailAddr.trim(), subject, body });
-      setEmailResult({ ok: true, msg: `Đã gửi phiếu lương đến ${emailAddr.trim()}.` });
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Gửi email thất bại.';
-      setEmailResult({ ok: false, msg });
-    } finally {
-      setEmailSending(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden relative"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header — sticky */}
@@ -357,13 +342,6 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
             <p className="text-xs text-indigo-500 mt-0.5">Trạng thái hợp đồng: {contractStatusText}</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleOpenEmailModal}
-              className="p-2 rounded-lg text-gray-500 hover:bg-blue-100 hover:text-blue-700 transition-colors"
-              title="Gửi phiếu lương qua email"
-            >
-              <EnvelopeIcon className="h-5 w-5" />
-            </button>
             <button
               onClick={handlePrint}
               className="p-2 rounded-lg text-gray-500 hover:bg-indigo-100 hover:text-indigo-700 transition-colors"
@@ -607,77 +585,6 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
             </tbody>
           </table>
         </div>
-
-        {/* ── Email confirmation overlay ── */}
-        {emailModalOpen && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 rounded-xl p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-blue-50 rounded-t-xl">
-                <div className="flex items-center gap-2 text-blue-800 font-semibold text-sm">
-                  <EnvelopeIcon className="h-5 w-5" />
-                  Gửi phiếu lương qua email
-                </div>
-                <button onClick={() => setEmailModalOpen(false)} className="p-1 rounded text-gray-400 hover:text-gray-600">
-                  <XMarkIcon className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="px-5 py-4 flex flex-col gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Địa chỉ email người nhận</label>
-                  <input
-                    type="email"
-                    value={emailAddr}
-                    onChange={(e) => setEmailAddr(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    placeholder="example@email.com"
-                  />
-                  {!employee?.personal_email && (
-                    <p className="text-xs text-amber-600 mt-1">Nhân viên này chưa có email cá nhân trong hồ sơ.</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Tiêu đề</label>
-                  <input
-                    type="text"
-                    readOnly
-                    value={`[Phiếu lương] ${monthLabel} - ${record.ho_va_ten}`}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Nội dung preview</label>
-                  <textarea
-                    readOnly
-                    value={buildEmailBody()}
-                    rows={8}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono bg-gray-50 text-gray-600 resize-none"
-                  />
-                </div>
-                {emailResult && (
-                  <p className={`text-sm font-medium ${emailResult.ok ? 'text-green-600' : 'text-red-600'}`}>
-                    {emailResult.msg}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-                <button
-                  onClick={() => setEmailModalOpen(false)}
-                  className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors"
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={handleConfirmSendEmail}
-                  disabled={emailSending || !emailAddr.trim() || !!emailResult?.ok}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {emailSending ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <EnvelopeIcon className="h-4 w-4" />}
-                  {emailSending ? 'Đang gửi…' : 'Xác nhận gửi'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -1125,9 +1032,10 @@ const getGrossIncomeForTaxFromRecord = (record: SalaryRecord) => {
   const luongTrucCa = record.truc_toi ?? 0;
   const luongDoanhSo = (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
   const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
-  const phuCapAnTrua = toNumber((record as unknown as Record<string, number>)['phu_cap_an_trua'], 0);
-  const taxableAllowance = Math.max((record.phu_cap ?? 0) - phuCapAnTrua, 0);
-  return luongNgayCongThucTe + taxableAllowance + luongDoanhSo + thuNhapKhac + luongTrucCa + luongTangCa;
+  const thuong = (record as unknown as Record<string, number>)['thuong'] ?? 0;
+  const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
+  const tongPhuCapIV = record.phu_cap ?? 0;
+  return tongLuongIII + tongPhuCapIV + thuong;
 };
 
 const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee): PayrollTaxComputation => {
@@ -2641,6 +2549,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [scImportMsg,      setScImportMsg]        = useState<{ ok: string | null; err: string | null; errors: { employee_code: string; error: string }[]; failedRows: ParsedSalaryConfigRow[] }>({ ok: null, err: null, errors: [], failedRows: [] });
   const scFileRef = React.useRef<HTMLInputElement>(null);
 
+  useLockBodyScroll(showImportDialog || showPayrollPreviewModal || showTotalSalaryModal);
+
   const PAGE_SIZE = 20;
 
   useEffect(() => {
@@ -3239,7 +3149,6 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           year: selectedYear,
           month: selectedMonth,
           department_id: deptFilterView ? parseInt(deptFilterView, 10) : undefined,
-          employee_code: searchSalary || undefined,
         }),
         salaryService.listCommissions({ year: selectedYear, month: selectedMonth }),
       ]);
@@ -3262,7 +3171,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     } finally {
       setLoadingSalary(false);
     }
-  }, [selectedYear, selectedMonth, deptFilterView, searchSalary]);
+  }, [selectedYear, selectedMonth, deptFilterView]);
 
   useEffect(() => {
     if (activeTab === 'view') {
@@ -3320,8 +3229,17 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   };
 
   const totalConfigPages = Math.ceil(configTotal / PAGE_SIZE);
-  const totalSalaryPages = Math.ceil(salaryRecords.length / SALARY_PAGE_SIZE);
-  const pagedSalaryRecords = salaryRecords.slice((salaryPage - 1) * SALARY_PAGE_SIZE, salaryPage * SALARY_PAGE_SIZE);
+  const filteredSalaryRecords = useMemo(() => {
+    const q = searchSalary.trim().toLowerCase();
+    if (!q) return salaryRecords;
+    return salaryRecords.filter(
+      (r) =>
+        r.ma_nv?.toLowerCase().includes(q) ||
+        r.ho_va_ten?.toLowerCase().includes(q),
+    );
+  }, [salaryRecords, searchSalary]);
+  const totalSalaryPages = Math.ceil(filteredSalaryRecords.length / SALARY_PAGE_SIZE);
+  const pagedSalaryRecords = filteredSalaryRecords.slice((salaryPage - 1) * SALARY_PAGE_SIZE, salaryPage * SALARY_PAGE_SIZE);
   const yearOptions = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -3580,7 +3498,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Tìm theo mã nhân viên..."
+                    placeholder="Tìm theo mã hoặc tên nhân viên..."
                     value={searchSalary}
                     onChange={(event) => setSearchSalary(event.target.value)}
                     className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -3648,91 +3566,96 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">
+                  <table className="min-w-full text-sm border-separate border-spacing-0">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-50 border-b border-gray-200 whitespace-nowrap">
                           Nhân viên
                         </th>
-                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                           Phòng ban
                         </th>
-                        <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                           Lương CB
                         </th>
-                        <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                           Phụ cấp
                         </th>
-                        <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                           PC ăn trưa
                         </th>
-                        <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                           Tổng công
                         </th>
-                        <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                           Tăng ca
                         </th>
-                        <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                           Tổng phạt
                         </th>
-                        <th className="px-3 py-3 text-right text-xs font-medium text-red-600 uppercase tracking-wider bg-red-50">
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-rose-600 uppercase tracking-wider whitespace-nowrap bg-rose-50">
                           Thuế TNCN
                         </th>
-                        <th className="px-3 py-3 text-right text-xs font-medium text-gray-900 uppercase tracking-wider bg-indigo-50">
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-indigo-700 uppercase tracking-wider whitespace-nowrap bg-indigo-50">
                           Thực lĩnh
                         </th>
-                        <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                           Chi tiết
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-100">
-                      {pagedSalaryRecords.map((record) => {
+                    <tbody>
+                      {pagedSalaryRecords.map((record, idx) => {
                         const employee = employees.find((e) => e.id === record.employee_id);
                         const recordCommissions = salaryCommissions.filter((item) => item.employee === record.employee_id);
                         const payslipComputation = calculatePayslipNetPayable(record, employee, recordCommissions);
                         const recordTaxComputation = payslipComputation.payrollTax;
                         const recordTax = recordTaxComputation.taxAmount;
                         const recordNetPayable = payslipComputation.conPhaiThanhToan;
+                        const isEven = idx % 2 === 0;
 
                         return (
-                        <tr key={record.employee_id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-3 py-3 sticky left-0 bg-white">
-                            <p className="font-medium text-gray-900">{record.ho_va_ten}</p>
-                            <p className="text-xs text-gray-500 font-mono">{record.ma_nv}</p>
+                        <tr
+                          key={record.employee_id}
+                          className={`group transition-colors hover:bg-indigo-50/60 ${isEven ? 'bg-white' : 'bg-gray-50/50'}`}
+                        >
+                          <td className={`px-4 py-3 sticky left-0 ${isEven ? 'bg-white' : 'bg-gray-50/50'} group-hover:bg-indigo-50/60 border-b border-gray-100`}>
+                            <p className="font-semibold text-gray-900 whitespace-nowrap">{record.ho_va_ten}</p>
+                            <p className="text-xs text-gray-400 font-mono mt-0.5">{record.ma_nv}</p>
                           </td>
-                          <td className="px-3 py-3 text-gray-600">{record.phong_ban ?? '—'}</td>
-                          <td className="px-3 py-3 text-right text-gray-700">{formatCurrency(record.luong_co_ban)}</td>
-                          <td className="px-3 py-3 text-right text-gray-700">{formatCurrency(record.phu_cap)}</td>
-                          <td className="px-3 py-3 text-right text-gray-700">{formatCurrency((record as unknown as Record<string, number>)['phu_cap_an_trua'] ?? 0)}</td>
-                          <td className="px-3 py-3 text-right text-gray-700">{formatNumber(record.tong_cong)}</td>
-                          <td className="px-3 py-3 text-right text-blue-600">{formatCurrency(record.luong_tang_ca)}</td>
-                          <td className="px-3 py-3 text-right text-red-600">{formatCurrency((record.tong_phat ?? 0) + (record.tong_phat_bienban ?? 0))}</td>
-                          <td className="px-3 py-3 text-right font-semibold text-red-700 bg-red-50 flex items-center justify-end gap-2">
-                            {formatCurrency(recordTax)}
-                            <TaxTooltip taxDetail={recordTaxComputation.taxDetail} />
+                          <td className="px-4 py-3 text-gray-500 border-b border-gray-100 whitespace-nowrap">{record.phong_ban ?? '—'}</td>
+                          <td className="px-4 py-3 text-right text-gray-700 border-b border-gray-100 tabular-nums whitespace-nowrap">{formatCurrency(record.luong_co_ban)}</td>
+                          <td className="px-4 py-3 text-right text-gray-700 border-b border-gray-100 tabular-nums whitespace-nowrap">{formatCurrency(record.phu_cap)}</td>
+                          <td className="px-4 py-3 text-right text-gray-700 border-b border-gray-100 tabular-nums whitespace-nowrap">{formatCurrency((record as unknown as Record<string, number>)['phu_cap_an_trua'] ?? 0)}</td>
+                          <td className="px-4 py-3 text-right text-gray-700 border-b border-gray-100 tabular-nums whitespace-nowrap">{formatNumber(record.tong_cong)}</td>
+                          <td className="px-4 py-3 text-right text-blue-600 border-b border-gray-100 tabular-nums whitespace-nowrap">{formatCurrency(record.luong_tang_ca)}</td>
+                          <td className="px-4 py-3 text-right text-red-500 border-b border-gray-100 tabular-nums whitespace-nowrap">
+                            {(record.tong_phat ?? 0) + (record.tong_phat_bienban ?? 0) > 0
+                              ? formatCurrency((record.tong_phat ?? 0) + (record.tong_phat_bienban ?? 0))
+                              : <span className="text-gray-300">—</span>}
                           </td>
-                          <td className="px-3 py-3 text-right font-semibold text-indigo-700 bg-indigo-50">
-                            {formatCurrency(recordNetPayable)}
+                          <td className="px-4 py-3 border-b border-rose-100 bg-rose-50/60">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <span className={`tabular-nums font-medium whitespace-nowrap ${recordTax > 0 ? 'text-rose-600' : 'text-gray-400'}`}>
+                                {recordTax > 0 ? formatCurrency(recordTax) : '—'}
+                              </span>
+                              <TaxTooltip taxDetail={recordTaxComputation.taxDetail} />
+                            </div>
                           </td>
-                          <td className="px-3 py-3 text-center">
+                          <td className="px-4 py-3 border-b border-indigo-100 bg-indigo-50/60">
+                            <div className="flex justify-end">
+                              <span className="tabular-nums font-semibold text-indigo-700 whitespace-nowrap">
+                                {formatCurrency(recordNetPayable)}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center border-b border-gray-100">
                             <button
                               onClick={async () => {
                                 setPayslipRecord(record);
-                                setPayslipCommissions(salaryCommissions.filter((item) => item.employee === record.employee_id));
+                                setPayslipEmployee(employee ?? null);
                                 setPayslipPenalties([]);
-
-                                // Lấy thông tin nhân viên đầy đủ (có personal_email) nếu chưa có trong danh sách hiện tại
-                                let resolvedEmployee = employee ?? null;
-                                if (!resolvedEmployee) {
-                                  try {
-                                    resolvedEmployee = await salaryService.getEmployeeSalaryConfig(record.employee_id);
-                                  } catch {
-                                    resolvedEmployee = null;
-                                  }
-                                }
-                                setPayslipEmployee(resolvedEmployee);
-
+                                setPayslipCommissions(salaryCommissions.filter((item) => item.employee === record.employee_id));
                                 try {
                                   const allPenalties = await salaryService.listPenalties({ year: record.year, month: record.month });
                                   setPayslipPenalties(
@@ -3742,7 +3665,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                                   setPayslipPenalties([]);
                                 }
                               }}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 hover:text-indigo-800 transition-colors"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-white border border-indigo-200 rounded-lg hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm"
                               title="Xem phiếu lương chi tiết"
                             >
                               <EyeIcon className="h-3.5 w-3.5" />
@@ -3760,7 +3683,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               {totalSalaryPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
                   <p className="text-sm text-gray-500">
-                    Trang {salaryPage} / {totalSalaryPages} · {salaryRecords.length} nhân viên
+                    Trang {salaryPage} / {totalSalaryPages} · {filteredSalaryRecords.length} nhân viên{searchSalary.trim() ? ` (lọc từ ${salaryRecords.length})` : ''}
                   </p>
                   <div className="flex gap-2">
                     <button
