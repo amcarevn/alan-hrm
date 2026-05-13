@@ -3575,7 +3575,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Tìm theo mã nhân viên..."
+                    placeholder="Tìm theo tên hoặc mã nhân viên..."
                     value={searchSalary}
                     onChange={(event) => setSearchSalary(event.target.value)}
                     className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
