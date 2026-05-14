@@ -261,6 +261,8 @@ export interface DepartmentPayslipRecipient {
   employee_name: string;
   email: string;
   has_email: boolean;
+  preview_subject: string;
+  preview_body: string;
 }
 
 export interface DepartmentPayslipRecipientsResponse {

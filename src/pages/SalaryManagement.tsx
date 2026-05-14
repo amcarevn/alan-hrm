@@ -3709,7 +3709,6 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
   const previewRecipients = deptRecipientsPreview?.recipients ?? [];
   const previewRecipientsWithEmail = previewRecipients.filter((item) => item.has_email);
-  const previewMonthLabel = `Tháng ${String(selectedMonth).padStart(2, '0')}.${selectedYear}`;
 
   const handleOpenConfig = async (employee: Employee) => {
     setSaveError(null);
@@ -4437,10 +4436,16 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                         <p><strong>Nhân viên:</strong> {selectedRecipientPreview.employee_name}</p>
                         <p><strong>Mã NV:</strong> {selectedRecipientPreview.employee_code || '—'}</p>
                         <p className="md:col-span-2"><strong>Email nhận:</strong> {selectedRecipientPreview.email || '—'}</p>
-                        <p className="md:col-span-2"><strong>Tiêu đề dự kiến:</strong> [Phiếu lương] {previewMonthLabel} - {selectedRecipientPreview.employee_name}</p>
+                        <p className="md:col-span-2"><strong>Tiêu đề sẽ gửi:</strong> {selectedRecipientPreview.preview_subject}</p>
                         <p className="md:col-span-2 text-blue-800">
                           <strong>Ghi chú:</strong> {selectedRecipientPreview.has_email ? 'Email này đủ điều kiện để đưa vào hàng đợi gửi.' : 'Email trống nên sẽ bị bỏ qua khi gửi.'}
                         </p>
+                        <div className="md:col-span-2">
+                          <p className="font-semibold mb-1">Nội dung sẽ gửi:</p>
+                          <pre className="text-xs bg-white border border-blue-200 rounded-md p-3 max-h-64 overflow-auto whitespace-pre-wrap text-gray-800">
+{selectedRecipientPreview.preview_body}
+                          </pre>
+                        </div>
                       </div>
                     </div>
                   )}
