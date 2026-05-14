@@ -2913,6 +2913,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [loadingRecipientsPreview, setLoadingRecipientsPreview] = useState(false);
   const [deptRecipientsPreview, setDeptRecipientsPreview] = useState<DepartmentPayslipRecipientsResponse | null>(null);
   const [deptRecipientsPreviewError, setDeptRecipientsPreviewError] = useState<string | null>(null);
+  const [selectedRecipientPreview, setSelectedRecipientPreview] = useState<DepartmentPayslipRecipientsResponse['recipients'][number] | null>(null);
   useLockBodyScroll(showTotalSalaryModal || showPayrollPreviewModal);
 
   // ── Import cấu hình lương dialog ──
@@ -3639,6 +3640,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     setDeptPayslipBatchId(null);
     setDeptRecipientsPreview(null);
     setDeptRecipientsPreviewError(null);
+    setSelectedRecipientPreview(null);
     const departmentId = parseInt(deptFilterView, 10);
 
     setShowDeptPayslipConfirm(true);
@@ -3707,6 +3709,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
   const previewRecipients = deptRecipientsPreview?.recipients ?? [];
   const previewRecipientsWithEmail = previewRecipients.filter((item) => item.has_email);
+  const previewMonthLabel = `Tháng ${String(selectedMonth).padStart(2, '0')}.${selectedYear}`;
 
   const handleOpenConfig = async (employee: Employee) => {
     setSaveError(null);
@@ -4385,6 +4388,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           <th className="px-3 py-2 text-left text-gray-500 font-medium">Họ tên</th>
                           <th className="px-3 py-2 text-left text-gray-500 font-medium">Email nhận</th>
                           <th className="px-3 py-2 text-center text-gray-500 font-medium">Trạng thái</th>
+                          <th className="px-3 py-2 text-center text-gray-500 font-medium">Chi tiết</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -4400,11 +4404,46 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700">Thiếu email</span>
                               )}
                             </td>
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedRecipientPreview(item)}
+                                className="inline-flex items-center justify-center w-7 h-7 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-100"
+                                title="Xem chi tiết email dự kiến gửi"
+                              >
+                                <EyeIcon className="h-4 w-4" />
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+
+                  {selectedRecipientPreview && (
+                    <div className="border border-blue-200 bg-blue-50 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-blue-900">Chi tiết email dự kiến gửi</p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRecipientPreview(null)}
+                          className="text-blue-700 hover:text-blue-900"
+                          title="Đóng chi tiết"
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-blue-900">
+                        <p><strong>Nhân viên:</strong> {selectedRecipientPreview.employee_name}</p>
+                        <p><strong>Mã NV:</strong> {selectedRecipientPreview.employee_code || '—'}</p>
+                        <p className="md:col-span-2"><strong>Email nhận:</strong> {selectedRecipientPreview.email || '—'}</p>
+                        <p className="md:col-span-2"><strong>Tiêu đề dự kiến:</strong> [Phiếu lương] {previewMonthLabel} - {selectedRecipientPreview.employee_name}</p>
+                        <p className="md:col-span-2 text-blue-800">
+                          <strong>Ghi chú:</strong> {selectedRecipientPreview.has_email ? 'Email này đủ điều kiện để đưa vào hàng đợi gửi.' : 'Email trống nên sẽ bị bỏ qua khi gửi.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
