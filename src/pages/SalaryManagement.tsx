@@ -215,6 +215,8 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   useLockBodyScroll(true);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailAddr, setEmailAddr] = useState(employee?.personal_email ?? '');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
   const [emailSending, setEmailSending] = useState(false);
   const [emailResult, setEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const stdDays = getStandardWorkDays(record.year, record.month);
@@ -375,8 +377,8 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-    const emailSubject = `[Phiếu lương] ${monthLabel} - ${record.ho_va_ten}`;
-    const emailBody = buildEmailBody();
+    const defaultEmailSubject = `[Phiếu lương] ${monthLabel} - ${record.ho_va_ten}`;
+    const defaultEmailBody = buildEmailBody();
 
     const buildEmailPreviewHtml = (subject: string, body: string) => {
     const logoUrl = 'https://s3.cloudfly.vn/alan/hrm/alan-logo.jpg';
@@ -434,20 +436,35 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   </html>`;
     };
 
-    const emailPreviewHtml = buildEmailPreviewHtml(emailSubject, emailBody);
+    const previewSubject = emailSubject || defaultEmailSubject;
+    const previewBody = emailBody || defaultEmailBody;
+    const emailPreviewHtml = buildEmailPreviewHtml(previewSubject, previewBody);
 
   const handleOpenEmailModal = () => {
     setEmailAddr(employee?.personal_email ?? '');
+    setEmailSubject(defaultEmailSubject);
+    setEmailBody(defaultEmailBody);
     setEmailResult(null);
     setEmailModalOpen(true);
   };
 
   const handleConfirmSendEmail = async () => {
     if (!emailAddr.trim()) return;
+    if (!emailSubject.trim() || !emailBody.trim()) {
+      setEmailResult({ ok: false, msg: 'Tiêu đề và nội dung email không được để trống.' });
+      return;
+    }
     setEmailSending(true);
     setEmailResult(null);
     try {
-      await salaryService.sendPayslipEmail({ email: emailAddr.trim(), subject: emailSubject, body: emailBody });
+      await salaryService.sendPayslipEmail(
+        {
+          email: emailAddr.trim(),
+          subject: emailSubject.trim(),
+          body: emailBody.trim(),
+        },
+        { timeoutMs: 180000 }
+      );
       setEmailResult({ ok: true, msg: `Đã gửi phiếu lương đến ${emailAddr.trim()}.` });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Gửi email thất bại.';
@@ -755,9 +772,18 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                   <label className="block text-xs font-medium text-gray-600 mb-1">Tiêu đề</label>
                   <input
                     type="text"
-                    readOnly
                     value={emailSubject}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700"
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Nội dung email (text)</label>
+                  <textarea
+                    value={emailBody}
+                    onChange={(e) => setEmailBody(e.target.value)}
+                    rows={10}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-y"
                   />
                 </div>
                 <div>
@@ -786,7 +812,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 </button>
                 <button
                   onClick={handleConfirmSendEmail}
-                  disabled={emailSending || !emailAddr.trim() || !!emailResult?.ok}
+                  disabled={emailSending || !emailAddr.trim() || !emailSubject.trim() || !emailBody.trim() || !!emailResult?.ok}
                   className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
                   {emailSending ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <EnvelopeIcon className="h-4 w-4" />}
@@ -2743,6 +2769,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [totalSalaryError, setTotalSalaryError] = useState<string | null>(null);
   const [exportingPayroll, setExportingPayroll] = useState(false);
   const [showPayrollPreviewModal, setShowPayrollPreviewModal] = useState(false);
+  const [sendingDeptPayslipEmail, setSendingDeptPayslipEmail] = useState(false);
+  const [deptPayslipEmailResult, setDeptPayslipEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
   useLockBodyScroll(showTotalSalaryModal || showPayrollPreviewModal);
 
   // ── Import cấu hình lương dialog ──
@@ -3347,6 +3375,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const loadSalary = useCallback(async () => {
     setLoadingSalary(true);
     setSalaryError(null);
+    setDeptPayslipEmailResult(null);
     try {
       const [salaryRes, commissionRes] = await Promise.allSettled([
         salaryService.getSalaryByDepartment({
@@ -3422,6 +3451,42 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       setLoadingTotalSalary(false);
     }
   }, [selectedYear, selectedMonth, deptFilterView]);
+
+  const handleSendDepartmentPayslips = async () => {
+    if (!deptFilterView) {
+      setDeptPayslipEmailResult({ ok: false, msg: 'Vui lòng chọn phòng ban trước khi gửi email bảng lương.' });
+      return;
+    }
+
+    const departmentId = parseInt(deptFilterView, 10);
+    const departmentName = departments.find((item) => item.id === departmentId)?.name ?? 'phòng ban đã chọn';
+    const shouldSend = window.confirm(
+      `Xác nhận gửi email phiếu lương tháng ${String(selectedMonth).padStart(2, '0')}/${selectedYear} cho toàn bộ nhân sự phòng ${departmentName}?`
+    );
+    if (!shouldSend) return;
+
+    setSendingDeptPayslipEmail(true);
+    setDeptPayslipEmailResult(null);
+    try {
+      const response = await salaryService.sendDepartmentPayslipEmails(
+        {
+          year: selectedYear,
+          month: selectedMonth,
+          department_id: departmentId,
+        },
+        { timeoutMs: 600000 }
+      );
+      setDeptPayslipEmailResult({
+        ok: true,
+        msg: `Đã xử lý: gửi thành công ${response.sent}/${response.total}, lỗi ${response.failed}, thiếu email ${response.skipped_no_email}.`,
+      });
+    } catch (error: unknown) {
+      const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setDeptPayslipEmailResult({ ok: false, msg: detail ?? 'Không thể gửi email bảng lương theo phòng ban.' });
+    } finally {
+      setSendingDeptPayslipEmail(false);
+    }
+  };
 
   const handleOpenConfig = async (employee: Employee) => {
     setSaveError(null);
@@ -3886,27 +3951,51 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 </div>
               )}
 
-              {totalSalaryPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-                  <p className="text-sm text-gray-500">
-                    Trang {salaryPage} / {totalSalaryPages} · {filteredSalaryRecords.length} nhân viên
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setSalaryPage((p) => p - 1)}
-                      disabled={salaryPage === 1}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50"
-                    >
-                      Trước
-                    </button>
-                    <button
-                      onClick={() => setSalaryPage((p) => p + 1)}
-                      disabled={salaryPage === totalSalaryPages}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50"
-                    >
-                      Sau
-                    </button>
+              {!loadingSalary && !salaryError && salaryRecords.length > 0 && (
+                <div className="flex flex-col gap-2 px-4 py-3 border-t border-gray-200">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                    <p className="text-sm text-gray-500">
+                      Trang {salaryPage} / {totalSalaryPages} · {filteredSalaryRecords.length} nhân viên
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {totalSalaryPages > 1 && (
+                        <>
+                          <button
+                            onClick={() => setSalaryPage((p) => p - 1)}
+                            disabled={salaryPage === 1}
+                            className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50"
+                          >
+                            Trước
+                          </button>
+                          <button
+                            onClick={() => setSalaryPage((p) => p + 1)}
+                            disabled={salaryPage === totalSalaryPages}
+                            className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50"
+                          >
+                            Sau
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={handleSendDepartmentPayslips}
+                        disabled={sendingDeptPayslipEmail || !deptFilterView}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        title={deptFilterView ? 'Gửi email phiếu lương cho toàn bộ phòng ban đã chọn' : 'Vui lòng chọn phòng ban trước'}
+                      >
+                        {sendingDeptPayslipEmail ? (
+                          <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <EnvelopeIcon className="h-4 w-4" />
+                        )}
+                        {sendingDeptPayslipEmail ? 'Đang gửi email phòng ban...' : 'Gửi email phòng ban'}
+                      </button>
+                    </div>
                   </div>
+                  {deptPayslipEmailResult && (
+                    <p className={`text-sm ${deptPayslipEmailResult.ok ? 'text-green-600' : 'text-red-600'}`}>
+                      {deptPayslipEmailResult.msg}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

@@ -227,6 +227,32 @@ export interface BulkSalaryConfigResponse {
   errors: { employee_code: string; error: string }[];
 }
 
+export interface SendDepartmentPayslipPayload {
+  year: number;
+  month: number;
+  department_id: number;
+  subject_template?: string;
+  body_template?: string;
+}
+
+export interface SendDepartmentPayslipResponse {
+  detail: string;
+  department_id: number;
+  department_name: string;
+  year: number;
+  month: number;
+  total: number;
+  sent: number;
+  failed: number;
+  skipped_no_email: number;
+  errors: Array<{
+    employee_id: number;
+    employee_code: string;
+    email: string;
+    error: string;
+  }>;
+}
+
 class SalaryService {
   async listSalaryDepartments(): Promise<Pick<Department, 'id' | 'name' | 'code'>[]> {
     const response = await managementApi.get('/api/v1/salary/records/departments/');
@@ -406,8 +432,23 @@ class SalaryService {
     return response.data;
   }
 
-  async sendPayslipEmail(payload: { email: string; subject: string; body: string }): Promise<{ detail: string }> {
-    const response = await managementApi.post('/api/v1/salary/records/send-payslip-email/', payload);
+  async sendPayslipEmail(
+    payload: { email: string; subject: string; body: string },
+    options?: { timeoutMs?: number }
+  ): Promise<{ detail: string }> {
+    const response = await managementApi.post('/api/v1/salary/records/send-payslip-email/', payload, {
+      timeout: options?.timeoutMs ?? 120000,
+    });
+    return response.data;
+  }
+
+  async sendDepartmentPayslipEmails(
+    payload: SendDepartmentPayslipPayload,
+    options?: { timeoutMs?: number }
+  ): Promise<SendDepartmentPayslipResponse> {
+    const response = await managementApi.post('/api/v1/salary/records/send-department-payslip-emails/', payload, {
+      timeout: options?.timeoutMs ?? 600000,
+    });
     return response.data;
   }
 
