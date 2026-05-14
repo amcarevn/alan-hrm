@@ -21,7 +21,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { employeesAPI } from '../utils/api';
 import type { Department, Employee } from '../utils/api';
-import { salaryService, SalaryFormulaUpdateData, SalaryRecord, PenaltyRecord, CommissionRecord, type BulkSalaryConfigRecord, type PayslipEmailBatchStatus } from '../services/salary.service';
+import { salaryService, SalaryFormulaUpdateData, SalaryRecord, PenaltyRecord, CommissionRecord, type BulkSalaryConfigRecord, type PayslipEmailBatchStatus, type DepartmentPayslipRecipientsResponse } from '../services/salary.service';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
 import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 
@@ -2910,6 +2910,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [deptPayslipBatchId, setDeptPayslipBatchId] = useState<string | null>(null);
   const [deptPayslipBatch, setDeptPayslipBatch] = useState<PayslipEmailBatchStatus | null>(null);
   const [pollingBatch, setPollingBatch] = useState(false);
+  const [loadingRecipientsPreview, setLoadingRecipientsPreview] = useState(false);
+  const [deptRecipientsPreview, setDeptRecipientsPreview] = useState<DepartmentPayslipRecipientsResponse | null>(null);
+  const [deptRecipientsPreviewError, setDeptRecipientsPreviewError] = useState<string | null>(null);
   useLockBodyScroll(showTotalSalaryModal || showPayrollPreviewModal);
 
   // ── Import cấu hình lương dialog ──
@@ -3527,6 +3530,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     setDeptPayslipBatch(null);
     setDeptPayslipBatchId(null);
     setPollingBatch(false);
+    setDeptRecipientsPreview(null);
+    setDeptRecipientsPreviewError(null);
     try {
       const [salaryRes, commissionRes] = await Promise.allSettled([
         salaryService.getSalaryByDepartment({
@@ -3622,7 +3627,23 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     setDeptPayslipEmailResult(null);
     setDeptPayslipBatch(null);
     setDeptPayslipBatchId(null);
+    setDeptRecipientsPreview(null);
+    setDeptRecipientsPreviewError(null);
+    const departmentId = parseInt(deptFilterView, 10);
+
     setShowDeptPayslipConfirm(true);
+    setLoadingRecipientsPreview(true);
+    salaryService.getDepartmentPayslipRecipients({
+      year: selectedYear,
+      month: selectedMonth,
+      department_id: departmentId,
+    })
+      .then((preview) => setDeptRecipientsPreview(preview))
+      .catch((error: unknown) => {
+        const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+        setDeptRecipientsPreviewError(detail ?? 'Không thể tải danh sách email người nhận để xác nhận.');
+      })
+      .finally(() => setLoadingRecipientsPreview(false));
   };
 
   const handleConfirmSendDeptPayslips = async () => {
@@ -3673,6 +3694,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     const timer = setInterval(poll, 15000);
     return () => { cancelled = true; clearInterval(timer); };
   }, [pollingBatch, deptPayslipBatchId]);
+
+  const previewRecipients = deptRecipientsPreview?.recipients ?? [];
+  const previewRecipientsWithEmail = previewRecipients.filter((item) => item.has_email);
 
   const handleOpenConfig = async (employee: Employee) => {
     setSaveError(null);
@@ -4312,20 +4336,67 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       {/* Confirm modal: gửi email phòng ban */}
       {showDeptPayslipConfirm && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100">
               <h3 className="text-base font-semibold text-gray-900">Xác nhận gửi email phiếu lương</h3>
             </div>
-            <div className="px-6 py-4 space-y-3">
+            <div className="px-6 py-4 space-y-3 max-h-[70vh] overflow-y-auto">
               <p className="text-sm text-gray-600">
                 Hệ thống sẽ xếp hàng gửi email phiếu lương{' '}
                 <strong>Tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear}</strong> cho toàn bộ nhân sự phòng ban{' '}
                 <strong>{departments.find((d) => d.id === parseInt(deptFilterView, 10))?.name ?? ''}</strong>.
               </p>
-              <p className="text-sm text-gray-500">
-                Email sẽ được hệ thống gửi dần trong hàng đợi (tối đa ~30 phút cho 100 email).
-                Bạn có thể theo dõi tiến trình ngay trên trang này.
-              </p>
+
+              {loadingRecipientsPreview && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                  Đang tải danh sách người nhận...
+                </div>
+              )}
+
+              {deptRecipientsPreviewError && (
+                <div className="text-sm text-red-600">{deptRecipientsPreviewError}</div>
+              )}
+
+              {!loadingRecipientsPreview && !deptRecipientsPreviewError && deptRecipientsPreview && (
+                <>
+                  <div className="text-sm text-gray-600">
+                    Dự kiến gửi <strong>{deptRecipientsPreview.can_send}</strong> email / tổng <strong>{deptRecipientsPreview.total}</strong> nhân sự.
+                    {deptRecipientsPreview.no_email_count > 0 && (
+                      <span className="text-amber-600"> Có {deptRecipientsPreview.no_email_count} người chưa có email.</span>
+                    )}
+                  </div>
+
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-gray-500 font-medium">Mã NV</th>
+                          <th className="px-3 py-2 text-left text-gray-500 font-medium">Họ tên</th>
+                          <th className="px-3 py-2 text-left text-gray-500 font-medium">Email nhận</th>
+                          <th className="px-3 py-2 text-center text-gray-500 font-medium">Trạng thái</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {previewRecipients.map((item) => (
+                          <tr key={item.employee_id}>
+                            <td className="px-3 py-2 text-gray-700">{item.employee_code || '—'}</td>
+                            <td className="px-3 py-2 text-gray-700">{item.employee_name || '—'}</td>
+                            <td className="px-3 py-2 text-gray-600">{item.email || '—'}</td>
+                            <td className="px-3 py-2 text-center">
+                              {item.has_email ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700">Sẽ gửi</span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700">Thiếu email</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </div>
             <div className="px-6 py-4 flex justify-end gap-3 border-t border-gray-100 bg-gray-50">
               <button
@@ -4336,7 +4407,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               </button>
               <button
                 onClick={handleConfirmSendDeptPayslips}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                disabled={loadingRecipientsPreview || !!deptRecipientsPreviewError || previewRecipientsWithEmail.length === 0}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <EnvelopeIcon className="h-4 w-4" />
                 Xác nhận gửi

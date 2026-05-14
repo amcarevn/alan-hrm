@@ -255,6 +255,25 @@ export interface SendDepartmentPayslipResponse {
   skipped_no_email: number;
 }
 
+export interface DepartmentPayslipRecipient {
+  employee_id: number;
+  employee_code: string;
+  employee_name: string;
+  email: string;
+  has_email: boolean;
+}
+
+export interface DepartmentPayslipRecipientsResponse {
+  year: number;
+  month: number;
+  department_id: number;
+  department_name: string;
+  total: number;
+  can_send: number;
+  no_email_count: number;
+  recipients: DepartmentPayslipRecipient[];
+}
+
 export interface PayslipEmailItem {
   employee_id: number;
   employee_code: string;
@@ -481,6 +500,15 @@ class SalaryService {
     const response = await managementApi.post('/api/v1/salary/records/send-department-payslip-emails/', payload, {
       timeout: options?.timeoutMs ?? 30000,
     });
+    return response.data;
+  }
+
+  async getDepartmentPayslipRecipients(params: {
+    year: number;
+    month: number;
+    department_id: number;
+  }): Promise<DepartmentPayslipRecipientsResponse> {
+    const response = await managementApi.get('/api/v1/salary/records/department-payslip-recipients/', { params });
     return response.data;
   }
 
