@@ -15,6 +15,7 @@ export interface SalaryRecord {
   employee_id: number;
   ma_nv: string;
   ho_va_ten: string;
+  phap_nhan_con?: string | null;
   phong_ban: string | null;
   vi_tri: string | null;
   luong_co_ban: number;
@@ -53,6 +54,7 @@ export interface SalaryListResponse {
   year: number;
   month: number;
   department_id: number | null;
+  legal_entity?: string | null;
   department_name: string | null;
   total: number;
   results: SalaryRecord[];
@@ -259,10 +261,16 @@ class SalaryService {
     return response.data;
   }
 
+  async listSalaryLegalEntities(): Promise<Array<{ value: string; label: string }>> {
+    const response = await managementApi.get('/api/v1/salary/records/legal-entities/');
+    return response.data;
+  }
+
   async getSalaryByDepartment(params: {
     year: number;
     month: number;
     department_id?: number;
+    legal_entity?: string;
     employee_code?: string;
   }): Promise<SalaryListResponse> {
     const response = await managementApi.get('/api-hrm/salary/department/', { params });
@@ -456,10 +464,12 @@ class SalaryService {
     year: number;
     month: number;
     department?: number;
+    legal_entity?: string;
   }): Promise<{
     year: number;
     month: number;
     department_id: number | null;
+    legal_entity?: string | null;
     total_net_salary: number;
     employee_count: number;
   }> {

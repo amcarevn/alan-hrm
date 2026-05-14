@@ -325,6 +325,7 @@ export interface Employee {
   // Thông tin tổ chức
   region?: string;
   block?: string;
+  subsidiary_legal_entity?: string | null;
   section?: string;
   rank?: string;
   work_location?: string;

@@ -2752,9 +2752,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [selectedYear, setSelectedYear] = useState<number>(defaultPayrollDate.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(defaultPayrollDate.getMonth() + 1);
   const [deptFilterView, setDeptFilterView] = useState<string>('');
+  const [legalEntityFilterView, setLegalEntityFilterView] = useState<string>('');
   const [searchSalary, setSearchSalary] = useState('');
 
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [legalEntities, setLegalEntities] = useState<Array<{ value: string; label: string }>>([]);
 
   // ── Tổng lương công ty ──
   const [showTotalSalaryModal, setShowTotalSalaryModal] = useState(false);
@@ -2762,9 +2764,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     year: number;
     month: number;
     department_id: number | null;
+    legal_entity?: string | null;
     total_net_salary: number;
     employee_count: number;
   } | null>(null);
+  const [totalSalaryScope, setTotalSalaryScope] = useState<'company' | 'legal_entity'>('company');
   const [loadingTotalSalary, setLoadingTotalSalary] = useState(false);
   const [totalSalaryError, setTotalSalaryError] = useState<string | null>(null);
   const [exportingPayroll, setExportingPayroll] = useState(false);
@@ -2790,10 +2794,17 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   }, [defaultTab]);
 
   useEffect(() => {
-    salaryService
-      .listSalaryDepartments()
-      .then((res) => setDepartments(res as Department[]))
-      .catch(() => undefined);
+    Promise.allSettled([
+      salaryService.listSalaryDepartments(),
+      salaryService.listSalaryLegalEntities(),
+    ]).then(([departmentsRes, legalEntitiesRes]) => {
+      if (departmentsRes.status === 'fulfilled') {
+        setDepartments(departmentsRes.value as Department[]);
+      }
+      if (legalEntitiesRes.status === 'fulfilled') {
+        setLegalEntities(legalEntitiesRes.value ?? []);
+      }
+    });
   }, []);
 
   // ── Import config handlers ─────────────────────────────────────────────────
@@ -3382,6 +3393,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           year: selectedYear,
           month: selectedMonth,
           department_id: deptFilterView ? parseInt(deptFilterView, 10) : undefined,
+          legal_entity: legalEntityFilterView || undefined,
         }),
         salaryService.listCommissions({ year: selectedYear, month: selectedMonth }),
       ]);
@@ -3404,7 +3416,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     } finally {
       setLoadingSalary(false);
     }
-  }, [selectedYear, selectedMonth, deptFilterView]);
+  }, [selectedYear, selectedMonth, deptFilterView, legalEntityFilterView]);
 
   useEffect(() => {
     setSalaryPage(1);
@@ -3442,6 +3454,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         year: selectedYear,
         month: selectedMonth,
         department: deptFilterView ? parseInt(deptFilterView) : undefined,
+        legal_entity: legalEntityFilterView || undefined,
       });
       setTotalSalaryData(data);
     } catch (error: unknown) {
@@ -3450,7 +3463,16 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     } finally {
       setLoadingTotalSalary(false);
     }
-  }, [selectedYear, selectedMonth, deptFilterView]);
+  }, [selectedYear, selectedMonth, deptFilterView, legalEntityFilterView]);
+
+  const openTotalSalaryModal = async (scope: 'company' | 'legal_entity') => {
+    _closeActiveTaxTooltip?.();
+    setTotalSalaryScope(scope);
+    setTotalSalaryData(null);
+    setTotalSalaryError(null);
+    await loadTotalSalary();
+    setShowTotalSalaryModal(true);
+  };
 
   const handleSendDepartmentPayslips = async () => {
     if (!deptFilterView) {
@@ -3766,6 +3788,23 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     />
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <FunnelIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <div className="w-56">
+                    <SelectBox<string>
+                      label=""
+                      value={legalEntityFilterView}
+                      options={[
+                        { value: '', label: 'Tất cả pháp nhân' },
+                        ...legalEntities.map((entity) => ({
+                          value: entity.value,
+                          label: entity.label,
+                        })),
+                      ]}
+                      onChange={setLegalEntityFilterView}
+                    />
+                  </div>
+                </div>
                 <div className="flex-1 relative min-w-48">
                   <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
@@ -3784,18 +3823,20 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   Tải dữ liệu
                 </button>
                 <button
-                  onClick={async () => {
-                    _closeActiveTaxTooltip?.();
-                    setTotalSalaryData(null);
-                    setTotalSalaryError(null);
-                    await loadTotalSalary();
-                    setShowTotalSalaryModal(true);
-                  }}
+                  onClick={() => openTotalSalaryModal('company')}
                   disabled={salaryRecords.length === 0}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <CurrencyDollarIcon className="h-4 w-4" />
                   Tổng lương công ty
+                </button>
+                <button
+                  onClick={() => openTotalSalaryModal('legal_entity')}
+                  disabled={salaryRecords.length === 0 || !legalEntityFilterView}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded-md hover:bg-violet-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <CurrencyDollarIcon className="h-4 w-4" />
+                  Tổng lương pháp nhân
                 </button>
                 <button
                   onClick={handleExportPayrollExcel}
@@ -4345,11 +4386,16 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Báo cáo tổng lương công ty</h2>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {totalSalaryScope === 'legal_entity' ? 'Báo cáo tổng lương pháp nhân' : 'Báo cáo tổng lương công ty'}
+                </h2>
                 <p className="text-sm text-gray-500 mt-0.5">
                   Tháng {String(selectedMonth).padStart(2, '0')}.{selectedYear}
                   {deptFilterView && departments.find(d => String(d.id) === deptFilterView) && (
                     <> · {departments.find(d => String(d.id) === deptFilterView)?.name}</>
+                  )}
+                  {legalEntityFilterView && (
+                    <> · {legalEntityFilterView}</>
                   )}
                 </p>
               </div>
