@@ -276,6 +276,18 @@ export interface DepartmentPayslipRecipientsResponse {
   recipients: DepartmentPayslipRecipient[];
 }
 
+export interface DepartmentPayslipEmailStatusItem {
+  employee_id: number;
+  status: 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED' | null;
+  processed_at: string | null;
+  error_message: string | null;
+  batch_id: string | null;
+}
+
+export interface DepartmentPayslipEmailStatusesResponse {
+  statuses: DepartmentPayslipEmailStatusItem[];
+}
+
 export interface PayslipEmailItem {
   employee_id: number;
   employee_code: string;
@@ -511,6 +523,16 @@ class SalaryService {
     department_id: number;
   }): Promise<DepartmentPayslipRecipientsResponse> {
     const response = await managementApi.get('/api/v1/salary/records/department-payslip-recipients/', { params });
+    return response.data;
+  }
+
+  async getDepartmentPayslipEmailStatuses(params: {
+    year: number;
+    month: number;
+    department_id?: number;
+    legal_entity?: string;
+  }): Promise<DepartmentPayslipEmailStatusesResponse> {
+    const response = await managementApi.get('/api/v1/salary/records/department-payslip-email-statuses/', { params });
     return response.data;
   }
 

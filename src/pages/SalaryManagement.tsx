@@ -786,7 +786,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
         {/* ── Email confirmation overlay ── */}
         {emailModalOpen && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 rounded-xl p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[calc(90vh-2rem)] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-blue-50 rounded-t-xl">
                 <div className="flex items-center gap-2 text-blue-800 font-semibold text-sm">
                   <EnvelopeIcon className="h-5 w-5" />
@@ -796,7 +796,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                   <XMarkIcon className="h-4 w-4" />
                 </button>
               </div>
-              <div className="px-5 py-4 flex flex-col gap-3">
+              <div className="px-5 py-4 flex-1 overflow-y-auto min-h-0 flex flex-col gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Địa chỉ email người nhận</label>
                   <input
@@ -834,7 +834,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                     <iframe
                       title="Xem trước email phiếu lương"
                       srcDoc={emailPreviewHtml}
-                      className="w-full h-80"
+                      className="w-full h-64"
                       sandbox=""
                     />
                   </div>
@@ -2914,6 +2914,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [deptRecipientsPreview, setDeptRecipientsPreview] = useState<DepartmentPayslipRecipientsResponse | null>(null);
   const [deptRecipientsPreviewError, setDeptRecipientsPreviewError] = useState<string | null>(null);
   const [selectedRecipientPreview, setSelectedRecipientPreview] = useState<DepartmentPayslipRecipientsResponse['recipients'][number] | null>(null);
+  const [emailStatusFromQueueMap, setEmailStatusFromQueueMap] = useState<Record<number, 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED'>>({});
   useLockBodyScroll(showTotalSalaryModal || showPayrollPreviewModal);
 
   // ── Import cấu hình lương dialog ──
@@ -3543,8 +3544,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     setPollingBatch(false);
     setDeptRecipientsPreview(null);
     setDeptRecipientsPreviewError(null);
+    setEmailStatusFromQueueMap({});
     try {
-      const [salaryRes, commissionRes] = await Promise.allSettled([
+      const [salaryRes, commissionRes, emailStatusRes] = await Promise.allSettled([
         salaryService.getSalaryByDepartment({
           year: selectedYear,
           month: selectedMonth,
@@ -3552,6 +3554,12 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           legal_entity: legalEntityFilterView || undefined,
         }),
         salaryService.listCommissions({ year: selectedYear, month: selectedMonth }),
+        salaryService.getDepartmentPayslipEmailStatuses({
+          year: selectedYear,
+          month: selectedMonth,
+          department_id: deptFilterView ? parseInt(deptFilterView, 10) : undefined,
+          legal_entity: legalEntityFilterView || undefined,
+        }),
       ]);
 
       if (salaryRes.status !== 'fulfilled') throw salaryRes.reason;
@@ -3559,6 +3567,17 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       const res = salaryRes.value;
       setSalaryRecords(res.results ?? []);
       setSalaryCommissions(commissionRes.status === 'fulfilled' ? commissionRes.value : []);
+
+      if (emailStatusRes.status === 'fulfilled') {
+        const nextMap: Record<number, 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED'> = {};
+        (emailStatusRes.value.statuses ?? []).forEach((item) => {
+          if (item.status) {
+            nextMap[item.employee_id] = item.status;
+          }
+        });
+        setEmailStatusFromQueueMap(nextMap);
+      }
+
       setSalaryPage(1);
     } catch (error: unknown) {
       const normalizedError = error as { response?: { status?: number } };
@@ -3569,6 +3588,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       }
       setSalaryRecords([]);
       setSalaryCommissions([]);
+      setEmailStatusFromQueueMap({});
     } finally {
       setLoadingSalary(false);
     }
@@ -3709,6 +3729,23 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
   const previewRecipients = deptRecipientsPreview?.recipients ?? [];
   const previewRecipientsWithEmail = previewRecipients.filter((item) => item.has_email);
+  const payslipEmailStatusMap = useMemo(() => {
+    const map = new Map<number, 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED'>();
+    if (!deptPayslipBatch?.emails) return map;
+    deptPayslipBatch.emails.forEach((item) => {
+      map.set(item.employee_id, item.status);
+    });
+    return map;
+  }, [deptPayslipBatch]);
+
+  const getPayslipEmailStatusView = (employeeId: number) => {
+    const status = payslipEmailStatusMap.get(employeeId) ?? emailStatusFromQueueMap[employeeId];
+    if (status === 'SENT') return { label: 'Đã gửi', className: 'bg-green-100 text-green-700' };
+    if (status === 'FAILED') return { label: 'Lỗi gửi', className: 'bg-red-100 text-red-700' };
+    if (status === 'PROCESSING') return { label: 'Đang gửi', className: 'bg-blue-100 text-blue-700' };
+    if (status === 'PENDING') return { label: 'Chờ gửi', className: 'bg-amber-100 text-amber-700' };
+    return { label: 'Chưa gửi', className: 'bg-gray-100 text-gray-600' };
+  };
 
   const handleOpenConfig = async (employee: Employee) => {
     setSaveError(null);
@@ -4114,6 +4151,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           Thực lĩnh
                         </th>
                         <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Trạng thái email
+                        </th>
+                        <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Chi tiết
                         </th>
                       </tr>
@@ -4148,6 +4188,16 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           </td>
                           <td className="px-3 py-3 text-right font-semibold text-indigo-700 bg-indigo-50">
                             {formatCurrency(recordNetPayable)}
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            {(() => {
+                              const statusView = getPayslipEmailStatusView(record.employee_id);
+                              return (
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${statusView.className}`}>
+                                  {statusView.label}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="px-3 py-3 text-center">
                             <button
