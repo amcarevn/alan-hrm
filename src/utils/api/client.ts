@@ -1,9 +1,9 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 
-export const API_BASE_URL = 'https://alan-hrm.amcare.vn';
+//export const API_BASE_URL = 'https://alan-hrm.amcare.vn';
 //export const API_BASE_URL = 'https://app-uat.amcare.vn';
-//export const API_BASE_URL = 'http://localhost:8000';
+export const API_BASE_URL = 'http://localhost:8000';
 // Create axios instance for Management API
 export const managementApi: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
