@@ -498,7 +498,7 @@ class SalaryService {
   }
 
   async sendPayslipEmail(
-    payload: { email: string; subject: string; body: string },
+    payload: { email: string; subject: string; body: string; employee_id: number; year: number; month: number; recipient_name?: string },
     options?: { timeoutMs?: number }
   ): Promise<{ detail: string }> {
     const response = await managementApi.post('/api/v1/salary/records/send-payslip-email/', payload, {

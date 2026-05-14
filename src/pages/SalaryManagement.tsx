@@ -210,6 +210,7 @@ interface PayslipDetailModalProps {
   employee?: Employee;
   penalties?: PenaltyRecord[];
   commissions?: CommissionRecord[];
+  onEmailQueued?: (employeeId: number) => void;
 }
 
 const getSalesCommissionAmount = (record: SalaryRecord, commissions?: CommissionRecord[]) => {
@@ -220,7 +221,7 @@ const getSalesCommissionAmount = (record: SalaryRecord, commissions?: Commission
   return (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
 };
 
-const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose, employee, penalties, commissions }) => {
+const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose, employee, penalties, commissions, onEmailQueued }) => {
   useLockBodyScroll(true);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailAddr, setEmailAddr] = useState(employee?.personal_email ?? '');
@@ -480,10 +481,16 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
           email: emailAddr.trim(),
           subject: emailSubject.trim(),
           body: emailBody.trim(),
+          employee_id: record.employee_id,
+          year: record.year,
+          month: record.month,
+          recipient_name: record.ho_va_ten,
         },
         { timeoutMs: 180000 }
       );
-      setEmailResult({ ok: true, msg: `Đã gửi phiếu lương đến ${emailAddr.trim()}.` });
+      onEmailQueued?.(record.employee_id);
+      setEmailModalOpen(false);
+      setEmailResult({ ok: true, msg: `Đã xếp hàng gửi phiếu lương đến ${emailAddr.trim()}.` });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Gửi email thất bại.';
       setEmailResult({ ok: false, msg });
@@ -4390,6 +4397,12 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           employee={payslipEmployee ?? undefined}
           penalties={payslipPenalties}
           commissions={payslipCommissions}
+          onEmailQueued={(employeeId) => {
+            setEmailStatusFromQueueMap((prev) => ({
+              ...prev,
+              [employeeId]: 'PENDING',
+            }));
+          }}
           onClose={() => { setPayslipRecord(null); setPayslipEmployee(null); setPayslipPenalties([]); setPayslipCommissions([]); }}
         />,
         document.body,
