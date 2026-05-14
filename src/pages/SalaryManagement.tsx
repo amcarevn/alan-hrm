@@ -368,6 +368,74 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
     return lines.join('\n');
   };
 
+    const escapeHtml = (value: string) => value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+    const emailSubject = `[Phiếu lương] ${monthLabel} - ${record.ho_va_ten}`;
+    const emailBody = buildEmailBody();
+
+    const buildEmailPreviewHtml = (subject: string, body: string) => {
+    const logoUrl = 'https://s3.cloudfly.vn/alan/hrm/alan-logo.jpg';
+    const bannerUrl = 'https://s3.cloudfly.vn/alan/hrm/banner-email.jpg';
+    const safeSubject = escapeHtml(subject);
+    const safeBody = escapeHtml(body).replace(/\n/g, '<br>');
+
+    return `
+  <!DOCTYPE html>
+  <html>
+  <head><meta charset="utf-8"></head>
+  <body style="font-family: Arial, sans-serif; font-size: 14px; color: #333; margin: 0; padding: 0; background-color: #f8fafc;">
+  <table style="width: 100%; border-collapse: collapse;" cellpadding="0" cellspacing="0" role="presentation">
+    <tr>
+      <td align="center" style="padding: 20px 12px;">
+        <table style="width: 100%; max-width: 640px; border-collapse: collapse; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.06);" cellpadding="0" cellspacing="0" role="presentation">
+          <tr>
+            <td style="padding: 0;">
+              <img src="${bannerUrl}" alt="Payslip Banner" style="width: 100%; max-width: 640px; display: block;">
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 24px;">
+              <p style="margin: 0 0 12px;">Kính gửi Anh/Chị,</p>
+              <p style="margin: 0 0 12px;">Phòng Hành chính Nhân sự gửi Anh/Chị phiếu lương với thông tin chi tiết như bên dưới.</p>
+
+              <p style="color: #1a73e8; font-weight: 700; margin: 16px 0 8px;">${safeSubject}</p>
+              <div style="background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; line-height: 1.65; color: #111827;">
+                ${safeBody}
+              </div>
+
+              <p style="margin: 16px 0 0;">Nếu cần hỗ trợ thêm, Anh/Chị vui lòng phản hồi email này hoặc liên hệ Phòng HCNS.</p>
+              <p style="margin: 12px 0 0;">Trân trọng!</p>
+
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+              <table style="border-collapse: collapse;" role="presentation">
+                <tr>
+                  <td style="width: 80px; vertical-align: middle; padding-right: 16px;">
+                    <img src="${logoUrl}" alt="ALAN BEAUTY MEDICAL CLINIC Logo" style="width: 80px;">
+                  </td>
+                  <td style="vertical-align: middle; color: #666; font-size: 13px; line-height: 1.5;">
+                    <strong>Phòng HCNS - ALAN BEAUTY MEDICAL CLINIC</strong><br>
+                    Địa chỉ: Số 219 Trung Kính, Yên Hòa, Hà Nội<br>
+                    SĐT: 0936.004.735
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  </body>
+  </html>`;
+    };
+
+    const emailPreviewHtml = buildEmailPreviewHtml(emailSubject, emailBody);
+
   const handleOpenEmailModal = () => {
     setEmailAddr(employee?.personal_email ?? '');
     setEmailResult(null);
@@ -379,9 +447,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
     setEmailSending(true);
     setEmailResult(null);
     try {
-      const subject = `[Phiếu lương] ${monthLabel} - ${record.ho_va_ten}`;
-      const body = buildEmailBody();
-      await salaryService.sendPayslipEmail({ email: emailAddr.trim(), subject, body });
+      await salaryService.sendPayslipEmail({ email: emailAddr.trim(), subject: emailSubject, body: emailBody });
       setEmailResult({ ok: true, msg: `Đã gửi phiếu lương đến ${emailAddr.trim()}.` });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Gửi email thất bại.';
@@ -690,18 +756,20 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                   <input
                     type="text"
                     readOnly
-                    value={`[Phiếu lương] ${monthLabel} - ${record.ho_va_ten}`}
+                    value={emailSubject}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Nội dung preview</label>
-                  <textarea
-                    readOnly
-                    value={buildEmailBody()}
-                    rows={8}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono bg-gray-50 text-gray-600 resize-none"
-                  />
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Nội dung preview (HTML)</label>
+                  <div className="w-full border border-gray-200 rounded-lg overflow-hidden bg-white">
+                    <iframe
+                      title="Xem trước email phiếu lương"
+                      srcDoc={emailPreviewHtml}
+                      className="w-full h-80"
+                      sandbox=""
+                    />
+                  </div>
                 </div>
                 {emailResult && (
                   <p className={`text-sm font-medium ${emailResult.ok ? 'text-green-600' : 'text-red-600'}`}>
