@@ -21,7 +21,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { employeesAPI } from '../utils/api';
 import type { Department, Employee } from '../utils/api';
-import { salaryService, SalaryFormulaUpdateData, SalaryRecord, PenaltyRecord, CommissionRecord, type BulkSalaryConfigRecord, type PayslipEmailBatchStatus, type DepartmentPayslipRecipientsResponse } from '../services/salary.service';
+import { salaryService, SalaryFormulaUpdateData, SalaryRecord, PenaltyRecord, CommissionRecord, type BulkSalaryConfigRecord, type PayslipEmailBatchStatus, type DepartmentPayslipRecipientsResponse, type CompanyPayslipRecipientsResponse } from '../services/salary.service';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
 import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 
@@ -2903,6 +2903,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     month: number;
     department_id: number | null;
     legal_entity?: string | null;
+    total_luong_thuc_linh: number;
+    total_con_phai_thanh_toan: number;
+    total_thue_tncn: number;
     total_net_salary: number;
     employee_count: number;
   } | null>(null);
@@ -2922,6 +2925,17 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [deptRecipientsPreviewError, setDeptRecipientsPreviewError] = useState<string | null>(null);
   const [selectedRecipientPreview, setSelectedRecipientPreview] = useState<DepartmentPayslipRecipientsResponse['recipients'][number] | null>(null);
   const [emailStatusFromQueueMap, setEmailStatusFromQueueMap] = useState<Record<number, 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED'>>({});
+  // ── Company payslip email send ──
+  const [sendingCompanyPayslipEmail, setSendingCompanyPayslipEmail] = useState(false);
+  const [companyPayslipEmailResult, setCompanyPayslipEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [showCompanyPayslipConfirm, setShowCompanyPayslipConfirm] = useState(false);
+  const [companyPayslipBatchId, setCompanyPayslipBatchId] = useState<string | null>(null);
+  const [companyPayslipBatch, setCompanyPayslipBatch] = useState<PayslipEmailBatchStatus | null>(null);
+  const [pollingCompanyBatch, setPollingCompanyBatch] = useState(false);
+  const [loadingCompanyRecipientsPreview, setLoadingCompanyRecipientsPreview] = useState(false);
+  const [companyRecipientsPreview, setCompanyRecipientsPreview] = useState<CompanyPayslipRecipientsResponse | null>(null);
+  const [companyRecipientsPreviewError, setCompanyRecipientsPreviewError] = useState<string | null>(null);
+  const [selectedCompanyRecipientPreview, setSelectedCompanyRecipientPreview] = useState<CompanyPayslipRecipientsResponse['recipients'][number] | null>(null);
   useLockBodyScroll(showTotalSalaryModal || showPayrollPreviewModal);
 
   // ── Import cấu hình lương dialog ──
@@ -3657,6 +3671,53 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     setShowTotalSalaryModal(true);
   };
 
+  const handleSendCompanyPayslips = () => {
+    setCompanyPayslipEmailResult(null);
+    setCompanyPayslipBatch(null);
+    setCompanyPayslipBatchId(null);
+    setCompanyRecipientsPreview(null);
+    setCompanyRecipientsPreviewError(null);
+    setSelectedCompanyRecipientPreview(null);
+    setShowCompanyPayslipConfirm(true);
+    setLoadingCompanyRecipientsPreview(true);
+    salaryService.getCompanyPayslipRecipients({
+      year: selectedYear,
+      month: selectedMonth,
+      ...(legalEntityFilterView ? { legal_entity: legalEntityFilterView } : {}),
+    })
+      .then((preview) => setCompanyRecipientsPreview(preview))
+      .catch((error: unknown) => {
+        const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+        setCompanyRecipientsPreviewError(detail ?? 'Không thể tải danh sách email người nhận để xác nhận.');
+      })
+      .finally(() => setLoadingCompanyRecipientsPreview(false));
+  };
+
+  const handleConfirmSendCompanyPayslips = async () => {
+    setShowCompanyPayslipConfirm(false);
+    setSendingCompanyPayslipEmail(true);
+    setCompanyPayslipEmailResult(null);
+    setCompanyPayslipBatch(null);
+    try {
+      const response = await salaryService.sendCompanyPayslipEmails({
+        year: selectedYear,
+        month: selectedMonth,
+        ...(legalEntityFilterView ? { legal_entity: legalEntityFilterView } : {}),
+      });
+      setCompanyPayslipBatchId(response.batch_id);
+      setCompanyPayslipEmailResult({
+        ok: true,
+        msg: `Đã xếp hàng ${response.queued}/${response.total} email. Thiếu email: ${response.skipped_no_email}. Email sẽ được gửi trong vài phút.`,
+      });
+      setPollingCompanyBatch(true);
+    } catch (error: unknown) {
+      const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setCompanyPayslipEmailResult({ ok: false, msg: detail ?? 'Không thể tạo hàng đợi gửi email bảng lương.' });
+    } finally {
+      setSendingCompanyPayslipEmail(false);
+    }
+  };
+
   const handleSendDepartmentPayslips = () => {
     if (!deptFilterView) {
       setDeptPayslipEmailResult({ ok: false, msg: 'Vui lòng chọn phòng ban trước khi gửi email bảng lương.' });
@@ -3734,8 +3795,32 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     return () => { cancelled = true; clearInterval(timer); };
   }, [pollingBatch, deptPayslipBatchId]);
 
+  // Poll company batch status every 15 seconds
+  React.useEffect(() => {
+    if (!pollingCompanyBatch || !companyPayslipBatchId) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const batch = await salaryService.getPayslipEmailBatchStatus(companyPayslipBatchId);
+        if (!cancelled) {
+          setCompanyPayslipBatch(batch);
+          if (batch.status === 'COMPLETED' || batch.status === 'FAILED') {
+            setPollingCompanyBatch(false);
+          }
+        }
+      } catch {
+        // silently ignore polling errors
+      }
+    };
+    poll();
+    const timer = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [pollingCompanyBatch, companyPayslipBatchId]);
+
   const previewRecipients = deptRecipientsPreview?.recipients ?? [];
   const previewRecipientsWithEmail = previewRecipients.filter((item) => item.has_email);
+  const companyPreviewRecipients = companyRecipientsPreview?.recipients ?? [];
+  const companyPreviewRecipientsWithEmail = companyPreviewRecipients.filter((item) => item.has_email);
   const payslipEmailStatusMap = useMemo(() => {
     const map = new Map<number, 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED'>();
     if (!deptPayslipBatch?.emails) return map;
@@ -4287,6 +4372,19 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                         )}
                         {sendingDeptPayslipEmail ? 'Đang xếp hàng...' : 'Gửi email phòng ban'}
                       </button>
+                      <button
+                        onClick={handleSendCompanyPayslips}
+                        disabled={sendingCompanyPayslipEmail}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        title="Gửi email phiếu lương cho toàn bộ nhân sự công ty"
+                      >
+                        {sendingCompanyPayslipEmail ? (
+                          <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <EnvelopeIcon className="h-4 w-4" />
+                        )}
+                        {sendingCompanyPayslipEmail ? 'Đang xếp hàng...' : 'Gửi email toàn công ty'}
+                      </button>
                     </div>
                   </div>
 
@@ -4294,6 +4392,13 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   {deptPayslipEmailResult && (
                     <p className={`text-sm ${deptPayslipEmailResult.ok ? 'text-green-600' : 'text-red-600'}`}>
                       {deptPayslipEmailResult.msg}
+                    </p>
+                  )}
+
+                  {/* Company result banner */}
+                  {companyPayslipEmailResult && (
+                    <p className={`text-sm ${companyPayslipEmailResult.ok ? 'text-green-600' : 'text-red-600'}`}>
+                      {companyPayslipEmailResult.msg}
                     </p>
                   )}
 
@@ -4405,6 +4510,134 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           }}
           onClose={() => { setPayslipRecord(null); setPayslipEmployee(null); setPayslipPenalties([]); setPayslipCommissions([]); }}
         />,
+        document.body,
+      )}
+
+      {/* Confirm modal: gửi email toàn công ty */}
+      {showCompanyPayslipConfirm && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h3 className="text-base font-semibold text-gray-900">Xác nhận gửi email phiếu lương – Toàn công ty</h3>
+            </div>
+            <div className="px-6 py-4 space-y-3 max-h-[70vh] overflow-y-auto">
+              <p className="text-sm text-gray-600">
+                Hệ thống sẽ xếp hàng gửi email phiếu lương{' '}
+                <strong>Tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear}</strong> cho toàn bộ nhân sự công ty
+                {legalEntityFilterView ? <> (pháp nhân: <strong>{legalEntityFilterView}</strong>)</> : ''}.
+              </p>
+
+              {loadingCompanyRecipientsPreview && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                  Đang tải danh sách người nhận...
+                </div>
+              )}
+
+              {companyRecipientsPreviewError && (
+                <div className="text-sm text-red-600">{companyRecipientsPreviewError}</div>
+              )}
+
+              {!loadingCompanyRecipientsPreview && !companyRecipientsPreviewError && companyRecipientsPreview && (
+                <>
+                  <div className="text-sm text-gray-600">
+                    Dự kiến gửi <strong>{companyRecipientsPreview.can_send}</strong> email / tổng <strong>{companyRecipientsPreview.total}</strong> nhân sự.
+                    {companyRecipientsPreview.no_email_count > 0 && (
+                      <span className="text-amber-600"> Có {companyRecipientsPreview.no_email_count} người chưa có email.</span>
+                    )}
+                  </div>
+
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-gray-500 font-medium">Mã NV</th>
+                          <th className="px-3 py-2 text-left text-gray-500 font-medium">Họ tên</th>
+                          <th className="px-3 py-2 text-left text-gray-500 font-medium">Email nhận</th>
+                          <th className="px-3 py-2 text-center text-gray-500 font-medium">Trạng thái</th>
+                          <th className="px-3 py-2 text-center text-gray-500 font-medium">Chi tiết</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {companyPreviewRecipients.map((item) => (
+                          <tr key={item.employee_id}>
+                            <td className="px-3 py-2 text-gray-700">{item.employee_code || '—'}</td>
+                            <td className="px-3 py-2 text-gray-700">{item.employee_name || '—'}</td>
+                            <td className="px-3 py-2 text-gray-600">{item.email || '—'}</td>
+                            <td className="px-3 py-2 text-center">
+                              {item.has_email ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700">Sẽ gửi</span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700">Thiếu email</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCompanyRecipientPreview(item)}
+                                className="inline-flex items-center justify-center w-7 h-7 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-100"
+                                title="Xem chi tiết email dự kiến gửi"
+                              >
+                                <EyeIcon className="h-4 w-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {selectedCompanyRecipientPreview && (
+                    <div className="border border-purple-200 bg-purple-50 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-purple-900">Chi tiết email dự kiến gửi</p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCompanyRecipientPreview(null)}
+                          className="text-purple-700 hover:text-purple-900"
+                          title="Đóng chi tiết"
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-purple-900">
+                        <p><strong>Nhân viên:</strong> {selectedCompanyRecipientPreview.employee_name}</p>
+                        <p><strong>Mã NV:</strong> {selectedCompanyRecipientPreview.employee_code || '—'}</p>
+                        <p className="md:col-span-2"><strong>Email nhận:</strong> {selectedCompanyRecipientPreview.email || '—'}</p>
+                        <p className="md:col-span-2"><strong>Tiêu đề sẽ gửi:</strong> {selectedCompanyRecipientPreview.preview_subject}</p>
+                        <p className="md:col-span-2 text-purple-800">
+                          <strong>Ghi chú:</strong> {selectedCompanyRecipientPreview.has_email ? 'Email này đủ điều kiện để đưa vào hàng đợi gửi.' : 'Email trống nên sẽ bị bỏ qua khi gửi.'}
+                        </p>
+                        <div className="md:col-span-2">
+                          <p className="font-semibold mb-1">Nội dung sẽ gửi:</p>
+                          <pre className="text-xs bg-white border border-purple-200 rounded-md p-3 max-h-64 overflow-auto whitespace-pre-wrap text-gray-800">
+{selectedCompanyRecipientPreview.preview_body}
+                          </pre>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="px-6 py-4 flex justify-end gap-3 border-t border-gray-100 bg-gray-50">
+              <button
+                onClick={() => setShowCompanyPayslipConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Huỷ
+              </button>
+              <button
+                onClick={handleConfirmSendCompanyPayslips}
+                disabled={loadingCompanyRecipientsPreview || !!companyRecipientsPreviewError || companyPreviewRecipientsWithEmail.length === 0}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <EnvelopeIcon className="h-4 w-4" />
+                Xác nhận gửi
+              </button>
+            </div>
+          </div>
+        </div>,
         document.body,
       )}
 
@@ -4592,6 +4825,79 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                               <tr key={i} className="bg-white">
                                 <td className="px-3 py-1.5 font-mono font-medium text-red-700">{e.employee_code}</td>
                                 <td className="px-3 py-1.5 text-red-600">{e.error}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Company Batch status report */}
+                  {companyPayslipBatch && (
+                    <div className="mt-3 border border-purple-200 rounded-lg overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-2 bg-purple-50 border-b border-purple-200">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold text-purple-800">Báo cáo gửi email – Toàn công ty</span>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                            companyPayslipBatch.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                            companyPayslipBatch.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {pollingCompanyBatch && <ArrowPathIcon className="h-3 w-3 animate-spin" />}
+                            {companyPayslipBatch.status === 'COMPLETED' ? 'Hoàn thành' :
+                             companyPayslipBatch.status === 'FAILED' ? 'Thất bại' :
+                             companyPayslipBatch.status === 'PROCESSING' ? 'Đang gửi' : 'Chờ gửi'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span className="text-green-600 font-medium">✓ {companyPayslipBatch.sent} đã gửi</span>
+                          <span className="text-yellow-600 font-medium">⏳ {companyPayslipBatch.pending} chờ</span>
+                          {companyPayslipBatch.failed > 0 && <span className="text-red-600 font-medium">✗ {companyPayslipBatch.failed} lỗi</span>}
+                        </div>
+                      </div>
+                      <div className="h-1.5 bg-gray-100">
+                        <div
+                          className="h-full bg-green-500 transition-all duration-500"
+                          style={{ width: `${companyPayslipBatch.progress_pct}%` }}
+                        />
+                      </div>
+                      <div className="max-h-60 overflow-y-auto">
+                        <table className="w-full text-xs">
+                          <thead className="sticky top-0 bg-gray-50">
+                            <tr>
+                              <th className="text-left px-3 py-2 text-gray-500 font-medium">Nhân viên</th>
+                              <th className="text-left px-3 py-2 text-gray-500 font-medium">Email</th>
+                              <th className="text-center px-3 py-2 text-gray-500 font-medium">Trạng thái</th>
+                              <th className="text-left px-3 py-2 text-gray-500 font-medium">Thời gian</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {companyPayslipBatch.emails.map((item) => (
+                              <tr key={item.employee_id} className="hover:bg-gray-50">
+                                <td className="px-3 py-2">
+                                  <div className="font-medium text-gray-800">{item.employee_name}</div>
+                                  <div className="text-gray-400">{item.employee_code}</div>
+                                </td>
+                                <td className="px-3 py-2 text-gray-600">{item.email}</td>
+                                <td className="px-3 py-2 text-center">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                    item.status === 'SENT' ? 'bg-green-100 text-green-700' :
+                                    item.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                                    item.status === 'PROCESSING' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-gray-100 text-gray-600'
+                                  }`}>
+                                    {item.status === 'SENT' ? '✓ Đã gửi' :
+                                     item.status === 'FAILED' ? '✗ Lỗi' :
+                                     item.status === 'PROCESSING' ? '↻ Đang gửi' : '⏳ Chờ'}
+                                  </span>
+                                  {item.error_message && (
+                                    <div className="text-red-500 text-xs mt-0.5 max-w-28 truncate" title={item.error_message}>{item.error_message}</div>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-gray-400">
+                                  {item.processed_at ? new Date(item.processed_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -4892,11 +5198,32 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 </div>
               ) : totalSalaryData ? (
                 <>
-                  <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-6 text-center">
-                    <p className="text-sm text-indigo-600 font-medium mb-2">TỔNG THỰC LĨNH PHẢI CHUYỂN</p>
-                    <p className="text-4xl font-bold text-indigo-900">{formatCurrency(totalSalaryData.total_net_salary)}</p>
-                    <p className="text-sm text-indigo-500 mt-2">= Tổng số tiền công ty chuyển vào ngày trả lương</p>
-                  </div>
+                  {(() => {
+                    const totalTransferToEmployees = totalSalaryData.total_con_phai_thanh_toan ?? totalSalaryData.total_net_salary ?? 0;
+                    const totalTaxTncn = totalSalaryData.total_thue_tncn ?? 0;
+                    const totalMustPay = totalTransferToEmployees + totalTaxTncn;
+                    return (
+                      <>
+                        <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-6 text-center">
+                          <p className="text-sm text-indigo-600 font-medium mb-2">TỔNG PHẢI CHUYỂN CHO NHÂN VIÊN</p>
+                          <p className="text-4xl font-bold text-indigo-900">{formatCurrency(totalTransferToEmployees)}</p>
+                          <p className="text-sm text-indigo-500 mt-2">= Tổng số tiền công ty chuyển vào tài khoản nhân viên</p>
+                        </div>
+
+                        <div className="rounded-lg bg-amber-50 border border-amber-200 p-6 text-center">
+                          <p className="text-sm text-amber-700 font-medium mb-2">TỔNG THUẾ TNCN PHẢI NỘP</p>
+                          <p className="text-3xl font-bold text-amber-900">{formatCurrency(totalTaxTncn)}</p>
+                          <p className="text-sm text-amber-600 mt-2">= Tổng trường Thuế thu nhập cá nhân</p>
+                        </div>
+
+                        <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-6 text-center">
+                          <p className="text-sm text-emerald-700 font-medium mb-2">TỔNG PHẢI CHI TRẢ (NHÂN VIÊN + CƠ QUAN THUẾ)</p>
+                          <p className="text-4xl font-bold text-emerald-900">{formatCurrency(totalMustPay)}</p>
+                          <p className="text-sm text-emerald-600 mt-2">= Tổng chuyển nhân viên + tổng thuế TNCN phải nộp</p>
+                        </div>
+                      </>
+                    );
+                  })()}
 
                   <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 text-sm text-gray-600">
                     <p>Số lượng nhân viên: <span className="font-semibold text-gray-900">{totalSalaryData.employee_count}</span></p>

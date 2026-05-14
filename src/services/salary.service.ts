@@ -288,6 +288,33 @@ export interface DepartmentPayslipEmailStatusesResponse {
   statuses: DepartmentPayslipEmailStatusItem[];
 }
 
+export interface CompanyPayslipRecipientsResponse {
+  year: number;
+  month: number;
+  total: number;
+  can_send: number;
+  no_email_count: number;
+  recipients: DepartmentPayslipRecipient[];
+}
+
+export interface SendCompanyPayslipPayload {
+  year: number;
+  month: number;
+  legal_entity?: string;
+  subject_template?: string;
+  body_template?: string;
+}
+
+export interface SendCompanyPayslipResponse {
+  detail: string;
+  batch_id: string;
+  year: number;
+  month: number;
+  total: number;
+  queued: number;
+  skipped_no_email: number;
+}
+
 export interface PayslipEmailItem {
   employee_id: number;
   employee_code: string;
@@ -536,6 +563,25 @@ class SalaryService {
     return response.data;
   }
 
+  async getCompanyPayslipRecipients(params: {
+    year: number;
+    month: number;
+    legal_entity?: string;
+  }): Promise<CompanyPayslipRecipientsResponse> {
+    const response = await managementApi.get('/api/v1/salary/records/company-payslip-recipients/', { params });
+    return response.data;
+  }
+
+  async sendCompanyPayslipEmails(
+    payload: SendCompanyPayslipPayload,
+    options?: { timeoutMs?: number }
+  ): Promise<SendCompanyPayslipResponse> {
+    const response = await managementApi.post('/api/v1/salary/records/send-company-payslip-emails/', payload, {
+      timeout: options?.timeoutMs ?? 30000,
+    });
+    return response.data;
+  }
+
   async getPayslipEmailBatchStatus(batchId: string): Promise<PayslipEmailBatchStatus> {
     const response = await managementApi.get(`/api/v1/salary/records/payslip-email-batch/${batchId}/`);
     return response.data;
@@ -551,6 +597,9 @@ class SalaryService {
     month: number;
     department_id: number | null;
     legal_entity?: string | null;
+    total_luong_thuc_linh: number;
+    total_con_phai_thanh_toan: number;
+    total_thue_tncn: number;
     total_net_salary: number;
     employee_count: number;
   }> {
