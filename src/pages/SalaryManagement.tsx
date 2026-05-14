@@ -3641,26 +3641,33 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     }
   };
 
-  // ── Tính toán tổng lương từ API ──
+  // ── Tính toán tổng lương từ chính dữ liệu export (đảm bảo khớp Excel) ──
   const loadTotalSalary = useCallback(async () => {
     setLoadingTotalSalary(true);
     setTotalSalaryError(null);
     setTotalSalaryData(null);
     try {
-      const data = await salaryService.getTotalSalarySummary({
+      const totalLuongThucLinh = payrollDetailRows.reduce((sum, row) => sum + (row.luong_thuc_linh ?? 0), 0);
+      const totalConPhaiThanhToan = payrollDetailRows.reduce((sum, row) => sum + (row.con_phai_thanh_toan ?? 0), 0);
+      const totalThueTncn = payrollDetailRows.reduce((sum, row) => sum + (row.thue_tncn ?? 0), 0);
+
+      setTotalSalaryData({
         year: selectedYear,
         month: selectedMonth,
-        department: deptFilterView ? parseInt(deptFilterView) : undefined,
-        legal_entity: legalEntityFilterView || undefined,
+        department_id: deptFilterView ? parseInt(deptFilterView, 10) : null,
+        legal_entity: legalEntityFilterView || null,
+        total_luong_thuc_linh: Math.round(totalLuongThucLinh),
+        total_con_phai_thanh_toan: Math.round(totalConPhaiThanhToan),
+        total_thue_tncn: Math.round(totalThueTncn),
+        total_net_salary: Math.round(totalConPhaiThanhToan),
+        employee_count: payrollDetailRows.length,
       });
-      setTotalSalaryData(data);
-    } catch (error: unknown) {
+    } catch {
       setTotalSalaryError('Không thể tải dữ liệu tổng lương. Vui lòng thử lại.');
-      console.error(error);
     } finally {
       setLoadingTotalSalary(false);
     }
-  }, [selectedYear, selectedMonth, deptFilterView, legalEntityFilterView]);
+  }, [selectedYear, selectedMonth, deptFilterView, legalEntityFilterView, payrollDetailRows]);
 
   const openTotalSalaryModal = async (scope: 'company' | 'legal_entity') => {
     _closeActiveTaxTooltip?.();
