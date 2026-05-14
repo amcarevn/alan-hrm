@@ -22,7 +22,12 @@ export interface SalaryRecord {
   phu_cap: number;
   thu_nhap_khac?: number;
   ngay_cong: number;
+  cong_thu_viec?: number;
   cong_chinh_thuc: number;
+  probation_rate_percent?: number;
+  luong_ngay_cong_thu_viec?: number;
+  luong_ngay_cong_chinh_thuc?: number;
+  luong_ngay_cong?: number;
   tang_ca: number;
   truc_toi: number;
   lam_them_gio: number;
@@ -39,6 +44,7 @@ export interface SalaryRecord {
   phu_cap_an_trua?: number;
   tong_thu_nhap_chiu_thue?: number;
   thue_tncn?: number;
+  tax_method?: 'PROGRESSIVE' | 'FLAT_10_PROBATION' | 'FLAT_10_NON_OFFICIAL' | 'FLAT_10_MIXED_LT14';
   so_nguoi_phu_thuoc?: number;
   thu_nhap_tinh_thue?: number;
   giam_tru_ban_than?: number;

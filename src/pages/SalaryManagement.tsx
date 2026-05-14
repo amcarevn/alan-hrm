@@ -130,7 +130,9 @@ const TaxTooltip: React.FC<TaxTooltipProps> = ({ taxDetail }) => {
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
               <div className="space-y-2 text-sm">
                 <p className="text-xs text-indigo-700 bg-indigo-50 rounded px-2 py-1">
-                  Công thức: Thuế TNCN = Σ(Thu nhập trong từng bậc × Thuế suất bậc đó)
+                  {taxDetail.taxMode === 'flat_10'
+                    ? 'Công thức: Thuế TNCN = 10% × Tổng thu nhập chịu thuế trong tháng'
+                    : 'Công thức: Thuế TNCN = Σ(Thu nhập trong từng bậc × Thuế suất bậc đó)'}
                 </p>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Tổng thu nhập không tính phụ cấp ăn trưa:</span>
@@ -156,8 +158,15 @@ const TaxTooltip: React.FC<TaxTooltipProps> = ({ taxDetail }) => {
                 </div>
               </div>
               <div className="border-t pt-3">
-                <p className="font-semibold text-gray-900 text-xs mb-2">Áp dụng bảng thuế lũy tiến:</p>
-                {taxDetail.breakdown.length > 0 ? (
+                <p className="font-semibold text-gray-900 text-xs mb-2">
+                  {taxDetail.taxMode === 'flat_10' ? 'Chi tiết tính thuế 10%:' : 'Áp dụng bảng thuế lũy tiến:'}
+                </p>
+                {taxDetail.taxMode === 'flat_10' ? (
+                  <div className="text-xs rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-gray-700 flex items-center justify-between">
+                    <span>10% × {formatCurrency(taxDetail.taxableIncome)}</span>
+                    <span className="font-bold text-indigo-600">{formatCurrency(taxDetail.totalTax)}</span>
+                  </div>
+                ) : taxDetail.breakdown.length > 0 ? (
                   <div className="space-y-2 text-xs">
                     {taxDetail.breakdown.map((item) => (
                       <div key={item.bracketNumber} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-gray-700">
@@ -224,10 +233,16 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const payrollTax = payslipComputation.payrollTax;
   const nptCount = payrollTax.dependentCount;
   const mucLuongDongBH = payrollTax.insuranceSalaryBase;
+  const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
 
   // Section III
-  const luongCoBan   = record.luong_co_ban ?? 0;
-  const luongNgayCongThucTe = stdDays > 0 ? Math.round(luongCoBan / stdDays * (record.tong_cong ?? 0)) : 0;
+  const luongNgayCongThucTe = workdayBreakdown.tongLuongNgayCong;
+  const luongCongThuViec = workdayBreakdown.luongCongThuViec;
+  const luongCongChinhThuc = workdayBreakdown.luongCongChinhThuc;
+  const congThuViec = workdayBreakdown.congThuViec;
+  const congChinhThuc = workdayBreakdown.congChinhThuc;
+  const probationRatePercent = workdayBreakdown.probationRatePercent;
+  const hasProbationDays = workdayBreakdown.hasProbationDays;
   const luongTangCa  = record.luong_tang_ca ?? 0;
   const luongTrucCa  = record.truc_toi ?? 0;
   const luongDoanhSo = getSalesCommissionAmount(record, commissions);
@@ -328,11 +343,14 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
       '────────────────────────────────────────',
       `  Công chuẩn         : ${stdDays} công`,
       `  Ngày công thực tế  : ${record.tong_cong}`,
+      ...(hasProbationDays ? [`  Công TV / CT       : ${congThuViec} / ${congChinhThuc}`] : []),
       `  Giờ tăng ca        : ${record.so_gio_tang_ca ?? record.tang_ca ?? 0}`,
       '────────────────────────────────────────',
       '  CÁC KHOẢN THU NHẬP',
       '────────────────────────────────────────',
       `  Lương ngày công    : ${fmtN(luongNgayCongThucTe)}`,
+      ...(hasProbationDays ? [`  └─ Lương công TV (${probationRatePercent}%) : ${fmtN(luongCongThuViec)}`] : []),
+      ...(hasProbationDays ? [`  └─ Lương công CT    : ${fmtN(luongCongChinhThuc)}`] : []),
       ...(luongDoanhSo ? [`  Lương doanh số     : ${fmtN(luongDoanhSo)}`] : []),
       ...(luongTangCa ? [`  Lương tăng ca      : ${fmtN(luongTangCa)}`] : []),
       ...(luongTrucCa ? [`  Lương trực ca      : ${fmtN(luongTrucCa)}`] : []),
@@ -570,6 +588,13 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Ngày công thực tế</td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{record.tong_cong}</td>
               </tr>
+              {hasProbationDays && (
+                <tr>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">7a</td>
+                  <td className="border border-gray-300 px-3 py-2 text-gray-700">Công thử việc / công chính thức</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{congThuViec} / {congChinhThuc}</td>
+                </tr>
+              )}
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">8</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Số giờ tăng ca</td>
@@ -586,6 +611,20 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương ngày công thực tế</td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(luongNgayCongThucTe)}</td>
               </tr>
+              {hasProbationDays && (
+                <>
+                  <tr>
+                    <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">9a</td>
+                    <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương công thử việc ({probationRatePercent}%)</td>
+                    <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(luongCongThuViec)}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">9b</td>
+                    <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương công chính thức</td>
+                    <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(luongCongChinhThuc)}</td>
+                  </tr>
+                </>
+              )}
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">10</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương doanh số</td>
@@ -724,7 +763,10 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">XI</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">
-                  THUẾ TNCN <span className="text-xs text-gray-500">(NPT: {nptCount} người)</span>
+                  THUẾ TNCN{' '}
+                  <span className="text-xs text-gray-500">
+                    {taxDetail.taxMode === 'flat_10' ? '(10% trên thu nhập tháng)' : `(NPT: ${nptCount} người)`}
+                  </span>
                 </td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-500 flex items-center justify-end gap-2">
                   {thue ? fmt(thue) : '—'}
@@ -1157,6 +1199,7 @@ interface TaxBracketBreakdown {
 }
 
 interface TaxCalculationDetail {
+  taxMode: 'progressive' | 'flat_10';
   grossIncome: number;
   insuranceDeduction: number;
   personalDeduction: number;
@@ -1216,6 +1259,7 @@ const calculateTaxBreakdown = (
   });
 
   return {
+    taxMode: 'progressive',
     grossIncome,
     insuranceDeduction: Math.round(insuranceDeduction),
     personalDeduction: Math.round(personalDeduction),
@@ -1261,10 +1305,69 @@ const calculateBreakdownFromTaxableIncome = (
   };
 };
 
-const getGrossIncomeForTaxFromRecord = (record: SalaryRecord) => {
+const getProbationRatePercent = (record: SalaryRecord, employee?: Employee) => {
+  const fromRecord = toNumber((record as unknown as Record<string, number>)['probation_rate_percent'], 0);
+  if (fromRecord > 0) return fromRecord;
+
+  const rateCode = String(employee?.probation_rate ?? '').toUpperCase();
+  if (rateCode === 'OPTION_3') return 100;
+  if (rateCode === 'OPTION_1' || rateCode === 'OPTION_2') return 85;
+  return 85;
+};
+
+interface WorkdaySalaryBreakdown {
+  congThuViec: number;
+  congChinhThuc: number;
+  probationRatePercent: number;
+  luongCongThuViec: number;
+  luongCongChinhThuc: number;
+  tongLuongNgayCong: number;
+  hasProbationDays: boolean;
+}
+
+const getWorkdaySalaryBreakdown = (record: SalaryRecord, employee?: Employee): WorkdaySalaryBreakdown => {
   const stdDays = getStandardWorkDays(record.year, record.month);
   const luongCoBan = record.luong_co_ban ?? 0;
-  const luongNgayCongThucTe = stdDays > 0 ? Math.round((luongCoBan / stdDays) * (record.tong_cong ?? 0)) : 0;
+  const daySalary = stdDays > 0 ? (luongCoBan / stdDays) : 0;
+
+  const tongCong = toNumber(record.tong_cong, 0);
+  const congThuViec = Math.max(toNumber((record as unknown as Record<string, number>)['cong_thu_viec'], 0), 0);
+  const congChinhThucRaw = Math.max(toNumber(record.cong_chinh_thuc, 0), 0);
+  const hasSplitDays = congThuViec > 0 || congChinhThucRaw > 0;
+  const congChinhThuc = hasSplitDays ? congChinhThucRaw : Math.max(tongCong, 0);
+  const probationRatePercent = getProbationRatePercent(record, employee);
+
+  const luongCongThuViecFallback = Math.round(daySalary * congThuViec * (probationRatePercent / 100));
+  const luongCongChinhThucFallback = Math.round(daySalary * congChinhThuc);
+  const tongLuongFallback = Math.round(daySalary * Math.max(tongCong, 0));
+
+  const luongCongThuViec = Math.round(toNumber(
+    (record as unknown as Record<string, number>)['luong_ngay_cong_thu_viec'],
+    luongCongThuViecFallback,
+  ));
+  const luongCongChinhThuc = Math.round(toNumber(
+    (record as unknown as Record<string, number>)['luong_ngay_cong_chinh_thuc'],
+    luongCongChinhThucFallback,
+  ));
+  const tongLuongNgayCong = Math.round(toNumber(
+    (record as unknown as Record<string, number>)['luong_ngay_cong'],
+    congThuViec > 0 ? (luongCongThuViec + luongCongChinhThuc) : tongLuongFallback,
+  ));
+
+  return {
+    congThuViec,
+    congChinhThuc,
+    probationRatePercent,
+    luongCongThuViec,
+    luongCongChinhThuc,
+    tongLuongNgayCong,
+    hasProbationDays: congThuViec > 0,
+  };
+};
+
+const getGrossIncomeForTaxFromRecord = (record: SalaryRecord, employee?: Employee) => {
+  const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
+  const luongNgayCongThucTe = workdayBreakdown.tongLuongNgayCong;
   const luongTangCa = record.luong_tang_ca ?? 0;
   const luongTrucCa = record.truc_toi ?? 0;
   const luongDoanhSo = (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
@@ -1309,7 +1412,34 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
     dependentCount * (taxYear >= 2026 ? DEPENDENT_DEDUCTION_2026 : DEPENDENT_DEDUCTION_LEGACY),
   );
   const insuranceForTax = toNumber(record.bao_hiem_bat_buoc, insuranceTotal);
-  const grossIncomeForTax = toNumber(record.tong_thu_nhap_chiu_thue, getGrossIncomeForTaxFromRecord(record));
+  const grossIncomeForTax = toNumber(record.tong_thu_nhap_chiu_thue, getGrossIncomeForTaxFromRecord(record, employee));
+  const taxMethod = String((record as unknown as Record<string, unknown>)['tax_method'] ?? '').toUpperCase();
+
+  if (taxMethod === 'FLAT_10_PROBATION' || taxMethod === 'FLAT_10_NON_OFFICIAL') {
+    const flatTaxAmount = record.thue_tncn != null
+      ? Math.max(toNumber(record.thue_tncn), 0)
+      : Math.round(Math.max(grossIncomeForTax, 0) * 0.1);
+    const flatTaxDetail: TaxCalculationDetail = {
+      taxMode: 'flat_10',
+      grossIncome: Math.round(grossIncomeForTax),
+      insuranceDeduction: Math.round(insuranceForTax),
+      personalDeduction: 0,
+      dependentDeduction: 0,
+      taxableIncome: Math.round(Math.max(grossIncomeForTax, 0)),
+      totalTax: Math.round(flatTaxAmount),
+      breakdown: [],
+    };
+    return {
+      taxDetail: flatTaxDetail,
+      taxAmount: flatTaxDetail.totalTax,
+      dependentCount,
+      insuranceSalaryBase: Math.round(mucLuongDongBH),
+      socialInsurance,
+      healthInsurance,
+      unemploymentInsurance,
+      insuranceTotal,
+    };
+  }
 
   const taxDetail = calculateTaxBreakdown(
     grossIncomeForTax,
@@ -1327,6 +1457,7 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
   const effectiveTaxDetail: TaxCalculationDetail = backendTaxAmount != null
     ? {
         ...taxDetail,
+        taxMode: 'progressive',
         taxableIncome: backendTaxableIncome ?? taxDetail.taxableIncome,
         totalTax: backendTaxAmount,
         breakdown: backendBreakdown?.breakdown ?? taxDetail.breakdown,
@@ -1347,8 +1478,8 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
 
 const calculatePayslipNetPayable = (record: SalaryRecord, employee?: Employee, commissions?: CommissionRecord[]) => {
   const stdDays = getStandardWorkDays(record.year, record.month);
-  const luongCoBan = record.luong_co_ban ?? 0;
-  const luongNgayCongThucTe = stdDays > 0 ? Math.round((luongCoBan / stdDays) * (record.tong_cong ?? 0)) : 0;
+  const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
+  const luongNgayCongThucTe = workdayBreakdown.tongLuongNgayCong;
   const luongTangCa = record.luong_tang_ca ?? 0;
   const luongTrucCa = record.truc_toi ?? 0;
   const luongDoanhSo = getSalesCommissionAmount(record, commissions);
@@ -2963,8 +3094,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       const payrollTax = payslipComputation.payrollTax;
 
       const stdDays = getStandardWorkDays(record.year, record.month);
+      const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
       const luongCoBan = record.luong_co_ban ?? 0;
-      const luongNgayCongThucTe = stdDays > 0 ? Math.round((luongCoBan / stdDays) * (record.tong_cong ?? 0)) : 0;
+      const luongNgayCongThucTe = workdayBreakdown.tongLuongNgayCong;
       const luongTangCa = record.luong_tang_ca ?? 0;
       const luongTrucCa = record.truc_toi ?? 0;
       const luongDoanhSo = getSalesCommissionAmount(record, recordCommissions);
@@ -3158,8 +3290,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         const payrollTax = payslipComputation.payrollTax;
 
         const stdDays = getStandardWorkDays(record.year, record.month);
+        const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
         const luongCoBan = record.luong_co_ban ?? 0;
-        const luongNgayCongThucTe = stdDays > 0 ? Math.round((luongCoBan / stdDays) * (record.tong_cong ?? 0)) : 0;
+        const luongNgayCongThucTe = workdayBreakdown.tongLuongNgayCong;
         const luongTangCa = record.luong_tang_ca ?? 0;
         const luongTrucCa = record.truc_toi ?? 0;
         const luongDoanhSo = getSalesCommissionAmount(record, recordCommissions);
