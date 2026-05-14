@@ -21,7 +21,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { employeesAPI } from '../utils/api';
 import type { Department, Employee } from '../utils/api';
-import { salaryService, SalaryFormulaUpdateData, SalaryRecord, PenaltyRecord, CommissionRecord, type BulkSalaryConfigRecord } from '../services/salary.service';
+import { salaryService, SalaryFormulaUpdateData, SalaryRecord, PenaltyRecord, CommissionRecord, type BulkSalaryConfigRecord, type PayslipEmailBatchStatus } from '../services/salary.service';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
 import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 
@@ -2906,6 +2906,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [showPayrollPreviewModal, setShowPayrollPreviewModal] = useState(false);
   const [sendingDeptPayslipEmail, setSendingDeptPayslipEmail] = useState(false);
   const [deptPayslipEmailResult, setDeptPayslipEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [showDeptPayslipConfirm, setShowDeptPayslipConfirm] = useState(false);
+  const [deptPayslipBatchId, setDeptPayslipBatchId] = useState<string | null>(null);
+  const [deptPayslipBatch, setDeptPayslipBatch] = useState<PayslipEmailBatchStatus | null>(null);
+  const [pollingBatch, setPollingBatch] = useState(false);
   useLockBodyScroll(showTotalSalaryModal || showPayrollPreviewModal);
 
   // ── Import cấu hình lương dialog ──
@@ -3520,6 +3524,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     setLoadingSalary(true);
     setSalaryError(null);
     setDeptPayslipEmailResult(null);
+    setDeptPayslipBatch(null);
+    setDeptPayslipBatchId(null);
+    setPollingBatch(false);
     try {
       const [salaryRes, commissionRes] = await Promise.allSettled([
         salaryService.getSalaryByDepartment({
@@ -3607,41 +3614,65 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     setShowTotalSalaryModal(true);
   };
 
-  const handleSendDepartmentPayslips = async () => {
+  const handleSendDepartmentPayslips = () => {
     if (!deptFilterView) {
       setDeptPayslipEmailResult({ ok: false, msg: 'Vui lòng chọn phòng ban trước khi gửi email bảng lương.' });
       return;
     }
+    setDeptPayslipEmailResult(null);
+    setDeptPayslipBatch(null);
+    setDeptPayslipBatchId(null);
+    setShowDeptPayslipConfirm(true);
+  };
 
+  const handleConfirmSendDeptPayslips = async () => {
+    setShowDeptPayslipConfirm(false);
     const departmentId = parseInt(deptFilterView, 10);
-    const departmentName = departments.find((item) => item.id === departmentId)?.name ?? 'phòng ban đã chọn';
-    const shouldSend = window.confirm(
-      `Xác nhận gửi email phiếu lương tháng ${String(selectedMonth).padStart(2, '0')}/${selectedYear} cho toàn bộ nhân sự phòng ${departmentName}?`
-    );
-    if (!shouldSend) return;
-
     setSendingDeptPayslipEmail(true);
     setDeptPayslipEmailResult(null);
+    setDeptPayslipBatch(null);
     try {
-      const response = await salaryService.sendDepartmentPayslipEmails(
-        {
-          year: selectedYear,
-          month: selectedMonth,
-          department_id: departmentId,
-        },
-        { timeoutMs: 600000 }
-      );
+      const response = await salaryService.sendDepartmentPayslipEmails({
+        year: selectedYear,
+        month: selectedMonth,
+        department_id: departmentId,
+      });
+      setDeptPayslipBatchId(response.batch_id);
       setDeptPayslipEmailResult({
         ok: true,
-        msg: `Đã xử lý: gửi thành công ${response.sent}/${response.total}, lỗi ${response.failed}, thiếu email ${response.skipped_no_email}.`,
+        msg: `Đã xếp hàng ${response.queued}/${response.total} email. Thiếu email: ${response.skipped_no_email}. Email sẽ được gửi trong vài phút.`,
       });
+      // Start polling batch status
+      setPollingBatch(true);
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setDeptPayslipEmailResult({ ok: false, msg: detail ?? 'Không thể gửi email bảng lương theo phòng ban.' });
+      setDeptPayslipEmailResult({ ok: false, msg: detail ?? 'Không thể tạo hàng đợi gửi email bảng lương.' });
     } finally {
       setSendingDeptPayslipEmail(false);
     }
   };
+
+  // Poll batch status every 15 seconds
+  React.useEffect(() => {
+    if (!pollingBatch || !deptPayslipBatchId) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const batch = await salaryService.getPayslipEmailBatchStatus(deptPayslipBatchId);
+        if (!cancelled) {
+          setDeptPayslipBatch(batch);
+          if (batch.status === 'COMPLETED' || batch.status === 'FAILED') {
+            setPollingBatch(false);
+          }
+        }
+      } catch {
+        // silently ignore polling errors
+      }
+    };
+    poll();
+    const timer = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [pollingBatch, deptPayslipBatchId]);
 
   const handleOpenConfig = async (employee: Employee) => {
     setSaveError(null);
@@ -4161,14 +4192,94 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                         ) : (
                           <EnvelopeIcon className="h-4 w-4" />
                         )}
-                        {sendingDeptPayslipEmail ? 'Đang gửi email phòng ban...' : 'Gửi email phòng ban'}
+                        {sendingDeptPayslipEmail ? 'Đang xếp hàng...' : 'Gửi email phòng ban'}
                       </button>
                     </div>
                   </div>
+
+                  {/* Result banner */}
                   {deptPayslipEmailResult && (
                     <p className={`text-sm ${deptPayslipEmailResult.ok ? 'text-green-600' : 'text-red-600'}`}>
                       {deptPayslipEmailResult.msg}
                     </p>
+                  )}
+
+                  {/* Batch status report */}
+                  {deptPayslipBatch && (
+                    <div className="mt-3 border border-gray-200 rounded-lg overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold text-gray-700">Báo cáo gửi email phiếu lương</span>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                            deptPayslipBatch.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                            deptPayslipBatch.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {pollingBatch && <ArrowPathIcon className="h-3 w-3 animate-spin" />}
+                            {deptPayslipBatch.status === 'COMPLETED' ? 'Hoàn thành' :
+                             deptPayslipBatch.status === 'FAILED' ? 'Thất bại' :
+                             deptPayslipBatch.status === 'PROCESSING' ? 'Đang gửi' : 'Chờ gửi'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span className="text-green-600 font-medium">✓ {deptPayslipBatch.sent} đã gửi</span>
+                          <span className="text-yellow-600 font-medium">⏳ {deptPayslipBatch.pending} chờ</span>
+                          {deptPayslipBatch.failed > 0 && <span className="text-red-600 font-medium">✗ {deptPayslipBatch.failed} lỗi</span>}
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="h-1.5 bg-gray-100">
+                        <div
+                          className="h-full bg-green-500 transition-all duration-500"
+                          style={{ width: `${deptPayslipBatch.progress_pct}%` }}
+                        />
+                      </div>
+
+                      {/* Per-email table */}
+                      <div className="max-h-60 overflow-y-auto">
+                        <table className="w-full text-xs">
+                          <thead className="sticky top-0 bg-gray-50">
+                            <tr>
+                              <th className="text-left px-3 py-2 text-gray-500 font-medium">Nhân viên</th>
+                              <th className="text-left px-3 py-2 text-gray-500 font-medium">Email</th>
+                              <th className="text-center px-3 py-2 text-gray-500 font-medium">Trạng thái</th>
+                              <th className="text-left px-3 py-2 text-gray-500 font-medium">Thời gian</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {deptPayslipBatch.emails.map((item) => (
+                              <tr key={item.employee_id} className="hover:bg-gray-50">
+                                <td className="px-3 py-2">
+                                  <div className="font-medium text-gray-800">{item.employee_name}</div>
+                                  <div className="text-gray-400">{item.employee_code}</div>
+                                </td>
+                                <td className="px-3 py-2 text-gray-600">{item.email}</td>
+                                <td className="px-3 py-2 text-center">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                    item.status === 'SENT' ? 'bg-green-100 text-green-700' :
+                                    item.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                                    item.status === 'PROCESSING' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-gray-100 text-gray-600'
+                                  }`}>
+                                    {item.status === 'SENT' ? '✓ Đã gửi' :
+                                     item.status === 'FAILED' ? '✗ Lỗi' :
+                                     item.status === 'PROCESSING' ? '↻ Đang gửi' : '⏳ Chờ'}
+                                  </span>
+                                  {item.error_message && (
+                                    <div className="text-red-500 text-xs mt-0.5 max-w-28 truncate" title={item.error_message}>{item.error_message}</div>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-gray-400">
+                                  {item.processed_at ? new Date(item.processed_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
@@ -4195,6 +4306,44 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           commissions={payslipCommissions}
           onClose={() => { setPayslipRecord(null); setPayslipEmployee(null); setPayslipPenalties([]); setPayslipCommissions([]); }}
         />,
+        document.body,
+      )}
+
+      {/* Confirm modal: gửi email phòng ban */}
+      {showDeptPayslipConfirm && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h3 className="text-base font-semibold text-gray-900">Xác nhận gửi email phiếu lương</h3>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <p className="text-sm text-gray-600">
+                Hệ thống sẽ xếp hàng gửi email phiếu lương{' '}
+                <strong>Tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear}</strong> cho toàn bộ nhân sự phòng ban{' '}
+                <strong>{departments.find((d) => d.id === parseInt(deptFilterView, 10))?.name ?? ''}</strong>.
+              </p>
+              <p className="text-sm text-gray-500">
+                Email sẽ được hệ thống gửi dần trong hàng đợi (tối đa ~30 phút cho 100 email).
+                Bạn có thể theo dõi tiến trình ngay trên trang này.
+              </p>
+            </div>
+            <div className="px-6 py-4 flex justify-end gap-3 border-t border-gray-100 bg-gray-50">
+              <button
+                onClick={() => setShowDeptPayslipConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Huỷ
+              </button>
+              <button
+                onClick={handleConfirmSendDeptPayslips}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+              >
+                <EnvelopeIcon className="h-4 w-4" />
+                Xác nhận gửi
+              </button>
+            </div>
+          </div>
+        </div>,
         document.body,
       )}
 

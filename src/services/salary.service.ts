@@ -245,20 +245,38 @@ export interface SendDepartmentPayslipPayload {
 
 export interface SendDepartmentPayslipResponse {
   detail: string;
+  batch_id: string;
   department_id: number;
   department_name: string;
   year: number;
   month: number;
   total: number;
+  queued: number;
+  skipped_no_email: number;
+}
+
+export interface PayslipEmailItem {
+  employee_id: number;
+  employee_code: string;
+  employee_name: string;
+  email: string;
+  status: 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED';
+  processed_at: string | null;
+  error_message: string | null;
+  retry_count: number;
+}
+
+export interface PayslipEmailBatchStatus {
+  batch_id: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  total: number;
   sent: number;
   failed: number;
-  skipped_no_email: number;
-  errors: Array<{
-    employee_id: number;
-    employee_code: string;
-    email: string;
-    error: string;
-  }>;
+  pending: number;
+  progress_pct: number;
+  created_at: string;
+  completed_at: string | null;
+  emails: PayslipEmailItem[];
 }
 
 class SalaryService {
@@ -461,8 +479,13 @@ class SalaryService {
     options?: { timeoutMs?: number }
   ): Promise<SendDepartmentPayslipResponse> {
     const response = await managementApi.post('/api/v1/salary/records/send-department-payslip-emails/', payload, {
-      timeout: options?.timeoutMs ?? 600000,
+      timeout: options?.timeoutMs ?? 30000,
     });
+    return response.data;
+  }
+
+  async getPayslipEmailBatchStatus(batchId: string): Promise<PayslipEmailBatchStatus> {
+    const response = await managementApi.get(`/api/v1/salary/records/payslip-email-batch/${batchId}/`);
     return response.data;
   }
 
