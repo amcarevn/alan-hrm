@@ -43,101 +43,151 @@ type SalaryTabKey = 'config' | 'view';
 
 // ─── Tax Tooltip Component ───────────────────────────────────────────────────
 
+// Registry toàn cục: chỉ 1 tooltip mở tại 1 thời điểm
+let _closeActiveTaxTooltip: (() => void) | null = null;
+
 interface TaxTooltipProps {
   taxDetail: TaxCalculationDetail;
 }
 
 const TaxTooltip: React.FC<TaxTooltipProps> = ({ taxDetail }) => {
   const [showDetail, setShowDetail] = useState(false);
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
+  const btnRef = React.useRef<HTMLButtonElement>(null);
+  const popupRef = React.useRef<HTMLDivElement>(null);
+
+  const close = React.useCallback(() => {
+    setShowDetail(false);
+    if (_closeActiveTaxTooltip === close) _closeActiveTaxTooltip = null;
+  }, []);
+
+  React.useEffect(() => () => { if (_closeActiveTaxTooltip === close) _closeActiveTaxTooltip = null; }, [close]);
+
+  // Đóng khi scroll để tránh nhầm lẫn tooltip thuộc row nào
+  React.useEffect(() => {
+    if (!showDetail) return;
+    const handleScroll = () => close();
+    window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
+    return () => window.removeEventListener('scroll', handleScroll, { capture: true });
+  }, [showDetail, close]);
+
+  const handleOpen = () => {
+    if (_closeActiveTaxTooltip && _closeActiveTaxTooltip !== close) _closeActiveTaxTooltip();
+    if (!showDetail) {
+      _closeActiveTaxTooltip = close;
+      setPopupStyle({ visibility: 'hidden' });
+      setShowDetail(true);
+    } else {
+      close();
+    }
+  };
+
+  React.useLayoutEffect(() => {
+    if (!showDetail || !popupRef.current || !btnRef.current) return;
+    const btn = btnRef.current.getBoundingClientRect();
+    const popH = popupRef.current.offsetHeight;
+    const POPUP_W = 384;
+    const MARGIN = 8;
+    const left = Math.max(MARGIN, Math.min(btn.right - POPUP_W, window.innerWidth - POPUP_W - MARGIN));
+    const spaceBelow = window.innerHeight - btn.bottom - MARGIN;
+    const spaceAbove = btn.top - MARGIN;
+    const top = spaceBelow >= popH ? btn.bottom + MARGIN
+              : spaceAbove >= popH ? btn.top - popH - MARGIN
+              : MARGIN;
+    setPopupStyle({
+      position: 'fixed', top, left, width: POPUP_W,
+      maxHeight: `calc(100vh - ${top + MARGIN}px)`,
+      visibility: 'visible',
+    });
+  }, [showDetail]);
 
   return (
     <div className="relative inline-block">
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setShowDetail(!showDetail)}
+        onClick={handleOpen}
         className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 transition-colors"
         title="Xem chi tiết tính thuế"
       >
         <QuestionMarkCircleIcon className="h-4 w-4" />
       </button>
-      {showDetail && (
-        <div className="absolute bottom-full right-0 mb-2 w-96 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-4 space-y-3">
-          <div className="flex items-center justify-between border-b pb-2">
-            <h4 className="font-semibold text-gray-900">Chi tiết tính thuế TNCN</h4>
-            <button
-              onClick={() => setShowDetail(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <XMarkIcon className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="space-y-2 text-sm">
-            <p className="text-xs text-indigo-700 bg-indigo-50 rounded px-2 py-1">
-              Công thức: Thuế TNCN = Σ(Thu nhập trong từng bậc × Thuế suất bậc đó)
-            </p>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Tổng thu nhập không tính phụ cấp ăn trưa:</span>
-              <span className="font-semibold">{formatCurrency(taxDetail.grossIncome)}</span>
+      {showDetail && createPortal(
+        <>
+          {/* Backdrop trong suốt để click ngoài đóng */}
+          <div className="fixed inset-0 z-[99998]" onClick={close} />
+          <div
+            ref={popupRef}
+            style={popupStyle}
+            className="z-[99999] bg-white border border-gray-200 rounded-lg shadow-xl flex flex-col overflow-hidden"
+          >
+            <div className="flex-shrink-0 flex items-center justify-between border-b px-4 py-3">
+              <h4 className="font-semibold text-gray-900">Chi tiết tính thuế TNCN</h4>
+              <button onClick={close} className="text-gray-400 hover:text-gray-600">
+                <XMarkIcon className="h-4 w-4" />
+              </button>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Trừ BHXH + BHYT + BHTN:</span>
-              <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.insuranceDeduction)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Trừ giảm trừ bản thân:</span>
-              <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.personalDeduction)}</span>
-            </div>
-            {taxDetail.dependentDeduction > 0 && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Trừ giảm trừ người phụ thuộc:</span>
-                <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.dependentDeduction)}</span>
-              </div>
-            )}
-            <div className="border-t pt-2 flex justify-between">
-              <span className="font-semibold text-blue-700">Thu nhập tính thuế:</span>
-              <span className="font-bold text-blue-800">{formatCurrency(taxDetail.taxableIncome)}</span>
-            </div>
-          </div>
-
-          <div className="border-t pt-3">
-            <p className="font-semibold text-gray-900 text-xs mb-2">Áp dụng bảng thuế lũy tiến:</p>
-            {taxDetail.breakdown.length > 0 ? (
-              <div className="space-y-2 text-xs">
-                {taxDetail.breakdown.map((item) => (
-                  <div
-                    key={item.bracketNumber}
-                    className="rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-gray-700"
-                  >
-                    <div className="font-medium text-gray-800">
-                      <span>
-                        Bậc {item.bracketNumber}: {formatCurrency(item.fromAmount)} đến{' '}
-                        {item.toAmount === Number.POSITIVE_INFINITY ? 'trở lên' : formatCurrency(item.toAmount)} · thuế suất {item.rate}%
-                      </span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between">
-                      <div className="text-gray-600">Thu nhập chịu thuế trong bậc</div>
-                      <div className="font-semibold text-gray-800">{formatCurrency(item.taxableAmount)}</div>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between">
-                      <div className="text-gray-600">
-                        {formatCurrency(item.taxableAmount)} × {item.rate}%
-                      </div>
-                      <div className="font-bold text-indigo-600">{formatCurrency(item.taxAmount)}</div>
-                    </div>
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              <div className="space-y-2 text-sm">
+                <p className="text-xs text-indigo-700 bg-indigo-50 rounded px-2 py-1">
+                  Công thức: Thuế TNCN = Σ(Thu nhập trong từng bậc × Thuế suất bậc đó)
+                </p>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tổng thu nhập không tính phụ cấp ăn trưa:</span>
+                  <span className="font-semibold">{formatCurrency(taxDetail.grossIncome)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Trừ BHXH + BHYT + BHTN:</span>
+                  <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.insuranceDeduction)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Trừ giảm trừ bản thân:</span>
+                  <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.personalDeduction)}</span>
+                </div>
+                {taxDetail.dependentDeduction > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Trừ giảm trừ người phụ thuộc:</span>
+                    <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.dependentDeduction)}</span>
                   </div>
-                ))}
+                )}
+                <div className="border-t pt-2 flex justify-between">
+                  <span className="font-semibold text-blue-700">Thu nhập tính thuế:</span>
+                  <span className="font-bold text-blue-800">{formatCurrency(taxDetail.taxableIncome)}</span>
+                </div>
               </div>
-            ) : (
-              <p className="text-xs text-gray-500">Thu nhập tính thuế không vượt ngưỡng chịu thuế, nên thuế TNCN = 0đ.</p>
-            )}
+              <div className="border-t pt-3">
+                <p className="font-semibold text-gray-900 text-xs mb-2">Áp dụng bảng thuế lũy tiến:</p>
+                {taxDetail.breakdown.length > 0 ? (
+                  <div className="space-y-2 text-xs">
+                    {taxDetail.breakdown.map((item) => (
+                      <div key={item.bracketNumber} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-gray-700">
+                        <div className="font-medium text-gray-800">
+                          Bậc {item.bracketNumber}: {formatCurrency(item.fromAmount)} đến{' '}
+                          {item.toAmount === Number.POSITIVE_INFINITY ? 'trở lên' : formatCurrency(item.toAmount)} · thuế suất {item.rate}%
+                        </div>
+                        <div className="mt-1 flex items-center justify-between">
+                          <div className="text-gray-600">Thu nhập chịu thuế trong bậc</div>
+                          <div className="font-semibold text-gray-800">{formatCurrency(item.taxableAmount)}</div>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between">
+                          <div className="text-gray-600">{formatCurrency(item.taxableAmount)} × {item.rate}%</div>
+                          <div className="font-bold text-indigo-600">{formatCurrency(item.taxAmount)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">Thu nhập tính thuế không vượt ngưỡng chịu thuế, nên thuế TNCN = 0đ.</p>
+                )}
+              </div>
+            </div>
+            <div className="flex-shrink-0 border-t flex justify-between bg-indigo-50 px-4 py-3 rounded-b-lg">
+              <span className="font-bold text-indigo-900">Tổng thuế TNCN:</span>
+              <span className="font-bold text-indigo-900">{formatCurrency(taxDetail.totalTax)}</span>
+            </div>
           </div>
-
-          <div className="border-t pt-2 flex justify-between bg-indigo-50 p-2 rounded">
-            <span className="font-bold text-indigo-900">Tổng thuế TNCN:</span>
-            <span className="font-bold text-indigo-900">{formatCurrency(taxDetail.totalTax)}</span>
-          </div>
-        </div>
+        </>,
+        document.body,
       )}
     </div>
   );
@@ -2625,6 +2675,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [totalSalaryError, setTotalSalaryError] = useState<string | null>(null);
   const [exportingPayroll, setExportingPayroll] = useState(false);
   const [showPayrollPreviewModal, setShowPayrollPreviewModal] = useState(false);
+  useLockBodyScroll(showTotalSalaryModal || showPayrollPreviewModal);
 
   // ── Import cấu hình lương dialog ──
   const [showImportDialog, setShowImportDialog]   = useState(false);
@@ -3234,7 +3285,6 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           year: selectedYear,
           month: selectedMonth,
           department_id: deptFilterView ? parseInt(deptFilterView, 10) : undefined,
-          employee_code: searchSalary || undefined,
         }),
         salaryService.listCommissions({ year: selectedYear, month: selectedMonth }),
       ]);
@@ -3257,7 +3307,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     } finally {
       setLoadingSalary(false);
     }
-  }, [selectedYear, selectedMonth, deptFilterView, searchSalary]);
+  }, [selectedYear, selectedMonth, deptFilterView]);
+
+  useEffect(() => {
+    setSalaryPage(1);
+  }, [searchSalary]);
 
   useEffect(() => {
     if (activeTab === 'view') {
@@ -3315,8 +3369,16 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   };
 
   const totalConfigPages = Math.ceil(configTotal / PAGE_SIZE);
-  const totalSalaryPages = Math.ceil(salaryRecords.length / SALARY_PAGE_SIZE);
-  const pagedSalaryRecords = salaryRecords.slice((salaryPage - 1) * SALARY_PAGE_SIZE, salaryPage * SALARY_PAGE_SIZE);
+  const normalizeStr = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const filteredSalaryRecords = searchSalary
+    ? salaryRecords.filter((r) => {
+        const q = normalizeStr(searchSalary);
+        return normalizeStr(r.ma_nv ?? '').includes(q) || normalizeStr(r.ho_va_ten ?? '').includes(q);
+      })
+    : salaryRecords;
+  const totalSalaryPages = Math.ceil(filteredSalaryRecords.length / SALARY_PAGE_SIZE);
+  const pagedSalaryRecords = filteredSalaryRecords.slice((salaryPage - 1) * SALARY_PAGE_SIZE, salaryPage * SALARY_PAGE_SIZE);
   const yearOptions = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -3590,6 +3652,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 </button>
                 <button
                   onClick={async () => {
+                    _closeActiveTaxTooltip?.();
                     setTotalSalaryData(null);
                     setTotalSalaryError(null);
                     await loadTotalSalary();
@@ -3614,7 +3677,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   {exportingPayroll ? 'Đang xuất Excel...' : 'Xuất Excel bảng lương'}
                 </button>
                 <button
-                  onClick={() => setShowPayrollPreviewModal(true)}
+                  onClick={() => { _closeActiveTaxTooltip?.(); setShowPayrollPreviewModal(true); }}
                   disabled={salaryRecords.length === 0 || loadingSalary}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
@@ -3703,9 +3766,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           <td className="px-3 py-3 text-right text-gray-700">{formatNumber(record.tong_cong)}</td>
                           <td className="px-3 py-3 text-right text-blue-600">{formatCurrency(record.luong_tang_ca)}</td>
                           <td className="px-3 py-3 text-right text-red-600">{formatCurrency((record.tong_phat ?? 0) + (record.tong_phat_bienban ?? 0))}</td>
-                          <td className="px-3 py-3 text-right font-semibold text-red-700 bg-red-50 flex items-center justify-end gap-2">
-                            {formatCurrency(recordTax)}
-                            <TaxTooltip taxDetail={recordTaxComputation.taxDetail} />
+                          <td className="px-3 py-3 font-semibold text-red-700 bg-red-50">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {formatCurrency(recordTax)}
+                              <TaxTooltip taxDetail={recordTaxComputation.taxDetail} />
+                            </div>
                           </td>
                           <td className="px-3 py-3 text-right font-semibold text-indigo-700 bg-indigo-50">
                             {formatCurrency(recordNetPayable)}
@@ -3713,6 +3778,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           <td className="px-3 py-3 text-center">
                             <button
                               onClick={async () => {
+                                _closeActiveTaxTooltip?.();
                                 setPayslipRecord(record);
                                 setPayslipCommissions(salaryCommissions.filter((item) => item.employee === record.employee_id));
                                 setPayslipPenalties([]);
@@ -3755,7 +3821,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               {totalSalaryPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
                   <p className="text-sm text-gray-500">
-                    Trang {salaryPage} / {totalSalaryPages} · {salaryRecords.length} nhân viên
+                    Trang {salaryPage} / {totalSalaryPages} · {filteredSalaryRecords.length} nhân viên
                   </p>
                   <div className="flex gap-2">
                     <button
