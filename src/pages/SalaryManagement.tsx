@@ -2940,7 +2940,17 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         setDepartments(departmentsRes.value as Department[]);
       }
       if (legalEntitiesRes.status === 'fulfilled') {
-        setLegalEntities(legalEntitiesRes.value ?? []);
+        const raw = legalEntitiesRes.value ?? [];
+        const unique = new Map<string, { value: string; label: string }>();
+        raw.forEach((item) => {
+          const normalized = (item.value ?? '').trim();
+          if (!normalized) return;
+          const key = normalized.toLowerCase();
+          if (!unique.has(key)) {
+            unique.set(key, { value: normalized, label: normalized });
+          }
+        });
+        setLegalEntities(Array.from(unique.values()).sort((a, b) => a.label.localeCompare(b.label, 'vi')));
       }
     });
   }, []);
