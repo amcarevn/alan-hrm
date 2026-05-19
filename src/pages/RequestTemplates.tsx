@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   PlusIcon,
   DocumentArrowDownIcon,
@@ -138,10 +139,10 @@ const TemplateFormDialog: React.FC<DialogProps> = ({ open, editing, companyUnits
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h3 className="text-lg font-semibold text-gray-900">
             {editing ? 'Chỉnh sửa template' : 'Thêm template mới'}
           </h3>
@@ -166,7 +167,7 @@ const TemplateFormDialog: React.FC<DialogProps> = ({ open, editing, companyUnits
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="VD: Mẫu đơn nghỉ việc Amcare"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-field"
             />
           </div>
 
@@ -195,7 +196,7 @@ const TemplateFormDialog: React.FC<DialogProps> = ({ open, editing, companyUnits
               type="file"
               accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:text-sm file:font-medium hover:file:bg-blue-100"
+              className="w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary-50 file:text-primary-700 file:text-sm file:font-medium hover:file:bg-primary-100"
             />
             <p className="mt-1 text-xs text-gray-500">
               Hỗ trợ cả file Word cũ (.doc) và mới (.docx). Hệ thống tự động convert .doc sang .docx chuẩn khi upload.
@@ -208,7 +209,7 @@ const TemplateFormDialog: React.FC<DialogProps> = ({ open, editing, companyUnits
                 href={editing.file_url}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-1 text-xs text-blue-600 hover:underline inline-flex items-center gap-1"
+                className="mt-1 text-xs text-primary-600 hover:underline inline-flex items-center gap-1"
               >
                 <DocumentArrowDownIcon className="w-3 h-3" />
                 Tải file hiện tại
@@ -223,7 +224,7 @@ const TemplateFormDialog: React.FC<DialogProps> = ({ open, editing, companyUnits
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ghi chú về template..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-field"
             />
           </div>
 
@@ -232,30 +233,31 @@ const TemplateFormDialog: React.FC<DialogProps> = ({ open, editing, companyUnits
               type="checkbox"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              className="w-4 h-4 text-blue-600 rounded"
+              className="w-4 h-4 text-primary-600 rounded"
             />
             <span className="text-sm text-gray-700">Đang sử dụng</span>
           </label>
         </div>
 
-        <div className="px-6 py-4 border-t flex justify-end gap-2 bg-gray-50">
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-2">
           <button
             onClick={onClose}
             disabled={submitting}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            className="btn-secondary disabled:opacity-50"
           >
             Huỷ
           </button>
           <button
             onClick={handleSave}
             disabled={submitting}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="btn-primary disabled:opacity-50"
           >
             {submitting ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Thêm mới'}
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -393,19 +395,19 @@ const RequestTemplates: React.FC = () => {
     <div className="space-y-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Template đơn từ</h1>
+          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Template đơn từ</h1>
           <p className="text-gray-500 text-sm">Tổng: {totalCount} template</p>
         </div>
         <button
           onClick={openCreate}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm flex items-center gap-2"
+          className="btn-primary flex items-center gap-2"
         >
           <PlusIcon className="w-4 h-4" />
           Thêm template
         </button>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 mb-4">
+      <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-wrap items-end gap-3 mb-4">
         <div className="w-52">
           <SelectBox<GenericRequestType | ''>
             label="Loại đơn"
@@ -434,7 +436,7 @@ const RequestTemplates: React.FC = () => {
               value={filterSearch}
               onChange={(e) => { setFilterSearch(e.target.value); setCurrentPage(1); }}
               placeholder="Tên hoặc mô tả..."
-              className="border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-52"
+              className="input-field pl-8 w-52"
             />
             <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -445,7 +447,7 @@ const RequestTemplates: React.FC = () => {
         {hasFilter && (
           <button
             onClick={() => { setFilterType(''); setFilterUnit(''); setFilterSearch(''); setCurrentPage(1); }}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 text-gray-600"
+            className="btn-secondary"
           >
             Xoá bộ lọc
           </button>
@@ -454,19 +456,19 @@ const RequestTemplates: React.FC = () => {
         <button
           onClick={fetchTemplates}
           disabled={loading}
-          className="ml-auto px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 text-gray-600 flex items-center gap-1.5 disabled:opacity-50"
+          className="ml-auto btn-secondary flex items-center gap-1.5 disabled:opacity-50"
         >
           <ArrowPathIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Làm mới
         </button>
       </div>
 
-      <div className="border rounded-lg overflow-x-auto w-full">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               {['Tên template', 'Loại đơn', 'Đơn vị', 'File', 'Người tạo', 'Trạng thái', 'Cập nhật', 'Thao tác'].map((h) => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                <th key={h} className="table-header whitespace-nowrap">
                   {h}
                 </th>
               ))}
@@ -480,27 +482,27 @@ const RequestTemplates: React.FC = () => {
             ) : (
               templates.map((tpl) => (
                 <tr key={tpl.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-900">{tpl.name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{tpl.request_type_display}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{tpl.company_unit_name}</td>
-                  <td className="px-4 py-3 text-sm">
+                  <td className="table-cell text-gray-900">{tpl.name}</td>
+                  <td className="table-cell text-gray-600 whitespace-nowrap">{tpl.request_type_display}</td>
+                  <td className="table-cell text-gray-600 whitespace-nowrap">{tpl.company_unit_name}</td>
+                  <td className="table-cell">
                     {tpl.file_url ? (
-                      <a href={tpl.file_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1">
+                      <a href={tpl.file_url} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline inline-flex items-center gap-1">
                         <DocumentArrowDownIcon className="w-4 h-4" />
                         Tải về
                       </a>
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                  <td className="table-cell text-gray-700 whitespace-nowrap">
                     {tpl.created_by_name || tpl.created_by_username || '—'}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${tpl.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
+                  <td className="table-cell whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${tpl.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-600'}`}>
                       {tpl.is_active ? 'Đang dùng' : 'Không dùng'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{formatDate(tpl.updated_at)}</td>
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">
+                  <td className="table-cell text-gray-600 whitespace-nowrap">{formatDate(tpl.updated_at)}</td>
+                  <td className="table-cell whitespace-nowrap">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <button
                         onClick={() => setDetailTemplate(tpl)}
@@ -510,13 +512,13 @@ const RequestTemplates: React.FC = () => {
                       </button>
                       <button
                         onClick={() => setPreviewTemplate(tpl)}
-                        className="px-2.5 py-1 text-xs font-medium text-purple-700 bg-white border border-purple-300 rounded hover:bg-purple-50"
+                        className="px-2.5 py-1 text-xs font-medium text-violet-700 bg-white border border-violet-300 rounded hover:bg-violet-50"
                       >
                         Xem PDF
                       </button>
                       <button
                         onClick={() => openEdit(tpl)}
-                        className="px-2.5 py-1 text-xs font-medium text-blue-700 bg-white border border-blue-300 rounded hover:bg-blue-50"
+                        className="px-2.5 py-1 text-xs font-medium text-primary-700 bg-white border border-primary-300 rounded hover:bg-primary-50"
                       >
                         Sửa
                       </button>
@@ -580,10 +582,10 @@ const RequestTemplates: React.FC = () => {
       />
 
       {/* Dialog xem chi tiết template */}
-      {detailTemplate && (
+      {detailTemplate && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h3 className="text-lg font-semibold text-gray-900">Chi tiết template</h3>
               <button onClick={() => setDetailTemplate(null)} className="text-gray-400 hover:text-gray-600">
                 <XMarkIcon className="w-6 h-6" />
@@ -624,7 +626,7 @@ const RequestTemplates: React.FC = () => {
                 <div>
                   <dt className="text-gray-500 font-medium">Trạng thái</dt>
                   <dd className="mt-1">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${detailTemplate.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${detailTemplate.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-600'}`}>
                       {detailTemplate.is_active ? 'Đang dùng' : 'Không dùng'}
                     </span>
                   </dd>
@@ -645,13 +647,13 @@ const RequestTemplates: React.FC = () => {
                 </div>
               </dl>
             </div>
-            <div className="px-6 py-4 border-t flex justify-end gap-2 bg-gray-50">
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-2">
               {detailTemplate.file_url && (
                 <a
                   href={detailTemplate.file_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 inline-flex items-center gap-1.5"
+                  className="btn-secondary inline-flex items-center gap-1.5"
                 >
                   <DocumentArrowDownIcon className="w-4 h-4" />
                   Tải DOCX
@@ -663,20 +665,21 @@ const RequestTemplates: React.FC = () => {
                   setDetailTemplate(null);
                   setPreviewTemplate(tpl);
                 }}
-                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 inline-flex items-center gap-1.5"
+                className="btn-primary inline-flex items-center gap-1.5"
               >
                 <DocumentMagnifyingGlassIcon className="w-4 h-4" />
                 Xem PDF
               </button>
               <button
                 onClick={() => setDetailTemplate(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="btn-secondary"
               >
                 Đóng
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* PDF preview modal */}

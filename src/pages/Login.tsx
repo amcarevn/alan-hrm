@@ -3,6 +3,8 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_BASE_URL } from '@/utils/api';
+import FeedbackDialog from '@/components/FeedbackDialog';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -22,10 +24,15 @@ export default function Login() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [serverError, setServerError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotId, setForgotId] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotResult, setForgotResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [forgotSuccess, setForgotSuccess] = useState(false);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-blue-900">
+      <div className="min-h-screen flex items-center justify-center bg-primary-900">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
       </div>
     );
@@ -54,6 +61,32 @@ export default function Login() {
       setFieldErrors({ ...fieldErrors, [field]: '' });
     }
     if (serverError) setServerError('');
+  };
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotId.trim()) return;
+    setForgotLoading(true);
+    setForgotResult(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api-hrm/forgot-password/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employee_id: forgotId.trim().toUpperCase() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setShowForgot(false);
+        setForgotId('');
+        setForgotSuccess(true);
+      } else {
+        setForgotResult({ ok: false, msg: data.error || 'Có lỗi xảy ra. Vui lòng thử lại.' });
+      }
+    } catch {
+      setForgotResult({ ok: false, msg: 'Không thể kết nối máy chủ. Vui lòng thử lại.' });
+    } finally {
+      setForgotLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -138,7 +171,7 @@ export default function Login() {
             )}
           </div>
 
-          {/* Password */}
+          {/* Mật khẩu */}
           <div>
             <label className="block text-sm font-semibold text-gray-400 mb-2 px-1">
               Mật khẩu
@@ -195,8 +228,87 @@ export default function Login() {
               </>
             ) : 'Đăng nhập'}
           </button>
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => { setShowForgot(true); setForgotResult(null); setForgotId(''); }}
+              className="text-sm text-primary-300 hover:text-white transition-colors"
+            >
+              Quên mật khẩu?
+            </button>
+          </div>
         </form>
       </motion.div>
+
+      {/* Forgot password dialog */}
+      {showForgot && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowForgot(false)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 space-y-4"
+          >
+            {/* Header */}
+            <div className="text-center">
+              <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center">
+                <EyeSlashIcon className="h-6 w-6 text-primary-600" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900">Quên mật khẩu</h2>
+              <p className="text-sm text-gray-500 mt-1">Nhập mã nhân viên để nhận mật khẩu mới qua email</p>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleForgot} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mã nhân viên</label>
+                <input
+                  type="text"
+                  placeholder="VD: AC123... hoặc HM123..."
+                  value={forgotId}
+                  autoFocus
+                  onChange={e => { setForgotId(e.target.value); setForgotResult(null); }}
+                  className="block w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              {forgotResult && (
+                <div className="px-3 py-2.5 rounded-lg text-sm bg-red-50 border border-red-200 text-red-700">
+                  {forgotResult.msg}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setShowForgot(false); setForgotResult(null); }}
+                  className="flex-1 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={forgotLoading || !forgotId.trim()}
+                  className="flex-1 py-2.5 text-sm font-bold text-white bg-primary-600 hover:bg-primary-500 disabled:opacity-50 rounded-xl transition-colors"
+                >
+                  {forgotLoading ? 'Đang gửi...' : 'Gửi mật khẩu mới'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      <FeedbackDialog
+        open={forgotSuccess}
+        variant="success"
+        title="Gửi mật khẩu thành công"
+        message="Mật khẩu mới đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư."
+        okLabel="Đóng"
+        onClose={() => setForgotSuccess(false)}
+      />
     </div>
   );
 }

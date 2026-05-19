@@ -8,6 +8,16 @@ import {
   PencilIcon,
   XMarkIcon,
   ArrowTopRightOnSquareIcon,
+  UserIcon,
+  BriefcaseIcon,
+  IdentificationIcon,
+  AcademicCapIcon,
+  BanknotesIcon,
+  DocumentTextIcon,
+  DocumentCheckIcon,
+  ShieldCheckIcon,
+  PhoneIcon,
+  PaperClipIcon,
 } from '@heroicons/react/24/outline';
 
 // ============================================
@@ -80,14 +90,14 @@ const CCCD_ISSUE_PLACE_LABELS: Record<string, string> = {
 
 const getStatusBadge = (status: string) => {
   const config: Record<string, { label: string; color: string }> = {
-    ACTIVE: { label: 'Đang làm việc', color: 'bg-green-100 text-green-800' },
-    SUSPENDED: { label: 'Tạm dừng', color: 'bg-yellow-100 text-yellow-800' },
-    INACTIVE: { label: 'Đã nghỉ', color: 'bg-red-100 text-red-800' },
-    PROBATION: { label: 'Thử việc', color: 'bg-yellow-100 text-yellow-800' },
+    ACTIVE: { label: 'Đang làm việc', color: 'bg-emerald-100 text-emerald-600' },
+    SUSPENDED: { label: 'Tạm dừng', color: 'bg-amber-100 text-amber-600' },
+    INACTIVE: { label: 'Đã nghỉ', color: 'bg-red-100 text-red-600' },
+    PROBATION: { label: 'Thử việc', color: 'bg-amber-100 text-amber-600' },
   };
   const c = config[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
   return (
-    <span className={`px-3 py-1 rounded-full text-sm font-medium ${c.color}`}>
+    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${c.color}`}>
       {c.label}
     </span>
   );
@@ -112,8 +122,8 @@ const InfoField: React.FC<{ label: string; value?: any; highlight?: boolean; ful
   const isEmpty = display === 'Chưa có dữ liệu';
   return (
     <div className={full ? 'col-span-2' : ''}>
-      <label className="text-sm text-gray-600">{label}</label>
-      <p className={`${isEmpty ? 'text-gray-400 italic font-normal' : highlight ? 'font-semibold text-indigo-700' : 'font-medium text-gray-900'}`}>
+      <label className="text-xs text-gray-400">{label}</label>
+      <p className={`text-sm ${isEmpty ? 'text-gray-400 italic font-normal' : highlight ? 'font-semibold text-primary-600' : 'font-medium text-gray-900'}`}>
         {display}
       </p>
     </div>
@@ -159,7 +169,7 @@ const EmployeeShow: React.FC = () => {
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
-        <ArrowPathIcon className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+        <ArrowPathIcon className="w-12 h-12 text-primary-600 animate-spin mx-auto mb-4" />
         <span className="text-lg text-gray-600">Đang tải thông tin nhân viên...</span>
       </div>
     </div>
@@ -171,14 +181,14 @@ const EmployeeShow: React.FC = () => {
         className="flex items-center text-gray-600 hover:text-gray-900 mb-4">
         <ArrowLeftIcon className="w-5 h-5 mr-2" /> Quay lại danh sách
       </button>
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+      <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
         <div className="flex items-center">
           <ExclamationTriangleIcon className="w-8 h-8 text-red-600 mr-3" />
           <div>
             <h3 className="text-lg font-semibold text-red-900">Lỗi tải dữ liệu</h3>
             <p className="text-red-700 mt-1">{error || 'Không tìm thấy nhân viên'}</p>
             <button onClick={() => id && loadEmployee(Number(id))}
-              className="mt-3 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+              className="mt-3 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 text-sm font-medium">
               Thử lại
             </button>
           </div>
@@ -209,8 +219,8 @@ const EmployeeShow: React.FC = () => {
         </button>
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{employee.full_name}</h1>
-            <p className="text-gray-600 mt-1 text-lg">
+            <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">{employee.full_name}</h1>
+            <p className="text-sm text-gray-400 mt-1">
               {employee.position?.title || 'N/A'} — {employee.department?.name || 'N/A'}
             </p>
           </div>
@@ -218,7 +228,7 @@ const EmployeeShow: React.FC = () => {
             {getStatusBadge(employee.employment_status)}
             <button
               onClick={() => navigate(`/dashboard/employees/${employee.id}/edit`)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors"
             >
               <PencilIcon className="w-4 h-4" />
               Sửa thông tin
@@ -231,11 +241,13 @@ const EmployeeShow: React.FC = () => {
       <div className="space-y-6">
 
         {/* ── Thông tin nhân viên ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <span className="mr-2">👤</span>
-            Thông tin nhân viên
-          </h3>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
+              <UserIcon className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-900">Thông tin nhân viên</h3>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <InfoField label="Mã nhân viên" value={employee.employee_id} highlight />
             <InfoField label="Họ và tên" value={employee.full_name} />
@@ -254,11 +266,13 @@ const EmployeeShow: React.FC = () => {
         </div>
 
         {/* ── Thông tin công việc ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <span className="mr-2">💼</span>
-            Thông tin công việc
-          </h3>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
+              <BriefcaseIcon className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-900">Thông tin công việc</h3>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <InfoField label="Phòng ban" value={employee.department?.name} />
             <InfoField label="Vị trí" value={employee.position?.title} />
@@ -281,11 +295,13 @@ const EmployeeShow: React.FC = () => {
         </div>
 
         {/* ── Giấy tờ tùy thân & địa chỉ ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <span className="mr-2">🪪</span>
-            Giấy tờ tùy thân & địa chỉ
-          </h3>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-violet-100 text-violet-600 rounded-xl flex items-center justify-center">
+              <IdentificationIcon className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-900">Giấy tờ tùy thân & địa chỉ</h3>
+          </div>
           <div className="grid grid-cols-2 gap-x-8 gap-y-4">
             <InfoField label="Số CCCD" value={emp.cccd_number} />
             <InfoField label="Số CMND cũ" value={emp.old_id_number || extraInfo.old_id_number} />
@@ -301,22 +317,26 @@ const EmployeeShow: React.FC = () => {
         </div>
 
         {/* ── Trình độ học vấn ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <span className="mr-2">🎓</span>
-            Trình độ học vấn
-          </h3>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+              <AcademicCapIcon className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-900">Trình độ học vấn</h3>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <InfoField label="Trình độ" value={emp.education_level ? (EDUCATION_LEVEL_LABELS[emp.education_level] || emp.education_level) : null} />
           </div>
         </div>
 
         {/* ── Thông tin tài chính & ngân hàng ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <span className="mr-2">💳</span>
-            Thông tin tài chính & ngân hàng
-          </h3>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
+              <BanknotesIcon className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-900">Thông tin tài chính & ngân hàng</h3>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <InfoField label="Ngân hàng" value={employee.bank_name} />
             <InfoField label="Số tài khoản" value={employee.bank_account} />
@@ -326,11 +346,13 @@ const EmployeeShow: React.FC = () => {
         </div>
 
         {/* ── Lương & Hợp đồng ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <span className="mr-2">💰</span>
-            Lương & Hợp đồng
-          </h3>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
+              <DocumentTextIcon className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-900">Lương & Hợp đồng</h3>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <InfoField label="Lương cơ bản" value={emp.basic_salary != null ? `${Number(emp.basic_salary).toLocaleString('vi-VN')} đ` : null} highlight />
             <InfoField label="Phụ cấp" value={emp.allowance != null ? `${Number(emp.allowance).toLocaleString('vi-VN')} đ` : null} />
@@ -346,11 +368,13 @@ const EmployeeShow: React.FC = () => {
         </div>
 
         {/* ── Trạng thái hồ sơ ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <span className="mr-2">📋</span>
-            Trạng thái hồ sơ
-          </h3>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
+              <DocumentCheckIcon className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-900">Trạng thái hồ sơ</h3>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <InfoField label="Trạng thái hồ sơ" value={emp.file_status_display || (emp.file_status ? FILE_STATUS_LABELS[emp.file_status] || emp.file_status : null)} />
             <InfoField label="Sơ yếu lý lịch" value={emp.doc_resume === true ? 'Đã có' : (emp.doc_resume === false ? 'Chưa có' : null)} />
@@ -363,34 +387,38 @@ const EmployeeShow: React.FC = () => {
 
         {/* ── Thông tin tài khoản hệ thống ── */}
         {employee.user && (
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <span className="mr-2">🔐</span>
-              Thông tin tài khoản hệ thống
-            </h3>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
+                <ShieldCheckIcon className="h-5 w-5" />
+              </div>
+              <h3 className="text-sm font-bold text-gray-900">Thông tin tài khoản hệ thống</h3>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-gray-600">Tên đăng nhập</label>
-                <p className="font-medium">{employee.user.username || 'Chưa có tài khoản'}</p>
+                <label className="text-xs text-gray-400">Tên đăng nhập</label>
+                <p className="text-sm font-medium text-gray-900">{employee.user.username || 'Chưa có tài khoản'}</p>
               </div>
               <div>
-                <label className="text-sm text-gray-600">Email</label>
-                <p className="font-medium">{employee.user.email || 'Chưa cập nhật'}</p>
+                <label className="text-xs text-gray-400">Email</label>
+                <p className="text-sm font-medium text-gray-900">{employee.user.email || 'Chưa cập nhật'}</p>
               </div>
               <div>
-                <label className="text-sm text-gray-600">Nhân viên HR</label>
-                <p className="font-medium">{employee.is_hr ? 'Có' : 'Không'}</p>
+                <label className="text-xs text-gray-400">Nhân viên HR</label>
+                <p className="text-sm font-medium text-gray-900">{employee.is_hr ? 'Có' : 'Không'}</p>
               </div>
             </div>
           </div>
         )}
 
         {/* ── Thông tin người liên hệ khẩn cấp ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <span className="mr-2">🆘</span>
-            Thông tin người liên hệ khẩn cấp
-          </h3>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-red-100 text-red-600 rounded-xl flex items-center justify-center">
+              <PhoneIcon className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-900">Thông tin người liên hệ khẩn cấp</h3>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <InfoField label="Họ và tên" value={emp.emergency_contact_name} />
             <InfoField label="Mối quan hệ" value={emp.emergency_contact_relationship} />
@@ -402,11 +430,13 @@ const EmployeeShow: React.FC = () => {
         </div>
 
         {/* ── Hồ sơ đính kèm ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <span className="mr-2">📎</span>
-            Hồ sơ đính kèm
-          </h3>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
+              <PaperClipIcon className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-900">Hồ sơ đính kèm</h3>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             {(() => {
               const isPdf = (url: string) => /\.pdf(\?|$)/i.test(url);
@@ -418,7 +448,7 @@ const EmployeeShow: React.FC = () => {
                 { key: 'vneid_screenshot', label: 'Ảnh chụp VNeID', url: emp.vneid_screenshot_url || (emp.vneid_screenshot ? String(emp.vneid_screenshot) : null) },
               ];
               return fileCards.map(f => (
-                <div key={f.key} className="border rounded-lg overflow-hidden">
+                <div key={f.key} className="border border-gray-100 rounded-2xl overflow-hidden">
                   {f.url ? (
                     isPdf(f.url) ? (
                       <button
@@ -441,7 +471,7 @@ const EmployeeShow: React.FC = () => {
                       href={f.linkUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="h-40 bg-gray-50 flex flex-col items-center justify-center gap-2 text-indigo-600 hover:text-indigo-800 transition-colors"
+                      className="h-40 bg-gray-50 flex flex-col items-center justify-center gap-2 text-primary-600 hover:text-primary-800 transition-colors"
                     >
                       <span className="text-3xl">🔗</span>
                       <span className="text-xs font-medium">Mở link</span>
@@ -480,11 +510,11 @@ const EmployeeShow: React.FC = () => {
             })()}
 
             {/* Facebook link */}
-            <div className="border rounded-lg overflow-hidden">
-              <div className="h-40 bg-blue-50 flex flex-col items-center justify-center">
+            <div className="border border-gray-100 rounded-2xl overflow-hidden">
+              <div className="h-40 bg-primary-50 flex flex-col items-center justify-center">
                 <span className="text-3xl mb-1">👤</span>
                 {extraInfo.facebook_link || emp.facebook_link ? (
-                  <span className="text-xs text-blue-600 font-medium px-2 text-center truncate w-full">
+                  <span className="text-xs text-primary-600 font-medium px-2 text-center truncate w-full">
                     Facebook
                   </span>
                 ) : (
@@ -511,7 +541,7 @@ const EmployeeShow: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="bg-white rounded-lg border p-4 flex justify-between items-center text-sm text-gray-500">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex justify-between items-center text-sm text-gray-500">
           <div>
             Ngày tạo: {formatDate(employee.created_at)}
             {employee.updated_at !== employee.created_at && (
@@ -522,7 +552,7 @@ const EmployeeShow: React.FC = () => {
           </div>
           <button
             onClick={() => navigate(`/dashboard/employees/${employee.id}/edit`)}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors"
           >
             <PencilIcon className="w-4 h-4" />
             Sửa thông tin
@@ -538,7 +568,7 @@ const EmployeeShow: React.FC = () => {
           onClick={() => setPreviewPdf(null)}
         >
           <div
-            className="relative w-full max-w-4xl h-[90vh] bg-white rounded-lg overflow-hidden"
+            className="relative w-full max-w-4xl h-[90vh] bg-white rounded-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <iframe src={previewPdf} className="w-full h-full" title="PDF Preview" />

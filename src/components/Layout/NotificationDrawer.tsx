@@ -3,6 +3,7 @@ import { XMarkIcon, ArrowLeftIcon, PaperClipIcon, CalendarDaysIcon, UserIcon } f
 import { hrmAPI } from '@/utils/api';
 import { SelectBox } from '@/components/LandingLayout/SelectBox';
 import FilePreviewModal from '@/components/Common/FilePreviewModal';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -60,6 +61,7 @@ interface NotificationDrawerProps {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function NotificationDrawer({ open, onClose, initialItem, unreadIds, onMarkRead }: NotificationDrawerProps) {
+  useLockBodyScroll(open);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);

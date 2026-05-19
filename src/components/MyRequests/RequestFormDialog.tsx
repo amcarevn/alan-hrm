@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { SelectBox } from '../LandingLayout/SelectBox';
 import { companyUnitsAPI } from '../../utils/api';
@@ -196,7 +197,7 @@ const RequestFormDialog: React.FC<Props> = ({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl my-auto flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b">
@@ -472,7 +473,8 @@ const RequestFormDialog: React.FC<Props> = ({
           );
         })()}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

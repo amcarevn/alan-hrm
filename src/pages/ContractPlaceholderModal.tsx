@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   XMarkIcon,
   ArrowPathIcon,
@@ -166,8 +166,8 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
   // ── Loading ──
   if (loadingTemplate) return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center">
-      <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-3">
-        <ArrowPathIcon className="w-8 h-8 text-blue-600 animate-spin" />
+      <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-3 shadow-xl">
+        <ArrowPathIcon className="w-8 h-8 text-primary-600 animate-spin" />
         <p className="text-gray-600 text-sm">Đang tải dữ liệu hợp đồng...</p>
       </div>
     </div>
@@ -175,16 +175,18 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl h-[95vh] flex flex-col">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-7xl h-[95vh] flex flex-col">
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-5 py-3 border-b flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <DocumentTextIcon className="w-5 h-5 text-blue-600" />
+            <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
+              <DocumentTextIcon className="w-5 h-5" />
+            </div>
             <div>
               <h4 className="font-semibold text-gray-900">Xuất PDF hợp đồng</h4>
               <div className="flex items-center gap-3 mt-0.5">
-                <span className="text-xs text-green-600">
+                <span className="text-xs text-emerald-600">
                   ✓ {autoItems.length} trường tự động điền
                 </span>
                 {emptyCount > 0 && (
@@ -200,7 +202,10 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
+          >
             <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
@@ -209,7 +214,7 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
         <div className="flex flex-1 min-h-0">
 
           {/* ── CỘT TRÁI ── */}
-          <div className="w-[380px] flex-shrink-0 flex flex-col border-r">
+          <div className="w-[380px] flex-shrink-0 flex flex-col border-r border-gray-100">
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
 
               {/* Trường HR cần nhập */}
@@ -237,10 +242,10 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
                             value={val}
                             onChange={e => handleChange(item.key, e.target.value)}
                             placeholder={`Nhập ${getLabel(item.key)}...`}
-                            className={`w-full px-2.5 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            className={`input-field ${
                               isEmpty
-                                ? 'border-red-300 bg-red-50 placeholder-red-300'
-                                : 'border-gray-300 bg-white'
+                                ? 'border-red-300 bg-red-50 placeholder-red-300 focus:ring-red-500'
+                                : ''
                             }`}
                           />
                         </div>
@@ -252,8 +257,10 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
 
               {manualItems.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-6 text-center">
-                  <CheckIcon className="w-8 h-8 text-green-500 mb-2" />
-                  <p className="text-sm font-medium text-green-700">Tất cả trường đã được điền tự động!</p>
+                  <div className="h-9 w-9 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-3">
+                    <CheckIcon className="w-5 h-5" />
+                  </div>
+                  <p className="text-sm font-medium text-emerald-700">Tất cả trường đã được điền tự động!</p>
                   <p className="text-xs text-gray-500 mt-1">Bạn có thể xuất PDF ngay hoặc xem lại bên dưới.</p>
                 </div>
               )}
@@ -269,7 +276,7 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
                     {showAutoFilled ? 'Ẩn' : 'Xem & sửa'} trường tự động ({autoItems.length})
                   </button>
                   {showAutoFilled && (
-                    <div className="space-y-3 border border-gray-100 rounded-lg p-3 bg-gray-50">
+                    <div className="space-y-3 border border-gray-100 rounded-xl p-3 bg-gray-50">
                       {autoItems.map(item => {
                         const val = getValue(item);
                         const isChanged = overrides[item.key] !== undefined;
@@ -283,8 +290,8 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
                               type="text"
                               value={val}
                               onChange={e => handleChange(item.key, e.target.value)}
-                              className={`w-full px-2.5 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                isChanged ? 'border-amber-400 bg-amber-50' : 'border-gray-200 bg-white'
+                              className={`input-field ${
+                                isChanged ? 'border-amber-400 bg-amber-50 focus:ring-amber-500' : ''
                               }`}
                             />
                           </div>
@@ -297,18 +304,18 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
             </div>
 
             {/* Nút xuất PDF */}
-            <div className="border-t px-4 py-3 flex-shrink-0 space-y-2">
+            <div className="border-t border-gray-100 px-4 py-4 flex-shrink-0 space-y-2 bg-gray-50 rounded-b-none">
               {error && (
-                <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+                <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>
               )}
               {emptyCount > 0 && (
-                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
                   ⚠️ Còn {emptyCount} trường chưa điền — PDF sẽ để trống những chỗ đó.
                 </p>
               )}
               <button
                 onClick={handlePreview}
-                disabled={previewLoading}
+                disabled={previewLoading || emptyCount > 0}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {previewLoading
@@ -322,21 +329,21 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
           {/* ── CỘT PHẢI: PDF Preview ── */}
           <div className="flex-1 flex flex-col min-w-0">
             {previewUrl && (
-              <div className="flex items-center justify-between px-4 py-2 border-b bg-gray-50 flex-shrink-0">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 bg-gray-50 flex-shrink-0">
                 <p className="text-xs text-gray-500">
                   {previewLoading ? 'Đang cập nhật...' : 'Xem trước PDF'}
                 </p>
                 <div className="flex items-center gap-2">
                   <a
                     href={previewUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1 px-3 py-1 text-xs text-gray-600 border border-gray-300 rounded-md hover:bg-white"
+                    className="btn-secondary flex items-center gap-1 px-3 py-1 text-xs"
                   >
                     <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
                     Mở tab mới
                   </a>
                   <button
                     onClick={handleConfirm}
-                    className="flex items-center gap-1 px-3 py-1 text-xs text-white bg-green-600 rounded-md hover:bg-green-700 font-medium"
+                    className="btn-primary flex items-center gap-1 px-3 py-1 text-xs"
                   >
                     <CheckIcon className="w-3.5 h-3.5" />
                     Xác nhận dùng bản này
@@ -350,7 +357,7 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
                 {previewLoading && (
                   <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center">
                     <div className="flex flex-col items-center gap-3">
-                      <ArrowPathIcon className="w-8 h-8 text-blue-600 animate-spin" />
+                      <ArrowPathIcon className="w-8 h-8 text-primary-600 animate-spin" />
                       <p className="text-sm text-gray-600">Đang cập nhật PDF...</p>
                     </div>
                   </div>
@@ -359,8 +366,8 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
               </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 text-center px-8">
-                <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mb-4">
-                  <DocumentTextIcon className="w-10 h-10 text-blue-400" />
+                <div className="h-20 w-20 rounded-full bg-primary-50 flex items-center justify-center mb-4">
+                  <DocumentTextIcon className="w-10 h-10 text-primary-400" />
                 </div>
                 <h3 className="text-base font-medium text-gray-700 mb-2">Chưa có bản xem trước</h3>
                 <p className="text-sm text-gray-500 max-w-xs">

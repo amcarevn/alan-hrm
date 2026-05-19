@@ -83,7 +83,7 @@ export default function LandingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-blue-900">
+      <div className="min-h-screen flex items-center justify-center bg-primary-900">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
       </div>
     );
@@ -220,8 +220,8 @@ export default function LandingPage() {
                     <p className="text-white font-semibold text-sm">Tổng quan Nhân sự</p>
                     <p className="text-ruby-accent text-xs mt-0.5">Alan Beauty Medical Clinic · 2026</p>
                   </div>
-                  <span className="flex items-center gap-1.5 text-xs text-green-400 bg-green-400/10 border border-green-400/20 px-2.5 py-1 rounded-full">
-                    <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+                  <span className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded-full">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     Live
                   </span>
                 </div>
@@ -229,19 +229,18 @@ export default function LandingPage() {
                 {/* Stats row */}
                 <div className="grid grid-cols-2 gap-3 mb-5">
                   <div className="bg-white/5 border border-white/5 rounded-xl p-4 text-center">
-                    <div className="text-4xl font-extrabold text-green-400 mb-1">
+                    <div className="text-4xl font-extrabold text-emerald-400 mb-1">
                       <CountUp to={cardStats.active} duration={2.8} />
                     </div>
                     <div className="text-ruby-accent/80 text-xs">Đang đi làm</div>
                   </div>
                   <div className="bg-white/5 border border-white/5 rounded-xl p-4 text-center">
-                    <div className="text-4xl font-extrabold text-yellow-400 mb-1">
+                    <div className="text-4xl font-extrabold text-amber-400 mb-1">
                       <CountUp to={cardStats.monthlyLeave} duration={2.5} />
                     </div>
                     <div className="text-ruby-accent/80 text-xs">Nghỉ phép tháng</div>
                   </div>
                 </div>
-
 
                 {/* Module status list */}
                 <div className="space-y-0 divide-y divide-white/5">
@@ -259,9 +258,9 @@ export default function LandingPage() {
                       animate="visible"
                       className="flex items-center justify-between py-2.5"
                     >
-                      <span className="text-blue-200 text-xs">{name}</span>
-                      <span className="flex items-center gap-1.5 text-xs text-green-400">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+                      <span className="text-primary-200 text-xs">{name}</span>
+                      <span className="flex items-center gap-1.5 text-xs text-emerald-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                         {status}
                       </span>
                     </motion.div>
@@ -269,8 +268,8 @@ export default function LandingPage() {
                 </div>
 
                 {/* Decorative corner glow */}
-                <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-blue-400 opacity-10 blur-2xl pointer-events-none" />
-                <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-indigo-400 opacity-10 blur-2xl pointer-events-none" />
+                <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-primary-400 opacity-10 blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-primary-300 opacity-10 blur-2xl pointer-events-none" />
               </motion.div>
             </motion.div>
 
@@ -279,7 +278,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── MODULES ── */}
-      <section id="modules" className="py-20 bg-gray-50">
+      <section id="modules" className="py-20 bg-primary-100">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-ruby-light text-ruby-primary text-xs font-semibold mb-4">

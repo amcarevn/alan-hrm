@@ -39,7 +39,6 @@ const AttendanceRanking: React.FC = () => {
   const userRole = user?.role?.toUpperCase() ?? 'USER';
   const isSuperAdmin = user?.is_super_admin || (user as any)?.is_superuser || false;
   const isHR = isSuperAdmin || userRole === 'ADMIN' || userRole === 'HR';
-
   const employeeId: number | undefined = (user as any)?.employee_profile?.id ?? (user as any)?.hrm_user?.id;
 
   const fetchRankings = async () => {
@@ -53,8 +52,7 @@ const AttendanceRanking: React.FC = () => {
           : Promise.resolve([] as AttendanceRankingEntry[]),
       ]);
       setRankings(data);
-      const myEntry = myData.length > 0 ? myData[0] : null;
-      setMyRanking(myEntry);
+      setMyRanking(myData.length > 0 ? myData[0] : null);
     } catch {
       setError('Không thể tải dữ liệu bảng xếp hạng. Vui lòng thử lại.');
     } finally {
@@ -93,7 +91,6 @@ const AttendanceRanking: React.FC = () => {
   const sortedRankings = [...rankings].sort((a, b) => {
     const aVal = a[sortField];
     const bVal = b[sortField];
-    // Always place null/undefined values at the end regardless of sort direction
     if (aVal == null && bVal == null) return 0;
     if (aVal == null) return 1;
     if (bVal == null) return -1;
@@ -120,15 +117,19 @@ const AttendanceRanking: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Bảng xếp hạng chấm công</h1>
-        <p className="text-gray-600 mt-2">Thống kê nhân viên đi sớm và đúng giờ theo tháng</p>
+      <div className="flex items-center gap-3">
+        <div className="h-9 w-9 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center flex-shrink-0">
+          <TrophyIcon className="h-5 w-5" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Bảng xếp hạng chấm công</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Thống kê nhân viên đi sớm và đúng giờ theo tháng</p>
+        </div>
       </div>
 
       {/* Filter bar */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-gray-50 rounded-2xl border border-gray-100 p-4">
         <div className="flex flex-wrap gap-4 items-end">
-          {/* Year */}
           <div className="w-24">
             <SelectBox<number>
               label="Năm"
@@ -137,8 +138,6 @@ const AttendanceRanking: React.FC = () => {
               onChange={setYear}
             />
           </div>
-
-          {/* Month */}
           <div className="w-32">
             <SelectBox<number>
               label="Tháng"
@@ -147,13 +146,11 @@ const AttendanceRanking: React.FC = () => {
               onChange={setMonth}
             />
           </div>
-
-          {/* Type */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
+            <label className="block text-xs font-medium text-gray-500 mb-1">
               <ClockIcon className="h-3.5 w-3.5 inline mr-1" />Loại xếp hạng
             </label>
-            <div className="flex rounded-md border border-gray-300 overflow-hidden">
+            <div className="flex rounded-xl border border-gray-200 overflow-hidden">
               <button
                 onClick={() => setRankType('early')}
                 className={`px-4 py-2 text-sm font-medium transition-colors ${rankType === 'early' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
@@ -168,8 +165,6 @@ const AttendanceRanking: React.FC = () => {
               </button>
             </div>
           </div>
-
-          {/* Top N */}
           <div className="w-28">
             <SelectBox<number>
               label="Top N"
@@ -184,23 +179,19 @@ const AttendanceRanking: React.FC = () => {
               onChange={setTop}
             />
           </div>
-
-          {/* Refresh button */}
           <button
             onClick={fetchRankings}
             disabled={loading}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+            className="btn-secondary flex items-center gap-1.5 disabled:opacity-50"
           >
             <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Làm mới
           </button>
-
-          {/* Compute button - HR/admin only */}
           {isHR && (
             <button
               onClick={handleCompute}
               disabled={computing || loading}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+              className="btn-primary flex items-center gap-1.5 disabled:opacity-50"
             >
               <TrophyIcon className={`h-4 w-4 ${computing ? 'animate-pulse' : ''}`} />
               {computing ? 'Đang tính...' : 'Tính xếp hạng'}
@@ -208,13 +199,12 @@ const AttendanceRanking: React.FC = () => {
           )}
         </div>
 
-        {/* Compute message */}
         {computeMessage && (
-          <div
-            className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium ${
-              computeMessage.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-            }`}
-          >
+          <div className={`mt-3 px-4 py-2 rounded-2xl text-sm font-medium ${
+            computeMessage.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}>
             {computeMessage.text}
           </div>
         )}
@@ -222,120 +212,92 @@ const AttendanceRanking: React.FC = () => {
 
       {/* My ranking card */}
       {myRanking && (
-        <div className="bg-indigo-50 rounded-lg border border-indigo-100 p-4">
-          <h2 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-            <UserIcon className="h-4 w-4" />
+        <div className="bg-primary-50 rounded-2xl border border-primary-100 p-5">
+          <h2 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <div className="h-7 w-7 bg-primary-100 text-primary-600 rounded-lg flex items-center justify-center">
+              <UserIcon className="h-4 w-4" />
+            </div>
             Xếp hạng của bạn — {MONTH_NAMES[month - 1]} {year}
           </h2>
           <div className="flex flex-wrap gap-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary-700">
-                {getRankDisplay(myRanking.rank_early)}
+            {[
+              { label: 'Hạng đi sớm', value: getRankDisplay(myRanking.rank_early), big: true },
+              { label: 'Hạng đúng giờ', value: getRankDisplay(myRanking.rank_on_time), big: true },
+              { label: 'Ngày đi sớm', value: myRanking.early_days },
+              { label: 'Phút đi sớm', value: myRanking.total_early_minutes },
+              { label: 'Ngày đúng giờ', value: myRanking.on_time_days },
+              { label: 'Tổng ngày làm', value: myRanking.total_working_days },
+            ].map(({ label, value, big }) => (
+              <div key={label} className="text-center">
+                <div className={`font-extrabold tracking-tight text-primary-700 ${big ? 'text-2xl' : 'text-lg text-gray-800'}`}>
+                  {value}
+                </div>
+                <div className="text-xs text-gray-400 mt-0.5">{label}</div>
               </div>
-              <div className="text-xs text-gray-600 mt-0.5">Hạng đi sớm</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary-700">
-                {getRankDisplay(myRanking.rank_on_time)}
-              </div>
-              <div className="text-xs text-gray-600 mt-0.5">Hạng đúng giờ</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-gray-800">{myRanking.early_days}</div>
-              <div className="text-xs text-gray-600 mt-0.5">Ngày đi sớm</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-gray-800">{myRanking.total_early_minutes}</div>
-              <div className="text-xs text-gray-600 mt-0.5">Phút đi sớm</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-gray-800">{myRanking.on_time_days}</div>
-              <div className="text-xs text-gray-600 mt-0.5">Ngày đúng giờ</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-gray-800">{myRanking.total_working_days}</div>
-              <div className="text-xs text-gray-600 mt-0.5">Tổng ngày làm</div>
-            </div>
+            ))}
           </div>
         </div>
       )}
 
       {/* Rankings table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">
+          <h2 className="text-sm font-bold text-gray-900">
             {rankType === 'early' ? '🌅 Bảng xếp hạng đi sớm' : '✅ Bảng xếp hạng đúng giờ'} — {MONTH_NAMES[month - 1]} {year}
           </h2>
-          <span className="text-xs text-gray-500">{rankings.length} nhân viên</span>
+          <span className="text-xs text-gray-400">{rankings.length} nhân viên</span>
         </div>
 
         {error && (
-          <div className="px-5 py-4 text-sm text-red-600 bg-red-50">{error}</div>
+          <div className="px-5 py-4 text-sm text-red-700 bg-red-50 border-b border-red-100">{error}</div>
         )}
 
         {loading ? (
-          <div className="px-5 py-10 text-center text-sm text-gray-500">
+          <div className="px-5 py-12 text-center text-sm text-gray-400">
             <ArrowPathIcon className="h-6 w-6 animate-spin mx-auto mb-2 text-primary-400" />
             Đang tải dữ liệu...
           </div>
         ) : rankings.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-gray-500">
-            <TrophyIcon className="h-10 w-10 mx-auto mb-3 text-gray-300" />
-            <p>Chưa có dữ liệu xếp hạng cho tháng này.</p>
+          <div className="px-5 py-12 text-center">
+            <div className="h-12 w-12 bg-amber-100 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <TrophyIcon className="h-6 w-6" />
+            </div>
+            <p className="text-sm font-bold text-gray-900">Chưa có dữ liệu xếp hạng cho tháng này</p>
             {isHR && (
               <p className="mt-1 text-xs text-gray-400">Nhấn <strong>Tính xếp hạng</strong> để tạo dữ liệu.</p>
             )}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-100">
               <thead className="bg-gray-50">
                 <tr>
                   <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="table-header cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort(rankType === 'early' ? 'rank_early' : 'rank_on_time')}
                   >
                     Hạng <SortIcon field={rankType === 'early' ? 'rank_early' : 'rank_on_time'} />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nhân viên
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phòng ban
-                  </th>
+                  <th className="table-header">Nhân viên</th>
+                  <th className="table-header">Phòng ban</th>
                   {rankType === 'early' ? (
                     <>
-                      <th
-                        className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleSort('early_days')}
-                      >
+                      <th className="table-header text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('early_days')}>
                         Ngày đi sớm <SortIcon field="early_days" />
                       </th>
-                      <th
-                        className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleSort('total_early_minutes')}
-                      >
+                      <th className="table-header text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('total_early_minutes')}>
                         Tổng phút sớm <SortIcon field="total_early_minutes" />
                       </th>
-                      <th
-                        className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleSort('avg_early_minutes')}
-                      >
+                      <th className="table-header text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('avg_early_minutes')}>
                         TB phút/ngày <SortIcon field="avg_early_minutes" />
                       </th>
                     </>
                   ) : (
                     <>
-                      <th
-                        className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleSort('on_time_days')}
-                      >
+                      <th className="table-header text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('on_time_days')}>
                         Ngày đúng giờ <SortIcon field="on_time_days" />
                       </th>
-                      <th
-                        className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleSort('total_working_days')}
-                      >
+                      <th className="table-header text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('total_working_days')}>
                         Tổng ngày làm <SortIcon field="total_working_days" />
                       </th>
                     </>
@@ -349,38 +311,36 @@ const AttendanceRanking: React.FC = () => {
                   return (
                     <tr
                       key={`${entry.employee_id}-${entry.year}-${entry.month}`}
-                      className={`${isTopThree ? 'bg-yellow-50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-50 transition-colors`}
+                      className={`${isTopThree ? 'bg-amber-50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-50 transition-colors`}
                     >
-                      <td className="px-4 py-3 text-sm font-semibold text-gray-900">
-                        <span className={`text-lg ${isTopThree ? '' : 'text-gray-600'}`}>
+                      <td className="table-cell font-semibold">
+                        <span className={`text-lg ${isTopThree ? '' : 'text-gray-500'}`}>
                           {getRankDisplay(rank)}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">{entry.full_name}</div>
-                        <div className="text-xs text-gray-500">{entry.employee_code}</div>
+                        <div className="text-xs text-gray-400">{entry.employee_code}</div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {entry.department ?? '—'}
-                      </td>
+                      <td className="table-cell text-gray-500">{entry.department ?? '—'}</td>
                       {rankType === 'early' ? (
                         <>
-                          <td className="px-4 py-3 text-right text-sm font-medium text-primary-700">
+                          <td className="px-6 py-4 text-right text-sm font-medium text-primary-700">
                             {entry.early_days} ngày
                           </td>
-                          <td className="px-4 py-3 text-right text-sm font-medium text-purple-700">
+                          <td className="px-6 py-4 text-right text-sm font-medium text-violet-700">
                             {entry.total_early_minutes} phút
                           </td>
-                          <td className="px-4 py-3 text-right text-sm text-gray-600">
+                          <td className="px-6 py-4 text-right text-sm text-gray-500">
                             {entry.avg_early_minutes?.toFixed(1) ?? '—'} phút
                           </td>
                         </>
                       ) : (
                         <>
-                          <td className="px-4 py-3 text-right text-sm font-medium text-green-700">
+                          <td className="px-6 py-4 text-right text-sm font-medium text-emerald-700">
                             {entry.on_time_days} ngày
                           </td>
-                          <td className="px-4 py-3 text-right text-sm text-gray-600">
+                          <td className="px-6 py-4 text-right text-sm text-gray-500">
                             {entry.total_working_days} ngày
                           </td>
                         </>
@@ -398,4 +358,3 @@ const AttendanceRanking: React.FC = () => {
 };
 
 export default AttendanceRanking;
-

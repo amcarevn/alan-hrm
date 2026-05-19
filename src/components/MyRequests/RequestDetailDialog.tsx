@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import {
   XMarkIcon,
   DocumentMagnifyingGlassIcon,
@@ -259,7 +260,7 @@ const ApprovalTimeline: React.FC<{ request: GenericRequest }> = ({ request }) =>
 const RequestDetailDialog: React.FC<Props> = ({ request, onClose, onPreviewPdf }) => {
   if (!request) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b">
@@ -383,7 +384,8 @@ const RequestDetailDialog: React.FC<Props> = ({ request, onClose, onPreviewPdf }
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

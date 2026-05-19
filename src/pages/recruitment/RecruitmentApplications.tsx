@@ -13,21 +13,22 @@ import {
   ApplicationStatus,
   StageHistory,
 } from '../../services/recruitment.service';
+import { SelectBox } from '../../components/LandingLayout/SelectBox';
 
 const STAGE_COLORS: Record<ApplicationStage, string> = {
   APPLIED: 'bg-gray-100 text-gray-800',
-  SCREENING: 'bg-blue-100 text-blue-800',
-  INTERVIEW: 'bg-purple-100 text-purple-800',
-  TEST: 'bg-yellow-100 text-yellow-800',
-  OFFER: 'bg-orange-100 text-orange-800',
-  HIRED: 'bg-green-100 text-green-800',
+  SCREENING: 'bg-primary-100 text-primary-800',
+  INTERVIEW: 'bg-violet-100 text-violet-800',
+  TEST: 'bg-amber-100 text-amber-800',
+  OFFER: 'bg-amber-100 text-amber-700',
+  HIRED: 'bg-emerald-100 text-emerald-800',
   REJECTED: 'bg-red-100 text-red-800',
   WITHDRAWN: 'bg-gray-100 text-gray-500',
 };
 
 const STATUS_COLORS: Record<ApplicationStatus, string> = {
-  ACTIVE: 'bg-blue-100 text-blue-800',
-  HIRED: 'bg-green-100 text-green-800',
+  ACTIVE: 'bg-primary-100 text-primary-800',
+  HIRED: 'bg-emerald-100 text-emerald-800',
   REJECTED: 'bg-red-100 text-red-800',
   WITHDRAWN: 'bg-gray-100 text-gray-500',
 };
@@ -41,6 +42,19 @@ const STAGE_OPTIONS: { value: ApplicationStage; label: string }[] = [
   { value: 'HIRED', label: 'Đã tuyển' },
   { value: 'REJECTED', label: 'Bị từ chối' },
   { value: 'WITHDRAWN', label: 'Ứng viên rút hồ sơ' },
+];
+
+const STAGE_FILTER_OPTIONS = [
+  { value: 'all', label: 'Tất cả giai đoạn' },
+  ...STAGE_OPTIONS,
+];
+
+const STATUS_FILTER_OPTIONS = [
+  { value: 'all', label: 'Tất cả trạng thái' },
+  { value: 'ACTIVE', label: 'Đang tiến hành' },
+  { value: 'HIRED', label: 'Đã tuyển' },
+  { value: 'REJECTED', label: 'Bị từ chối' },
+  { value: 'WITHDRAWN', label: 'Ứng viên rút' },
 ];
 
 interface CreateFormState {
@@ -69,6 +83,7 @@ const RecruitmentApplications: React.FC = () => {
   const [moveStageValue, setMoveStageValue] = useState<ApplicationStage>('SCREENING');
   const [moveStageNote, setMoveStageNote] = useState('');
   const [movingStageSaving, setMovingStageSaving] = useState(false);
+  const [moveStageError, setMoveStageError] = useState<string | null>(null);
 
   // History drawer
   const [historyApp, setHistoryApp] = useState<number | null>(null);
@@ -129,12 +144,13 @@ const RecruitmentApplications: React.FC = () => {
   const handleMoveStage = async () => {
     if (!moveStageApp) return;
     setMovingStageSaving(true);
+    setMoveStageError(null);
     try {
       await recruitmentService.moveStage(moveStageApp.id, moveStageValue, moveStageNote);
       setMoveStageApp(null);
       await fetchApplications();
     } catch {
-      alert('Chuyển stage thất bại');
+      setMoveStageError('Chuyển stage thất bại');
     } finally {
       setMovingStageSaving(false);
     }
@@ -155,10 +171,11 @@ const RecruitmentApplications: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Đơn ứng tuyển / Pipeline</h1>
-          <p className="text-gray-600 mt-2">Tracking quá trình tuyển dụng theo từng ứng viên</p>
+          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Đơn ứng tuyển / Pipeline</h1>
+          <p className="text-gray-500 mt-1 text-sm">Tracking quá trình tuyển dụng theo từng ứng viên</p>
         </div>
         <button
           onClick={() => {
@@ -166,7 +183,7 @@ const RecruitmentApplications: React.FC = () => {
             setCreateForm({ candidate: '', job: '', notes: '' });
             setFormError(null);
           }}
-          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors text-sm font-medium"
+          className="btn-primary flex items-center gap-2 text-sm"
         >
           <PlusIcon className="h-4 w-4" />
           Tạo đơn mới
@@ -174,115 +191,111 @@ const RecruitmentApplications: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
         <div className="flex flex-wrap gap-3">
-          <select
-            value={stageFilter}
-            onChange={e => setStageFilter(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            <option value="all">Tất cả giai đoạn</option>
-            {STAGE_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="ACTIVE">Đang tiến hành</option>
-            <option value="HIRED">Đã tuyển</option>
-            <option value="REJECTED">Bị từ chối</option>
-            <option value="WITHDRAWN">Ứng viên rút</option>
-          </select>
+          <div className="min-w-[200px]">
+            <SelectBox
+              label=""
+              value={stageFilter}
+              options={STAGE_FILTER_OPTIONS}
+              onChange={(v) => setStageFilter(v)}
+              placeholder="Tất cả giai đoạn"
+            />
+          </div>
+          <div className="min-w-[200px]">
+            <SelectBox
+              label=""
+              value={statusFilter}
+              options={STATUS_FILTER_OPTIONS}
+              onChange={(v) => setStatusFilter(v)}
+              placeholder="Tất cả trạng thái"
+            />
+          </div>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>
+        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-2xl border border-red-100 text-sm">{error}</div>
       )}
 
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+            <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />
           ))}
         </div>
       ) : applications.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center text-gray-500">
           <p>Chưa có đơn ứng tuyển nào</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ứng viên</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tin tuyển dụng</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Giai đoạn</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phụ trách</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ứng tuyển</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {applications.map(app => (
-                <tr key={app.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <p className="text-sm font-medium text-gray-900">{app.candidate_name}</p>
-                    <p className="text-xs text-gray-400">{app.candidate_email}</p>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{app.job_title}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STAGE_COLORS[app.current_stage]}`}
-                    >
-                      {app.current_stage_display}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[app.status]}`}
-                    >
-                      {app.status_display}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{app.assignee_name || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
-                    {new Date(app.applied_at).toLocaleDateString('vi-VN')}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center gap-2 justify-end">
-                      <button
-                        onClick={() => {
-                          setMoveStageApp(app);
-                          setMoveStageValue('SCREENING');
-                          setMoveStageNote('');
-                        }}
-                        className="text-gray-400 hover:text-blue-600 transition-colors text-xs font-medium"
-                        title="Chuyển stage"
-                      >
-                        <ChevronRightIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => openHistory(app.id)}
-                        className="text-gray-400 hover:text-purple-600 transition-colors text-xs font-medium"
-                        title="Lịch sử"
-                      >
-                        Lịch sử
-                      </button>
-                    </div>
-                  </td>
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="table-header">Ứng viên</th>
+                  <th className="table-header">Tin tuyển dụng</th>
+                  <th className="table-header">Giai đoạn</th>
+                  <th className="table-header">Trạng thái</th>
+                  <th className="table-header">Phụ trách</th>
+                  <th className="table-header">Ứng tuyển</th>
+                  <th className="px-6 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {applications.map(app => (
+                  <tr key={app.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="table-cell">
+                      <p className="font-medium text-gray-900">{app.candidate_name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{app.candidate_email}</p>
+                    </td>
+                    <td className="table-cell text-gray-700">{app.job_title}</td>
+                    <td className="table-cell">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STAGE_COLORS[app.current_stage]}`}
+                      >
+                        {app.current_stage_display}
+                      </span>
+                    </td>
+                    <td className="table-cell">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[app.status]}`}
+                      >
+                        {app.status_display}
+                      </span>
+                    </td>
+                    <td className="table-cell text-gray-700">{app.assignee_name || '—'}</td>
+                    <td className="table-cell text-gray-500">
+                      {new Date(app.applied_at).toLocaleDateString('vi-VN')}
+                    </td>
+                    <td className="table-cell text-right">
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          onClick={() => {
+                            setMoveStageApp(app);
+                            setMoveStageValue('SCREENING');
+                            setMoveStageNote('');
+                            setMoveStageError(null);
+                          }}
+                          className="h-9 w-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-primary-50 hover:text-primary-600 transition-colors"
+                          title="Chuyển stage"
+                        >
+                          <ChevronRightIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => openHistory(app.id)}
+                          className="text-xs font-medium text-gray-400 hover:text-violet-600 hover:bg-violet-50 px-2 py-1 rounded-lg transition-colors"
+                          title="Lịch sử"
+                        >
+                          Lịch sử
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -290,10 +303,13 @@ const RecruitmentApplications: React.FC = () => {
       {/* Create Application Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-gray-900">Tạo đơn ứng tuyển</h2>
-              <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="h-9 w-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
@@ -306,7 +322,7 @@ const RecruitmentApplications: React.FC = () => {
                   type="number"
                   value={createForm.candidate}
                   onChange={e => setCreateForm(f => ({ ...f, candidate: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                   placeholder="ID ứng viên"
                 />
               </div>
@@ -318,7 +334,7 @@ const RecruitmentApplications: React.FC = () => {
                   type="number"
                   value={createForm.job}
                   onChange={e => setCreateForm(f => ({ ...f, job: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                   placeholder="ID tin tuyển dụng"
                 />
               </div>
@@ -328,32 +344,36 @@ const RecruitmentApplications: React.FC = () => {
                   rows={2}
                   value={createForm.notes}
                   onChange={e => setCreateForm(f => ({ ...f, notes: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
               </div>
-              {formError && <p className="text-sm text-red-600">{formError}</p>}
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
-                >
-                  {saving ? (
-                    <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <CheckIcon className="h-4 w-4" />
-                  )}
-                  Tạo đơn
-                </button>
-              </div>
+              {formError && (
+                <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-xl">{formError}</p>
+              )}
             </form>
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="btn-secondary text-sm"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                form=""
+                disabled={saving}
+                onClick={handleCreate}
+                className="btn-primary flex items-center gap-2 text-sm disabled:opacity-50"
+              >
+                {saving ? (
+                  <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <CheckIcon className="h-4 w-4" />
+                )}
+                Tạo đơn
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -361,63 +381,59 @@ const RecruitmentApplications: React.FC = () => {
       {/* Move Stage Modal */}
       {moveStageApp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Chuyển stage pipeline</h2>
-                <p className="text-sm text-gray-500">{moveStageApp.candidate_name}</p>
+                <p className="text-sm text-gray-500 mt-0.5">{moveStageApp.candidate_name}</p>
               </div>
-              <button onClick={() => setMoveStageApp(null)} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => setMoveStageApp(null)}
+                className="h-9 w-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
             <div className="px-6 py-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Giai đoạn mới
-                </label>
-                <select
-                  value={moveStageValue}
-                  onChange={e => setMoveStageValue(e.target.value as ApplicationStage)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  {STAGE_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SelectBox
+                label="Giai đoạn mới"
+                value={moveStageValue}
+                options={STAGE_OPTIONS}
+                onChange={(v) => setMoveStageValue(v)}
+              />
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
                 <textarea
                   rows={2}
                   value={moveStageNote}
                   onChange={e => setMoveStageNote(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                   placeholder="VD: Đã xác nhận lịch phỏng vấn..."
                 />
               </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  onClick={() => setMoveStageApp(null)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={handleMoveStage}
-                  disabled={movingStageSaving}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
-                >
-                  {movingStageSaving ? (
-                    <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <CheckIcon className="h-4 w-4" />
-                  )}
-                  Chuyển
-                </button>
-              </div>
+              {moveStageError && (
+                <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-xl">{moveStageError}</p>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button
+                onClick={() => setMoveStageApp(null)}
+                className="btn-secondary text-sm"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleMoveStage}
+                disabled={movingStageSaving}
+                className="btn-primary flex items-center gap-2 text-sm disabled:opacity-50"
+              >
+                {movingStageSaving ? (
+                  <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <CheckIcon className="h-4 w-4" />
+                )}
+                Chuyển
+              </button>
             </div>
           </div>
         </div>
@@ -428,9 +444,12 @@ const RecruitmentApplications: React.FC = () => {
         <div className="fixed inset-0 z-50 flex">
           <div className="flex-1 bg-black bg-opacity-40" onClick={() => setHistoryApp(null)} />
           <div className="w-96 bg-white shadow-xl flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-gray-900">Lịch sử stage</h2>
-              <button onClick={() => setHistoryApp(null)} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => setHistoryApp(null)}
+                className="h-9 w-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
@@ -438,7 +457,7 @@ const RecruitmentApplications: React.FC = () => {
               {historyLoading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map(i => (
-                    <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
+                    <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
                   ))}
                 </div>
               ) : historyData.length === 0 ? (

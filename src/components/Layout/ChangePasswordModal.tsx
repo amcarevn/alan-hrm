@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { XMarkIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { API_BASE_URL } from '../../utils/api';
 
@@ -34,7 +35,7 @@ const PasswordInput = ({
         type={show ? 'text' : 'password'}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full border rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+        className={`w-full border rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${
           error ? 'border-red-400' : 'border-gray-300'
         }`}
         placeholder="••••••••"
@@ -110,63 +111,29 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClose, onSu
     
     setSubmitting(true);
     setErrors({});
-    
+
     try {
       const currentToken = localStorage.getItem('accessToken');
-      
-      // ✅ Debug token
-      console.log('🔑 Token exists:', !!currentToken);
-      if (currentToken) {
-        try {
-          const payload = JSON.parse(atob(currentToken.split('.')[1]));
-          console.log('👤 Token decoded:', {
-            user_id: payload.user_id,
-            username: payload.username,
-            email: payload.email,
-          });
-        } catch (err) {
-          console.error('❌ Failed to decode token:', err);
-        }
-      }
-      
       if (!currentToken) {
         setErrors({ general: 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.' });
         return;
       }
-      
-      // ✅ Debug request payload
-      const requestBody = {
-        old_password: form.old_password,
-        new_password: form.new_password,
-      };
-      console.log('📤 Request body:', {
-        old_password: '***' + form.old_password.slice(-3),
-        new_password: '***' + form.new_password.slice(-3),
-      });
-      
+
       const res = await fetch(`${API_BASE_URL}/api-hrm/change-password/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${currentToken}`,
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          old_password: form.old_password,
+          new_password: form.new_password,
+        }),
       });
 
-      // ✅ Debug response
-      console.log('📥 Response status:', res.status);
-      console.log('📥 Response ok:', res.ok);
-      
       const data = await res.json();
-      console.log('📥 Response data:', data);
 
       if (!res.ok) {
-        // Log chi tiết lỗi
-        console.error('❌ Request failed:', {
-          status: res.status,
-          data: data,
-        });
-        
         if (data.old_password) {
           setErrors({ old_password: data.old_password[0] || 'Mật khẩu hiện tại không đúng' });
         } else if (data.new_password) {
@@ -176,35 +143,24 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClose, onSu
         } else if (data.detail) {
           setErrors({ general: data.detail });
         } else {
-          setErrors({ general: `Đổi mật khẩu thất bại (${res.status}). Chi tiết: ${JSON.stringify(data)}` });
+          setErrors({ general: `Đổi mật khẩu thất bại (${res.status})` });
         }
         return;
       }
 
-      console.log('✅ Password changed successfully');
-      alert('✅ Đổi mật khẩu thành công!');
-      
-      setForm({
-        old_password: '',
-        new_password: '',
-        confirm_password: '',
-      });
-      
       onSuccess();
-    } catch (error) {
-      console.error('💥 Exception:', error);
+    } catch {
       setErrors({ general: 'Có lỗi xảy ra. Vui lòng thử lại.' });
     } finally {
       setSubmitting(false);
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-xl shadow-2xl flex flex-col">
-        
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-lg font-bold text-gray-900">Đổi mật khẩu</h2>
             <p className="text-xs text-gray-500 mt-0.5">Cập nhật mật khẩu đăng nhập của bạn</p>
@@ -229,7 +185,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClose, onSu
           )}
 
           {/* Info banner */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 text-xs text-primary-700">
             <p className="font-medium mb-1">📌 Yêu cầu mật khẩu:</p>
             <ul className="list-disc list-inside space-y-0.5 text-xs">
               <li>Tối thiểu 8 ký tự</li>
@@ -274,14 +230,14 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClose, onSu
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+              className="btn-secondary disabled:opacity-50"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+              className="btn-primary disabled:opacity-50"
             >
               {submitting ? 'Đang xử lý...' : 'Đổi mật khẩu'}
             </button>
@@ -289,7 +245,8 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClose, onSu
         </form>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

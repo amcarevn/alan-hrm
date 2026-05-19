@@ -6,6 +6,17 @@ import { SelectBox } from '../components/LandingLayout/SelectBox';
 import ConfirmDialog from '../components/ConfirmDialog';
 import FeedbackDialog from '../components/FeedbackDialog';
 import FilePreviewModal from '../components/Common/FilePreviewModal';
+import {
+  PlusIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  XMarkIcon,
+  PaperClipIcon,
+  MegaphoneIcon,
+  CalendarDaysIcon,
+  UserIcon,
+  ArrowUpTrayIcon,
+} from '@heroicons/react/24/outline';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -21,7 +32,7 @@ const TYPE_FORM_OPTIONS = TYPE_OPTIONS.slice(1);
 const PRIORITY_OPTIONS = [
   { value: '', label: 'Tất cả mức độ' },
   { value: 'LOW', label: 'Thấp' },
-  { value: 'MEDIUM', label: 'Bình thường' },
+  { value: 'MEDIUM', label: 'Trung bình' },
   { value: 'HIGH', label: 'Cao' },
   { value: 'URGENT', label: 'Khẩn cấp' },
 ];
@@ -42,25 +53,25 @@ const CURRENT_OPTIONS = [
 
 const PRIORITY_BORDER: Record<string, string> = {
   URGENT: 'border-red-500',
-  HIGH: 'border-orange-400',
-  MEDIUM: 'border-blue-400',
-  LOW: 'border-gray-300',
+  HIGH:   'border-amber-400',
+  MEDIUM: 'border-primary-400',
+  LOW:    'border-gray-300',
 };
 
 const PRIORITY_BADGE: Record<string, string> = {
-  URGENT: 'bg-red-100 text-red-700',
-  HIGH: 'bg-orange-100 text-orange-700',
-  MEDIUM: 'bg-blue-100 text-blue-700',
-  LOW: 'bg-gray-100 text-gray-600',
+  URGENT: 'bg-red-100 text-red-600',
+  HIGH:   'bg-amber-100 text-amber-600',
+  MEDIUM: 'bg-emerald-100 text-emerald-600',
+  LOW:    'bg-gray-100 text-gray-600',
 };
 
 const TYPE_BADGE: Record<string, string> = {
-  ANNOUNCEMENT: 'bg-indigo-100 text-indigo-700',
-  DECISION: 'bg-purple-100 text-purple-700',
-  NOTICE: 'bg-teal-100 text-teal-700',
-  CIRCULAR: 'bg-cyan-100 text-cyan-700',
-  DIRECTIVE: 'bg-amber-100 text-amber-700',
-  OTHER: 'bg-gray-100 text-gray-600',
+  ANNOUNCEMENT: 'bg-primary-100 text-primary-600',
+  DECISION:     'bg-violet-100 text-violet-600',
+  NOTICE:       'bg-emerald-100 text-emerald-600',
+  CIRCULAR:     'bg-primary-100 text-primary-600',
+  DIRECTIVE:    'bg-amber-100 text-amber-600',
+  OTHER:        'bg-gray-100 text-gray-600',
 };
 
 const EMPTY_FORM = {
@@ -71,6 +82,15 @@ const EMPTY_FORM = {
   effective_from: '',
   effective_to: '',
   is_active: 'true',
+};
+
+const formatDate = (d: string | null) => {
+  if (!d) return '';
+  const date = new Date(d);
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -150,21 +170,18 @@ const AnnouncementList: React.FC = () => {
     }
   }, [search, filterType, filterPriority, filterStatus, filterCurrent]);
 
-  // Filters change → reset về page 1, fetch fresh
   useEffect(() => {
     setPage(1);
     const t = setTimeout(() => fetchPage(1, true), 300);
     return () => clearTimeout(t);
   }, [fetchPage]);
 
-  // Page > 1 → load more (append)
   useEffect(() => {
     if (page === 1) return;
     fetchPage(page, false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  // IntersectionObserver — trigger khi scroll đến sentinel
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
@@ -242,7 +259,6 @@ const AnnouncementList: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.content.trim() || !formData.effective_from) return;
-
     try {
       setSubmitting(true);
       const fd = new FormData();
@@ -305,93 +321,71 @@ const AnnouncementList: React.FC = () => {
     });
   };
 
-  const formatDate = (d: string | null) => {
-    if (!d) return '';
-    return new Date(d).toLocaleDateString('vi-VN');
-  };
-
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-5">
+
+      {/* ── Header ── */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bảng thông báo</h1>
-          <p className="text-gray-600 mt-2">Thông báo nội bộ từ ban lãnh đạo và phòng HCNS.</p>
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
+            <MegaphoneIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Bảng thông báo</h1>
+            <p className="text-xs text-gray-400 mt-0.5">Thông báo nội bộ từ ban lãnh đạo và phòng HCNS</p>
+          </div>
         </div>
         {canManage && (
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors text-sm font-medium"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+          <button onClick={openCreate} className="btn-primary flex items-center gap-2">
+            <PlusIcon className="h-4 w-4" />
             Đăng thông báo
           </button>
         )}
       </div>
 
-      {/* Filter */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* ── Bộ lọc ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Tìm kiếm</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Tìm kiếm</label>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm theo tiêu đề..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="relative w-full cursor-text rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-3 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
-          <SelectBox<string>
-            label="Loại thông báo"
-            value={filterType}
-            options={TYPE_OPTIONS}
-            onChange={setFilterType}
-          />
-          <SelectBox<string>
-            label="Mức độ ưu tiên"
-            value={filterPriority}
-            options={PRIORITY_OPTIONS}
-            onChange={setFilterPriority}
-          />
-          <SelectBox<string>
-            label="Trạng thái"
-            value={filterStatus}
-            options={STATUS_OPTIONS}
-            onChange={setFilterStatus}
-          />
-          <SelectBox<string>
-            label="Hiệu lực"
-            value={filterCurrent}
-            options={CURRENT_OPTIONS}
-            onChange={setFilterCurrent}
-          />
+          <SelectBox<string> label="Loại thông báo" value={filterType} options={TYPE_OPTIONS} onChange={setFilterType} />
+          <SelectBox<string> label="Mức độ ưu tiên" value={filterPriority} options={PRIORITY_OPTIONS} onChange={setFilterPriority} />
+          <SelectBox<string> label="Trạng thái" value={filterStatus} options={STATUS_OPTIONS} onChange={setFilterStatus} />
+          <SelectBox<string> label="Hiệu lực" value={filterCurrent} options={CURRENT_OPTIONS} onChange={setFilterCurrent} />
         </div>
       </div>
 
-      {/* Feed */}
+      {/* ── Feed ── */}
       {loading ? (
-        <div className="text-center py-16">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
-          <p className="mt-4 text-gray-600">Đang tải thông báo...</p>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto" />
+            <p className="mt-4 text-gray-600">Đang tải danh sách thông báo...</p>
+          </div>
         </div>
       ) : error ? (
-        <div className="text-center py-16">
-          <p className="text-red-600 mb-3">{error}</p>
-          <button onClick={() => fetchPage(1, true)} className="text-sm text-primary-600 hover:underline">Thử lại</button>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-16 text-center">
+          <p className="text-sm font-semibold text-red-500 mb-2">{error}</p>
+          <button onClick={() => fetchPage(1, true)} className="text-xs text-primary-600 hover:underline">Thử lại</button>
         </div>
       ) : announcements.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-16 text-center">
-          <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-          </svg>
-          <p className="text-gray-500 font-medium">Chưa có thông báo nào</p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-16 text-center">
+          <div className="h-12 w-12 bg-primary-100 text-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <MegaphoneIcon className="h-6 w-6" />
+          </div>
+          <p className="text-sm font-semibold text-gray-500">Chưa có thông báo nào</p>
           {canManage && (
-            <button onClick={openCreate} className="mt-3 text-sm text-primary-600 hover:underline">
+            <button onClick={openCreate} className="mt-3 text-xs text-primary-600 hover:underline">
               Đăng thông báo đầu tiên
             </button>
           )}
@@ -403,14 +397,17 @@ const AnnouncementList: React.FC = () => {
             const expired = !item.is_current;
             const borderColor = expired ? 'border-gray-300' : (PRIORITY_BORDER[item.priority] || 'border-gray-300');
             return (
-              <div key={item.id} className={`rounded-lg shadow border-l-4 ${borderColor} p-5 transition-all ${expired ? 'bg-gray-50 opacity-60' : 'bg-white'}`}>
-                {/* Card header */}
+              <div
+                key={item.id}
+                className={`rounded-2xl border border-gray-100 shadow-sm border-l-4 ${borderColor} p-5 transition-all ${expired ? 'bg-gray-50' : 'bg-white'}`}
+              >
+                {/* Card header — buttons luôn full opacity */}
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_BADGE[item.announcement_type] || 'bg-gray-100 text-gray-600'}`}>
+                  <div className={`flex items-center gap-2 flex-wrap ${expired ? 'opacity-50' : ''}`}>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${TYPE_BADGE[item.announcement_type] || 'bg-gray-100 text-gray-600'}`}>
                       {item.announcement_type_display || item.announcement_type}
                     </span>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${PRIORITY_BADGE[item.priority] || 'bg-gray-100 text-gray-600'}`}>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${PRIORITY_BADGE[item.priority] || 'bg-gray-100 text-gray-600'}`}>
                       {item.priority_display || item.priority}
                     </span>
                     {expired && (
@@ -419,77 +416,83 @@ const AnnouncementList: React.FC = () => {
                       </span>
                     )}
                     {!item.is_active && !expired && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">
                         Không hoạt động
                       </span>
                     )}
                   </div>
                   {canManage && (
-                    <div className="flex gap-1 flex-shrink-0">
+                    <div className="flex gap-1.5 flex-shrink-0">
                       <button
                         onClick={() => openEdit(item)}
-                        className="px-3 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-md transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors"
                       >
+                        <PencilSquareIcon className="h-3.5 w-3.5" />
                         Sửa
                       </button>
                       <button
                         onClick={() => setDeleteTarget(item)}
-                        className="px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 rounded-md transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors"
                       >
+                        <TrashIcon className="h-3.5 w-3.5" />
                         Xóa
                       </button>
                     </div>
                   )}
                 </div>
 
-                {/* Title */}
-                <h3
-                  className="mt-2 text-base font-semibold text-gray-900 cursor-pointer hover:text-primary-600 transition-colors"
-                  onClick={() => setDetailItem(item)}
-                >
-                  {item.title}
-                </h3>
-
-                {/* Content */}
-                <div className={`mt-2 text-sm text-gray-700 whitespace-pre-line ${!expanded ? 'line-clamp-3' : ''}`}>
-                  {item.content}
-                </div>
-                {item.content && item.content.length > 200 && (
-                  <button
-                    onClick={() => toggleExpand(item.id)}
-                    className="mt-1 text-xs text-primary-600 hover:underline"
+                {/* Title + Content + Footer — dim khi hết hiệu lực */}
+                <div className={expired ? 'opacity-50' : ''}>
+                  <h3
+                    className="mt-2.5 text-sm font-bold text-gray-900 cursor-pointer hover:text-primary-600 transition-colors"
+                    onClick={() => setDetailItem(item)}
                   >
-                    {expanded ? 'Thu gọn' : 'Xem thêm'}
-                  </button>
-                )}
+                    {item.title}
+                  </h3>
 
-                {/* Footer */}
-                <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span>📅 Hiệu lực: {formatDate(item.effective_from)}{item.effective_to ? ` – ${formatDate(item.effective_to)}` : ''}</span>
-                    {item.created_by_name && <span>👤 {item.created_by_name}</span>}
+                  <div className={`mt-1.5 text-sm text-gray-700 whitespace-pre-line leading-relaxed ${!expanded ? 'line-clamp-3' : ''}`}>
+                    {item.content}
                   </div>
-                  {item.attachments && item.attachments.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {item.attachments.map((att: any) => (
-                        <button
-                          key={att.id}
-                          type="button"
-                          onClick={() => setAttachmentPreview(att)}
-                          className="inline-flex items-center gap-1.5 text-xs text-primary-600 hover:underline"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                          </svg>
-                          {att.file_name}
-                        </button>
-                      ))}
-                    </div>
+                  {item.content && item.content.length > 200 && (
+                    <button onClick={() => toggleExpand(item.id)} className="mt-1 text-xs text-primary-600 hover:underline">
+                      {expanded ? 'Thu gọn' : 'Xem thêm'}
+                    </button>
                   )}
+
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-4 text-xs text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <CalendarDaysIcon className="h-3.5 w-3.5" />
+                        {formatDate(item.effective_from)}{item.effective_to ? ` – ${formatDate(item.effective_to)}` : ''}
+                      </span>
+                      {item.created_by_name && (
+                        <span className="flex items-center gap-1">
+                          <UserIcon className="h-3.5 w-3.5" />
+                          {item.created_by_name}
+                        </span>
+                      )}
+                    </div>
+                    {item.attachments && item.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {item.attachments.map((att: any) => (
+                          <button
+                            key={att.id}
+                            type="button"
+                            onClick={() => setAttachmentPreview(att)}
+                            className="inline-flex items-center gap-1.5 text-xs text-primary-600 hover:underline"
+                          >
+                            <PaperClipIcon className="h-3.5 w-3.5" />
+                            {att.file_name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );
           })}
+
           {/* Infinite scroll sentinel */}
           <div ref={sentinelRef} className="py-4 flex justify-center">
             {loadingMore && (
@@ -497,7 +500,7 @@ const AnnouncementList: React.FC = () => {
             )}
           </div>
           {!hasMore && announcements.length > 0 && (
-            <p className="text-center text-xs text-gray-400 py-4">Đã hiển thị tất cả thông báo</p>
+            <p className="text-center text-xs text-gray-400 py-2">Đã hiển thị tất cả thông báo</p>
           )}
         </div>
       )}
@@ -506,89 +509,90 @@ const AnnouncementList: React.FC = () => {
       {detailItem && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
-            <div className="fixed inset-0 bg-gray-900/60" onClick={() => setDetailItem(null)} />
-            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl">
+            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setDetailItem(null)} />
+            <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl">
               {/* Header */}
-              <div className={`flex items-start justify-between gap-3 px-6 py-4 border-b-4 ${PRIORITY_BORDER[detailItem.priority] || 'border-gray-300'} border-t border-x rounded-t-lg`}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_BADGE[detailItem.announcement_type] || 'bg-gray-100 text-gray-600'}`}>
-                      {detailItem.announcement_type_display || detailItem.announcement_type}
-                    </span>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${PRIORITY_BADGE[detailItem.priority] || 'bg-gray-100 text-gray-600'}`}>
-                      {detailItem.priority_display || detailItem.priority}
-                    </span>
-                    {!detailItem.is_active && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                        Không hoạt động
-                      </span>
-                    )}
+              <div className={`flex items-start justify-between gap-3 px-6 py-5 border-b-4 ${PRIORITY_BORDER[detailItem.priority] || 'border-gray-300'} border border-gray-100 rounded-t-2xl`}>
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <MegaphoneIcon className="h-5 w-5" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 leading-snug">{detailItem.title}</h3>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${TYPE_BADGE[detailItem.announcement_type] || 'bg-gray-100 text-gray-600'}`}>
+                        {detailItem.announcement_type_display || detailItem.announcement_type}
+                      </span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${PRIORITY_BADGE[detailItem.priority] || 'bg-gray-100 text-gray-600'}`}>
+                        {detailItem.priority_display || detailItem.priority}
+                      </span>
+                      {!detailItem.is_active && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">
+                          Không hoạt động
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base font-bold text-gray-900 leading-snug">{detailItem.title}</h3>
+                  </div>
                 </div>
-                <button onClick={() => setDetailItem(null)} className="flex-shrink-0 p-1.5 text-gray-400 hover:text-gray-600 rounded-md">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                <button onClick={() => setDetailItem(null)} className="flex-shrink-0 p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+                  <XMarkIcon className="h-5 w-5" />
                 </button>
               </div>
 
               {/* Body */}
               <div className="px-6 py-5 max-h-[60vh] overflow-y-auto space-y-4">
-                {/* Metadata grid */}
-                <div className="bg-gray-50 rounded-md px-4 py-3 text-sm space-y-2">
+                {/* Metadata */}
+                <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm space-y-2">
                   <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-gray-700">
                     <div>
-                      <span className="text-gray-500 font-medium">Mã thông báo:</span>{' '}
-                      <span className="font-mono text-xs bg-white border border-gray-200 px-1.5 py-0.5 rounded">{detailItem.announcement_code}</span>
+                      <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Mã thông báo</span>
+                      <p className="font-mono text-xs bg-white border border-gray-200 px-1.5 py-0.5 rounded-md mt-0.5 w-fit">{detailItem.announcement_code}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500 font-medium">Trạng thái:</span>{' '}
-                      {detailItem.is_active ? (
-                        detailItem.is_current
-                          ? <span className="text-green-600 font-medium">Đang hiệu lực</span>
-                          : <span className="text-yellow-600 font-medium">Hoạt động (ngoài khoảng)</span>
-                      ) : (
-                        <span className="text-gray-400">Không hoạt động</span>
-                      )}
+                      <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Trạng thái</span>
+                      <p className="mt-0.5">
+                        {detailItem.is_active ? (
+                          detailItem.is_current
+                            ? <span className="text-emerald-600 font-semibold text-xs">Đang hiệu lực</span>
+                            : <span className="text-amber-600 font-semibold text-xs">Hoạt động (ngoài khoảng)</span>
+                        ) : (
+                          <span className="text-gray-600 font-semibold text-xs">Không hoạt động</span>
+                        )}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-gray-500 font-medium">Ngày hiệu lực:</span>{' '}
-                      {formatDate(detailItem.effective_from)}
-                      {detailItem.effective_to ? ` – ${formatDate(detailItem.effective_to)}` : ' (không hết hạn)'}
+                      <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Ngày hiệu lực</span>
+                      <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                        {formatDate(detailItem.effective_from)}
+                        {detailItem.effective_to ? ` – ${formatDate(detailItem.effective_to)}` : ' (không hết hạn)'}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-gray-500 font-medium">Áp dụng cho:</span>{' '}
-                      {detailItem.apply_to_all ? 'Toàn công ty' : 'Phạm vi giới hạn'}
+                      <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Áp dụng cho</span>
+                      <p className="text-sm font-semibold text-gray-900 mt-0.5">{detailItem.apply_to_all ? 'Toàn công ty' : 'Phạm vi giới hạn'}</p>
                     </div>
                     {detailItem.created_by_name && (
                       <div>
-                        <span className="text-gray-500 font-medium">Người tạo:</span>{' '}
-                        {detailItem.created_by_name}
+                        <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Người tạo</span>
+                        <p className="text-sm font-semibold text-gray-900 mt-0.5">{detailItem.created_by_name}</p>
                       </div>
                     )}
                     {detailItem.approved_by_name && (
                       <div>
-                        <span className="text-gray-500 font-medium">Người phê duyệt:</span>{' '}
-                        {detailItem.approved_by_name}
+                        <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Người phê duyệt</span>
+                        <p className="text-sm font-semibold text-gray-900 mt-0.5">{detailItem.approved_by_name}</p>
                       </div>
                     )}
                     {detailItem.published_at && (
                       <div>
-                        <span className="text-gray-500 font-medium">Ngày công bố:</span>{' '}
-                        {formatDate(detailItem.published_at)}
+                        <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Ngày công bố</span>
+                        <p className="text-sm font-semibold text-gray-900 mt-0.5">{formatDate(detailItem.published_at)}</p>
                       </div>
                     )}
                     {detailItem.created_at && (
                       <div>
-                        <span className="text-gray-500 font-medium">Ngày tạo:</span>{' '}
-                        {formatDate(detailItem.created_at)}
-                      </div>
-                    )}
-                    {detailItem.updated_at && (
-                      <div>
-                        <span className="text-gray-500 font-medium">Cập nhật lần cuối:</span>{' '}
-                        {formatDate(detailItem.updated_at)}
+                        <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Ngày tạo</span>
+                        <p className="text-sm font-semibold text-gray-900 mt-0.5">{formatDate(detailItem.created_at)}</p>
                       </div>
                     )}
                   </div>
@@ -596,8 +600,8 @@ const AnnouncementList: React.FC = () => {
 
                 {/* Content */}
                 <div>
-                  <p className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Nội dung</p>
-                  <div className="text-sm text-gray-800 whitespace-pre-line leading-relaxed border border-gray-100 rounded-md px-4 py-3 bg-white">
+                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-2">Nội dung</p>
+                  <div className="text-sm text-gray-800 whitespace-pre-line leading-relaxed border border-gray-100 rounded-xl px-4 py-3 bg-white">
                     {detailItem.content}
                   </div>
                 </div>
@@ -605,18 +609,18 @@ const AnnouncementList: React.FC = () => {
                 {/* Attachments */}
                 {detailItem.attachments && detailItem.attachments.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">File đính kèm ({detailItem.attachments.length})</p>
+                    <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-2">
+                      File đính kèm ({detailItem.attachments.length})
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {detailItem.attachments.map((att: any) => (
                         <button
                           key={att.id}
                           type="button"
                           onClick={() => setAttachmentPreview(att)}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-sm hover:bg-blue-100 transition-colors"
+                          className="inline-flex items-center gap-2 px-3 py-2 bg-primary-50 text-primary-600 border border-primary-200 rounded-xl text-xs font-medium hover:bg-primary-100 transition-colors"
                         >
-                          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                          </svg>
+                          <PaperClipIcon className="h-3.5 w-3.5 flex-shrink-0" />
                           {att.file_name}
                         </button>
                       ))}
@@ -626,18 +630,19 @@ const AnnouncementList: React.FC = () => {
               </div>
 
               {/* Footer */}
-              <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200">
+              <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
                 {canManage && (
                   <button
                     onClick={() => { setDetailItem(null); openEdit(detailItem); }}
-                    className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-primary-600 bg-primary-50 border border-primary-200 rounded-xl hover:bg-primary-100 transition-colors"
                   >
+                    <PencilSquareIcon className="h-3.5 w-3.5" />
                     Chỉnh sửa
                   </button>
                 )}
                 <button
                   onClick={() => setDetailItem(null)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="btn-secondary text-xs px-4 py-2"
                 >
                   Đóng
                 </button>
@@ -651,30 +656,39 @@ const AnnouncementList: React.FC = () => {
       {showModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
-            <div className="fixed inset-0 bg-gray-900/60" onClick={closeModal} />
-            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl">
+            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={closeModal} />
+            <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl">
               {/* Modal header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {editingItem ? 'Chỉnh sửa thông báo' : 'Đăng thông báo mới'}
-                </h3>
-                <button onClick={closeModal} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-md">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <MegaphoneIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">
+                      {editingItem ? 'Chỉnh sửa thông báo' : 'Đăng thông báo mới'}
+                    </h3>
+                    <p className="text-xs text-gray-400">
+                      {editingItem ? 'Cập nhật nội dung thông báo' : 'Tạo thông báo nội bộ mới'}
+                    </p>
+                  </div>
+                </div>
+                <button onClick={closeModal} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+                  <XMarkIcon className="h-5 w-5" />
                 </button>
               </div>
 
               {/* Modal body */}
               <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+
                 {/* Title */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề *</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Tiêu đề <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field w-full"
                     placeholder="Nhập tiêu đề thông báo..."
                     required
                   />
@@ -682,12 +696,12 @@ const AnnouncementList: React.FC = () => {
 
                 {/* Content */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nội dung *</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Nội dung <span className="text-red-500">*</span></label>
                   <textarea
                     value={formData.content}
                     onChange={(e) => setFormData(p => ({ ...p, content: e.target.value }))}
                     rows={6}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field w-full resize-none"
                     placeholder="Nhập nội dung thông báo..."
                     required
                   />
@@ -695,18 +709,10 @@ const AnnouncementList: React.FC = () => {
 
                 {/* Type + Priority */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <SelectBox<string>
-                    label="Loại thông báo"
-                    value={formData.announcement_type}
-                    options={TYPE_FORM_OPTIONS}
-                    onChange={(v) => setFormData(p => ({ ...p, announcement_type: v }))}
-                  />
-                  <SelectBox<string>
-                    label="Mức độ ưu tiên"
-                    value={formData.priority}
-                    options={PRIORITY_FORM_OPTIONS}
-                    onChange={(v) => setFormData(p => ({ ...p, priority: v }))}
-                  />
+                  <SelectBox<string> label="Loại thông báo" value={formData.announcement_type} options={TYPE_FORM_OPTIONS}
+                    onChange={(v) => setFormData(p => ({ ...p, announcement_type: v }))} />
+                  <SelectBox<string> label="Mức độ ưu tiên" value={formData.priority} options={PRIORITY_FORM_OPTIONS}
+                    onChange={(v) => setFormData(p => ({ ...p, priority: v }))} />
                 </div>
 
                 {/* Status */}
@@ -723,78 +729,63 @@ const AnnouncementList: React.FC = () => {
                 {/* Dates */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày hiệu lực *</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Ngày hiệu lực <span className="text-red-500">*</span></label>
                     <input
                       type="date"
                       value={formData.effective_from}
                       onChange={(e) => setFormData(p => ({ ...p, effective_from: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="input-field w-full"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Ngày kết thúc</label>
                     <input
                       type="date"
                       value={formData.effective_to}
                       onChange={(e) => setFormData(p => ({ ...p, effective_to: e.target.value }))}
                       min={formData.effective_from || undefined}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="input-field w-full"
                     />
                   </div>
                 </div>
 
                 {/* File attachment */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium text-gray-700">Đính kèm file</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-semibold text-gray-700">Đính kèm file</label>
                     {(existingAttachments.length + attachmentFiles.length) > 0 && (
                       <span className="text-xs text-gray-400">{existingAttachments.length + attachmentFiles.length} file</span>
                     )}
                   </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
-                    multiple
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
+                  <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" multiple onChange={handleFileChange} className="hidden" />
 
-                  {/* Existing attachments (from server) */}
+                  {/* Existing attachments */}
                   {existingAttachments.length > 0 && (
-                    <div className="space-y-1 mb-2">
+                    <div className="space-y-1.5 mb-2">
                       {existingAttachments.map(att => (
-                        <div key={att.id} className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm">
-                          <svg className="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                          </svg>
-                          <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-primary-600 hover:underline">
+                        <div key={att.id} className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                          <PaperClipIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-primary-600 hover:underline text-xs">
                             {att.file_name}
                           </a>
-                          <button type="button" onClick={() => removeExistingAttachment(att.id)} className="text-gray-400 hover:text-red-500" title="Xóa file">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                          <button type="button" onClick={() => removeExistingAttachment(att.id)} className="text-gray-400 hover:text-red-500 transition-colors">
+                            <XMarkIcon className="h-4 w-4" />
                           </button>
                         </div>
                       ))}
                     </div>
                   )}
 
-                  {/* New files selected */}
+                  {/* New files */}
                   {attachmentFiles.length > 0 && (
-                    <div className="space-y-1 mb-2">
+                    <div className="space-y-1.5 mb-2">
                       {attachmentFiles.map((f, i) => (
-                        <div key={i} className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md text-sm">
-                          <svg className="w-4 h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                          </svg>
-                          <span className="flex-1 truncate text-blue-700">{f.name}</span>
-                          <button type="button" onClick={() => removeNewFile(i)} className="text-gray-400 hover:text-red-500">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                        <div key={i} className="flex items-center gap-2 px-3 py-2 bg-primary-50 border border-primary-200 rounded-xl text-sm">
+                          <PaperClipIcon className="h-4 w-4 text-primary-500 flex-shrink-0" />
+                          <span className="flex-1 truncate text-primary-700 text-xs">{f.name}</span>
+                          <button type="button" onClick={() => removeNewFile(i)} className="text-gray-400 hover:text-red-500 transition-colors">
+                            <XMarkIcon className="h-4 w-4" />
                           </button>
                         </div>
                       ))}
@@ -804,30 +795,20 @@ const AnnouncementList: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-md text-sm text-gray-500 hover:border-primary-400 hover:text-primary-600 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-200 rounded-xl text-xs text-gray-500 hover:border-primary-400 hover:text-primary-600 transition-colors"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
+                    <ArrowUpTrayIcon className="h-4 w-4" />
                     Thêm file đính kèm
                   </button>
-                  <p className="text-xs text-gray-400 mt-1">PDF, DOC, DOCX, XLS, XLSX, PNG, JPG · Tối đa 10MB/file</p>
+                  <p className="text-xs text-gray-400 mt-1.5">PDF, DOC, DOCX, XLS, XLSX, PNG, JPG · Tối đa 10MB/file</p>
                 </div>
 
                 {/* Actions */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                  >
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                  <button type="button" onClick={closeModal} className="btn-secondary text-xs px-4 py-2">
                     Hủy
                   </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50"
-                  >
+                  <button type="submit" disabled={submitting} className="btn-primary text-xs px-4 py-2 disabled:opacity-50">
                     {submitting ? 'Đang lưu...' : editingItem ? 'Lưu thay đổi' : 'Đăng thông báo'}
                   </button>
                 </div>

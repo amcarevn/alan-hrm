@@ -51,6 +51,7 @@ type CreateOnboardingForm = {
   gender: 'M' | 'F' | 'O';
   candidate_email: string;
   direct_manager_id: string;
+  company_unit?: string | null;
 };
 
 type EmployeeOption = {
@@ -71,9 +72,9 @@ const getProgressPercentage = (value?: number | string | null): number => {
 const getStatusBadge = (status?: string | null) => {
   const map: Record<string, { label: string; color: string }> = {
     DRAFT: { label: 'Nháp', color: 'bg-gray-100 text-gray-700' },
-    PENDING: { label: 'Chờ xử lý', color: 'bg-yellow-100 text-yellow-700' },
-    IN_PROGRESS: { label: 'Đang thực hiện', color: 'bg-blue-100 text-blue-700' },
-    COMPLETED: { label: 'Hoàn thành', color: 'bg-green-100 text-green-700' },
+    PENDING: { label: 'Chờ xử lý', color: 'bg-amber-100 text-amber-600' },
+    IN_PROGRESS: { label: 'Đang thực hiện', color: 'bg-primary-100 text-primary-600' },
+    COMPLETED: { label: 'Hoàn thành', color: 'bg-emerald-100 text-emerald-600' },
     CANCELLED: { label: 'Đã hủy', color: 'bg-red-100 text-red-700' },
   };
   if (!status) return null;
@@ -99,12 +100,15 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
   const [submitting, setSubmitting] = useState(false);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(true);
+  const [companyUnits, setCompanyUnits] = useState<{ id: number; name: string; prefix_code?: string; code?: string }[]>([]);
+  const [loadingUnits, setLoadingUnits] = useState(false);
 
   const [form, setForm] = useState<CreateOnboardingForm>({
     candidate_name: '',
     gender: 'M',
     candidate_email: '',
     direct_manager_id: '',
+    company_unit: null,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof CreateOnboardingForm, string>>>({});
 
@@ -198,7 +202,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
     input: React.ReactNode
   ) => (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
+      <label className="block text-xs font-medium text-gray-500 mb-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       {input}
@@ -208,12 +212,12 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-              <UserPlusIcon className="w-4 h-4 text-blue-600" />
+            <div className="w-8 h-8 bg-primary-100 rounded-xl flex items-center justify-center">
+              <UserPlusIcon className="w-4 h-4 text-primary-600" />
             </div>
             <div>
               <h2 className="text-base font-bold text-gray-900">Tạo quy trình onboarding</h2>
@@ -227,7 +231,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
 
         {/* Body */}
         <div className="px-6 py-5 space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+          <div className="bg-primary-50 border border-primary-200 rounded-xl p-3 text-xs text-primary-700">
             <p className="font-medium mb-1">📋 Quy trình 2 bước:</p>
             <ol className="list-decimal list-inside space-y-0.5">
               <li>HR điền thông tin cơ bản bên dưới → Tạo quy trình</li>
@@ -239,7 +243,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
             <input
               type="text"
               maxLength={50}
-              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.candidate_name ? 'border-red-400' : 'border-gray-300'}`}
+              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${errors.candidate_name ? 'border-red-400' : 'border-gray-200'}`}
               placeholder="Nguyễn Văn A"
               value={form.candidate_name}
               onChange={(e) => {
@@ -269,7 +273,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
             <input
               type="email"
               maxLength={100}
-              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.candidate_email ? 'border-red-400' : 'border-gray-300'}`}
+              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${errors.candidate_email ? 'border-red-400' : 'border-gray-200'}`}
               placeholder="example@email.com"
               value={form.candidate_email}
               onChange={(e) => {
@@ -280,6 +284,21 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
               }}
             />
           )}
+
+          {field('company_unit', 'Đơn vị làm việc', true,
+            <SelectBox
+              label=""
+              value={form.company_unit}
+              options={companyUnits.map((u) => ({
+                value: String(u.id),
+                label: `${u.name} (${u.prefix_code || u.code || 'N/A'})`
+              }))}
+              onChange={(v) => setForm({ ...form, company_unit: v })}
+              searchable
+              placeholder={loadingUnits ? 'Đang tải...' : 'Chọn đơn vị làm việc'}
+            />
+          )}
+
 
           {field('direct_manager_id', 'Quản lý trực tiếp', false,
             <SelectBox
@@ -294,11 +313,11 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between items-center px-6 py-4 border-t bg-gray-50 rounded-b-lg">
+        <div className="flex justify-between items-center px-6 py-4 border-t bg-gray-50 rounded-b-2xl">
           <button
             onClick={onClose}
             disabled={submitting}
-            className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+            className="btn-secondary"
           >
             Hủy
           </button>
@@ -310,7 +329,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
               <button
                 onClick={handleSubmit}
                 disabled={submitting || !isFormValid}
-                className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-colors"
+                className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {submitting && <ArrowPathIcon className="w-4 h-4 animate-spin" />}
                 {submitting ? 'Đang tạo...' : 'Tạo quy trình'}
@@ -341,6 +360,7 @@ const Onboarding: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [tokenLoading, setTokenLoading] = useState<number | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState<string>('');
@@ -451,6 +471,19 @@ const Onboarding: React.FC = () => {
     }
   };
 
+  const handleSyncLegacyTasks = async () => {
+    setSyncLoading(true);
+    try {
+      await (onboardingService as any).syncLegacyTasks?.();
+      await fetchOnboardings();
+    } catch (e) {
+      console.error(e);
+      alert('Đồng bộ thất bại. Vui lòng thử lại.');
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
   const handleCopyLink = async (item: OnboardingItem) => {
     const url = item.employee_form_url;
     if (!url) { alert('Chưa có link. Hãy tạo link trước.'); return; }
@@ -468,7 +501,7 @@ const Onboarding: React.FC = () => {
       <button
         onClick={() => handleResendWelcomeEmail(item)}
         disabled={isLoading}
-        className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 disabled:opacity-50"
+        className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-violet-50 text-violet-600 border border-violet-200 hover:bg-violet-100 disabled:opacity-50"
         title="Gửi lại email chào mừng với thông tin đăng nhập"
       >
         {isLoading ? (
@@ -484,7 +517,7 @@ const Onboarding: React.FC = () => {
     if (item.task1_status === 'COMPLETED') {
       return (
         <div className="flex flex-col gap-1.5">
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-600">
             <CheckCircleIcon className="w-3 h-3" /> Đã điền thông tin
           </span>
           {resendEmailButton}
@@ -496,20 +529,32 @@ const Onboarding: React.FC = () => {
     if (item.token_status === 'active') {
       return (
         <div className="flex flex-col gap-1.5">
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-600">
             <ClockIcon className="w-3 h-3" /> Chờ nhân viên điền
           </span>
           {resendEmailButton}
           <button
             onClick={() => handleCopyLink(item)}
             disabled={isLoading}
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 disabled:opacity-50"
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 disabled:opacity-50"
           >
             <ClipboardDocumentIcon className="w-3 h-3" /> Copy link
           </button>
         </div>
       );
     }
+
+    const generateButton = (
+      <button
+        onClick={() => handleGenerateToken(item)}
+        disabled={isLoading}
+        className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-primary-50 text-primary-600 border border-primary-200 hover:bg-primary-100 disabled:opacity-50"
+      >
+        {isLoading ? <ArrowPathIcon className="w-3 h-3 animate-spin" /> : <LinkIcon className="w-3 h-3" />}
+        {item.token_status === 'expired' ? 'Tạo lại link' : 'Tạo link'}
+      </button>
+    );
+
 
     // 3. Link hết hạn
     if (item.token_status === 'expired') {
@@ -552,51 +597,56 @@ const Onboarding: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Onboard nhân sự</h1>
-        <p className="text-gray-600 mt-2">
-          Quản lý quy trình tuyển dụng và onboarding nhân viên mới.
-        </p>
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
+            <UserPlusIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Onboard nhân sự</h1>
+            <p className="text-sm text-gray-400 mt-0.5">Quản lý quy trình tuyển dụng và onboarding nhân viên mới.</p>
+          </div>
+        </div>
       </div>
 
       {/* Legend */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center shrink-0">
+        <div className="flex items-start gap-3 bg-primary-50 border border-primary-100 rounded-2xl p-4">
+          <div className="w-8 h-8 bg-primary-600 rounded-xl flex items-center justify-center shrink-0">
             <span className="text-white text-sm font-bold">HR</span>
           </div>
           <div>
-            <p className="font-semibold text-blue-900 text-sm">Luồng HR</p>
-            <p className="text-blue-700 text-xs mt-0.5">
+            <p className="font-semibold text-gray-900 text-sm">Luồng HR</p>
+            <p className="text-gray-500 text-xs mt-0.5">
               Điền thông tin cơ bản → Tạo quy trình → Tạo link → Gửi email cho nhân viên
             </p>
           </div>
         </div>
-        <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center shrink-0">
+        <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+          <div className="w-8 h-8 bg-emerald-600 rounded-xl flex items-center justify-center shrink-0">
             <span className="text-white text-sm font-bold">NV</span>
           </div>
           <div>
-            <p className="font-semibold text-green-900 text-sm">Luồng Nhân viên mới</p>
-            <p className="text-green-700 text-xs mt-0.5">
+            <p className="font-semibold text-gray-900 text-sm">Luồng Nhân viên mới</p>
+            <p className="text-gray-500 text-xs mt-0.5">
               Nhận link → Không cần đăng nhập → Tự điền đầy đủ thông tin cá nhân
             </p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         {/* Table header */}
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Quy trình onboarding</h2>
-            <p className="text-gray-500 text-sm">
+            <h2 className="text-sm font-bold text-gray-900">Quy trình onboarding</h2>
+            <p className="text-xs text-gray-400">
               Tổng: {totalCount} ứng viên đang trong quá trình onboarding
             </p>
           </div>
           {isHR && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm flex items-center gap-2"
+              className="btn-primary flex items-center gap-2"
             >
               <UserPlusIcon className="w-4 h-4" />
               Tạo quy trình mới
@@ -651,7 +701,7 @@ const Onboarding: React.FC = () => {
                 value={filterSearch}
                 onChange={(e) => { setFilterSearch(e.target.value); }}
                 placeholder="Tìm tên hoặc mã NV..."
-                className="border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-52"
+                className="input-field pl-8 w-52"
               />
               <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -662,16 +712,28 @@ const Onboarding: React.FC = () => {
           {(filterStatus !== '' || filterMonth > 0 || filterSearch !== '') && (
             <button
               onClick={() => { setFilterStatus(''); setFilterMonth(0); setFilterSearch(''); setCurrentPage(1); }}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 text-gray-600"
+              className="btn-secondary"
             >
               Xóa bộ lọc
+            </button>
+          )}
+
+          {isHR && (
+            <button
+              onClick={handleSyncLegacyTasks}
+              disabled={syncLoading}
+              className="ml-auto px-3 py-2 text-sm bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-700 rounded-xl flex items-center gap-1.5 disabled:opacity-50 font-medium transition-all active:scale-95"
+              title="Tự động bổ sung 4 task mặc định cho người cũ và khóa Task 1 nếu đã duyệt."
+            >
+              <ArrowPathIcon className={`w-4 h-4 ${syncLoading ? 'animate-spin' : ''}`} />
+              {syncLoading ? 'Đang xử lý...' : 'Đồng bộ người cũ'}
             </button>
           )}
 
           <button
             onClick={() => fetchOnboardings()}
             disabled={loading}
-            className="ml-auto px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 text-gray-600 flex items-center gap-1.5 disabled:opacity-50"
+            className={`${isHR ? 'ml-0' : 'ml-auto'} btn-secondary flex items-center gap-1.5 disabled:opacity-50`}
           >
             <ArrowPathIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Làm mới
@@ -679,13 +741,13 @@ const Onboarding: React.FC = () => {
         </div>
 
         {/* Table */}
-        <div className="border rounded-lg overflow-x-auto w-full">
+        <div className="border border-gray-100 rounded-2xl overflow-x-auto w-full">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 {/* ✅ Đổi "Mã onboarding" → "Mã NV" */}
                 {['Mã NV', 'Ứng viên', 'Vị trí', 'Phòng ban', 'Ngày bắt đầu', 'Trạng thái', 'Tiến độ', 'Link nhân viên', 'Thao tác'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     {h}
                   </th>
                 ))}
@@ -694,7 +756,12 @@ const Onboarding: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-gray-500">Đang tải...</td>
+                  <td colSpan={9} className="px-4 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
+                      <p className="text-sm text-gray-500">Đang tải danh sách onboarding...</p>
+                    </div>
+                  </td>
                 </tr>
               ) : onboardings.length === 0 ? (
                 <tr>
@@ -735,7 +802,7 @@ const Onboarding: React.FC = () => {
                         <div className="flex items-center gap-2 min-w-[80px]">
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
                             <div
-                              className="bg-blue-600 h-2 rounded-full transition-all"
+                              className="bg-primary-500 h-2 rounded-full transition-all"
                               style={{ width: `${progress}%` }}
                             />
                           </div>
@@ -749,7 +816,7 @@ const Onboarding: React.FC = () => {
                         <div className="flex gap-2">
                           <button
                             onClick={() => navigate(`/dashboard/onboarding/${item.id}`)}
-                            className="px-2.5 py-1 text-xs font-medium text-indigo-700 bg-white border border-indigo-300 rounded hover:bg-indigo-50"
+                            className="px-2.5 py-1 text-xs font-medium text-primary-600 bg-white border border-primary-200 rounded-lg hover:bg-primary-50"
                           >
                             Xem chi tiết
                           </button>
@@ -776,8 +843,8 @@ const Onboarding: React.FC = () => {
         </div>
 
         {/* Onboarding steps info */}
-        <div className="bg-gray-50 p-6 rounded-lg">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Các bước onboarding tiêu chuẩn</h3>
+        <div className="bg-gray-50 p-5 rounded-2xl">
+          <h3 className="text-sm font-bold text-gray-900 mb-4">Các bước onboarding tiêu chuẩn</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { num: 1, title: 'Đào tạo', desc: 'Đào tạo nội quy, hội nhập nhân sự' },
@@ -785,14 +852,14 @@ const Onboarding: React.FC = () => {
               { num: 3, title: 'Tiếp nhận hồ sơ', desc: 'Kiểm tra và xác nhận hồ sơ ứng viên' },
               { num: 4, title: 'Bàn giao công việc', desc: 'Bàn giao thiết bị và công việc chính thức' },
             ].map((step) => (
-              <div key={step.num} className="bg-white p-4 rounded-lg border">
+              <div key={step.num} className="bg-white p-4 rounded-2xl border border-gray-100">
                 <div className="flex items-center mb-2">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                    <span className="text-blue-600 font-bold text-sm">{step.num}</span>
+                  <div className="w-8 h-8 bg-primary-100 rounded-xl flex items-center justify-center mr-3">
+                    <span className="text-primary-600 font-bold text-sm">{step.num}</span>
                   </div>
                   <h4 className="font-medium text-gray-900 text-sm">{step.title}</h4>
                 </div>
-                <p className="text-gray-600 text-xs">{step.desc}</p>
+                <p className="text-gray-400 text-xs">{step.desc}</p>
               </div>
             ))}
           </div>

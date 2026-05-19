@@ -14,6 +14,7 @@ import {
   OfferCreateData,
   Offer,
 } from '../../services/recruitment.service';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
 const INTERVIEW_TYPE_OPTIONS: { value: InterviewType; label: string }[] = [
   { value: 'PHONE', label: 'Điện thoại' },
@@ -25,15 +26,15 @@ const INTERVIEW_TYPE_OPTIONS: { value: InterviewType; label: string }[] = [
 ];
 
 const STATUS_COLORS: Record<InterviewStatus, string> = {
-  SCHEDULED: 'bg-blue-100 text-blue-800',
-  DONE: 'bg-green-100 text-green-800',
+  SCHEDULED: 'bg-primary-100 text-primary-800',
+  DONE: 'bg-emerald-100 text-emerald-800',
   CANCELLED: 'bg-red-100 text-red-800',
-  NO_SHOW: 'bg-yellow-100 text-yellow-800',
+  NO_SHOW: 'bg-amber-100 text-amber-800',
 };
 
 const OFFER_STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  ACCEPTED: 'bg-green-100 text-green-800',
+  PENDING: 'bg-amber-100 text-amber-800',
+  ACCEPTED: 'bg-emerald-100 text-emerald-800',
   REJECTED: 'bg-red-100 text-red-800',
   EXPIRED: 'bg-gray-100 text-gray-800',
 };
@@ -115,7 +116,7 @@ const ScoreSelect: React.FC<{
     <select
       value={value}
       onChange={e => onChange(e.target.value)}
-      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+      className="input-field"
     >
       {[1, 2, 3, 4, 5].map(n => (
         <option key={n} value={n}>
@@ -134,6 +135,12 @@ const RecruitmentInterviews: React.FC = () => {
   const [loadingInterviews, setLoadingInterviews] = useState(true);
   const [interviewError, setInterviewError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Confirm dialog
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState('');
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmCallback, setConfirmCallback] = useState<(() => void) | null>(null);
 
   // Create interview modal
   const [showInterviewModal, setShowInterviewModal] = useState(false);
@@ -234,23 +241,41 @@ const RecruitmentInterviews: React.FC = () => {
     }
   };
 
-  const handleMarkDone = async (id: number) => {
-    try {
-      await recruitmentService.markInterviewDone(id);
-      await fetchInterviews();
-    } catch {
-      alert('Thao tác thất bại');
-    }
+  const openConfirm = (title: string, message: string, cb: () => void) => {
+    setConfirmTitle(title);
+    setConfirmMessage(message);
+    setConfirmCallback(() => cb);
+    setConfirmOpen(true);
   };
 
-  const handleCancelInterview = async (id: number) => {
-    if (!confirm('Hủy lịch phỏng vấn này?')) return;
-    try {
-      await recruitmentService.cancelInterview(id);
-      await fetchInterviews();
-    } catch {
-      alert('Hủy thất bại');
-    }
+  const handleMarkDone = (id: number) => {
+    openConfirm(
+      'Hoàn thành phỏng vấn',
+      'Đánh dấu buổi phỏng vấn này là đã hoàn thành?',
+      async () => {
+        try {
+          await recruitmentService.markInterviewDone(id);
+          await fetchInterviews();
+        } catch {
+          // silent
+        }
+      }
+    );
+  };
+
+  const handleCancelInterview = (id: number) => {
+    openConfirm(
+      'Hủy lịch phỏng vấn',
+      'Bạn có chắc muốn hủy lịch phỏng vấn này không?',
+      async () => {
+        try {
+          await recruitmentService.cancelInterview(id);
+          await fetchInterviews();
+        } catch {
+          // silent
+        }
+      }
+    );
   };
 
   const handleCreateEval = async (e: React.FormEvent) => {
@@ -317,7 +342,7 @@ const RecruitmentInterviews: React.FC = () => {
       setAcceptOnboardDate('');
       await fetchOffers();
     } catch {
-      alert('Thao tác thất bại');
+      // silent
     }
   };
 
@@ -329,7 +354,7 @@ const RecruitmentInterviews: React.FC = () => {
       setRejectNote('');
       await fetchOffers();
     } catch {
-      alert('Thao tác thất bại');
+      // silent
     }
   };
 
@@ -337,8 +362,8 @@ const RecruitmentInterviews: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Phỏng vấn & Offer</h1>
-          <p className="text-gray-600 mt-2">Quản lý lịch phỏng vấn, đánh giá và offer letter</p>
+          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Phỏng vấn & Offer</h1>
+          <p className="text-gray-500 mt-1 text-sm">Quản lý lịch phỏng vấn, đánh giá và offer letter</p>
         </div>
         {activeTab === 'interviews' ? (
           <button
@@ -347,7 +372,7 @@ const RecruitmentInterviews: React.FC = () => {
               setInterviewFormError(null);
               setShowInterviewModal(true);
             }}
-            className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors text-sm font-medium"
+            className="btn-primary flex items-center gap-2"
           >
             <PlusIcon className="h-4 w-4" />
             Lên lịch phỏng vấn
@@ -359,7 +384,7 @@ const RecruitmentInterviews: React.FC = () => {
               setOfferFormError(null);
               setShowOfferModal(true);
             }}
-            className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors text-sm font-medium"
+            className="btn-primary flex items-center gap-2"
           >
             <PlusIcon className="h-4 w-4" />
             Tạo offer
@@ -387,7 +412,7 @@ const RecruitmentInterviews: React.FC = () => {
       {/* Interviews Tab */}
       {activeTab === 'interviews' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-lg shadow p-4">
+          <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
             <div className="flex gap-2 flex-wrap">
               {[
                 { value: 'all', label: 'Tất cả' },
@@ -399,10 +424,10 @@ const RecruitmentInterviews: React.FC = () => {
                 <button
                   key={opt.value}
                   onClick={() => setStatusFilter(opt.value)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${
                     statusFilter === opt.value
                       ? 'bg-primary-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
                   }`}
                 >
                   {opt.label}
@@ -411,14 +436,14 @@ const RecruitmentInterviews: React.FC = () => {
             </div>
           </div>
           {interviewError && (
-            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-2xl mb-4 text-sm">
               {interviewError}
             </div>
           )}
           {loadingInterviews ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => (
-                <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+                <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />
               ))}
             </div>
           ) : interviews.length === 0 ? (
@@ -426,60 +451,50 @@ const RecruitmentInterviews: React.FC = () => {
               <p>Chưa có lịch phỏng vấn nào</p>
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table className="min-w-full divide-y divide-gray-100">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Ứng viên
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Loại
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Thời gian
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Địa điểm
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Trạng thái
-                    </th>
+                    <th className="table-header">Ứng viên</th>
+                    <th className="table-header">Loại</th>
+                    <th className="table-header">Thời gian</th>
+                    <th className="table-header">Địa điểm</th>
+                    <th className="table-header">Trạng thái</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-100">
                   {interviews.map(iv => (
                     <tr key={iv.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3">
+                      <td className="table-cell">
                         <p className="text-sm font-medium text-gray-900">{iv.candidate_name}</p>
                         <p className="text-xs text-gray-400">{iv.job_title}</p>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
+                      <td className="table-cell text-sm text-gray-700">
                         {iv.interview_type_display}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
+                      <td className="table-cell text-sm text-gray-700">
                         {new Date(iv.scheduled_at).toLocaleString('vi-VN')}
                         <p className="text-xs text-gray-400">{iv.duration_minutes} phút</p>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate">
+                      <td className="table-cell text-sm text-gray-700 max-w-xs truncate">
                         {iv.location || '—'}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="table-cell">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[iv.status]}`}
                         >
                           {iv.status_display}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="table-cell text-right">
                         <div className="flex items-center gap-2 justify-end">
                           {iv.status === 'SCHEDULED' && (
                             <>
                               <button
                                 onClick={() => handleMarkDone(iv.id)}
-                                className="text-gray-400 hover:text-green-600 text-xs font-medium transition-colors"
+                                className="text-gray-400 hover:text-emerald-600 text-xs font-medium transition-colors"
                                 title="Đánh dấu hoàn thành"
                               >
                                 Hoàn thành
@@ -500,7 +515,7 @@ const RecruitmentInterviews: React.FC = () => {
                                 setEvalForm(EMPTY_EVAL_FORM);
                                 setEvalError(null);
                               }}
-                              className="text-gray-400 hover:text-purple-600 text-xs font-medium transition-colors"
+                              className="text-gray-400 hover:text-violet-600 text-xs font-medium transition-colors"
                               title="Đánh giá"
                             >
                               Đánh giá
@@ -522,14 +537,14 @@ const RecruitmentInterviews: React.FC = () => {
       {activeTab === 'offers' && (
         <div className="space-y-4">
           {offerError && (
-            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-2xl mb-4 text-sm">
               {offerError}
             </div>
           )}
           {loadingOffers ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => (
-                <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+                <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />
               ))}
             </div>
           ) : offers.length === 0 ? (
@@ -537,43 +552,37 @@ const RecruitmentInterviews: React.FC = () => {
               <p>Chưa có offer nào</p>
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table className="min-w-full divide-y divide-gray-100">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="table-header">
                       Ứng viên
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="table-header">
                       Vị trí
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Lương đề xuất
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Onboard dự kiến
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Trạng thái
-                    </th>
+                    <th className="table-header">Lương đề xuất</th>
+                    <th className="table-header">Onboard dự kiến</th>
+                    <th className="table-header">Trạng thái</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-100">
                   {offers.map(offer => (
                     <tr key={offer.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3">
+                      <td className="table-cell">
                         <p className="text-sm font-medium text-gray-900">{offer.candidate_name}</p>
                         <p className="text-xs text-gray-400">{offer.job_title}</p>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
+                      <td className="table-cell text-sm text-gray-700">
                         {offer.position_title || '—'}
                         <p className="text-xs text-gray-400">
                           Thử việc {offer.probation_months} tháng
                         </p>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
+                      <td className="table-cell text-sm text-gray-700">
                         {parseInt(offer.proposed_salary).toLocaleString('vi-VN')}đ
                         {offer.allowances && parseInt(offer.allowances) > 0 && (
                           <p className="text-xs text-gray-400">
@@ -581,19 +590,19 @@ const RecruitmentInterviews: React.FC = () => {
                           </p>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
+                      <td className="table-cell text-sm text-gray-700">
                         {offer.expected_onboard_date
                           ? new Date(offer.expected_onboard_date).toLocaleDateString('vi-VN')
                           : '—'}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="table-cell">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${OFFER_STATUS_COLORS[offer.status] ?? 'bg-gray-100 text-gray-800'}`}
                         >
                           {offer.status_display}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="table-cell text-right">
                         {offer.status === 'PENDING' && (
                           <div className="flex items-center gap-2 justify-end">
                             <button
@@ -601,7 +610,7 @@ const RecruitmentInterviews: React.FC = () => {
                                 setAcceptOfferId(offer.id);
                                 setAcceptOnboardDate('');
                               }}
-                              className="text-gray-400 hover:text-green-600 text-xs font-medium transition-colors"
+                              className="text-gray-400 hover:text-emerald-600 text-xs font-medium transition-colors"
                             >
                               Chấp nhận
                             </button>
@@ -630,8 +639,8 @@ const RecruitmentInterviews: React.FC = () => {
       {/* Create Interview Modal */}
       {showInterviewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-gray-900">Lên lịch phỏng vấn</h2>
               <button
                 onClick={() => setShowInterviewModal(false)}
@@ -651,7 +660,7 @@ const RecruitmentInterviews: React.FC = () => {
                   onChange={e =>
                     setInterviewForm(f => ({ ...f, application: e.target.value }))
                   }
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -665,7 +674,7 @@ const RecruitmentInterviews: React.FC = () => {
                         interview_type: e.target.value as InterviewType,
                       }))
                     }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field"
                   >
                     {INTERVIEW_TYPE_OPTIONS.map(o => (
                       <option key={o.value} value={o.value}>
@@ -684,7 +693,7 @@ const RecruitmentInterviews: React.FC = () => {
                     onChange={e =>
                       setInterviewForm(f => ({ ...f, duration_minutes: e.target.value }))
                     }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field"
                   />
                 </div>
               </div>
@@ -698,7 +707,7 @@ const RecruitmentInterviews: React.FC = () => {
                   onChange={e =>
                     setInterviewForm(f => ({ ...f, scheduled_at: e.target.value }))
                   }
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
               </div>
               <div>
@@ -709,7 +718,7 @@ const RecruitmentInterviews: React.FC = () => {
                   onChange={e =>
                     setInterviewForm(f => ({ ...f, location: e.target.value }))
                   }
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                   placeholder="VD: Phòng họp A3 hoặc link meet..."
                 />
               </div>
@@ -721,24 +730,24 @@ const RecruitmentInterviews: React.FC = () => {
                   onChange={e =>
                     setInterviewForm(f => ({ ...f, notes: e.target.value }))
                   }
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
               </div>
               {interviewFormError && (
                 <p className="text-sm text-red-600">{interviewFormError}</p>
               )}
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex justify-end gap-3 pt-2 pb-2">
                 <button
                   type="button"
                   onClick={() => setShowInterviewModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  className="btn-secondary"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={savingInterview}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+                  className="btn-primary flex items-center gap-2 disabled:opacity-50"
                 >
                   {savingInterview ? (
                     <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -756,8 +765,8 @@ const RecruitmentInterviews: React.FC = () => {
       {/* Evaluation Modal */}
       {evalInterviewId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl">
               <h2 className="text-lg font-semibold text-gray-900">Đánh giá phỏng vấn</h2>
               <button
                 onClick={() => setEvalInterviewId(null)}
@@ -795,7 +804,7 @@ const RecruitmentInterviews: React.FC = () => {
                   rows={2}
                   value={evalForm.strengths}
                   onChange={e => setEvalForm(f => ({ ...f, strengths: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
               </div>
               <div>
@@ -804,7 +813,7 @@ const RecruitmentInterviews: React.FC = () => {
                   rows={2}
                   value={evalForm.weaknesses}
                   onChange={e => setEvalForm(f => ({ ...f, weaknesses: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
               </div>
               <div>
@@ -813,7 +822,7 @@ const RecruitmentInterviews: React.FC = () => {
                   rows={2}
                   value={evalForm.recommendation}
                   onChange={e => setEvalForm(f => ({ ...f, recommendation: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -829,18 +838,18 @@ const RecruitmentInterviews: React.FC = () => {
                 </label>
               </div>
               {evalError && <p className="text-sm text-red-600">{evalError}</p>}
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex justify-end gap-3 pt-2 pb-2">
                 <button
                   type="button"
                   onClick={() => setEvalInterviewId(null)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  className="btn-secondary"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={savingEval}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+                  className="btn-primary flex items-center gap-2 disabled:opacity-50"
                 >
                   {savingEval ? (
                     <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -858,8 +867,8 @@ const RecruitmentInterviews: React.FC = () => {
       {/* Create Offer Modal */}
       {showOfferModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl">
               <h2 className="text-lg font-semibold text-gray-900">Tạo Offer Letter</h2>
               <button
                 onClick={() => setShowOfferModal(false)}
@@ -877,7 +886,7 @@ const RecruitmentInterviews: React.FC = () => {
                   type="number"
                   value={offerForm.application}
                   onChange={e => setOfferForm(f => ({ ...f, application: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -889,7 +898,7 @@ const RecruitmentInterviews: React.FC = () => {
                     type="number"
                     value={offerForm.proposed_salary}
                     onChange={e => setOfferForm(f => ({ ...f, proposed_salary: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field"
                   />
                 </div>
                 <div>
@@ -900,7 +909,7 @@ const RecruitmentInterviews: React.FC = () => {
                     type="number"
                     value={offerForm.allowances}
                     onChange={e => setOfferForm(f => ({ ...f, allowances: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field"
                   />
                 </div>
               </div>
@@ -911,7 +920,7 @@ const RecruitmentInterviews: React.FC = () => {
                     type="text"
                     value={offerForm.position_title}
                     onChange={e => setOfferForm(f => ({ ...f, position_title: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field"
                   />
                 </div>
                 <div>
@@ -922,7 +931,7 @@ const RecruitmentInterviews: React.FC = () => {
                     type="number"
                     value={offerForm.probation_months}
                     onChange={e => setOfferForm(f => ({ ...f, probation_months: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field"
                   />
                 </div>
               </div>
@@ -936,7 +945,7 @@ const RecruitmentInterviews: React.FC = () => {
                   onChange={e =>
                     setOfferForm(f => ({ ...f, expected_onboard_date: e.target.value }))
                   }
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
               </div>
               <div>
@@ -945,22 +954,22 @@ const RecruitmentInterviews: React.FC = () => {
                   rows={2}
                   value={offerForm.notes}
                   onChange={e => setOfferForm(f => ({ ...f, notes: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
               </div>
               {offerFormError && <p className="text-sm text-red-600">{offerFormError}</p>}
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex justify-end gap-3 pt-2 pb-2">
                 <button
                   type="button"
                   onClick={() => setShowOfferModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  className="btn-secondary"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={savingOffer}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+                  className="btn-primary flex items-center gap-2 disabled:opacity-50"
                 >
                   {savingOffer ? (
                     <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -978,25 +987,29 @@ const RecruitmentInterviews: React.FC = () => {
       {/* Accept Offer Modal */}
       {acceptOfferId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <h3 className="text-base font-semibold text-gray-900 mb-2">Chấp nhận Offer</h3>
-            <p className="text-sm text-gray-600 mb-3">Ngày onboard thực tế:</p>
-            <input
-              type="date"
-              value={acceptOnboardDate}
-              onChange={e => setAcceptOnboardDate(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-            <div className="flex justify-end gap-3">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h3 className="text-base font-semibold text-gray-900">Chấp nhận Offer</h3>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <p className="text-sm text-gray-600">Ngày onboard thực tế:</p>
+              <input
+                type="date"
+                value={acceptOnboardDate}
+                onChange={e => setAcceptOnboardDate(e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button
                 onClick={() => setAcceptOfferId(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                className="btn-secondary"
               >
                 Hủy
               </button>
               <button
                 onClick={handleAcceptOffer}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+                className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-colors"
               >
                 Xác nhận
               </button>
@@ -1008,26 +1021,30 @@ const RecruitmentInterviews: React.FC = () => {
       {/* Reject Offer Modal */}
       {rejectOfferId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <h3 className="text-base font-semibold text-gray-900 mb-2">Từ chối Offer</h3>
-            <p className="text-sm text-gray-600 mb-3">Lý do từ chối:</p>
-            <textarea
-              rows={3}
-              value={rejectNote}
-              onChange={e => setRejectNote(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="VD: Ứng viên nhận offer từ công ty khác"
-            />
-            <div className="flex justify-end gap-3">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h3 className="text-base font-semibold text-gray-900">Từ chối Offer</h3>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <p className="text-sm text-gray-600">Lý do từ chối:</p>
+              <textarea
+                rows={3}
+                value={rejectNote}
+                onChange={e => setRejectNote(e.target.value)}
+                className="input-field"
+                placeholder="VD: Ứng viên nhận offer từ công ty khác"
+              />
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button
                 onClick={() => setRejectOfferId(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                className="btn-secondary"
               >
                 Hủy
               </button>
               <button
                 onClick={handleRejectOffer}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                className="btn-danger"
               >
                 Từ chối
               </button>
@@ -1035,6 +1052,18 @@ const RecruitmentInterviews: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        open={confirmOpen}
+        title={confirmTitle}
+        message={confirmMessage}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          if (confirmCallback) confirmCallback();
+        }}
+        onClose={() => setConfirmOpen(false)}
+      />
     </div>
   );
 };

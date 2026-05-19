@@ -830,7 +830,7 @@ const SalaryData: React.FC = () => {
   ) => {
     if (!errState?.errors.length) return null;
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm overflow-hidden">
+      <div className="bg-red-50 border border-red-200 rounded-2xl text-red-800 text-sm overflow-hidden">
         <div className="flex items-center justify-between px-3 py-2 bg-red-100">
           <span className="flex items-center gap-1.5 text-xs font-medium text-red-700">
             <ExclamationCircleIcon className="h-4 w-4" />
@@ -839,12 +839,12 @@ const SalaryData: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={onExport}
-              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors"
             >
               <ArrowDownTrayIcon className="h-3 w-3" />
               Tải file lỗi để sửa
             </button>
-            <button onClick={onClear} className="p-1 hover:bg-red-200 rounded transition-colors">
+            <button onClick={onClear} className="p-1 hover:bg-red-200 rounded-xl transition-colors">
               <XMarkIcon className="h-3.5 w-3.5 text-red-500" />
             </button>
           </div>
@@ -877,26 +877,26 @@ const SalaryData: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dữ liệu</h1>
-        <p className="text-gray-600 mt-2">Quản lý lương hoa hồng và phạt biên bản theo tháng/năm.</p>
+        <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Dữ liệu</h1>
+        <p className="text-gray-500 mt-1">Quản lý lương hoa hồng và phạt biên bản theo tháng/năm.</p>
       </div>
 
       {/* Toasts */}
       {successMsg && (
-        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+        <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-sm">
           <CheckIcon className="h-4 w-4 flex-shrink-0" />{successMsg}
           <button className="ml-auto" onClick={() => setSuccessMsg(null)}><XMarkIcon className="h-4 w-4" /></button>
         </div>
       )}
       {errorMsg && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-2xl text-red-800 text-sm">
           <ExclamationCircleIcon className="h-4 w-4 flex-shrink-0" />{errorMsg}
           <button className="ml-auto" onClick={() => setErrorMsg(null)}><XMarkIcon className="h-4 w-4" /></button>
         </div>
       )}
 
       {/* Filter bar */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
         <div className="flex flex-col sm:flex-row gap-3 items-end flex-wrap">
           <div className="w-32">
             <SelectBox<number> label="Tháng" value={selectedMonth} options={MONTHS.map((m) => ({ value: m, label: `Tháng ${m}` }))} onChange={handleMonthChange} />
@@ -907,7 +907,7 @@ const SalaryData: React.FC = () => {
           <button
             onClick={() => activeTab === 'commission' ? loadCommissions() : activeTab === 'penalty' ? loadPenalties() : activeTab === 'advance' ? loadAdvances() : loadOtherAllowances()}
             disabled={loadingCommission || loadingPenalty || loadingAdvance || loadingO}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-60 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-60 transition-colors"
           >
             <ArrowPathIcon className={`h-4 w-4 ${(loadingCommission || loadingPenalty || loadingAdvance || loadingO) ? 'animate-spin' : ''}`} />
             Tải dữ liệu
@@ -916,8 +916,8 @@ const SalaryData: React.FC = () => {
       </div>
 
       {/* Tab bar */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="border-b border-gray-200">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="border-b border-gray-100">
           <nav className="flex -mb-px">
             {TABS.map((tab) => {
               const Icon = tab.icon;
@@ -947,16 +947,16 @@ const SalaryData: React.FC = () => {
             <>
               {/* Action bar */}
               <div className="flex flex-wrap gap-3 items-center">
-                <button onClick={handleDownloadCommissionTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+                <button onClick={handleDownloadCommissionTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
                   <ArrowDownTrayIcon className="h-4 w-4" />Tải file mẫu
                 </button>
-                <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-primary-300 text-primary-700 bg-primary-50 rounded-md hover:bg-primary-100 cursor-pointer transition-colors">
+                <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-primary-300 text-primary-700 bg-primary-50 rounded-xl hover:bg-primary-100 cursor-pointer transition-colors">
                   <ArrowUpTrayIcon className="h-4 w-4" />
                   {cFile ? cFile.name : 'Chọn file Excel'}
                   <input ref={cFileRef} type="file" accept=".xlsx" className="hidden" onChange={handleCommissionFileChange} />
                 </label>
                 {cParsedRows && cParsedRows.filter((r) => !r.parseError).length > 0 && (
-                  <button onClick={handleCommissionImport} disabled={cImporting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-60 transition-colors">
+                  <button onClick={handleCommissionImport} disabled={cImporting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-60 transition-colors">
                     {cImporting ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
                     {cImporting ? 'Đang import...' : `Xác nhận import (${cParsedRows.filter((r) => !r.parseError).length})`}
                   </button>
@@ -965,7 +965,7 @@ const SalaryData: React.FC = () => {
                   <div className="flex-1 relative min-w-48">
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input type="text" placeholder="Tìm nhân viên..." value={cSearch} onChange={(e) => setCSearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                      className="input-field w-full pl-9" />
                   </div>
                 )}
               </div>
@@ -974,33 +974,33 @@ const SalaryData: React.FC = () => {
 
               {/* Preview */}
               {cParsedRows && !cParsing && (
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex justify-between text-sm">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex justify-between text-sm">
                     <span className="font-medium text-gray-700">Xem trước — {cParsedRows.length} dòng
                       {cParsedRows.filter((r) => r.parseError).length > 0 && <span className="text-red-500"> · {cParsedRows.filter((r) => r.parseError).length} lỗi</span>}
                     </span>
                     <span className="text-gray-500">Tháng {selectedMonth}/{selectedYear}</span>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <table className="min-w-full divide-y divide-gray-100 text-sm">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NV</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Lương hoa hồng</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                          <th className="table-header w-10">#</th>
+                          <th className="table-header">Mã NV</th>
+                          <th className="table-header text-right">Lương hoa hồng</th>
+                          <th className="table-header">Trạng thái</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
                         {cParsedRows.map((row, i) => (
                           <tr key={row.rowIndex} className={row.parseError ? 'bg-red-50' : 'hover:bg-gray-50'}>
-                            <td className="px-4 py-2 text-gray-400 text-xs">{i + 1}</td>
-                            <td className="px-4 py-2 font-mono font-medium text-gray-800">{row.employee_code}</td>
-                            <td className="px-4 py-2 text-right text-gray-700">{row.amount > 0 ? row.amount.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
-                            <td className="px-4 py-2">
+                            <td className="table-cell text-gray-400 text-xs">{i + 1}</td>
+                            <td className="table-cell font-mono font-medium text-gray-800">{row.employee_code}</td>
+                            <td className="table-cell text-right text-gray-700">{row.amount > 0 ? row.amount.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
+                            <td className="table-cell">
                               {row.parseError
                                 ? <span className="inline-flex items-center gap-1 text-xs text-red-600"><ExclamationCircleIcon className="h-3.5 w-3.5" />{row.parseError}</span>
-                                : <span className="inline-flex items-center gap-1 text-xs text-green-600"><CheckIcon className="h-3.5 w-3.5" />Hợp lệ</span>}
+                                : <span className="inline-flex items-center gap-1 text-xs text-emerald-600"><CheckIcon className="h-3.5 w-3.5" />Hợp lệ</span>}
                             </td>
                           </tr>
                         ))}
@@ -1011,8 +1011,8 @@ const SalaryData: React.FC = () => {
               )}
 
               {/* Commission list */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between">
                   <p className="text-sm font-medium text-gray-700">
                     Danh sách hoa hồng — Tháng {selectedMonth}/{selectedYear}
                     <span className="ml-2 font-normal text-gray-500">{filteredCommissions.length} nhân viên</span>
@@ -1021,13 +1021,13 @@ const SalaryData: React.FC = () => {
                 {loadingCommission ? renderLoading('primary') :
                  filteredCommissions.length === 0 ? renderEmpty(commissionRecords.length === 0 ? 'Chưa có dữ liệu hoa hồng tháng này.' : 'Không tìm thấy nhân viên.') : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <table className="min-w-full divide-y divide-gray-100 text-sm">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhân viên</th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Lương hoa hồng</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                          <th className="table-header w-10">#</th>
+                          <th className="table-header">Nhân viên</th>
+                          <th className="table-header text-right">Lương hoa hồng</th>
+                          <th className="table-header text-center">Thao tác</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
@@ -1036,47 +1036,47 @@ const SalaryData: React.FC = () => {
                           const isDeleting = cDeletingId === rec.id;
                           return (
                             <tr key={rec.id} className={isDeleting ? 'bg-red-50' : 'hover:bg-gray-50 transition-colors'}>
-                              <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
-                              <td className="px-4 py-3">
+                              <td className="table-cell text-gray-400 text-xs">{i + 1}</td>
+                              <td className="table-cell">
                                 <div className="flex items-center gap-3">
                                   {renderAvatar(rec.employee_name, 'bg-primary-50 text-primary-700')}
                                   <div><p className="font-medium text-gray-900">{rec.employee_name}</p><p className="text-xs text-gray-500 font-mono">{rec.employee_code}</p></div>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-right">
+                              <td className="table-cell text-right">
                                 {isEditing ? (
                                   <input type="text" value={cEditAmount} onChange={(e) => setCEditAmount(e.target.value)}
-                                    className="w-36 text-right border border-primary-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="0" />
+                                    className="input-field w-36 text-right" placeholder="0" />
                                 ) : (
                                   <span className="font-medium text-gray-700">{fmtMoney(rec.amount)}</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-center">
+                              <td className="table-cell text-center">
                                 {isDeleting ? (
                                   <div className="flex items-center justify-center gap-2">
                                     <span className="text-xs text-red-600">Xác nhận xoá?</span>
-                                    <button onClick={() => handleCDelete(rec.id)} disabled={cDeleting} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-60">
+                                    <button onClick={() => handleCDelete(rec.id)} disabled={cDeleting} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-60">
                                       {cDeleting ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Xoá
                                     </button>
-                                    <button onClick={() => setCDeletingId(null)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-md hover:bg-gray-50">
+                                    <button onClick={() => setCDeletingId(null)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">
                                       <XMarkIcon className="h-3 w-3" />Huỷ
                                     </button>
                                   </div>
                                 ) : isEditing ? (
                                   <div className="flex items-center justify-center gap-2">
-                                    <button onClick={() => handleCSave(rec.id)} disabled={cSaving} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-60">
+                                    <button onClick={() => handleCSave(rec.id)} disabled={cSaving} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-60">
                                       {cSaving ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Lưu
                                     </button>
-                                    <button onClick={cancelCEdit} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-md hover:bg-gray-50">
+                                    <button onClick={cancelCEdit} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">
                                       <XMarkIcon className="h-3 w-3" />Huỷ
                                     </button>
                                   </div>
                                 ) : (
                                   <div className="flex items-center justify-center gap-2">
-                                    <button onClick={() => startCEdit(rec)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-primary-700 bg-primary-50 border border-primary-200 rounded-md hover:bg-primary-100 transition-colors">
+                                    <button onClick={() => startCEdit(rec)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-primary-700 bg-primary-50 border border-primary-200 rounded-xl hover:bg-primary-100 transition-colors">
                                       <PencilIcon className="h-3.5 w-3.5" />Sửa
                                     </button>
-                                    <button onClick={() => { setCDeletingId(rec.id); setCEditingId(null); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors">
+                                    <button onClick={() => { setCDeletingId(rec.id); setCEditingId(null); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors">
                                       <TrashIcon className="h-3.5 w-3.5" />Xoá
                                     </button>
                                   </div>
@@ -1098,16 +1098,16 @@ const SalaryData: React.FC = () => {
             <>
               {/* Action bar */}
               <div className="flex flex-wrap gap-3 items-center">
-                <button onClick={handleDownloadOtherAllowanceTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+                <button onClick={handleDownloadOtherAllowanceTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
                   <ArrowDownTrayIcon className="h-4 w-4" />Tải file mẫu
                 </button>
-                <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-purple-300 text-purple-700 bg-purple-50 rounded-md hover:bg-purple-100 cursor-pointer transition-colors">
+                <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-violet-300 text-violet-700 bg-violet-50 rounded-xl hover:bg-violet-100 cursor-pointer transition-colors">
                   <ArrowUpTrayIcon className="h-4 w-4" />
                   {oFile ? oFile.name : 'Chọn file Excel'}
                   <input ref={oFileRef} type="file" accept=".xlsx" className="hidden" onChange={handleOtherAllowanceFileChange} />
                 </label>
                 {oParsedRows && oParsedRows.filter((r) => !r.parseError).length > 0 && (
-                  <button onClick={handleOtherAllowanceImport} disabled={oImporting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-60 transition-colors">
+                  <button onClick={handleOtherAllowanceImport} disabled={oImporting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-xl hover:bg-violet-700 disabled:opacity-60 transition-colors">
                     {oImporting ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
                     {oImporting ? 'Đang import...' : `Xác nhận import (${oParsedRows.filter((r) => !r.parseError).length})`}
                   </button>
@@ -1116,7 +1116,7 @@ const SalaryData: React.FC = () => {
                   <div className="flex-1 relative min-w-48">
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input type="text" placeholder="Tìm nhân viên..." value={oSearch} onChange={(e) => setOSearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                      className="input-field w-full pl-9" />
                   </div>
                 )}
               </div>
@@ -1125,35 +1125,35 @@ const SalaryData: React.FC = () => {
 
               {/* Preview */}
               {oParsedRows && !oParsing && (
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex justify-between text-sm">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex justify-between text-sm">
                     <span className="font-medium text-gray-700">Xem trước — {oParsedRows.length} dòng
                       {oParsedRows.filter((r) => r.parseError).length > 0 && <span className="text-red-500"> · {oParsedRows.filter((r) => r.parseError).length} lỗi</span>}
                     </span>
                     <span className="text-gray-500">Tháng {selectedMonth}/{selectedYear}</span>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <table className="min-w-full divide-y divide-gray-100 text-sm">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NV</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mô tả phụ cấp</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                          <th className="table-header w-10">#</th>
+                          <th className="table-header">Mã NV</th>
+                          <th className="table-header text-right">Số tiền</th>
+                          <th className="table-header">Mô tả phụ cấp</th>
+                          <th className="table-header">Trạng thái</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
                         {oParsedRows.map((row, i) => (
                           <tr key={row.rowIndex} className={row.parseError ? 'bg-red-50' : 'hover:bg-gray-50'}>
-                            <td className="px-4 py-2 text-gray-400 text-xs">{i + 1}</td>
-                            <td className="px-4 py-2 font-mono font-medium text-gray-800">{row.employee_code}</td>
-                            <td className="px-4 py-2 text-right text-purple-700 font-medium">{row.amount > 0 ? row.amount.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
-                            <td className="px-4 py-2 text-gray-600 max-w-xs truncate">{row.description || '—'}</td>
-                            <td className="px-4 py-2">
+                            <td className="table-cell text-gray-400 text-xs">{i + 1}</td>
+                            <td className="table-cell font-mono font-medium text-gray-800">{row.employee_code}</td>
+                            <td className="table-cell text-right text-violet-700 font-medium">{row.amount > 0 ? row.amount.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
+                            <td className="table-cell text-gray-600 max-w-xs truncate">{row.description || '—'}</td>
+                            <td className="table-cell">
                               {row.parseError
                                 ? <span className="inline-flex items-center gap-1 text-xs text-red-600"><ExclamationCircleIcon className="h-3.5 w-3.5" />{row.parseError}</span>
-                                : <span className="inline-flex items-center gap-1 text-xs text-green-600"><CheckIcon className="h-3.5 w-3.5" />Hợp lệ</span>}
+                                : <span className="inline-flex items-center gap-1 text-xs text-emerald-600"><CheckIcon className="h-3.5 w-3.5" />Hợp lệ</span>}
                             </td>
                           </tr>
                         ))}
@@ -1164,8 +1164,8 @@ const SalaryData: React.FC = () => {
               )}
 
               {/* OtherAllowance list */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between">
                   <p className="text-sm font-medium text-gray-700">
                     Danh sách phụ cấp khác — Tháng {selectedMonth}/{selectedYear}
                     <span className="ml-2 font-normal text-gray-500">{filteredOtherAllowances.length} nhân viên</span>
@@ -1174,14 +1174,14 @@ const SalaryData: React.FC = () => {
                 {loadingO ? renderLoading('primary') :
                  filteredOtherAllowances.length === 0 ? renderEmpty(oRecords.length === 0 ? 'Chưa có dữ liệu phụ cấp tháng này.' : 'Không tìm thấy nhân viên.') : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <table className="min-w-full divide-y divide-gray-100 text-sm">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhân viên</th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mô tả phụ cấp</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                          <th className="table-header w-10">#</th>
+                          <th className="table-header">Nhân viên</th>
+                          <th className="table-header text-right">Số tiền</th>
+                          <th className="table-header">Mô tả phụ cấp</th>
+                          <th className="table-header text-center">Thao tác</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
@@ -1190,55 +1190,55 @@ const SalaryData: React.FC = () => {
                           const isDeleting = oDeletingId === rec.id;
                           return (
                             <tr key={rec.id} className={isDeleting ? 'bg-red-50' : 'hover:bg-gray-50 transition-colors'}>
-                              <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
-                              <td className="px-4 py-3">
+                              <td className="table-cell text-gray-400 text-xs">{i + 1}</td>
+                              <td className="table-cell">
                                 <div className="flex items-center gap-3">
-                                  {renderAvatar(rec.employee_name, 'bg-purple-50 text-purple-700')}
+                                  {renderAvatar(rec.employee_name, 'bg-violet-50 text-violet-700')}
                                   <div><p className="font-medium text-gray-900">{rec.employee_name}</p><p className="text-xs text-gray-500 font-mono">{rec.employee_code}</p></div>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-right">
+                              <td className="table-cell text-right">
                                 {isEditing ? (
                                   <input type="text" value={oEditValues.amount} onChange={(e) => setOEditValues((v) => ({ ...v, amount: e.target.value }))}
-                                    className="w-36 text-right border border-purple-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" placeholder="0" />
+                                    className="input-field w-36 text-right" placeholder="0" />
                                 ) : (
-                                  <span className="font-medium text-purple-700">{fmtMoney(rec.amount)}</span>
+                                  <span className="font-medium text-violet-700">{fmtMoney(rec.amount)}</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3">
+                              <td className="table-cell">
                                 {isEditing ? (
                                   <input type="text" value={oEditValues.description} onChange={(e) => setOEditValues((v) => ({ ...v, description: e.target.value }))}
-                                    className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Mô tả phụ cấp..." />
+                                    className="input-field w-full" placeholder="Mô tả phụ cấp..." />
                                 ) : (
                                   <span className="text-gray-700">{rec.description || '—'}</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-center">
+                              <td className="table-cell text-center">
                                 {isDeleting ? (
                                   <div className="flex items-center justify-center gap-2">
                                     <span className="text-xs text-red-600">Xác nhận xoá?</span>
-                                    <button onClick={() => handleODelete(rec.id)} disabled={oDeleting} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-60">
+                                    <button onClick={() => handleODelete(rec.id)} disabled={oDeleting} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-60">
                                       {oDeleting ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Xoá
                                     </button>
-                                    <button onClick={() => setODeletingId(null)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-md hover:bg-gray-50">
+                                    <button onClick={() => setODeletingId(null)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">
                                       <XMarkIcon className="h-3 w-3" />Huỷ
                                     </button>
                                   </div>
                                 ) : isEditing ? (
                                   <div className="flex items-center justify-center gap-2">
-                                    <button onClick={() => handleOSave(rec.id)} disabled={oSaving} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-60">
+                                    <button onClick={() => handleOSave(rec.id)} disabled={oSaving} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-violet-600 rounded-xl hover:bg-violet-700 disabled:opacity-60">
                                       {oSaving ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Lưu
                                     </button>
-                                    <button onClick={cancelOEdit} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-md hover:bg-gray-50">
+                                    <button onClick={cancelOEdit} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">
                                       <XMarkIcon className="h-3 w-3" />Huỷ
                                     </button>
                                   </div>
                                 ) : (
                                   <div className="flex items-center justify-center gap-2">
-                                    <button onClick={() => startOEdit(rec)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 transition-colors">
+                                    <button onClick={() => startOEdit(rec)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded-xl hover:bg-violet-100 transition-colors">
                                       <PencilIcon className="h-3.5 w-3.5" />Sửa
                                     </button>
-                                    <button onClick={() => { setODeletingId(rec.id); setOEditingId(null); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors">
+                                    <button onClick={() => { setODeletingId(rec.id); setOEditingId(null); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors">
                                       <TrashIcon className="h-3.5 w-3.5" />Xoá
                                     </button>
                                   </div>
@@ -1260,16 +1260,16 @@ const SalaryData: React.FC = () => {
             <>
               {/* Action bar */}
               <div className="flex flex-wrap gap-3 items-center">
-                <button onClick={handleDownloadAdvanceTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+                <button onClick={handleDownloadAdvanceTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
                   <ArrowDownTrayIcon className="h-4 w-4" />Tải file mẫu
                 </button>
-                <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-cyan-300 text-cyan-700 bg-cyan-50 rounded-md hover:bg-cyan-100 cursor-pointer transition-colors">
+                <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-primary-300 text-primary-700 bg-primary-50 rounded-xl hover:bg-primary-100 cursor-pointer transition-colors">
                   <ArrowUpTrayIcon className="h-4 w-4" />
                   {aFile ? aFile.name : 'Chọn file Excel'}
                   <input ref={aFileRef} type="file" accept=".xlsx" className="hidden" onChange={handleAdvanceFileChange} />
                 </label>
                 {aParsedRows && aParsedRows.filter((r) => !r.parseError).length > 0 && (
-                  <button onClick={handleAdvanceImport} disabled={aImporting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-cyan-600 rounded-md hover:bg-cyan-700 disabled:opacity-60 transition-colors">
+                  <button onClick={handleAdvanceImport} disabled={aImporting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-60 transition-colors">
                     {aImporting ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
                     {aImporting ? 'Đang import...' : `Xác nhận import (${aParsedRows.filter((r) => !r.parseError).length})`}
                   </button>
@@ -1278,7 +1278,7 @@ const SalaryData: React.FC = () => {
                   <div className="flex-1 relative min-w-48">
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input type="text" placeholder="Tìm nhân viên..." value={aSearch} onChange={(e) => setASearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                      className="input-field w-full pl-9" />
                   </div>
                 )}
               </div>
@@ -1287,33 +1287,33 @@ const SalaryData: React.FC = () => {
 
               {/* Preview */}
               {aParsedRows && !aParsing && (
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex justify-between text-sm">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex justify-between text-sm">
                     <span className="font-medium text-gray-700">Xem trước — {aParsedRows.length} dòng
                       {aParsedRows.filter((r) => r.parseError).length > 0 && <span className="text-red-500"> · {aParsedRows.filter((r) => r.parseError).length} lỗi</span>}
                     </span>
                     <span className="text-gray-500">Tháng {selectedMonth}/{selectedYear}</span>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <table className="min-w-full divide-y divide-gray-100 text-sm">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NV</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền tạm ứng</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                          <th className="table-header w-10">#</th>
+                          <th className="table-header">Mã NV</th>
+                          <th className="table-header text-right">Số tiền tạm ứng</th>
+                          <th className="table-header">Trạng thái</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
                         {aParsedRows.map((row, i) => (
                           <tr key={row.rowIndex} className={row.parseError ? 'bg-red-50' : 'hover:bg-gray-50'}>
-                            <td className="px-4 py-2 text-gray-400 text-xs">{i + 1}</td>
-                            <td className="px-4 py-2 font-mono font-medium text-gray-800">{row.employee_code}</td>
-                            <td className="px-4 py-2 text-right text-cyan-700 font-medium">{row.amount > 0 ? row.amount.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
-                            <td className="px-4 py-2">
+                            <td className="table-cell text-gray-400 text-xs">{i + 1}</td>
+                            <td className="table-cell font-mono font-medium text-gray-800">{row.employee_code}</td>
+                            <td className="table-cell text-right text-primary-700 font-medium">{row.amount > 0 ? row.amount.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
+                            <td className="table-cell">
                               {row.parseError
                                 ? <span className="inline-flex items-center gap-1 text-xs text-red-600"><ExclamationCircleIcon className="h-3.5 w-3.5" />{row.parseError}</span>
-                                : <span className="inline-flex items-center gap-1 text-xs text-green-600"><CheckIcon className="h-3.5 w-3.5" />Hợp lệ</span>}
+                                : <span className="inline-flex items-center gap-1 text-xs text-emerald-600"><CheckIcon className="h-3.5 w-3.5" />Hợp lệ</span>}
                             </td>
                           </tr>
                         ))}
@@ -1324,8 +1324,8 @@ const SalaryData: React.FC = () => {
               )}
 
               {/* Advance list */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between">
                   <p className="text-sm font-medium text-gray-700">
                     Danh sách tạm ứng — Tháng {selectedMonth}/{selectedYear}
                     <span className="ml-2 font-normal text-gray-500">{filteredAdvances.length} nhân viên</span>
@@ -1334,13 +1334,13 @@ const SalaryData: React.FC = () => {
                 {loadingAdvance ? renderLoading('primary') :
                  filteredAdvances.length === 0 ? renderEmpty(advanceRecords.length === 0 ? 'Chưa có dữ liệu tạm ứng tháng này.' : 'Không tìm thấy nhân viên.') : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <table className="min-w-full divide-y divide-gray-100 text-sm">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhân viên</th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền tạm ứng</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                          <th className="table-header w-10">#</th>
+                          <th className="table-header">Nhân viên</th>
+                          <th className="table-header text-right">Số tiền tạm ứng</th>
+                          <th className="table-header text-center">Thao tác</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
@@ -1349,47 +1349,47 @@ const SalaryData: React.FC = () => {
                           const isDeleting = aDeletingId === rec.id;
                           return (
                             <tr key={rec.id} className={isDeleting ? 'bg-red-50' : 'hover:bg-gray-50 transition-colors'}>
-                              <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
-                              <td className="px-4 py-3">
+                              <td className="table-cell text-gray-400 text-xs">{i + 1}</td>
+                              <td className="table-cell">
                                 <div className="flex items-center gap-3">
-                                  {renderAvatar(rec.employee_name, 'bg-cyan-50 text-cyan-700')}
+                                  {renderAvatar(rec.employee_name, 'bg-primary-50 text-primary-700')}
                                   <div><p className="font-medium text-gray-900">{rec.employee_name}</p><p className="text-xs text-gray-500 font-mono">{rec.employee_code}</p></div>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-right">
+                              <td className="table-cell text-right">
                                 {isEditing ? (
                                   <input type="text" value={aEditAmount} onChange={(e) => setAEditAmount(e.target.value)}
-                                    className="w-36 text-right border border-cyan-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400" placeholder="0" />
+                                    className="input-field w-36 text-right" placeholder="0" />
                                 ) : (
-                                  <span className="font-medium text-cyan-700">{fmtMoney(rec.amount)}</span>
+                                  <span className="font-medium text-primary-700">{fmtMoney(rec.amount)}</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-center">
+                              <td className="table-cell text-center">
                                 {isDeleting ? (
                                   <div className="flex items-center justify-center gap-2">
                                     <span className="text-xs text-red-600">Xác nhận xoá?</span>
-                                    <button onClick={() => handleADelete(rec.id)} disabled={aDeleting} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-60">
+                                    <button onClick={() => handleADelete(rec.id)} disabled={aDeleting} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-60">
                                       {aDeleting ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Xoá
                                     </button>
-                                    <button onClick={() => setADeletingId(null)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-md hover:bg-gray-50">
+                                    <button onClick={() => setADeletingId(null)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">
                                       <XMarkIcon className="h-3 w-3" />Huỷ
                                     </button>
                                   </div>
                                 ) : isEditing ? (
                                   <div className="flex items-center justify-center gap-2">
-                                    <button onClick={() => handleASave(rec.id)} disabled={aSaving} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-cyan-600 rounded-md hover:bg-cyan-700 disabled:opacity-60">
+                                    <button onClick={() => handleASave(rec.id)} disabled={aSaving} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-60">
                                       {aSaving ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Lưu
                                     </button>
-                                    <button onClick={cancelAEdit} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-md hover:bg-gray-50">
+                                    <button onClick={cancelAEdit} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">
                                       <XMarkIcon className="h-3 w-3" />Huỷ
                                     </button>
                                   </div>
                                 ) : (
                                   <div className="flex items-center justify-center gap-2">
-                                    <button onClick={() => startAEdit(rec)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-md hover:bg-cyan-100 transition-colors">
+                                    <button onClick={() => startAEdit(rec)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-primary-700 bg-primary-50 border border-primary-200 rounded-xl hover:bg-primary-100 transition-colors">
                                       <PencilIcon className="h-3.5 w-3.5" />Sửa
                                     </button>
-                                    <button onClick={() => { setADeletingId(rec.id); setAEditingId(null); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors">
+                                    <button onClick={() => { setADeletingId(rec.id); setAEditingId(null); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors">
                                       <TrashIcon className="h-3.5 w-3.5" />Xoá
                                     </button>
                                   </div>
@@ -1411,16 +1411,16 @@ const SalaryData: React.FC = () => {
             <>
               {/* Action bar */}
               <div className="flex flex-wrap gap-3 items-center">
-                <button onClick={handleDownloadPenaltyTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+                <button onClick={handleDownloadPenaltyTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
                   <ArrowDownTrayIcon className="h-4 w-4" />Tải file mẫu
                 </button>
-                <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-red-300 text-red-700 bg-red-50 rounded-md hover:bg-red-100 cursor-pointer transition-colors">
+                <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-red-300 text-red-700 bg-red-50 rounded-xl hover:bg-red-100 cursor-pointer transition-colors">
                   <ArrowUpTrayIcon className="h-4 w-4" />
                   {pFile ? pFile.name : 'Chọn file Excel'}
                   <input ref={pFileRef} type="file" accept=".xlsx" className="hidden" onChange={handlePenaltyFileChange} />
                 </label>
                 {pParsedRows && pParsedRows.filter((r) => !r.parseError).length > 0 && (
-                  <button onClick={handlePenaltyImport} disabled={pImporting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-60 transition-colors">
+                  <button onClick={handlePenaltyImport} disabled={pImporting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-60 transition-colors">
                     {pImporting ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
                     {pImporting ? 'Đang import...' : `Xác nhận import (${pParsedRows.filter((r) => !r.parseError).length})`}
                   </button>
@@ -1429,7 +1429,7 @@ const SalaryData: React.FC = () => {
                   <div className="flex-1 relative min-w-48">
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input type="text" placeholder="Tìm nhân viên..." value={pSearch} onChange={(e) => setPSearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                      className="input-field w-full pl-9" />
                   </div>
                 )}
               </div>
@@ -1438,35 +1438,35 @@ const SalaryData: React.FC = () => {
 
               {/* Preview */}
               {pParsedRows && !pParsing && (
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex justify-between text-sm">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex justify-between text-sm">
                     <span className="font-medium text-gray-700">Xem trước — {pParsedRows.length} dòng
                       {pParsedRows.filter((r) => r.parseError).length > 0 && <span className="text-red-500"> · {pParsedRows.filter((r) => r.parseError).length} lỗi</span>}
                     </span>
                     <span className="text-gray-500">Tháng {selectedMonth}/{selectedYear}</span>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <table className="min-w-full divide-y divide-gray-100 text-sm">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NV</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền phạt</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lý do</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                          <th className="table-header w-10">#</th>
+                          <th className="table-header">Mã NV</th>
+                          <th className="table-header text-right">Số tiền phạt</th>
+                          <th className="table-header">Lý do</th>
+                          <th className="table-header">Trạng thái</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
                         {pParsedRows.map((row, i) => (
                           <tr key={row.rowIndex} className={row.parseError ? 'bg-red-50' : 'hover:bg-gray-50'}>
-                            <td className="px-4 py-2 text-gray-400 text-xs">{i + 1}</td>
-                            <td className="px-4 py-2 font-mono font-medium text-gray-800">{row.employee_code}</td>
-                            <td className="px-4 py-2 text-right text-red-600 font-medium">{row.amount > 0 ? row.amount.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
-                            <td className="px-4 py-2 text-gray-600 max-w-xs truncate">{row.reason || '—'}</td>
-                            <td className="px-4 py-2">
+                            <td className="table-cell text-gray-400 text-xs">{i + 1}</td>
+                            <td className="table-cell font-mono font-medium text-gray-800">{row.employee_code}</td>
+                            <td className="table-cell text-right text-red-600 font-medium">{row.amount > 0 ? row.amount.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
+                            <td className="table-cell text-gray-600 max-w-xs truncate">{row.reason || '—'}</td>
+                            <td className="table-cell">
                               {row.parseError
                                 ? <span className="inline-flex items-center gap-1 text-xs text-red-600"><ExclamationCircleIcon className="h-3.5 w-3.5" />{row.parseError}</span>
-                                : <span className="inline-flex items-center gap-1 text-xs text-green-600"><CheckIcon className="h-3.5 w-3.5" />Hợp lệ</span>}
+                                : <span className="inline-flex items-center gap-1 text-xs text-emerald-600"><CheckIcon className="h-3.5 w-3.5" />Hợp lệ</span>}
                             </td>
                           </tr>
                         ))}
@@ -1477,8 +1477,8 @@ const SalaryData: React.FC = () => {
               )}
 
               {/* Penalty list */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between">
                   <p className="text-sm font-medium text-gray-700">
                     Danh sách phạt biên bản — Tháng {selectedMonth}/{selectedYear}
                     <span className="ml-2 font-normal text-gray-500">{filteredPenalties.length} bản ghi</span>
@@ -1487,14 +1487,14 @@ const SalaryData: React.FC = () => {
                 {loadingPenalty ? renderLoading('red') :
                  filteredPenalties.length === 0 ? renderEmpty(penaltyRecords.length === 0 ? 'Chưa có bản ghi phạt nào tháng này.' : 'Không tìm thấy nhân viên.') : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <table className="min-w-full divide-y divide-gray-100 text-sm">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhân viên</th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền phạt</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lý do vi phạm</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                          <th className="table-header w-10">#</th>
+                          <th className="table-header">Nhân viên</th>
+                          <th className="table-header text-right">Số tiền phạt</th>
+                          <th className="table-header">Lý do vi phạm</th>
+                          <th className="table-header text-center">Thao tác</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
@@ -1503,55 +1503,55 @@ const SalaryData: React.FC = () => {
                           const isDeleting = pDeletingId === rec.id;
                           return (
                             <tr key={rec.id} className={isDeleting ? 'bg-red-50' : 'hover:bg-gray-50 transition-colors'}>
-                              <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
-                              <td className="px-4 py-3">
+                              <td className="table-cell text-gray-400 text-xs">{i + 1}</td>
+                              <td className="table-cell">
                                 <div className="flex items-center gap-3">
                                   {renderAvatar(rec.employee_name, 'bg-red-50 text-red-700')}
                                   <div><p className="font-medium text-gray-900">{rec.employee_name}</p><p className="text-xs text-gray-500 font-mono">{rec.employee_code}</p></div>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-right">
+                              <td className="table-cell text-right">
                                 {isEditing ? (
                                   <input type="text" value={pEditValues.amount} onChange={(e) => setPEditValues((v) => ({ ...v, amount: e.target.value }))}
-                                    className="w-36 text-right border border-red-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" placeholder="0" />
+                                    className="input-field w-36 text-right" placeholder="0" />
                                 ) : (
                                   <span className="font-medium text-red-600">{fmtMoney(rec.amount)}</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3">
+                              <td className="table-cell">
                                 {isEditing ? (
                                   <input type="text" value={pEditValues.reason} onChange={(e) => setPEditValues((v) => ({ ...v, reason: e.target.value }))}
-                                    className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Lý do vi phạm..." />
+                                    className="input-field w-full" placeholder="Lý do vi phạm..." />
                                 ) : (
                                   <span className="text-gray-700">{rec.reason || '—'}</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-center">
+                              <td className="table-cell text-center">
                                 {isDeleting ? (
                                   <div className="flex items-center justify-center gap-2">
                                     <span className="text-xs text-red-600">Xác nhận xoá?</span>
-                                    <button onClick={() => handlePDelete(rec.id)} disabled={pDeleting} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-60">
+                                    <button onClick={() => handlePDelete(rec.id)} disabled={pDeleting} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-60">
                                       {pDeleting ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Xoá
                                     </button>
-                                    <button onClick={() => setPDeletingId(null)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-md hover:bg-gray-50">
+                                    <button onClick={() => setPDeletingId(null)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">
                                       <XMarkIcon className="h-3 w-3" />Huỷ
                                     </button>
                                   </div>
                                 ) : isEditing ? (
                                   <div className="flex items-center justify-center gap-2">
-                                    <button onClick={() => handlePSave(rec.id)} disabled={pSaving} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-60">
+                                    <button onClick={() => handlePSave(rec.id)} disabled={pSaving} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-60">
                                       {pSaving ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Lưu
                                     </button>
-                                    <button onClick={cancelPEdit} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-md hover:bg-gray-50">
+                                    <button onClick={cancelPEdit} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">
                                       <XMarkIcon className="h-3 w-3" />Huỷ
                                     </button>
                                   </div>
                                 ) : (
                                   <div className="flex items-center justify-center gap-2">
-                                    <button onClick={() => startPEdit(rec)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-primary-700 bg-primary-50 border border-primary-200 rounded-md hover:bg-primary-100 transition-colors">
+                                    <button onClick={() => startPEdit(rec)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-primary-700 bg-primary-50 border border-primary-200 rounded-xl hover:bg-primary-100 transition-colors">
                                       <PencilIcon className="h-3.5 w-3.5" />Sửa
                                     </button>
-                                    <button onClick={() => { setPDeletingId(rec.id); setPEditingId(null); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors">
+                                    <button onClick={() => { setPDeletingId(rec.id); setPEditingId(null); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors">
                                       <TrashIcon className="h-3.5 w-3.5" />Xoá
                                     </button>
                                   </div>

@@ -12,6 +12,17 @@ import { SelectBox } from '@/components/LandingLayout/SelectBox';
 import { WORK_LOCATION_OPTIONS } from '../constants/onboarding';
 import onboardingService from '../services/onboarding.service';
 import { toDisplayDate, toApiDate } from '../utils/dateUtils';
+import {
+  UserIcon,
+  BriefcaseIcon,
+  IdentificationIcon,
+  BanknotesIcon,
+  DocumentTextIcon,
+  DocumentCheckIcon,
+  PhoneIcon,
+  PaperClipIcon,
+  ArrowLeftIcon,
+} from '@heroicons/react/24/outline';
 
 // ============================================
 // CONSTANTS
@@ -109,11 +120,15 @@ const EDUCATION_LEVEL_OPTIONS = [
 // HELPER COMPONENTS
 // ============================================
 
-const SectionTitle: React.FC<{ icon: string; title: string }> = ({ icon, title }) => (
-  <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-    <span>{icon}</span>
-    {title}
-  </h2>
+const SectionTitle: React.FC<{ icon: React.ReactNode; iconBg?: string; title: string }> = ({
+  icon, iconBg = 'bg-primary-100 text-primary-600', title,
+}) => (
+  <div className="flex items-center gap-2 mb-4">
+    <div className={`h-9 w-9 ${iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}>
+      {icon}
+    </div>
+    <h3 className="text-sm font-bold text-gray-900">{title}</h3>
+  </div>
 );
 
 interface FieldProps {
@@ -131,8 +146,8 @@ const Field: React.FC<FieldProps> = ({ label, required, children }) => (
   </div>
 );
 
-const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
-const textareaClass = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none";
+const inputClass = "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all";
+const textareaClass = "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none";
 
 // ============================================
 // MAIN COMPONENT
@@ -532,7 +547,7 @@ const EmployeeEdit: React.FC = () => {
     return (
       <div className="p-6">
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           <p className="mt-4 text-gray-600">Đang tải thông tin nhân viên...</p>
         </div>
       </div>
@@ -545,30 +560,30 @@ const EmployeeEdit: React.FC = () => {
       <div className="mb-6">
         <button
           onClick={() => navigate(`/dashboard/employees/${id}`)}
-          className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 mb-4"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 mb-4 transition-colors"
         >
-          ← Quay lại chi tiết
+          <ArrowLeftIcon className="h-4 w-4" /> Quay lại chi tiết
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">Chỉnh sửa nhân viên</h1>
-        <p className="text-gray-600 mt-1">Cập nhật thông tin nhân viên</p>
+        <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Chỉnh sửa nhân viên</h1>
+        <p className="text-sm text-gray-400 mt-1">Cập nhật thông tin nhân viên</p>
       </div>
 
       {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-2xl p-4">
           <p className="text-red-700 text-sm">{error}</p>
         </div>
       )}
       {success && (
-        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-green-700 text-sm">{success}</p>
+        <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+          <p className="text-emerald-700 text-sm">{success}</p>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
 
         {/* ── Thông tin cá nhân ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <SectionTitle icon="👤" title="Thông tin cá nhân" />
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <SectionTitle icon={<UserIcon className="h-5 w-5" />} title="Thông tin cá nhân" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Field label="Mã nhân viên" required>
               <input type="text" name="employee_id" value={formData.employee_id}
@@ -637,8 +652,8 @@ const EmployeeEdit: React.FC = () => {
         </div>
 
         {/* ── Thông tin công việc ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <SectionTitle icon="💼" title="Thông tin công việc" />
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <SectionTitle icon={<BriefcaseIcon className="h-5 w-5" />} title="Thông tin công việc" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <SelectBox
               label="Trạng thái làm việc"
@@ -765,7 +780,7 @@ const EmployeeEdit: React.FC = () => {
             />
 
             <div className="md:col-span-2">
-              <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border cursor-pointer">
+              <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 cursor-pointer hover:bg-primary-50 transition-colors">
                 <input
                   type="checkbox"
                   className="mt-0.5"
@@ -800,8 +815,8 @@ const EmployeeEdit: React.FC = () => {
         </div>
 
         {/* ── Giấy tờ tùy thân & địa chỉ ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <SectionTitle icon="🪪" title="Giấy tờ tùy thân & địa chỉ" />
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <SectionTitle icon={<IdentificationIcon className="h-5 w-5" />} iconBg="bg-violet-100 text-violet-600" title="Giấy tờ tùy thân & địa chỉ" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Field label="Số CCCD">
               <input type="text" name="cccd_number" value={formData.cccd_number}
@@ -872,8 +887,8 @@ const EmployeeEdit: React.FC = () => {
         </div>
 
         {/* ── Thông tin ngân hàng ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <SectionTitle icon="💳" title="Thông tin ngân hàng" />
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <SectionTitle icon={<BanknotesIcon className="h-5 w-5" />} iconBg="bg-emerald-100 text-emerald-600" title="Thông tin ngân hàng" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Field label="Tên ngân hàng">
               <input type="text" name="bank_name" value={formData.bank_name}
@@ -899,8 +914,8 @@ const EmployeeEdit: React.FC = () => {
         </div>
 
         {/* ── Lương & Hợp đồng ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <SectionTitle icon="💰" title="Lương & Hợp đồng" />
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <SectionTitle icon={<DocumentTextIcon className="h-5 w-5" />} iconBg="bg-emerald-100 text-emerald-600" title="Lương & Hợp đồng" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Field label="Lương cơ bản (VNĐ)">
               <input type="number" name="basic_salary" value={formData.basic_salary}
@@ -962,8 +977,8 @@ const EmployeeEdit: React.FC = () => {
         </div>
 
         {/* ── Trạng thái hồ sơ ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <SectionTitle icon="📋" title="Trạng thái hồ sơ" />
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <SectionTitle icon={<DocumentCheckIcon className="h-5 w-5" />} title="Trạng thái hồ sơ" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <SelectBox
               label="Trạng thái hồ sơ"
@@ -983,20 +998,20 @@ const EmployeeEdit: React.FC = () => {
             </div>
 
             <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
-              <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border cursor-pointer hover:bg-gray-100 transition-colors">
-                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.doc_resume} onChange={(e) => handleSelect('doc_resume', e.target.checked)} />
+              <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:bg-primary-50 transition-colors">
+                <input type="checkbox" className="w-4 h-4 text-primary-600 rounded accent-primary-600" checked={formData.doc_resume} onChange={(e) => handleSelect('doc_resume', e.target.checked)} />
                 <span className="text-sm font-medium text-gray-700">Sơ yếu lý lịch</span>
               </label>
-              <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border cursor-pointer hover:bg-gray-100 transition-colors">
-                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.doc_cccd} onChange={(e) => handleSelect('doc_cccd', e.target.checked)} />
+              <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:bg-primary-50 transition-colors">
+                <input type="checkbox" className="w-4 h-4 text-primary-600 rounded accent-primary-600" checked={formData.doc_cccd} onChange={(e) => handleSelect('doc_cccd', e.target.checked)} />
                 <span className="text-sm font-medium text-gray-700">CCCD</span>
               </label>
-              <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border cursor-pointer hover:bg-gray-100 transition-colors">
-                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.doc_degree} onChange={(e) => handleSelect('doc_degree', e.target.checked)} />
+              <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:bg-primary-50 transition-colors">
+                <input type="checkbox" className="w-4 h-4 text-primary-600 rounded accent-primary-600" checked={formData.doc_degree} onChange={(e) => handleSelect('doc_degree', e.target.checked)} />
                 <span className="text-sm font-medium text-gray-700">Bằng cấp</span>
               </label>
-              <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border cursor-pointer hover:bg-gray-100 transition-colors">
-                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.doc_health} onChange={(e) => handleSelect('doc_health', e.target.checked)} />
+              <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:bg-primary-50 transition-colors">
+                <input type="checkbox" className="w-4 h-4 text-primary-600 rounded accent-primary-600" checked={formData.doc_health} onChange={(e) => handleSelect('doc_health', e.target.checked)} />
                 <span className="text-sm font-medium text-gray-700">Giấy khám sức khỏe</span>
               </label>
             </div>
@@ -1004,8 +1019,8 @@ const EmployeeEdit: React.FC = () => {
         </div>
 
         {/* ── Người liên hệ khẩn cấp ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <SectionTitle icon="🆘" title="Người liên hệ khẩn cấp" />
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <SectionTitle icon={<PhoneIcon className="h-5 w-5" />} iconBg="bg-red-100 text-red-600" title="Người liên hệ khẩn cấp" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Field label="Họ và tên">
               <input type="text" name="emergency_contact_name" value={formData.emergency_contact_name}
@@ -1044,8 +1059,8 @@ const EmployeeEdit: React.FC = () => {
         </div>
 
         {/* ── Hồ sơ đính kèm ── */}
-        <div className="bg-white rounded-lg border p-6">
-          <SectionTitle icon="📎" title="Hồ sơ đính kèm" />
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <SectionTitle icon={<PaperClipIcon className="h-5 w-5" />} title="Hồ sơ đính kèm" />
           <p className="text-xs text-gray-500 mb-3">
             Chọn file mới để thay thế. Bỏ trống ô nào thì giữ nguyên.
           </p>
@@ -1064,7 +1079,7 @@ const EmployeeEdit: React.FC = () => {
                 { label: 'Ảnh chụp VNeID', file: vneidFile, setFile: setVneidFile, currentUrl: vneidCurrentUrl, accept: 'image/*,application/pdf' },
               ];
               return rows.map(r => (
-                <div key={r.label} className="border rounded-lg p-3 space-y-2">
+                <div key={r.label} className="border border-gray-100 rounded-2xl p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-medium text-gray-700">{r.label}</label>
                     {r.currentUrl && !r.file && (
@@ -1072,7 +1087,7 @@ const EmployeeEdit: React.FC = () => {
                         href={r.currentUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline"
+                        className="text-xs text-primary-600 hover:underline"
                       >
                         Xem file hiện tại
                       </a>
@@ -1091,7 +1106,7 @@ const EmployeeEdit: React.FC = () => {
                     type="file"
                     accept={r.accept}
                     onChange={(e) => r.setFile(e.target.files?.[0] || null)}
-                    className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
                   />
                   {r.file && (
                     <div className="flex items-center justify-between text-xs text-gray-600">
@@ -1116,14 +1131,14 @@ const EmployeeEdit: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate(`/dashboard/employees/${id}`)}
-            className="px-5 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            className="btn-secondary px-5 py-2"
           >
             Hủy
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="btn-primary px-5 py-2 disabled:opacity-50"
           >
             {loading ? 'Đang cập nhật...' : 'Lưu thay đổi'}
           </button>

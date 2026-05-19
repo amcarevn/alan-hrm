@@ -281,98 +281,111 @@ const Home: React.FC = () => {
   };
 
   const userStats = [
-    { label: 'Ngày làm việc', value: employee ? calculateWorkingDays().toString() : '0', change: '', icon: CalendarIcon, color: 'bg-blue-100 text-blue-600' },
-    { label: 'Điểm danh', value: '0%', change: '', icon: ClockIcon, color: 'bg-green-100 text-green-600' },
+    { label: 'Ngày làm việc', value: employee ? calculateWorkingDays().toString() : '0', icon: CalendarIcon, color: 'bg-primary-100 text-primary-600' },
+    { label: 'Điểm danh', value: '0%', icon: ClockIcon, color: 'bg-emerald-100 text-emerald-600' },
   ];
 
   const quickActions = [
-    { title: 'Xin nghỉ phép', description: 'Đăng ký nghỉ phép năm, nghỉ ốm', icon: CalendarIcon, color: 'bg-blue-50 text-blue-700', path: '/dashboard/approvals' },
-    { title: 'Báo cáo công việc', description: 'Gửi báo cáo tuần/tháng', icon: DocumentTextIcon, color: 'bg-green-50 text-green-700', path: '/company/internal-forms' },
-    { title: 'Đề xuất', description: 'Đề xuất công tác, mua sắm', icon: ScaleIcon, color: 'bg-yellow-50 text-yellow-700', path: '/dashboard/approvals' },
-    { title: 'Đào tạo', description: 'Đăng ký khóa đào tạo', icon: UserGroupIcon, color: 'bg-purple-50 text-purple-700', path: '/company/training' },
+    { title: 'Xin nghỉ phép', description: 'Đăng ký nghỉ phép năm, nghỉ ốm', icon: CalendarIcon, color: 'bg-primary-100 text-primary-700', path: '/dashboard/approvals' },
+    { title: 'Báo cáo công việc', description: 'Gửi báo cáo tuần/tháng', icon: DocumentTextIcon, color: 'bg-emerald-100 text-emerald-700', path: '/company/internal-forms' },
+    { title: 'Đề xuất', description: 'Đề xuất công tác, mua sắm', icon: ScaleIcon, color: 'bg-amber-100 text-amber-700', path: '/dashboard/approvals' },
+    { title: 'Đào tạo', description: 'Đăng ký khóa đào tạo', icon: UserGroupIcon, color: 'bg-violet-100 text-violet-700', path: '/company/training' },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-ruby-primary to-ruby-hover rounded-2xl p-8 text-white">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Chào mừng trở lại, {user?.username || 'Nhân viên'}!</h1>
-            <p className="mt-2 text-primary-100">
-              Hôm nay là {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
-            <div className="mt-4 flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <UserIcon className="h-5 w-5" />
-                <span>Mã NV: {user?.username || 'N/A'}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <BuildingOfficeIcon className="h-5 w-5" />
-                <span>Phòng: {loading ? 'Đang tải...' : (department?.name || employee?.department?.name || 'Chưa phân phòng')}</span>
+      <div className="relative overflow-hidden bg-gradient-to-r from-ruby-primary to-ruby-hover rounded-2xl text-white shadow-lg">
+        {/* Decorative blobs */}
+        <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-white/5" />
+        <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-white/5" />
+        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-white/[0.03]" />
+
+        <div className="relative px-10 py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="flex items-center gap-5">
+            {/* Avatar */}
+            <div className="h-20 w-20 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center flex-shrink-0 ring-2 ring-white/20 shadow-lg">
+              {employee?.avatar_url ? (
+                <img src={employee.avatar_url} alt="" className="h-full w-full rounded-2xl object-cover" />
+              ) : (
+                <span className="text-3xl font-extrabold text-white">
+                  {(employee?.full_name || user?.username || 'N')?.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white/50 tracking-widest uppercase mb-1">Chào mừng trở lại</p>
+              <h1 className="text-3xl font-extrabold tracking-tight leading-tight">
+                {employee?.full_name || user?.username || 'Nhân viên'}
+              </h1>
+              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-white/65">
+                <span className="flex items-center gap-1.5">
+                  <UserIcon className="h-4 w-4 text-white/40" />
+                  {user?.username || 'N/A'}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <BuildingOfficeIcon className="h-4 w-4 text-white/40" />
+                  {loading ? 'Đang tải...' : (department?.name || employee?.department?.name || 'Chưa phân phòng')}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CalendarIcon className="h-4 w-4 text-white/40" />
+                  {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
               </div>
             </div>
           </div>
-          <div className="mt-6 md:mt-0">
-            <button
-              onClick={() => navigate('/dashboard/me')}
-              className="inline-flex items-center px-6 py-3 border-2 border-white text-sm font-medium rounded-lg text-white hover:bg-white hover:text-primary-700 transition-colors"
-            >
-              <UserIcon className="h-5 w-5 mr-2" />
-              Xem hồ sơ cá nhân
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/dashboard/me')}
+            className="self-start md:self-auto inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-sm font-semibold text-white backdrop-blur transition-all duration-200 shadow-sm"
+          >
+            <UserIcon className="h-4 w-4" />
+            Hồ sơ cá nhân
+          </button>
         </div>
       </div>
 
-      {/* Thông báo chưa đọc — highlight để kéo sự chú ý */}
-      {unreadAnnouncements.filter(ann => unreadIds.has(ann.id)).length > 0 && (
-        <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border-2 border-amber-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="relative w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-amber-500/30">
-                <MegaphoneIcon className="w-6 h-6 text-white" />
-                <span className="absolute -top-1.5 -right-1.5 h-5 w-5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold ring-2 ring-white">
-                  {unreadAnnouncements.filter(ann => unreadIds.has(ann.id)).length}
+      {/* Thông báo chưa đọc — chỉ hiển thị 1 mới nhất */}
+      {(() => {
+        const unread = unreadAnnouncements.filter(ann => unreadIds.has(ann.id));
+        if (unread.length === 0) return null;
+        const latest = unread[0];
+        const extra = unread.length - 1;
+        return (
+          <button
+            onClick={() => { markRead(latest.id); openDrawer(latest); }}
+            className="w-full text-left rounded-2xl border border-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors px-4 py-3.5 flex items-center gap-3 shadow-sm group"
+          >
+            {/* Icon */}
+            <div className="relative h-9 w-9 rounded-xl bg-amber-500 flex items-center justify-center flex-shrink-0">
+              <MegaphoneIcon className="w-5 h-5 text-white" />
+              {unread.length > 1 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold ring-2 ring-white">
+                  {unread.length > 9 ? '9+' : unread.length}
                 </span>
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">Thông báo chưa đọc</h2>
-                <p className="text-sm text-gray-600">Bấm vào để đọc ngay</p>
-              </div>
+              )}
             </div>
-            <button
-              onClick={() => openDrawer()}
-              className="text-sm font-medium text-amber-700 hover:text-amber-900 flex items-center gap-1"
-            >
-              Xem tất cả <ArrowRightIcon className="h-4 w-4" />
-            </button>
-          </div>
 
-          <div className="space-y-2">
-            {unreadAnnouncements.filter(ann => unreadIds.has(ann.id)).map((ann) => (
-              <button
-                key={ann.id}
-                onClick={() => { markRead(ann.id); setUnreadAnnouncements(prev => prev.filter(a => a.id !== ann.id)); openDrawer(ann); }}
-                className="w-full text-left flex items-start gap-3 bg-white hover:bg-amber-50 border border-amber-100 hover:border-amber-300 rounded-xl px-4 py-3 transition-all group"
-              >
-                <span className="mt-1.5 h-2 w-2 rounded-full bg-amber-500 flex-shrink-0 group-hover:bg-amber-600" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 text-sm truncate">{ann.title}</p>
-                  {ann.content && (
-                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{ann.content}</p>
-                  )}
-                  <p className="text-xs text-amber-600 mt-1">
-                    {ann.effective_from ? new Date(ann.effective_from).toLocaleDateString('vi-VN') : ''}
-                    {ann.announcement_type_display ? ` · ${ann.announcement_type_display}` : ''}
-                  </p>
-                </div>
-                <ArrowRightIcon className="h-4 w-4 text-gray-300 group-hover:text-amber-500 flex-shrink-0 mt-1 transition-colors" />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Thông báo mới</span>
+                {latest.announcement_type_display && (
+                  <span className="text-[10px] text-amber-600">· {latest.announcement_type_display}</span>
+                )}
+              </div>
+              <p className="text-sm font-semibold text-gray-900 truncate">{latest.title}</p>
+              {extra > 0 && (
+                <p className="text-xs text-amber-600 mt-0.5">+{extra} thông báo chưa đọc khác</p>
+              )}
+            </div>
+
+            {/* CTA */}
+            <div className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-amber-700 group-hover:text-amber-900">
+              Xem <ArrowRightIcon className="h-3.5 w-3.5" />
+            </div>
+          </button>
+        );
+      })()}
 
       {/* Tài liệu onboarding cần đọc */}
       {(() => {
@@ -384,49 +397,35 @@ const Home: React.FC = () => {
         if (unreadCount === 0) return null; // Đã đọc hết → ẩn section
 
         return (
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 p-6 shadow-sm">
-            <div className="flex items-center gap-4 mb-5">
-              <div className="w-14 h-14 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-600/20">
-                <DocumentTextIcon className="w-7 h-7 text-white" />
+          <div className="rounded-2xl border border-primary-200 bg-gradient-to-br from-primary-50 to-blue-50 p-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-9 w-9 rounded-xl bg-primary-600 flex items-center justify-center flex-shrink-0">
+                <DocumentTextIcon className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Tài liệu cần đọc</h2>
-                <p className="text-sm text-gray-600">
-                  Bạn có <span className="font-semibold text-blue-700">{unreadCount}</span> tài liệu bắt buộc chưa đọc
-                </p>
+                <h2 className="text-sm font-bold text-gray-900">Tài liệu cần đọc</h2>
+                <p className="text-xs text-gray-500">Bạn có <span className="font-bold text-primary-700">{unreadCount}</span> tài liệu bắt buộc chưa đọc</p>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {requiredDocs.map((doc: any) => (
-                <div key={doc.id} className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 text-sm">{doc.document_name}</p>
-                      {doc.description && (
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{doc.description}</p>
-                      )}
-                      {doc.is_read ? (
-                        <span className="inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                          <CheckCircleIcon className="w-3.5 h-3.5" /> Đã đọc
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                          <ClockIcon className="w-3.5 h-3.5" /> Chưa đọc
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => {
-                        setViewingDoc(doc);
-                        setDocReadable(false);
-                      }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors flex-shrink-0 inline-flex items-center gap-1.5 shadow-sm"
-                    >
-                      <EyeIcon className="w-4 h-4" />
-                      Xem
-                    </button>
+                <div key={doc.id} className="bg-white rounded-xl border border-gray-100 p-4 flex items-start justify-between gap-3 hover:shadow-sm transition-shadow">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm">{doc.document_name}</p>
+                    {doc.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{doc.description}</p>}
+                    {doc.is_read ? (
+                      <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                        <CheckCircleIcon className="w-3 h-3" /> Đã đọc
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+                        <ClockIcon className="w-3 h-3" /> Chưa đọc
+                      </span>
+                    )}
                   </div>
+                  <button onClick={() => { setViewingDoc(doc); setDocReadable(false); }} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg text-xs font-semibold hover:bg-primary-700 transition-colors flex-shrink-0 inline-flex items-center gap-1">
+                    <EyeIcon className="w-3.5 h-3.5" /> Xem
+                  </button>
                 </div>
               ))}
             </div>
@@ -435,38 +434,40 @@ const Home: React.FC = () => {
       })()}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 gap-4">
         {userStats.map((stat, index) => (
-          <div key={index} className="bg-white rounded-xl shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">{stat.label}</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
-              </div>
-              <div className={`h-12 w-12 ${stat.color} rounded-lg flex items-center justify-center`}>
-                <stat.icon className="h-6 w-6" />
-              </div>
+          <div key={index} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 border-l-4 border-l-primary-500">
+            <div className={`h-11 w-11 ${stat.color} rounded-xl flex items-center justify-center flex-shrink-0`}>
+              <stat.icon className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{stat.label}</p>
+              <p className="text-2xl font-extrabold text-gray-900 mt-0.5 tracking-tight">{stat.value}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Birthday Section */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="h-10 w-10 bg-pink-100 rounded-lg flex items-center justify-center">
-            <CakeIcon className="h-6 w-6 text-pink-600" />
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 bg-pink-100 rounded-xl flex items-center justify-center">
+              <CakeIcon className="h-5 w-5 text-pink-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Chúc mừng sinh nhật hôm nay</h2>
+              <p className="text-xs text-gray-400">{birthdayEmployees.length === 0 ? 'Không có sinh nhật hôm nay' : `${birthdayEmployees.length} nhân viên`}</p>
+            </div>
           </div>
-          <h2 className="text-xl font-bold text-gray-900">🎂 Chúc mừng sinh nhật</h2>
         </div>
-        {birthdayEmployees.length === 0 ? (
-          <p className="text-sm text-gray-500">Hôm nay không có nhân viên nào có sinh nhật.</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        {birthdayEmployees.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
             {birthdayEmployees.map((emp) => (
-              <div key={emp.employee_id} className="flex flex-col p-4 bg-pink-50 border border-pink-200 rounded-xl">
-                <div className="flex items-center space-x-4">
-                  <div className="h-12 w-12 rounded-full flex-shrink-0 overflow-hidden bg-pink-100">
+              <div key={emp.employee_id} className="flex flex-col gap-3 p-4 bg-pink-50 border border-pink-100 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="h-11 w-11 rounded-full flex-shrink-0 overflow-hidden ring-2 ring-pink-200">
                     {emp.avatar_url ? (
                       <img src={emp.avatar_url} alt={emp.full_name} className="h-full w-full object-cover" />
                     ) : (
@@ -476,35 +477,23 @@ const Home: React.FC = () => {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900">{emp.full_name}</p>
-                    {emp.department && (
-                      <p className="text-sm text-gray-500">{emp.department.name}</p>
-                    )}
-                    <p className="text-xs text-pink-600 mt-1">
-                      {formatBirthDate(emp.date_of_birth)}
-                    </p>
+                    <p className="font-semibold text-gray-900 text-sm truncate">{emp.full_name}</p>
+                    {emp.department && <p className="text-xs text-gray-500 truncate">{emp.department.name}</p>}
+                    <p className="text-xs text-pink-500 font-medium mt-0.5">{formatBirthDate(emp.date_of_birth)}</p>
                   </div>
                 </div>
-                <div className="mt-3 flex items-center gap-2">
+                <div className="flex items-center gap-2">
                   {wishSent.has(emp.employee_id) ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-                      ✅ Đã gửi lời chúc
+                    <span className="inline-flex items-center gap-1 text-xs text-green-600 font-semibold">
+                      <CheckCircleIcon className="h-3.5 w-3.5" /> Đã gửi lời chúc
                     </span>
                   ) : (
-                    <button
-                      onClick={() => openWishModal(emp)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-pink-500 hover:bg-pink-600 text-white text-xs font-medium rounded-lg transition-colors"
-                    >
-                      <PaperAirplaneIcon className="h-3.5 w-3.5" />
-                      Gửi lời chúc
+                    <button onClick={() => openWishModal(emp)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-pink-500 hover:bg-pink-600 text-white text-xs font-semibold rounded-lg transition-colors">
+                      <PaperAirplaneIcon className="h-3.5 w-3.5" /> Gửi lời chúc
                     </button>
                   )}
-                  <button
-                    onClick={() => openWishListModal(emp)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-pink-300 hover:bg-pink-50 text-pink-600 text-xs font-medium rounded-lg transition-colors"
-                  >
-                    <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" />
-                    Xem lời chúc
+                  <button onClick={() => openWishListModal(emp)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-pink-200 hover:bg-pink-50 text-pink-600 text-xs font-semibold rounded-lg transition-colors">
+                    <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" /> Lời chúc
                   </button>
                 </div>
               </div>
@@ -513,18 +502,18 @@ const Home: React.FC = () => {
         )}
 
         {/* Tomorrow's Birthdays */}
-        <div className="mt-6 pt-6 border-t border-gray-100">
-          <div className="flex items-center space-x-2 mb-4">
-            <CakeIcon className="h-5 w-5 text-gray-400" />
-            <h3 className="text-base font-semibold text-gray-500">Sinh nhật ngày mai</h3>
+        <div className={birthdayEmployees.length > 0 ? 'pt-4 border-t border-gray-100' : ''}>
+          <div className="flex items-center gap-2 mb-3">
+            <CakeIcon className="h-4 w-4 text-gray-300" />
+            <h3 className="text-sm font-semibold text-gray-400">Sinh nhật ngày mai</h3>
           </div>
           {tomorrowBirthdayEmployees.length === 0 ? (
-            <p className="text-sm text-gray-400">Ngày mai không có nhân viên nào có sinh nhật.</p>
+            <p className="text-sm text-gray-400">Không có sinh nhật ngày mai.</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {tomorrowBirthdayEmployees.map((emp) => (
-                <div key={emp.employee_id} className="flex items-center space-x-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                  <div className="h-12 w-12 rounded-full flex-shrink-0 overflow-hidden bg-gray-100">
+                <div key={emp.employee_id} className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                  <div className="h-10 w-10 rounded-full flex-shrink-0 overflow-hidden">
                     {emp.avatar_url ? (
                       <img src={emp.avatar_url} alt={emp.full_name} className="h-full w-full object-cover" />
                     ) : (
@@ -533,14 +522,10 @@ const Home: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  <div>
-                    <p className="font-semibold text-gray-500">{emp.full_name}</p>
-                    {emp.department && (
-                      <p className="text-sm text-gray-400">{emp.department.name}</p>
-                    )}
-                    <p className="text-xs text-gray-400 mt-1">
-                      {formatBirthDate(emp.date_of_birth)}
-                    </p>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-500 text-sm truncate">{emp.full_name}</p>
+                    {emp.department && <p className="text-xs text-gray-400 truncate">{emp.department.name}</p>}
+                    <p className="text-xs text-gray-400 mt-0.5">{formatBirthDate(emp.date_of_birth)}</p>
                   </div>
                 </div>
               ))}
@@ -550,41 +535,34 @@ const Home: React.FC = () => {
       </div>
 
       {/* Attendance Ranking Section */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <TrophyIcon className="h-6 w-6 text-yellow-600" />
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 bg-amber-100 rounded-xl flex items-center justify-center">
+              <TrophyIcon className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">🏆 Bảng vinh danh đi sớm</h2>
-              <p className="text-sm text-gray-500">
-                Top 10 nhân viên đi sớm nhất tháng {rankingPeriod.month}/{rankingPeriod.year}
-              </p>
+              <h2 className="text-base font-bold text-gray-900">Bảng vinh danh đi sớm</h2>
+              <p className="text-xs text-gray-400">Top 10 · tháng {rankingPeriod.month}/{rankingPeriod.year}</p>
             </div>
           </div>
-          <button
-            onClick={() => navigate('/dashboard/attendance/ranking')}
-            className="text-primary-600 hover:text-primary-800 text-sm font-medium flex items-center"
-          >
-            Xem chi tiết <ArrowRightIcon className="h-4 w-4 ml-1" />
+          <button onClick={() => navigate('/dashboard/attendance/ranking')} className="text-xs font-semibold text-primary-600 hover:text-primary-800 flex items-center gap-1">
+            Xem chi tiết <ArrowRightIcon className="h-3.5 w-3.5" />
           </button>
         </div>
 
         {rankingLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin h-6 w-6 border-2 border-yellow-500 border-t-transparent rounded-full" />
-            <span className="ml-3 text-sm text-gray-500">Đang tải bảng xếp hạng...</span>
+          <div className="flex items-center justify-center py-8 gap-3">
+            <div className="animate-spin h-5 w-5 border-2 border-amber-400 border-t-transparent rounded-full" />
+            <span className="text-sm text-gray-400">Đang tải...</span>
           </div>
         ) : attendanceRankings.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-6">Chưa có dữ liệu xếp hạng cho tháng này.</p>
+          <p className="text-sm text-gray-400 text-center py-6">Chưa có dữ liệu xếp hạng.</p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {attendanceRankings.map((entry, index) => {
               const rankNum = entry.rank_early ?? index + 1;
               const medal = RANK_MEDALS[rankNum - 1] ?? null;
-              const initials = getInitials(entry.full_name);
-              const avatarBg = stringToColor(entry.full_name);
               return (
                 <div
                   key={entry.employee_id}
@@ -598,50 +576,30 @@ const Home: React.FC = () => {
                       : 'bg-white border-gray-100'
                   }`}
                 >
-                  {/* Rank badge */}
-                  <div className="w-8 text-center flex-shrink-0">
-                    {medal ? (
-                      <span className="text-xl">{medal}</span>
-                    ) : (
-                      <span className="text-sm font-bold text-gray-500">#{rankNum}</span>
-                    )}
+                  <div className="w-7 text-center flex-shrink-0">
+                    {medal ? <span className="text-lg">{medal}</span> : <span className="text-xs font-bold text-gray-400">#{rankNum}</span>}
                   </div>
-
-                  {/* Avatar */}
-                  <div className="h-10 w-10 rounded-full flex-shrink-0 overflow-hidden">
+                  <div className="h-9 w-9 rounded-full flex-shrink-0 overflow-hidden">
                     {entry.avatar ? (
-                      <img
-                        src={entry.avatar}
-                        alt={entry.full_name}
-                        className="h-full w-full object-cover"
-                      />
+                      <img src={entry.avatar} alt={entry.full_name} className="h-full w-full object-cover" />
                     ) : (
-                      <div
-                        className="h-full w-full flex items-center justify-center text-white text-sm font-bold"
-                        style={{ backgroundColor: avatarBg }}
-                      >
-                        {initials}
+                      <div className="h-full w-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: stringToColor(entry.full_name) }}>
+                        {getInitials(entry.full_name)}
                       </div>
                     )}
                   </div>
-
-                  {/* Name & department */}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-900 text-sm truncate">{entry.full_name}</p>
-                    {entry.department && (
-                      <p className="text-xs text-gray-500 truncate">{entry.department}</p>
-                    )}
+                    {entry.department && <p className="text-xs text-gray-400 truncate">{entry.department}</p>}
                   </div>
-
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 flex-shrink-0 text-right">
+                  <div className="flex items-center gap-3 flex-shrink-0 text-right">
                     <div>
-                      <p className="text-xs text-gray-400">Ngày đi sớm</p>
-                      <p className="text-sm font-bold text-yellow-600">{entry.early_days}</p>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Ngày sớm</p>
+                      <p className="text-sm font-bold text-amber-600">{entry.early_days}</p>
                     </div>
                     <div className="hidden sm:block">
-                      <p className="text-xs text-gray-400">TB sớm</p>
-                      <p className="text-sm font-bold text-gray-700">{entry.avg_early_minutes} phút</p>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">TB sớm</p>
+                      <p className="text-sm font-bold text-gray-700">{entry.avg_early_minutes}p</p>
                     </div>
                   </div>
                 </div>
@@ -652,133 +610,88 @@ const Home: React.FC = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Thao tác nhanh</h2>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-primary-600 hover:text-primary-800 text-sm font-medium flex items-center"
-          >
-            Xem Dashboard <ArrowRightIcon className="h-4 w-4 ml-1" />
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold text-gray-900">Thao tác nhanh</h2>
+          <button onClick={() => navigate('/dashboard')} className="text-xs font-semibold text-primary-600 hover:text-primary-800 flex items-center gap-1">
+            Dashboard <ArrowRightIcon className="h-3.5 w-3.5" />
           </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {quickActions.map((action, index) => (
             <button
               key={index}
               onClick={() => navigate(action.path)}
-              className="flex flex-col items-center p-6 border-2 border-gray-200 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-colors"
+              className="flex flex-col items-center gap-3 p-4 border border-gray-100 rounded-2xl hover:border-primary-200 hover:bg-primary-50 transition-all duration-200 group"
             >
-              <div className={`h-12 w-12 ${action.color} rounded-lg flex items-center justify-center mb-4`}>
-                <action.icon className="h-6 w-6" />
+              <div className={`h-11 w-11 ${action.color} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200`}>
+                <action.icon className="h-5 w-5" />
               </div>
-              <h3 className="font-medium text-gray-900 text-center">{action.title}</h3>
-              <p className="text-sm text-gray-500 text-center mt-2">{action.description}</p>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-800">{action.title}</p>
+                <p className="text-xs text-gray-400 mt-0.5 leading-snug">{action.description}</p>
+              </div>
             </button>
           ))}
         </div>
       </div>
 
       {/* Company Information Section */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-9 w-9 bg-primary-100 rounded-xl flex items-center justify-center">
+            <BuildingOfficeIcon className="h-5 w-5 text-primary-600" />
+          </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Thông tin công ty</h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Tài liệu đào tạo, thông báo, quyết định, nội quy lao động và các thông tin nội bộ
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <BuildingOfficeIcon className="h-8 w-8 text-gray-400" />
-            <span className="text-sm font-medium text-gray-700">Nội bộ công ty</span>
+            <h2 className="text-base font-bold text-gray-900">Thông tin công ty</h2>
+            <p className="text-xs text-gray-400">Tài liệu, nội quy và quy trình nội bộ</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Training Documents Button */}
-          <button
-            onClick={() => navigate('/company/training')}
-            className="flex flex-col items-center justify-center p-6 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors"
-          >
-            <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <h3 className="font-medium text-gray-900 text-center">Tài liệu đào tạo hội nhập</h3>
-            <p className="text-sm text-gray-500 text-center mt-2">Tài liệu hướng dẫn và đào tạo nhân viên mới</p>
-          </button>
-
-          {/* Labor Rules Button */}
-          <button
-            onClick={() => navigate('/company/labor-rules')}
-            className="flex flex-col items-center justify-center p-6 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors"
-          >
-            <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <h3 className="font-medium text-gray-900 text-center">Nội quy lao động</h3>
-            <p className="text-sm text-gray-500 text-center mt-2">Quy định và nội quy làm việc trong công ty</p>
-          </button>
-
-          {/* Internal Forms Button */}
-          <button
-            onClick={() => navigate('/company/internal-forms')}
-            className="flex flex-col items-center justify-center p-6 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors"
-          >
-            <div className="h-12 w-12 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h3 className="font-medium text-gray-900 text-center">Mẫu giấy tờ nội bộ</h3>
-            <p className="text-sm text-gray-500 text-center mt-2">Các mẫu đơn, biểu mẫu sử dụng nội bộ</p>
-          </button>
-
-          {/* Work Procedures Button */}
-          <button
-            onClick={() => navigate('/company/work-procedures')}
-            className="flex flex-col items-center justify-center p-6 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors"
-          >
-            <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-            </div>
-            <h3 className="font-medium text-gray-900 text-center">Quy trình làm việc</h3>
-            <p className="text-sm text-gray-500 text-center mt-2">Quy trình làm việc của các bộ phận</p>
-          </button>
-        </div>
-
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-            {/* Quick Links */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-900 mb-4">Liên kết nhanh</h3>
-              <div className="space-y-2">
-                <button onClick={() => navigate('/company/policies')} className="flex items-center justify-between w-full p-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">
-                  <span>Chính sách công ty</span>
-                  <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-                <button onClick={() => navigate('/company/decisions')} className="flex items-center justify-between w-full p-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">
-                  <span>Quyết định ban hành</span>
-                  <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-                <button onClick={() => navigate('/dashboard/organization-chart')} className="flex items-center justify-between w-full p-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">
-                  <span>Sơ đồ tổ chức</span>
-                  <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: 'Tài liệu đào tạo', desc: 'Hướng dẫn nhân viên mới', path: '/company/training', color: 'bg-primary-100 text-primary-600',
+              icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /> },
+            { label: 'Nội quy lao động', desc: 'Quy định làm việc', path: '/company/labor-rules', color: 'bg-emerald-100 text-emerald-600',
+              icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /> },
+            { label: 'Mẫu giấy tờ', desc: 'Biểu mẫu nội bộ', path: '/company/internal-forms', color: 'bg-amber-100 text-amber-600',
+              icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /> },
+            { label: 'Quy trình làm việc', desc: 'Quy trình các bộ phận', path: '/company/work-procedures', color: 'bg-violet-100 text-violet-600',
+              icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /> },
+          ].map((item) => (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className="flex flex-col items-center gap-3 p-4 border border-gray-100 rounded-2xl hover:border-primary-200 hover:bg-primary-50 transition-all duration-200 group"
+            >
+              <div className={`h-11 w-11 ${item.color} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200`}>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">{item.icon}</svg>
               </div>
-            </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-800">{item.label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{item.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Liên kết nhanh</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: 'Chính sách công ty', path: '/company/policies' },
+              { label: 'Quyết định ban hành', path: '/company/decisions' },
+              { label: 'Sơ đồ tổ chức', path: '/dashboard/organization-chart' },
+            ].map((link) => (
+              <button
+                key={link.path}
+                onClick={() => navigate(link.path)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-primary-50 hover:text-primary-700 border border-gray-100 hover:border-primary-200 rounded-lg transition-all"
+              >
+                {link.label}
+                <ArrowRightIcon className="h-3 w-3" />
+              </button>
+            ))}
           </div>
         </div>
       </div>

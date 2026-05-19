@@ -113,124 +113,116 @@ export default function AssetReturnModal({ isOpen, onClose, onSuccess, asset, hi
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <DialogPanel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:p-6">
-                <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
+              <DialogPanel className="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                  <DialogTitle as="h3" className="text-base font-bold text-gray-900">
+                    {holderName ? `Thu hồi từ ${holderName}` : 'Thu hồi tài sản về kho'}
+                  </DialogTitle>
                   <button
                     type="button"
-                    className="rounded-md bg-white text-gray-400 hover:text-gray-500"
+                    className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
                     onClick={onClose}
                   >
-                    <span className="sr-only">Đóng</span>
-                    <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                    <XMarkIcon className="h-5 w-5" />
                   </button>
                 </div>
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                    <DialogTitle as="h3" className="text-xl font-semibold leading-6 text-gray-900 border-b pb-3 border-gray-200">
-                      {holderName ? `Thu hồi từ ${holderName}` : 'Thu hồi tài sản về kho'}
-                    </DialogTitle>
-                    <div className="mt-4 mb-4 bg-amber-50 p-3 rounded-md">
-                      <p className="text-sm text-amber-800">
-                        <strong>Tài sản đang thu hồi:</strong> [{asset.asset_code}] {asset.name}
+
+                {/* Body */}
+                <div className="px-6 py-5 space-y-4">
+                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl">
+                    <p className="text-sm text-amber-800">
+                      <strong>Tài sản đang thu hồi:</strong> [{asset.asset_code}] {asset.name}
+                    </p>
+                  </div>
+                  {holderName && holderQuantity != null && (
+                    <div className="bg-primary-50 p-3 rounded-xl border border-primary-100">
+                      <p className="text-sm text-primary-800">
+                        <strong>{holderName}</strong> đang giữ <strong>{holderQuantity}</strong>
                       </p>
                     </div>
-                    {holderName && holderQuantity != null && (
-                      <div className="mb-4 bg-blue-50 p-3 rounded-md border border-blue-100">
-                        <p className="text-sm text-blue-800">
-                          <strong>{holderName}</strong> đang giữ <strong>{holderQuantity}</strong>
-                        </p>
-                      </div>
-                    )}
+                  )}
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                      {showQtyInput && (
-                        <div>
-                          <label htmlFor="return_qty" className="block text-sm font-medium text-gray-700">
-                            Số lượng thu hồi
-                          </label>
-                          <input
-                            type="number"
-                            id="return_qty"
-                            min={1}
-                            max={holderQuantity}
-                            value={returnQty}
-                            onChange={(e) => {
-                              const n = parseInt(e.target.value) || 0;
-                              setReturnQty(n);
-                              if (n > (holderQuantity ?? 1)) {
-                                setQtyError(`Tối đa ${holderQuantity} màn hình`);
-                              } else if (n < 1) {
-                                setQtyError('Số lượng tối thiểu là 1');
-                              } else {
-                                setQtyError(null);
-                              }
-                            }}
-                            className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
-                              qtyError
-                                ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500'
-                                : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
-                            }`}
-                            required
-                          />
-                          {qtyError ? (
-                            <p className="mt-1 text-xs text-rose-600">{qtyError}</p>
-                          ) : (
-                            <p className="mt-1 text-xs text-gray-500">
-                              {holderName} đang giữ {holderQuantity} màn hình
-                            </p>
-                          )}
-                        </div>
-                      )}
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    {showQtyInput && (
                       <div>
-                        <label htmlFor="return_date" className="block text-sm font-medium text-gray-700">Ngày thu hồi</label>
+                        <label htmlFor="return_qty" className="block text-xs font-medium text-gray-600 mb-1">
+                          Số lượng thu hồi
+                        </label>
                         <input
-                          type="date"
-                          name="return_date"
-                          id="return_date"
-                          value={formData.return_date}
-                          onChange={handleInputChange}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                          type="number"
+                          id="return_qty"
+                          min={1}
+                          max={holderQuantity}
+                          value={returnQty}
+                          onChange={(e) => {
+                            const n = parseInt(e.target.value) || 0;
+                            setReturnQty(n);
+                            if (n > (holderQuantity ?? 1)) {
+                              setQtyError(`Tối đa ${holderQuantity} màn hình`);
+                            } else if (n < 1) {
+                              setQtyError('Số lượng tối thiểu là 1');
+                            } else {
+                              setQtyError(null);
+                            }
+                          }}
+                          className={`input-field ${qtyError ? 'border-red-400 focus:ring-red-500' : ''}`}
                           required
                         />
+                        {qtyError ? (
+                          <p className="mt-1 text-xs text-red-600">{qtyError}</p>
+                        ) : (
+                          <p className="mt-1 text-xs text-gray-500">
+                            {holderName} đang giữ {holderQuantity} màn hình
+                          </p>
+                        )}
                       </div>
-
-                      <SelectBox
-                        label="Tình trạng lúc thu hồi"
-                        value={formData.condition}
-                        options={ASSET_CONDITIONS}
-                        onChange={(val) => handleChange('condition', val)}
+                    )}
+                    <div>
+                      <label htmlFor="return_date" className="block text-xs font-medium text-gray-600 mb-1">Ngày thu hồi</label>
+                      <input
+                        type="date"
+                        name="return_date"
+                        id="return_date"
+                        value={formData.return_date}
+                        onChange={handleInputChange}
+                        className="input-field"
+                        required
                       />
+                    </div>
 
-                      <div>
-                        <label htmlFor="notes" className="block text-sm font-medium text-gray-700">Ghi chú (Lý do mất, hỏng, v.v)</label>
-                        <textarea
-                          name="notes"
-                          id="notes"
-                          rows={3}
-                          value={formData.notes}
-                          onChange={handleInputChange}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                        />
-                      </div>
+                    <SelectBox
+                      label="Tình trạng lúc thu hồi"
+                      value={formData.condition}
+                      options={ASSET_CONDITIONS}
+                      onChange={(val) => handleChange('condition', val)}
+                    />
 
-                      <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-                        <button
-                          type="submit"
-                          disabled={loading || !!qtyError}
-                          className={`inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-white shadow-sm sm:ml-3 sm:w-auto ${loading || qtyError ? 'bg-amber-300 cursor-not-allowed' : 'bg-amber-600 hover:bg-amber-700'}`}
-                        >
-                          {loading ? 'Đang lưu...' : 'Xác nhận Thu Hồi'}
-                        </button>
-                        <button
-                          type="button"
-                          className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
-                          onClick={onClose}
-                        >
-                          Hủy
-                        </button>
-                      </div>
-                    </form>
-                  </div>
+                    <div>
+                      <label htmlFor="notes" className="block text-xs font-medium text-gray-600 mb-1">Ghi chú (Lý do mất, hỏng, v.v)</label>
+                      <textarea
+                        name="notes"
+                        id="notes"
+                        rows={3}
+                        value={formData.notes}
+                        onChange={handleInputChange}
+                        className="input-field"
+                      />
+                    </div>
+                  </form>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+                  <button type="button" className="btn-secondary" onClick={onClose}>Hủy</button>
+                  <button
+                    type="button"
+                    disabled={loading || !!qtyError}
+                    onClick={handleSubmit as any}
+                    className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${loading || qtyError ? 'bg-amber-400' : 'bg-amber-600 hover:bg-amber-700'}`}
+                  >
+                    {loading ? 'Đang lưu...' : 'Xác nhận Thu Hồi'}
+                  </button>
                 </div>
               </DialogPanel>
             </TransitionChild>
@@ -292,7 +284,7 @@ export default function AssetReturnModal({ isOpen, onClose, onSuccess, asset, hi
                             <> đã được thu hồi về kho.</>
                           )}
                         </p>
-                        <p className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2 text-xs text-emerald-800">
+                        <p className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 text-xs text-emerald-800">
                           Trạng thái hiện tại: <strong>Sẵn dùng (Trong kho)</strong>
                         </p>
                       </div>

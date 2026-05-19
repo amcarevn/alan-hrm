@@ -22,7 +22,6 @@ import {
   HomeIcon,
 } from '@heroicons/react/24/outline';
 
-/* ─── tiny helper ─── */
 const cx = (...classes: (string | false | undefined | null)[]) =>
   classes.filter(Boolean).join(' ');
 
@@ -38,9 +37,9 @@ const Alert = ({
 }) => {
   const cfg = {
     success: {
-      bg: 'bg-green-50 border-green-200',
-      icon: <CheckCircleIcon className="w-5 h-5 text-green-500 shrink-0" />,
-      text: 'text-green-800',
+      bg: 'bg-emerald-50 border-emerald-200',
+      icon: <CheckCircleIcon className="w-5 h-5 text-emerald-500 shrink-0" />,
+      text: 'text-emerald-800',
     },
     error: {
       bg: 'bg-red-50 border-red-200',
@@ -48,9 +47,9 @@ const Alert = ({
       text: 'text-red-800',
     },
     info: {
-      bg: 'bg-blue-50 border-blue-200',
-      icon: <InformationCircleIcon className="w-5 h-5 text-blue-500 shrink-0" />,
-      text: 'text-blue-800',
+      bg: 'bg-primary-50 border-primary-200',
+      icon: <InformationCircleIcon className="w-5 h-5 text-primary-500 shrink-0" />,
+      text: 'text-primary-800',
     },
   }[type] ?? {
     bg: 'bg-gray-50 border-gray-200',
@@ -59,12 +58,12 @@ const Alert = ({
   };
 
   return (
-    <div className={cx('flex items-center gap-3 rounded-lg border px-4 py-3 text-sm', cfg.bg, cfg.text)}>
+    <div className={cx('flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm', cfg.bg, cfg.text)}>
       {cfg.icon}
       <span className="flex-1">{text}</span>
       <button
         onClick={onClose}
-        className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+        className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
       >
         <XMarkIcon className="w-4 h-4" />
       </button>
@@ -73,19 +72,15 @@ const Alert = ({
 };
 
 /* ─── Status badge ─── */
-const StatusBadge = ({
-  status,
-}: {
-  status: 'success' | 'error' | 'processing';
-}) => {
+const StatusBadge = ({ status }: { status: 'success' | 'error' | 'processing' }) => {
   const configs = {
-    success:    { bg: 'bg-green-100',  text: 'text-green-800',  label: 'Thành công' },
-    error:      { bg: 'bg-red-100',    text: 'text-red-800',    label: 'Thất bại' },
-    processing: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Đang xử lý' },
+    success:    { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Thành công' },
+    error:      { bg: 'bg-red-100',     text: 'text-red-700',     label: 'Thất bại' },
+    processing: { bg: 'bg-amber-100',   text: 'text-amber-700',   label: 'Đang xử lý' },
   };
   const config = configs[status];
   return (
-    <span className={cx('px-2 py-1 text-xs font-semibold rounded-full', config.bg, config.text)}>
+    <span className={cx('px-2 py-0.5 text-xs font-semibold rounded-full', config.bg, config.text)}>
       {config.label}
     </span>
   );
@@ -99,18 +94,18 @@ const StatCard = ({
 }: {
   label: string;
   value: string | number;
-  color: 'green' | 'yellow' | 'red' | 'blue';
+  color: 'emerald' | 'amber' | 'red' | 'primary';
 }) => {
   const themes = {
-    green:  'bg-green-50 text-green-700 border-green-100',
-    yellow: 'bg-yellow-50 text-yellow-700 border-yellow-100',
-    red:    'bg-red-50 text-red-700 border-red-100',
-    blue:   'bg-blue-50 text-blue-700 border-blue-100',
+    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    amber:   'bg-amber-50 text-amber-700 border-amber-100',
+    red:     'bg-red-50 text-red-700 border-red-100',
+    primary: 'bg-primary-50 text-primary-700 border-primary-100',
   };
   return (
-    <div className={cx('p-4 rounded-lg border', themes[color])}>
+    <div className={cx('p-4 rounded-2xl border', themes[color])}>
       <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-2xl font-extrabold text-gray-900 tracking-tight">{value}</p>
     </div>
   );
 };
@@ -140,7 +135,6 @@ const AttendanceUpload: React.FC = () => {
   const [dragOver, setDragOver] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Check for mobile screen size
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -148,7 +142,6 @@ const AttendanceUpload: React.FC = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // State for departments and employees from API
   const [departments, setDepartments] = useState<Array<{
     id: string;
     name: string;
@@ -166,13 +159,11 @@ const AttendanceUpload: React.FC = () => {
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch departments on component mount
   useEffect(() => {
     fetchDepartments();
     fetchEmployees();
   }, []);
 
-  // Fetch departments from API
   const fetchDepartments = async () => {
     try {
       setLoadingDepartments(true);
@@ -182,7 +173,7 @@ const AttendanceUpload: React.FC = () => {
         id: dept.id.toString(),
         name: dept.name,
         code: dept.code,
-        employeeCount: 0 // We'll update this after fetching employees
+        employeeCount: 0,
       }));
       setDepartments(departmentsData);
     } catch (err: any) {
@@ -193,7 +184,6 @@ const AttendanceUpload: React.FC = () => {
     }
   };
 
-  // Fetch employees from API
   const fetchEmployees = async () => {
     try {
       setLoadingEmployees(true);
@@ -204,21 +194,19 @@ const AttendanceUpload: React.FC = () => {
         code: emp.employee_id,
         name: emp.full_name,
         department: emp.department?.name || 'Không xác định',
-        department_id: emp.department?.id?.toString()
+        department_id: emp.department?.id?.toString(),
       }));
       setEmployees(employeesData);
 
-      // Update employee count for each department
       const departmentCounts: { [key: string]: number } = {};
       employeesData.forEach((emp: any) => {
         if (emp.department_id) {
           departmentCounts[emp.department_id] = (departmentCounts[emp.department_id] || 0) + 1;
         }
       });
-
       setDepartments(prev => prev.map(dept => ({
         ...dept,
-        employeeCount: departmentCounts[dept.id] || 0
+        employeeCount: departmentCounts[dept.id] || 0,
       })));
     } catch (err: any) {
       console.error('Error fetching employees:', err);
@@ -228,7 +216,6 @@ const AttendanceUpload: React.FC = () => {
     }
   };
 
-  // Fetch employees by department
   const fetchEmployeesByDepartment = async (departmentId: string) => {
     try {
       setLoadingEmployees(true);
@@ -238,7 +225,7 @@ const AttendanceUpload: React.FC = () => {
         code: emp.employee_id,
         name: emp.full_name,
         department: emp.department?.name || 'Không xác định',
-        department_id: emp.department?.id?.toString()
+        department_id: emp.department?.id?.toString(),
       }));
       setEmployees(employeesData);
     } catch (err: any) {
@@ -251,21 +238,17 @@ const AttendanceUpload: React.FC = () => {
 
   const handleDateClick = (date: Date) => {
     setSelectedDate(date);
-    console.log('Selected date in detail view:', date);
   };
 
   const handleViewDetail = () => {
     setShowDetailView(true);
-
     if (mainViewEmployee) {
       setSelectedEmployee(mainViewEmployee);
       setViewMode('employee');
       const emp = employees.find(e => e.id === mainViewEmployee);
       if (emp) {
         const dept = departments.find(d => d.name === emp.department);
-        if (dept) {
-          setSelectedDepartment(dept.id);
-        }
+        if (dept) setSelectedDepartment(dept.id);
       }
     } else if (mainViewDepartment) {
       setSelectedDepartment(mainViewDepartment);
@@ -295,7 +278,6 @@ const AttendanceUpload: React.FC = () => {
 
   const handleSelectEmployee = (empId: string) => {
     setSelectedEmployee(empId);
-    console.log('Selected employee:', empId);
   };
 
   const handleBackToDepartments = () => {
@@ -309,30 +291,23 @@ const AttendanceUpload: React.FC = () => {
     setViewMode('employee');
   };
 
-  // Filter employees based on search query
   const filteredEmployees = employees.filter(emp =>
     emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     emp.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
     emp.department.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Filter employees by selected department
   const departmentEmployees = selectedDepartment
-    ? filteredEmployees.filter(emp =>
-      emp.department_id === selectedDepartment
-    )
+    ? filteredEmployees.filter(emp => emp.department_id === selectedDepartment)
     : filteredEmployees;
 
-  // Check if user has permission to upload attendance files
   const userRole = user?.role ? user.role.toUpperCase() : '';
-
   const userDepartmentCode = (
     user?.employee_profile?.department_code ||
     user?.hrm_user?.department_code ||
     (user as any)?.department_code ||
     null
   );
-
   const canUploadAttendance =
     userRole === 'ADMIN' ||
     userRole === 'HR' ||
@@ -354,19 +329,13 @@ const AttendanceUpload: React.FC = () => {
     const allowedTypes = [
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/csv',
-      'application/csv',
-      'text/x-csv',
-      'application/x-csv',
-      'text/comma-separated-values',
-      'text/x-comma-separated-values'
+      'text/csv', 'application/csv', 'text/x-csv',
+      'application/x-csv', 'text/comma-separated-values', 'text/x-comma-separated-values',
     ];
-
     if (!allowedTypes.includes(selectedFile.type) && !selectedFile.name.match(/\.(xlsx|xls|csv)$/i)) {
       setUploadMessage({ type: 'error', text: 'Chỉ chấp nhận file Excel (.xlsx, .xls) hoặc CSV (.csv)' });
       return;
     }
-
     if (selectedFile.size > 10 * 1024 * 1024) {
       setUploadMessage({ type: 'error', text: 'File quá lớn. Dung lượng tối đa là 10MB.' });
       return;
@@ -374,10 +343,8 @@ const AttendanceUpload: React.FC = () => {
 
     setUploading(true);
     setUploadMessage(null);
-
     try {
       const result = await attendanceService.uploadAttendanceFile(selectedFile);
-
       const details = result.details ?? {};
       const totalRecords = details.total_records ?? 0;
       const importedRecords = details.imported_records ?? 0;
@@ -388,9 +355,8 @@ const AttendanceUpload: React.FC = () => {
         uploadedAt: new Date().toLocaleString('vi-VN'),
         status: 'success' as const,
         records: totalRecords,
-        user: user?.username || 'Unknown'
+        user: user?.username || 'Unknown',
       };
-
       setUploadHistory([newUpload, ...uploadHistory]);
       let successText = `Upload file "${selectedFile.name}" thành công! Tổng ${totalRecords} dòng`;
       if (importedRecords > 0 && duplicateRecords > 0) {
@@ -403,46 +369,32 @@ const AttendanceUpload: React.FC = () => {
       successText += '.';
       setUploadMessage({ type: 'success', text: successText });
       setSelectedFile(null);
-
       const fileInput = document.getElementById('attendance-file') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
-
     } catch (error: any) {
       console.error('Upload error:', error);
       let errorMessage = 'Upload thất bại. Vui lòng thử lại.';
-
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.response?.data?.errors) {
         const errors = error.response.data.errors;
-        if (typeof errors === 'object') {
-          errorMessage = Object.values(errors).flat().join(', ');
-        } else if (Array.isArray(errors)) {
-          errorMessage = errors.join(', ');
-        }
+        if (typeof errors === 'object') errorMessage = Object.values(errors).flat().join(', ');
+        else if (Array.isArray(errors)) errorMessage = errors.join(', ');
       } else if (error.message) {
         errorMessage = error.message;
       }
-
       setUploadMessage({ type: 'error', text: errorMessage });
     } finally {
       setUploading(false);
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      const file = files[0];
-      setSelectedFile(file);
+      setSelectedFile(files[0]);
       setUploadMessage(null);
     }
   };
@@ -458,7 +410,6 @@ const AttendanceUpload: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-
       setUploadMessage({ type: 'success', text: 'Đã tải mẫu file thành công!' });
     } catch (error) {
       console.error('Error downloading template:', error);
@@ -471,56 +422,40 @@ const AttendanceUpload: React.FC = () => {
       setUploadMessage({ type: 'error', text: 'Vui lòng chọn file để validate' });
       return;
     }
-
     const allowedTypes = [
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/csv',
-      'application/csv',
-      'text/x-csv',
-      'application/x-csv',
-      'text/comma-separated-values',
-      'text/x-comma-separated-values'
+      'text/csv', 'application/csv', 'text/x-csv',
+      'application/x-csv', 'text/comma-separated-values', 'text/x-comma-separated-values',
     ];
-
     if (!allowedTypes.includes(selectedFile.type) && !selectedFile.name.match(/\.(xlsx|xls|csv)$/i)) {
       setUploadMessage({ type: 'error', text: 'Chỉ chấp nhận file Excel (.xlsx, .xls) hoặc CSV (.csv)' });
       return;
     }
-
     if (selectedFile.size > 10 * 1024 * 1024) {
       setUploadMessage({ type: 'error', text: 'File quá lớn. Dung lượng tối đa là 10MB.' });
       return;
     }
-
     setUploading(true);
     setUploadMessage(null);
-
     try {
       const result = await attendanceService.validateAttendanceFile(selectedFile);
-
       setUploadMessage({
         type: 'success',
-        text: `Validate thành công! File có ${result.validation_results?.total_rows || 0} dòng, trong đó ${result.validation_results?.valid_rows || 0} dòng hợp lệ.`
+        text: `Validate thành công! File có ${result.validation_results?.total_rows || 0} dòng, trong đó ${result.validation_results?.valid_rows || 0} dòng hợp lệ.`,
       });
-
     } catch (error: any) {
       console.error('Validate error:', error);
       let errorMessage = 'Validate thất bại. Vui lòng thử lại.';
-
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.response?.data?.errors) {
         const errors = error.response.data.errors;
-        if (typeof errors === 'object') {
-          errorMessage = Object.values(errors).flat().join(', ');
-        } else if (Array.isArray(errors)) {
-          errorMessage = errors.join(', ');
-        }
+        if (typeof errors === 'object') errorMessage = Object.values(errors).flat().join(', ');
+        else if (Array.isArray(errors)) errorMessage = errors.join(', ');
       } else if (error.message) {
         errorMessage = error.message;
       }
-
       setUploadMessage({ type: 'error', text: errorMessage });
     } finally {
       setUploading(false);
@@ -545,22 +480,19 @@ const AttendanceUpload: React.FC = () => {
     ['Ca', 'Ca làm việc'],
   ];
 
-  /* ═══ Main Render ═══ */
+  /* ═══ No permission ═══ */
   if (!canUploadAttendance) {
     return (
       <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow p-6 text-center">
-          <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
             <ShieldCheckIcon className="w-8 h-8 text-red-500" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Quyền truy cập hạn chế</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight mb-2">Quyền truy cập hạn chế</h2>
+          <p className="text-sm text-gray-400 mb-6">
             Tính năng này chỉ dành cho quản trị viên và nhân sự cấp cao. Vui lòng liên hệ quản trị viên hệ thống để biết thêm chi tiết.
           </p>
-          <button
-            onClick={() => window.history.back()}
-            className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
-          >
+          <button onClick={() => window.history.back()} className="btn-primary">
             Quay lại
           </button>
         </div>
@@ -572,14 +504,19 @@ const AttendanceUpload: React.FC = () => {
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Upload Chấm công</h1>
-          <p className="text-gray-600 mt-2">Kênh nhập liệu hiệu suất cao cho hành chính nhân sự.</p>
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
+            <CloudArrowUpIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Upload Chấm công</h1>
+            <p className="text-sm text-gray-400 mt-0.5">Kênh nhập liệu hiệu suất cao cho hành chính nhân sự.</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleDownloadTemplate}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            className="btn-secondary flex items-center gap-2"
             title="Tải mẫu file Excel"
           >
             <DocumentArrowDownIcon className="w-4 h-4" />
@@ -587,7 +524,7 @@ const AttendanceUpload: React.FC = () => {
           </button>
           <button
             onClick={handleViewDetail}
-            className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
+            className="btn-primary flex items-center gap-2"
             title="Xem chi tiết lịch sử và cấu trúc"
           >
             <EyeIcon className="w-4 h-4" />
@@ -600,17 +537,17 @@ const AttendanceUpload: React.FC = () => {
         {/* ── Left Column: Upload Main ── */}
         <div className="lg:col-span-8 space-y-6">
           {/* Upload Card */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="space-y-5">
               {/* Drop zone */}
               <div
                 className={cx(
-                  'min-h-[280px] rounded-lg border-2 border-dashed transition-colors cursor-pointer flex flex-col items-center justify-center p-8',
+                  'min-h-[280px] rounded-2xl border-2 border-dashed transition-colors cursor-pointer flex flex-col items-center justify-center p-8',
                   dragOver
-                    ? 'border-blue-400 bg-blue-50'
+                    ? 'border-primary-400 bg-primary-50'
                     : selectedFile
-                      ? 'border-green-400 bg-green-50'
-                      : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-white'
+                      ? 'border-emerald-400 bg-emerald-50'
+                      : 'border-gray-300 bg-gray-50 hover:border-primary-400 hover:bg-white'
                 )}
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
@@ -629,27 +566,24 @@ const AttendanceUpload: React.FC = () => {
 
                 {selectedFile ? (
                   <div className="flex flex-col items-center text-center w-full max-w-sm">
-                    <div className="w-16 h-16 rounded-lg bg-green-100 flex items-center justify-center mb-4">
-                      <DocumentTextIcon className="w-8 h-8 text-green-600" />
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center mb-4">
+                      <DocumentTextIcon className="w-8 h-8 text-emerald-600" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 break-all mb-2">
                       {selectedFile.name}
                     </h3>
                     <div className="flex flex-col items-center gap-2 mb-6">
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
                         <CheckCircleIcon className="w-3.5 h-3.5" />
                         Sẵn sàng upload
                       </span>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-400">
                         Dung lượng: {(selectedFile.size / 1024).toFixed(1)} KB
                       </p>
                     </div>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedFile(null);
-                      }}
-                      className="text-sm text-gray-500 hover:text-red-600 transition-colors flex items-center gap-1.5 px-3 py-1.5 hover:bg-red-50 rounded-md"
+                      onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
+                      className="text-sm text-gray-400 hover:text-red-600 transition-colors flex items-center gap-1.5 px-3 py-1.5 hover:bg-red-50 rounded-xl"
                     >
                       <XMarkIcon className="w-4 h-4" />
                       Hủy và chọn lại
@@ -657,14 +591,12 @@ const AttendanceUpload: React.FC = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center text-center max-w-sm">
-                    <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center mb-4">
+                    <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
                       <CloudArrowUpIcon className="w-8 h-8 text-gray-400" />
                     </div>
                     <p className="text-lg font-medium text-gray-700 mb-1">Kéo thả file vào đây</p>
-                    <p className="text-sm text-gray-500 mb-6">Excel hoặc CSV, tối đa 10MB</p>
-                    <span className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md">
-                      Chọn file
-                    </span>
+                    <p className="text-sm text-gray-400 mb-6">Excel hoặc CSV, tối đa 10MB</p>
+                    <span className="btn-primary">Chọn file</span>
                   </div>
                 )}
               </div>
@@ -676,10 +608,10 @@ const AttendanceUpload: React.FC = () => {
                     onClick={handleValidateFile}
                     disabled={uploading}
                     className={cx(
-                      'flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors',
+                      'flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors',
                       uploading
                         ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed'
-                        : 'bg-white text-yellow-700 border-yellow-300 hover:bg-yellow-50'
+                        : 'bg-white text-amber-700 border-amber-300 hover:bg-amber-50'
                     )}
                   >
                     <CheckBadgeIcon className="w-4 h-4" />
@@ -689,10 +621,10 @@ const AttendanceUpload: React.FC = () => {
                     onClick={handleUpload}
                     disabled={uploading}
                     className={cx(
-                      'flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                      'flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
                       uploading
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-primary-600 text-white hover:bg-primary-700'
+                        : 'btn-primary'
                     )}
                   >
                     {uploading ? (
@@ -717,16 +649,21 @@ const AttendanceUpload: React.FC = () => {
           </div>
 
           {/* Schema Card */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <div className="flex items-center gap-3 mb-4">
-              <InformationCircleIcon className="w-5 h-5 text-blue-500" />
-              <h2 className="text-lg font-semibold text-gray-900">Cấu trúc dữ liệu yêu cầu</h2>
+              <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
+                <InformationCircleIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-gray-900">Cấu trúc dữ liệu yêu cầu</h2>
+                <p className="text-xs text-gray-400">Định dạng file Excel / CSV hợp lệ</p>
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {fileSchema.map(([col, desc], i) => (
-                <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-white transition-colors">
-                  <p className="text-xs font-medium text-blue-600 mb-1">[{col}]</p>
-                  <p className="text-xs text-gray-600 leading-relaxed">{desc}</p>
+                <div key={i} className="p-3 bg-gray-50 rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-white transition-colors">
+                  <p className="text-xs font-medium text-primary-600 mb-1">[{col}]</p>
+                  <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
                 </div>
               ))}
             </div>
@@ -735,29 +672,29 @@ const AttendanceUpload: React.FC = () => {
 
         {/* ── Right Column: Sidebar ── */}
         <div className="lg:col-span-4">
-          <div className="bg-white rounded-lg shadow flex flex-col min-h-[400px] sticky top-6">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Lịch sử upload</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Theo dõi hoạt động</p>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col min-h-[400px] sticky top-6">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h2 className="text-sm font-bold text-gray-900">Lịch sử upload</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Theo dõi hoạt động</p>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {uploadHistory.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
-                  <DocumentTextIcon className="w-10 h-10 text-gray-300 mb-3" />
-                  <p className="text-sm text-gray-400">Chưa có dữ liệu</p>
+                  <DocumentTextIcon className="w-10 h-10 text-gray-200 mb-3" />
+                  <p className="text-xs text-gray-400">Chưa có dữ liệu</p>
                 </div>
               ) : (
                 uploadHistory.map((item) => (
                   <div
                     key={item.id}
-                    className="p-4 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-colors"
+                    className="p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-start gap-3">
                       <div className={cx(
-                        'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
-                        item.status === 'success' ? 'bg-green-100 text-green-600' :
-                          item.status === 'error' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'
+                        'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
+                        item.status === 'success' ? 'bg-emerald-100 text-emerald-600' :
+                          item.status === 'error' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
                       )}>
                         <DocumentTextIcon className="w-5 h-5" />
                       </div>
@@ -775,9 +712,9 @@ const AttendanceUpload: React.FC = () => {
               )}
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+            <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
               <div className="flex items-start gap-2 text-gray-500">
-                <InformationCircleIcon className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                <InformationCircleIcon className="w-4 h-4 text-primary-400 shrink-0 mt-0.5" />
                 <p className="text-xs leading-relaxed">Hệ thống lưu trữ 10 phiên upload gần nhất.</p>
               </div>
             </div>
@@ -788,20 +725,15 @@ const AttendanceUpload: React.FC = () => {
       {/* ═══ Detail View Modal ═══ */}
       {showDetailView && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-gray-900/50"
-            onClick={handleBack}
-          />
+          <div className="absolute inset-0 bg-gray-900/50" onClick={handleBack} />
 
-          {/* Panel */}
-          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <button
                   onClick={handleBack}
-                  className="hover:text-blue-600 transition-colors flex items-center gap-1"
+                  className="hover:text-primary-600 transition-colors flex items-center gap-1"
                 >
                   <HomeIcon className="w-4 h-4" />
                   Trang chủ
@@ -811,7 +743,7 @@ const AttendanceUpload: React.FC = () => {
                     <ChevronRightIcon className="w-3.5 h-3.5 text-gray-300" />
                     <button
                       onClick={handleBackToDepartments}
-                      className="hover:text-blue-600 transition-colors"
+                      className="hover:text-primary-600 transition-colors"
                     >
                       Phòng ban
                     </button>
@@ -822,7 +754,7 @@ const AttendanceUpload: React.FC = () => {
                     <ChevronRightIcon className="w-3.5 h-3.5 text-gray-300" />
                     <button
                       onClick={handleBackToEmployees}
-                      className="hover:text-blue-600 transition-colors"
+                      className="hover:text-primary-600 transition-colors"
                     >
                       Nhân viên
                     </button>
@@ -831,7 +763,7 @@ const AttendanceUpload: React.FC = () => {
               </div>
               <button
                 onClick={handleBack}
-                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
               >
                 <XMarkIcon className="w-5 h-5" />
               </button>
@@ -841,14 +773,14 @@ const AttendanceUpload: React.FC = () => {
             <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">
+                  <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">
                     {viewMode === 'department' && 'Danh mục Phòng ban'}
                     {viewMode === 'employee' && !selectedEmployee &&
                       departments.find(d => d.id === selectedDepartment)?.name}
                     {selectedEmployee &&
                       employees.find(e => e.id === selectedEmployee)?.name}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-400 mt-1">
                     {viewMode === 'department' && 'Quản lý nhân sự theo đơn vị'}
                     {viewMode === 'employee' && !selectedEmployee && 'Danh sách nhân sự trực thuộc'}
                     {selectedEmployee && 'Dữ liệu chấm công lịch sử chi tiết'}
@@ -863,7 +795,7 @@ const AttendanceUpload: React.FC = () => {
                     <input
                       type="text"
                       placeholder="Tìm kiếm..."
-                      className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="input-field pl-9"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -878,13 +810,13 @@ const AttendanceUpload: React.FC = () => {
                     <button
                       key={dept.id}
                       onClick={() => handleSelectDepartment(dept.id)}
-                      className="text-left p-4 rounded-lg bg-white border border-gray-200 hover:border-blue-400 hover:shadow-md transition-all group"
+                      className="text-left p-4 rounded-2xl bg-white border border-gray-100 hover:border-primary-300 hover:shadow-sm transition-all group"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                        <BuildingOfficeIcon className="w-5 h-5 text-blue-500" />
+                      <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center mb-3 group-hover:bg-primary-200 transition-colors">
+                        <BuildingOfficeIcon className="w-5 h-5" />
                       </div>
                       <p className="text-sm font-semibold text-gray-900 mb-1">{dept.name}</p>
-                      <p className="text-xs text-gray-500">{dept.employeeCount} nhân sự</p>
+                      <p className="text-xs text-gray-400">{dept.employeeCount} nhân sự</p>
                     </button>
                   ))}
                 </div>
@@ -895,7 +827,7 @@ const AttendanceUpload: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {departmentEmployees.length === 0 ? (
                     <div className="col-span-full py-16 text-center">
-                      <UserIcon className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                      <UserIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
                       <p className="text-sm text-gray-400">Không tìm thấy dữ liệu</p>
                     </div>
                   ) : (
@@ -903,13 +835,13 @@ const AttendanceUpload: React.FC = () => {
                       <button
                         key={emp.id}
                         onClick={() => handleSelectEmployee(emp.id)}
-                        className="text-left p-4 rounded-lg bg-white border border-gray-200 hover:border-blue-400 hover:shadow-md transition-all flex items-center gap-3"
+                        className="text-left p-4 rounded-2xl bg-white border border-gray-100 hover:border-primary-300 hover:shadow-sm transition-all flex items-center gap-3"
                       >
-                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                        <div className="h-9 w-9 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
                           <UserIcon className="w-5 h-5 text-gray-400" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs text-blue-600 mb-0.5">{emp.code}</p>
+                          <p className="text-xs text-primary-600 mb-0.5">{emp.code}</p>
                           <p className="text-sm font-semibold text-gray-900 truncate">{emp.name}</p>
                         </div>
                         <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -923,13 +855,13 @@ const AttendanceUpload: React.FC = () => {
               {selectedEmployee && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard label="Ngày công" value={18} color="green" />
-                    <StatCard label="Đi muộn" value={3} color="yellow" />
+                    <StatCard label="Ngày công" value={18} color="emerald" />
+                    <StatCard label="Đi muộn" value={3} color="amber" />
                     <StatCard label="Vắng mặt" value={1} color="red" />
-                    <StatCard label="Số ngày tính" value={22} color="blue" />
+                    <StatCard label="Số ngày tính" value={22} color="primary" />
                   </div>
 
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                     <AttendanceCalendar
                       onDateClick={handleDateClick}
                       employeeId={selectedEmployee ? parseInt(selectedEmployee) : undefined}
@@ -941,21 +873,17 @@ const AttendanceUpload: React.FC = () => {
 
             {/* Modal Footer */}
             {selectedEmployee && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
                 <button
                   onClick={handleBackToEmployees}
-                  className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors"
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-900"
                 >
                   <ArrowLeftIcon className="w-4 h-4" />
                   Quay lại danh sách
                 </button>
                 <div className="flex items-center gap-3">
-                  <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-                    In báo cáo
-                  </button>
-                  <button className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors">
-                    Xuất file Excel
-                  </button>
+                  <button className="btn-secondary">In báo cáo</button>
+                  <button className="btn-primary">Xuất file Excel</button>
                 </div>
               </div>
             )}

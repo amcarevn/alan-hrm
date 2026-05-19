@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import ConfirmDialog from '../components/ConfirmDialog';
 import {
   BuildingOfficeIcon,
   BriefcaseIcon,
@@ -117,6 +118,9 @@ const OvertimeRateConfigPage: React.FC = () => {
   // feedback banners
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg,   setErrorMsg]   = useState<string | null>(null);
+
+  // confirm delete
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
   // modal
   const [showModal,  setShowModal]  = useState(false);
@@ -252,14 +256,16 @@ const OvertimeRateConfigPage: React.FC = () => {
   }
 
   // ── delete ────────────────────────────────────────────────
-  async function handleDelete(id: number) {
-    if (!window.confirm('Xác nhận xoá cấu hình này?')) return;
+  async function handleDelete() {
+    if (deleteTarget === null) return;
     try {
-      await salaryService.deleteOvertimeRate(id);
+      await salaryService.deleteOvertimeRate(deleteTarget);
       setSuccessMsg('Đã xoá cấu hình.');
       fetchRows(activeTab);
     } catch {
       setErrorMsg('Không thể xoá. Vui lòng thử lại.');
+    } finally {
+      setDeleteTarget(null);
     }
   }
 
@@ -268,13 +274,13 @@ const OvertimeRateConfigPage: React.FC = () => {
     if (row.apply_to_all) return <span className="text-gray-500 italic text-sm">Tất cả nhân viên</span>;
     const parts: React.ReactNode[] = [
       ...row.department_names.map((n, i) => (
-        <span key={`d${i}`} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">{n}</span>
+        <span key={`d${i}`} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-700">{n}</span>
       )),
       ...row.position_names.map((n, i) => (
-        <span key={`p${i}`} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">{n}</span>
+        <span key={`p${i}`} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-violet-100 text-violet-700">{n}</span>
       )),
       ...row.employee_names.map((e, i) => (
-        <span key={`e${i}`} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">{e.name}</span>
+        <span key={`e${i}`} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">{e.name}</span>
       )),
     ];
     return parts.length ? <div className="flex flex-wrap gap-1">{parts}</div> : <span className="text-gray-400 text-sm">—</span>;
@@ -284,7 +290,7 @@ const OvertimeRateConfigPage: React.FC = () => {
   function renderRate(row: OvertimeRateConfig) {
     if (row.calc_method === 'FROM_BASIC') {
       const mul = row.multiplier && row.multiplier !== 1 ? ` × ${row.multiplier}` : '';
-      return <span className="text-sm text-blue-700 font-medium">LC ÷ công ÷ 7.5h{mul}</span>;
+      return <span className="text-sm text-primary-700 font-medium">LC ÷ công ÷ 7.5h{mul}</span>;
     }
     const effective = row.rate_per_hour * (row.multiplier || 1);
     return (
@@ -305,22 +311,29 @@ const OvertimeRateConfigPage: React.FC = () => {
   // ─────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Xoá cấu hình tăng ca"
+        message="Bạn có chắc muốn xoá cấu hình này không?"
+        onConfirm={handleDelete}
+        onClose={() => setDeleteTarget(null)}
+      />
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Cấu hình tăng ca</h1>
-        <p className="text-gray-600 mt-2">Thiết lập đơn giá tăng ca theo phòng ban, vị trí và cá nhân với thời gian hiệu lực linh hoạt.</p>
+        <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Cấu hình tăng ca</h1>
+        <p className="text-gray-500 mt-1">Thiết lập đơn giá tăng ca theo phòng ban, vị trí và cá nhân với thời gian hiệu lực linh hoạt.</p>
       </div>
 
       {/* Banners */}
       {successMsg && (
-        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+        <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-sm">
           <CheckIcon className="h-4 w-4 flex-shrink-0" />
           {successMsg}
           <button className="ml-auto" onClick={() => setSuccessMsg(null)}><XMarkIcon className="h-4 w-4" /></button>
         </div>
       )}
       {errorMsg && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-2xl text-red-800 text-sm">
           <ExclamationCircleIcon className="h-4 w-4 flex-shrink-0" />
           {errorMsg}
           <button className="ml-auto" onClick={() => setErrorMsg(null)}><XMarkIcon className="h-4 w-4" /></button>
@@ -346,7 +359,7 @@ const OvertimeRateConfigPage: React.FC = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
         <div className="flex flex-col sm:flex-row gap-3 justify-between">
           <div className="relative flex-1 max-w-sm">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -355,13 +368,10 @@ const OvertimeRateConfigPage: React.FC = () => {
               placeholder="Tìm theo tên phòng ban, vị trí, nhân viên..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-field pl-9"
             />
           </div>
-          <button
-            onClick={openCreate}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors"
-          >
+          <button onClick={openCreate} className="btn-primary inline-flex items-center gap-1.5">
             <PlusIcon className="h-4 w-4" />
             Thêm cấu hình
           </button>
@@ -369,7 +379,7 @@ const OvertimeRateConfigPage: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <ArrowPathIcon className="h-6 w-6 text-primary-400 animate-spin" />
@@ -382,16 +392,16 @@ const OvertimeRateConfigPage: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-100">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Áp dụng cho</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cách tính</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Đơn giá / h</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">KPI</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Hiệu lực</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                  <th className="table-header text-left">Áp dụng cho</th>
+                  <th className="table-header text-left">Cách tính</th>
+                  <th className="table-header text-right">Đơn giá / h</th>
+                  <th className="table-header text-center">KPI</th>
+                  <th className="table-header text-center">Hiệu lực</th>
+                  <th className="table-header text-center">Trạng thái</th>
+                  <th className="table-header text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
@@ -401,7 +411,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                         row.calc_method === 'FROM_BASIC'
-                          ? 'bg-blue-100 text-blue-700'
+                          ? 'bg-blue-100 text-primary-700'
                           : 'bg-gray-100 text-gray-600'
                       }`}>
                         {row.calc_method === 'FROM_BASIC' ? 'Từ LC' : 'Cố định'}
@@ -411,7 +421,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                     <td className="px-4 py-3 text-center text-sm text-gray-600">
                       {row.use_kpi ? (
                         <div>
-                          <p className="font-medium text-indigo-700">
+                          <p className="font-medium text-primary-700">
                             {row.kpi_multiplier ? `×${row.kpi_multiplier}` : fmtMoney(row.kpi_rate_per_hour)}
                           </p>
                           <p className="text-xs text-gray-400">≥ {row.kpi_threshold}%</p>
@@ -424,7 +434,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        row.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                        row.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
                       }`}>
                         {row.is_active ? 'Đang áp dụng' : 'Tắt'}
                       </span>
@@ -433,14 +443,14 @@ const OvertimeRateConfigPage: React.FC = () => {
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => openEdit(row)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-md transition-colors"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-xl transition-colors"
                         >
                           <PencilIcon className="h-3.5 w-3.5" />
                           Sửa
                         </button>
                         <button
-                          onClick={() => handleDelete(row.id)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                          onClick={() => setDeleteTarget(row.id)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
                         >
                           <TrashIcon className="h-3.5 w-3.5" />
                           Xoá
@@ -473,14 +483,14 @@ const OvertimeRateConfigPage: React.FC = () => {
           >
             {/* ── Header ── */}
             <div className="shrink-0 flex items-center gap-4 px-6 py-4 border-b border-gray-100">
-              <div className="h-10 w-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
-                <AdjustmentsHorizontalIcon className="h-5 w-5 text-indigo-600" />
+              <div className="h-10 w-10 rounded-xl bg-primary-100 flex items-center justify-center shrink-0">
+                <AdjustmentsHorizontalIcon className="h-5 w-5 text-primary-600" />
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-base font-bold text-gray-900 leading-tight">
                   {editTarget ? 'Sửa cấu hình tăng ca' : 'Thêm cấu hình tăng ca'}
                 </h2>
-                <p className="text-xs text-indigo-500 mt-0.5">{TABS.find(t => t.key === activeTab)?.label}</p>
+                <p className="text-xs text-primary-500 mt-0.5">{TABS.find(t => t.key === activeTab)?.label}</p>
               </div>
               <button
                 onClick={() => setShowModal(false)}
@@ -522,7 +532,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                           }
                           value={empSearch}
                           onChange={e => setEmpSearch(e.target.value)}
-                          className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                          className="input-field pl-9"
                         />
                       </div>
 
@@ -530,7 +540,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                       {(activeTab === 'department' ? form.department_ids.length :
                         activeTab === 'position'   ? form.position_ids.length :
                         form.employee_ids.length) > 0 && (
-                        <p className="text-xs text-indigo-600 font-medium">
+                        <p className="text-xs text-primary-600 font-medium">
                           Đã chọn:{' '}
                           {activeTab === 'department' ? form.department_ids.length :
                            activeTab === 'position'   ? form.position_ids.length :
@@ -543,10 +553,10 @@ const OvertimeRateConfigPage: React.FC = () => {
                         {activeTab === 'department' && departments
                           .filter(d => !empSearch || d.name.toLowerCase().includes(empSearch.toLowerCase()))
                           .map(d => (
-                            <label key={d.id} className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-indigo-50 cursor-pointer text-sm transition-colors">
+                            <label key={d.id} className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-primary-50 cursor-pointer text-sm transition-colors">
                               <input
                                 type="checkbox"
-                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-400"
+                                className="rounded border-gray-300 text-primary-600 focus:ring-primary-400"
                                 checked={form.department_ids.includes(d.id)}
                                 onChange={() => setForm(f => ({ ...f, department_ids: toggleId(f.department_ids, d.id) }))}
                               />
@@ -558,10 +568,10 @@ const OvertimeRateConfigPage: React.FC = () => {
                         {activeTab === 'position' && positions
                           .filter(p => !empSearch || p.title.toLowerCase().includes(empSearch.toLowerCase()))
                           .map(p => (
-                            <label key={p.id} className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-indigo-50 cursor-pointer text-sm transition-colors">
+                            <label key={p.id} className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-primary-50 cursor-pointer text-sm transition-colors">
                               <input
                                 type="checkbox"
-                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-400"
+                                className="rounded border-gray-300 text-primary-600 focus:ring-primary-400"
                                 checked={form.position_ids.includes(p.id)}
                                 onChange={() => setForm(f => ({ ...f, position_ids: toggleId(f.position_ids, p.id) }))}
                               />
@@ -570,10 +580,10 @@ const OvertimeRateConfigPage: React.FC = () => {
                           ))
                         }
                         {activeTab === 'employee' && filteredEmps.map(e => (
-                          <label key={e.id} className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-indigo-50 cursor-pointer text-sm transition-colors">
+                          <label key={e.id} className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-primary-50 cursor-pointer text-sm transition-colors">
                             <input
                               type="checkbox"
-                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-400"
+                              className="rounded border-gray-300 text-primary-600 focus:ring-primary-400"
                               checked={form.employee_ids.includes(e.id)}
                               onChange={() => setForm(f => ({ ...f, employee_ids: toggleId(f.employee_ids, e.id) }))}
                             />
@@ -600,7 +610,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                           onClick={() => setForm(f => ({ ...f, calc_method: method }))}
                           className={`px-3 py-2.5 text-sm rounded-lg border-2 transition-colors text-left ${
                             form.calc_method === method
-                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                              ? 'border-primary-500 bg-primary-50 text-primary-700'
                               : 'border-gray-200 text-gray-600 hover:border-gray-300'
                           }`}
                         >
@@ -635,13 +645,13 @@ const OvertimeRateConfigPage: React.FC = () => {
                                 setTimeout(() => e.target.select(), 0);
                               }}
                               onBlur={() => setRateDisplay(formatThousands(form.rate_per_hour))}
-                              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                              className="input-field"
                               placeholder="VD: 20.000"
                             />
                           </>
                         ) : (
-                          <div className="flex items-center h-full bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                            <p className="text-xs text-blue-700 leading-relaxed">
+                          <div className="flex items-center h-full bg-primary-50 border border-primary-100 rounded-lg px-3 py-2">
+                            <p className="text-xs text-primary-700 leading-relaxed">
                               <span className="font-semibold block">LC ÷ công chuẩn ÷ 7.5h</span>
                               Tự động theo lương cơ bản từng nhân viên
                             </p>
@@ -668,14 +678,14 @@ const OvertimeRateConfigPage: React.FC = () => {
                             setForm(f => ({ ...f, multiplier: n }));
                             setMultiplierDisplay(formatMultiplier(n));
                           }}
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                          className="input-field"
                           placeholder="VD: 1.5"
                         />
                         {form.calc_method === 'FIXED' && form.multiplier !== 1 && form.rate_per_hour > 0 && (
-                          <p className="text-xs text-indigo-600 mt-1">= {(form.rate_per_hour * form.multiplier).toLocaleString('vi-VN')}đ/h</p>
+                          <p className="text-xs text-primary-600 mt-1">= {(form.rate_per_hour * form.multiplier).toLocaleString('vi-VN')}đ/h</p>
                         )}
                         {form.calc_method === 'FROM_BASIC' && form.multiplier !== 1 && (
-                          <p className="text-xs text-indigo-600 mt-1">= LC ÷ công ÷ 7.5h × {form.multiplier}</p>
+                          <p className="text-xs text-primary-600 mt-1">= LC ÷ công ÷ 7.5h × {form.multiplier}</p>
                         )}
                       </div>
                     </div>
@@ -688,7 +698,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setForm(f => ({ ...f, use_kpi: !f.use_kpi }))}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.use_kpi ? 'bg-indigo-500' : 'bg-gray-200'}`}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.use_kpi ? 'bg-primary-500' : 'bg-gray-200'}`}
                       >
                         <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${form.use_kpi ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
                       </button>
@@ -721,7 +731,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                                   setKpiMultiplierDisplay('');
                                 }
                               }}
-                              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                              className="input-field"
                               placeholder="VD: 1.5"
                             />
                             <p className="text-[10px] text-gray-400 mt-0.5">= đơn giá × hệ số</p>
@@ -734,7 +744,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                               max={100}
                               value={form.kpi_threshold}
                               onChange={e => setForm(f => ({ ...f, kpi_threshold: Number(e.target.value) }))}
-                              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                              className="input-field"
                             />
                           </div>
                         </div>
@@ -758,7 +768,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                               setTimeout(() => e.target.select(), 0);
                             }}
                             onBlur={() => setKpiRateDisplay(formatThousands(form.kpi_rate_per_hour ?? 0))}
-                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            className="input-field"
                             placeholder="VD: 30.000"
                           />
                         </div>
@@ -776,7 +786,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                           type="date"
                           value={form.effective_from}
                           onChange={e => setForm(f => ({ ...f, effective_from: e.target.value }))}
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                          className="input-field"
                         />
                       </div>
                       <div>
@@ -787,7 +797,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                           type="date"
                           value={form.effective_to}
                           onChange={e => setForm(f => ({ ...f, effective_to: e.target.value }))}
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                          className="input-field"
                         />
                       </div>
                     </div>
@@ -797,7 +807,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                         type="checkbox"
                         checked={form.is_active}
                         onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-400"
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-400"
                       />
                       <span className="text-sm text-gray-700">Đang áp dụng</span>
                     </label>
@@ -811,7 +821,7 @@ const OvertimeRateConfigPage: React.FC = () => {
                       onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                       rows={2}
                       placeholder="Ghi chú thêm về cấu hình này..."
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
                     />
                   </div>
 
@@ -831,14 +841,14 @@ const OvertimeRateConfigPage: React.FC = () => {
             <div className="shrink-0 flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="btn-secondary"
               >
                 Huỷ
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="inline-flex items-center gap-1.5 px-5 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="btn-primary inline-flex items-center gap-1.5 disabled:opacity-50"
               >
                 {saving
                   ? <><ArrowPathIcon className="h-4 w-4 animate-spin" />Đang lưu...</>

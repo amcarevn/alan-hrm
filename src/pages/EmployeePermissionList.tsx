@@ -151,7 +151,7 @@ const EmployeePermissionList: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6 flex-1 min-h-0">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">
           Quản lý phân quyền nhân viên
@@ -162,7 +162,7 @@ const EmployeePermissionList: React.FC = () => {
         </p>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 flex flex-col flex-1 min-h-0">
         {/* Statistics */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -301,6 +301,7 @@ const EmployeePermissionList: React.FC = () => {
         </div>
 
         {/* Content */}
+        <div className="flex flex-col flex-1 min-h-0">
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -336,7 +337,7 @@ const EmployeePermissionList: React.FC = () => {
             </button>
           </div>
         ) : permissions.length === 0 ? (
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-lg overflow-hidden flex-1">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -397,7 +398,7 @@ const EmployeePermissionList: React.FC = () => {
             </table>
           </div>
         ) : (
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-lg overflow-hidden flex-1">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -502,6 +503,7 @@ const EmployeePermissionList: React.FC = () => {
             </table>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
