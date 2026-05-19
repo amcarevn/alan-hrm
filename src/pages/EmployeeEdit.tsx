@@ -565,7 +565,7 @@ const EmployeeEdit: React.FC = () => {
           <ArrowLeftIcon className="h-4 w-4" /> Quay lại chi tiết
         </button>
         <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Chỉnh sửa nhân viên</h1>
-        <p className="text-sm text-gray-400 mt-1">Cập nhật thông tin nhân viên</p>
+        <p className="text-sm text-gray-600 mt-1">Cập nhật thông tin nhân viên</p>
       </div>
 
       {error && (

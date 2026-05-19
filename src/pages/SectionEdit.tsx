@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { sectionsAPI, departmentsAPI, Department } from '../utils/api';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeftIcon, RectangleGroupIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
 
 const SectionEdit: React.FC = () => {
@@ -117,13 +117,10 @@ const SectionEdit: React.FC = () => {
           <ArrowLeftIcon className="w-4 h-4" />
           Quay lại danh sách bộ phận
         </button>
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
-            <RectangleGroupIcon className="h-5 w-5" />
-          </div>
+        <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Chỉnh sửa bộ phận</h1>
-            <p className="text-sm text-gray-400 mt-0.5">Cập nhật thông tin bộ phận</p>
+            <p className="text-sm text-gray-600 mt-0.5">Cập nhật thông tin bộ phận</p>
           </div>
         </div>
       </div>

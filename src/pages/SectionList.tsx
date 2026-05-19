@@ -86,13 +86,10 @@ const SectionList: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center gap-3">
-        <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
-          <RectangleGroupIcon className="h-5 w-5" />
-        </div>
+      <div className="flex items-center">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Quản lý bộ phận</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Quản lý các bộ phận trực thuộc phòng ban trong tổ chức.</p>
+          <p className="text-sm text-gray-600 mt-0.5">Quản lý các bộ phận trực thuộc phòng ban trong tổ chức.</p>
         </div>
       </div>
 

@@ -510,7 +510,7 @@ const Profile: React.FC = () => {
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
             Thông tin cá nhân
           </h1>
-          <p className="mt-1 text-sm text-gray-400">
+          <p className="mt-1 text-sm text-gray-600">
             Quản lý thông tin cá nhân và tài khoản ngân hàng
           </p>
         </div>
@@ -1369,7 +1369,9 @@ const Profile: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nơi cấp</label>
                 <div className="px-3 py-2.5 bg-gray-50 rounded-xl">
-                  <span className="text-gray-900">{employee.cccd_issue_place || 'Chưa cập nhật'}</span>
+                  <span className="text-gray-900">
+                    {CITIZEN_ID_ISSUE_PLACE_OPTIONS.find(o => o.value === employee.cccd_issue_place)?.label || employee.cccd_issue_place || 'Chưa cập nhật'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1780,8 +1782,9 @@ const Profile: React.FC = () => {
                         />
                       </div>
                       <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">Nơi cấp</label>
                         <SelectBox<string>
-                          label="Nơi cấp"
+                          label=""
                           value={editForm.cccd_issue_place}
                           options={CITIZEN_ID_ISSUE_PLACE_OPTIONS}
                           onChange={v => handleInputChange('cccd_issue_place', v)}

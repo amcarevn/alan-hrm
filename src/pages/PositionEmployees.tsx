@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeftIcon,
-  BriefcaseIcon,
   UsersIcon,
   ExclamationCircleIcon,
   XMarkIcon,
@@ -145,15 +144,12 @@ const PositionEmployees: React.FC = () => {
           <ArrowLeftIcon className="w-4 h-4" />
           Quay lại danh sách vị trí
         </button>
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
-            <BriefcaseIcon className="h-5 w-5" />
-          </div>
+        <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
               {position?.title || 'Đang tải...'}
             </h1>
-            <p className="text-sm text-gray-400 mt-0.5">
+            <p className="text-sm text-gray-600 mt-0.5">
               {position?.code && `Mã: ${position.code}`}
               {position?.department && position.department.length > 0 && ` • ${position.department.map((d) => d.name).join(', ')}`}
             </p>

@@ -328,9 +328,9 @@ const Dashboard = () => {
       <div className="flex flex-col items-center text-center gap-2 sm:flex-row sm:items-center sm:justify-between sm:text-left">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Dashboard HRM</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Tổng quan nhân sự & tài sản</p>
+          <p className="text-xs text-gray-600 mt-0.5">Tổng quan nhân sự & tài sản</p>
         </div>
-        <span className="text-[11px] text-gray-400 bg-white border border-gray-100 rounded-lg px-3 py-1.5 flex-shrink-0">
+        <span className="text-[11px] text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-1.5 flex-shrink-0">
           {formatDate(new Date())}
         </span>
       </div>

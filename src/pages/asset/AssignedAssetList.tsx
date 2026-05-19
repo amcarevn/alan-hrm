@@ -325,10 +325,7 @@ export default function AssignedAssetList() {
     <div className="space-y-6">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center space-x-3 mb-1">
-          <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
-            <ComputerDesktopIcon className="h-5 w-5" />
-          </div>
+        <div className="flex items-center mb-1">
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Thiết bị bàn giao</h1>
         </div>
         <p className="text-sm text-gray-500">Danh sách thiết bị, tài sản công ty đã bàn giao cho bạn sử dụng.</p>

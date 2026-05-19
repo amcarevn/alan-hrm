@@ -117,10 +117,7 @@ const CompanyConfigCreate: React.FC = () => {
           <ArrowLeftIcon className="h-4 w-4" />
           Quay lại
         </button>
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
-            <Cog6ToothIcon className="h-5 w-5" />
-          </div>
+        <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
               Thêm cấu hình công ty mới

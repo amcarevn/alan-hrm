@@ -100,13 +100,10 @@ const PositionList: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center gap-3">
-        <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
-          <BriefcaseIcon className="h-5 w-5" />
-        </div>
+      <div className="flex items-center">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Quản lý vị trí công việc</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Quản lý thông tin vị trí công việc, chức danh và cấp bậc trong tổ chức.</p>
+          <p className="text-sm text-gray-600 mt-0.5">Quản lý thông tin vị trí công việc, chức danh và cấp bậc trong tổ chức.</p>
         </div>
       </div>
 

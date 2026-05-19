@@ -162,13 +162,10 @@ const DepartmentList: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center gap-3">
-        <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
-          <BuildingOfficeIcon className="h-5 w-5" />
-        </div>
+      <div className="flex items-center">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Quản lý phòng ban</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Quản lý thông tin phòng ban, cấu trúc tổ chức và phân cấp.</p>
+          <p className="text-sm text-gray-600 mt-0.5">Quản lý thông tin phòng ban, cấu trúc tổ chức và phân cấp.</p>
         </div>
       </div>
 

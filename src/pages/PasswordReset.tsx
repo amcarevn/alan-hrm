@@ -197,12 +197,9 @@ export default function PasswordReset() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="h-10 w-10 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
-          <KeyIcon className="h-6 w-6" />
-        </div>
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Cấp lại mật khẩu nhân viên</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <p className="text-sm text-gray-600 mt-0.5">
             Sử dụng công cụ này để reset mật khẩu cho nhân viên quên mật khẩu. Hệ thống sẽ gửi email tài khoản mới đến nhân viên.
           </p>
         </div>

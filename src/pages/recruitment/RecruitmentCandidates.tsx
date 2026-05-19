@@ -227,13 +227,10 @@ const RecruitmentCandidates: React.FC = () => {
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
-            <UserGroupIcon className="h-5 w-5" />
-          </div>
+        <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Ứng viên</h1>
-            <p className="text-xs text-gray-400">Quản lý hồ sơ ứng viên</p>
+            <p className="text-xs text-gray-600">Quản lý hồ sơ ứng viên</p>
           </div>
         </div>
         <button onClick={openCreate} className="btn-primary flex items-center gap-2">

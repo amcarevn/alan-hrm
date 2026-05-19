@@ -176,13 +176,10 @@ const CompanyConfigEdit: React.FC = () => {
       </button>
 
       {/* Page header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
-          <Cog6ToothIcon className="h-5 w-5" />
-        </div>
+      <div className="flex items-center mb-6">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Chỉnh sửa cấu hình công ty</h1>
-          <p className="text-sm text-gray-400">Cập nhật cấu hình giờ làm việc, ngày nghỉ lễ và các chính sách công ty</p>
+          <p className="text-sm text-gray-600">Cập nhật cấu hình giờ làm việc, ngày nghỉ lễ và các chính sách công ty</p>
         </div>
       </div>
 

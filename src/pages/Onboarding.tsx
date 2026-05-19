@@ -597,13 +597,10 @@ const Onboarding: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
-            <UserPlusIcon className="h-5 w-5" />
-          </div>
+        <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Onboard nhân sự</h1>
-            <p className="text-sm text-gray-400 mt-0.5">Quản lý quy trình tuyển dụng và onboarding nhân viên mới.</p>
+            <p className="text-sm text-gray-600 mt-0.5">Quản lý quy trình tuyển dụng và onboarding nhân viên mới.</p>
           </div>
         </div>
       </div>

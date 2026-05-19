@@ -504,13 +504,10 @@ const AttendanceUpload: React.FC = () => {
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
-            <CloudArrowUpIcon className="h-5 w-5" />
-          </div>
+        <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Upload Chấm công</h1>
-            <p className="text-sm text-gray-400 mt-0.5">Kênh nhập liệu hiệu suất cao cho hành chính nhân sự.</p>
+            <p className="text-sm text-gray-600 mt-0.5">Kênh nhập liệu hiệu suất cao cho hành chính nhân sự.</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
