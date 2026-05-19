@@ -69,6 +69,19 @@ interface MyContract {
   created_at: string;
 }
 
+const CONTRACT_TYPE_MAP: Record<string, string> = {
+  PROBATION: 'Hợp đồng thử việc',
+  INTERN: 'Hợp đồng thực tập',
+  COLLABORATOR: 'Hợp đồng cộng tác viên',
+  ONE_YEAR: 'Hợp đồng 1 năm',
+  TWO_YEAR: 'Hợp đồng 2 năm',
+  INDEFINITE: 'Hợp đồng không xác định thời hạn',
+  SERVICE: 'Hợp đồng dịch vụ',
+  CONFIDENTIALITY: 'Cam kết bảo mật',
+  COMPANY_RULES: 'Nội quy công ty',
+  NURSING_COMMITMENT: 'Cam kết nuôi dưỡng',
+};
+
 const getDaysUntilExpiry = (endDate: string | null | undefined): number | null => {
   if (!endDate) return null;
   const today = new Date();
@@ -964,6 +977,7 @@ const Profile: React.FC = () => {
                 <DocumentTextIcon className="h-5 w-5 text-gray-400 mr-2" />
                 <span className="text-gray-900">
                   {employee.contract_type_display ||
+                    (employee.contract_type ? CONTRACT_TYPE_MAP[employee.contract_type] : undefined) ||
                     employee.contract_type ||
                     'Chưa cập nhật'}
                 </span>
