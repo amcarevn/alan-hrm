@@ -7,7 +7,7 @@ import {
   UserPlusIcon,
   UsersIcon,
   ComputerDesktopIcon,
-  UserMinusIcon,
+
   WrenchScrewdriverIcon,
   ArchiveBoxIcon,
   Squares2X2Icon,
@@ -339,7 +339,7 @@ const Dashboard = () => {
       {activeTab === 'overview' && (
         <div className="flex flex-col gap-5 flex-1">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard name="Tổng nhân viên" rawValue={stats.employee_stats.total} formatter={formatNumber}
+            <StatCard name="Tổng nhân viên" rawValue={stats.employee_stats.active + stats.employee_stats.probation} formatter={formatNumber}
               subtext={`${formatNumber(stats.employee_stats.active)} đang làm việc`}
               icon={UsersIcon} iconBg="bg-primary-100 text-primary-600" trend={stats.trends.employee_growth} />
             <StatCard name="Thử việc" rawValue={stats.employee_stats.probation} formatter={formatNumber}
@@ -363,7 +363,7 @@ const Dashboard = () => {
         <div className="space-y-5">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard name="Đang làm việc" rawValue={stats.employee_stats.active} formatter={formatNumber}
-              subtext={`Tổng ${formatNumber(stats.employee_stats.total)} nhân viên`}
+              subtext={`Tổng ${formatNumber(stats.employee_stats.active + stats.employee_stats.probation)} nhân viên`}
               icon={UsersIcon} iconBg="bg-primary-100 text-primary-600" trend={stats.trends.employee_growth} />
             <StatCard name="Thử việc" rawValue={stats.employee_stats.probation} formatter={formatNumber}
               subtext={`${formatNumber(stats.employee_stats.new_last_30_days)} mới / 30 ngày`}
@@ -371,9 +371,9 @@ const Dashboard = () => {
             <StatCard name="Mới tuyển dụng" rawValue={stats.employee_stats.recent_hires} formatter={formatNumber}
               subtext="Trong 30 ngày gần nhất"
               icon={UserGroupIcon} iconBg="bg-emerald-100 text-emerald-600" trend={null} />
-            <StatCard name="Nghỉ việc" rawValue={stats.employee_stats.inactive} formatter={formatNumber}
-              subtext="Không còn làm việc"
-              icon={UserMinusIcon} iconBg="bg-red-100 text-red-500" trend={null} />
+            <StatCard name="Tổng cộng" rawValue={stats.employee_stats.active + stats.employee_stats.probation} formatter={formatNumber}
+              subtext="Đang hoạt động"
+              icon={UserGroupIcon} iconBg="bg-violet-100 text-violet-600" trend={null} />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <DonutCard title="Phân bố giới tính" data={genderData}

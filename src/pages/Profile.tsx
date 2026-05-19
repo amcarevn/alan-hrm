@@ -465,25 +465,9 @@ const Profile: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="space-y-5 animate-pulse">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 bg-gray-100 rounded-xl" />
-          <div className="space-y-1.5">
-            <div className="h-5 w-40 bg-gray-100 rounded" />
-            <div className="h-3 w-56 bg-gray-100 rounded" />
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-32" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-2 space-y-5">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-64" />
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-48" />
-          </div>
-          <div className="space-y-5">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-48" />
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-40" />
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-64 gap-3">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        <p className="text-sm text-gray-500">Đang tải dữ liệu...</p>
       </div>
     );
   }
