@@ -210,7 +210,7 @@ const WorkFinalizationApprovals: React.FC = () => {
         <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Phê duyệt chốt công</h1>
-            <p className="text-sm text-gray-600 mt-0.5">Quản lý bảng tính công hàng tháng và xuất báo cáo tính lương.</p>
+            <p className="text-sm text-gray-900 mt-0.5">Quản lý bảng tính công hàng tháng và xuất báo cáo tính lương.</p>
           </div>
         </div>
         {isAdmin && (

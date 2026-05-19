@@ -425,7 +425,7 @@ const DocumentTemplates: React.FC = () => {
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
             Template tài liệu Onboarding
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">Tổng: {totalCount} template</p>
+          <p className="text-gray-900 text-sm mt-0.5">Tổng: {totalCount} template</p>
         </div>
         <button onClick={openCreate} className="btn-primary flex items-center gap-2">
           <PlusIcon className="w-4 h-4" />

@@ -531,7 +531,7 @@ const CompanyConfigList: React.FC = () => {
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Cấu hình công ty</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-900">
             Quản lý cấu hình giờ làm việc, ngày nghỉ lễ và các chính sách công ty
           </p>
         </div>

@@ -894,7 +894,7 @@ const WorkFinalization: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Chốt Công</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-0.5 text-sm text-gray-900">
             Quản lý bảng tính công hàng tháng và xuất báo cáo tính lương
           </p>
         </div>

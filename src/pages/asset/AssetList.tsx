@@ -460,7 +460,7 @@ export default function AssetList() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Quản lý tài sản</h1>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-gray-900">
             Quản lý tất cả tài sản công ty, theo dõi trạng thái và người sử dụng
           </p>
         </div>

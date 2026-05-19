@@ -1819,7 +1819,7 @@ const Approvals: React.FC = () => {
       </div>
 
       <div>
-        <p className="text-base sm:text-lg text-gray-600 mt-1 sm:mt-2">
+        <p className="text-sm text-gray-900 mt-1 sm:mt-2">
           Duyệt các đơn xin nghỉ phép, giải trình chấm công và các
           yêu cầu khác.
         </p>

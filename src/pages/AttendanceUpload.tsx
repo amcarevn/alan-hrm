@@ -507,7 +507,7 @@ const AttendanceUpload: React.FC = () => {
         <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Upload Chấm công</h1>
-            <p className="text-sm text-gray-600 mt-0.5">Kênh nhập liệu hiệu suất cao cho hành chính nhân sự.</p>
+            <p className="text-sm text-gray-900 mt-0.5">Kênh nhập liệu hiệu suất cao cho hành chính nhân sự.</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -653,7 +653,7 @@ const AttendanceUpload: React.FC = () => {
               </div>
               <div>
                 <h2 className="text-sm font-bold text-gray-900">Cấu trúc dữ liệu yêu cầu</h2>
-                <p className="text-xs text-gray-400">Định dạng file Excel / CSV hợp lệ</p>
+                <p className="text-xs text-gray-600">Định dạng file Excel / CSV hợp lệ</p>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

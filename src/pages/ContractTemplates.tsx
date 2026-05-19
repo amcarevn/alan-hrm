@@ -233,7 +233,7 @@ export default function ContractTemplates() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Template hợp đồng</h1>
-          <p className="text-sm text-gray-500 mt-1">Quản lý các mẫu hợp đồng dùng để tạo PDF tự động</p>
+          <p className="text-sm text-gray-900 mt-1">Quản lý các mẫu hợp đồng dùng để tạo PDF tự động</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}

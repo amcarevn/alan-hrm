@@ -321,7 +321,7 @@ const OvertimeRateConfigPage: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Cấu hình tăng ca</h1>
-        <p className="text-gray-500 mt-1">Thiết lập đơn giá tăng ca theo phòng ban, vị trí và cá nhân với thời gian hiệu lực linh hoạt.</p>
+        <p className="text-gray-900 mt-0.5 text-sm">Thiết lập đơn giá tăng ca theo phòng ban, vị trí và cá nhân với thời gian hiệu lực linh hoạt.</p>
       </div>
 
       {/* Banners */}

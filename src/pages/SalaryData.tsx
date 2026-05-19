@@ -878,7 +878,7 @@ const SalaryData: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Dữ liệu</h1>
-        <p className="text-gray-500 mt-1">Quản lý lương hoa hồng và phạt biên bản theo tháng/năm.</p>
+        <p className="text-gray-900 mt-0.5 text-sm">Quản lý lương hoa hồng và phạt biên bản theo tháng/năm.</p>
       </div>
 
       {/* Toasts */}

@@ -328,7 +328,7 @@ export default function AssignedAssetList() {
         <div className="flex items-center mb-1">
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Thiết bị bàn giao</h1>
         </div>
-        <p className="text-sm text-gray-500">Danh sách thiết bị, tài sản công ty đã bàn giao cho bạn sử dụng.</p>
+        <p className="text-sm text-gray-900">Danh sách thiết bị, tài sản công ty đã bàn giao cho bạn sử dụng.</p>
       </div>
 
       {/* Sticky wrapper: Stats + Filters */}

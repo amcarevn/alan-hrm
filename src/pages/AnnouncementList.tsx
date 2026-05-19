@@ -331,7 +331,7 @@ const AnnouncementList: React.FC = () => {
         <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Bảng thông báo</h1>
-            <p className="text-xs text-gray-600 mt-0.5">Thông báo nội bộ từ ban lãnh đạo và phòng HCNS</p>
+            <p className="text-sm text-gray-900 mt-0.5">Thông báo nội bộ từ ban lãnh đạo và phòng HCNS</p>
           </div>
         </div>
         {canManage && (

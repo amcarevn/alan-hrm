@@ -396,7 +396,7 @@ const RequestTemplates: React.FC = () => {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Template đơn từ</h1>
-          <p className="text-gray-500 text-sm">Tổng: {totalCount} template</p>
+          <p className="text-gray-900 text-sm">Tổng: {totalCount} template</p>
         </div>
         <button
           onClick={openCreate}

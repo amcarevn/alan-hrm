@@ -230,7 +230,7 @@ const RecruitmentCandidates: React.FC = () => {
         <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Ứng viên</h1>
-            <p className="text-xs text-gray-600">Quản lý hồ sơ ứng viên</p>
+            <p className="text-sm text-gray-900">Quản lý hồ sơ ứng viên</p>
           </div>
         </div>
         <button onClick={openCreate} className="btn-primary flex items-center gap-2">

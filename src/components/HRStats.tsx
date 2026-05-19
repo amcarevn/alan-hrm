@@ -174,7 +174,7 @@ const HRStats: React.FC = () => {
           </div>
           <div>
             <h3 className="text-sm font-bold text-gray-900">Phân bố nhân sự theo phòng ban</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Nhân viên đang làm việc tại các phòng ban</p>
+            <p className="text-xs text-gray-600 mt-0.5">Nhân viên đang làm việc tại các phòng ban</p>
           </div>
         </div>
         <span className="text-[11px] font-semibold text-gray-500 bg-white border border-gray-100 rounded-lg px-3 py-1.5">
@@ -187,7 +187,7 @@ const HRStats: React.FC = () => {
 
         {/* Cột trái: Donut lớn */}
         <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 p-5 flex flex-col">
-          <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1">
+          <p className="text-[11px] font-medium text-gray-900 uppercase tracking-wide mb-1">
             Tổng nhân viên
           </p>
           <ResponsiveContainer width="100%" height="100%" minHeight={280}>

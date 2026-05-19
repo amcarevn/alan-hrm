@@ -340,7 +340,7 @@ const Offboarding: React.FC = () => {
       <div className="flex items-center">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Offboard nhân sự</h1>
-          <p className="text-sm text-gray-600 mt-0.5">
+          <p className="text-sm text-gray-900 mt-0.5">
             Quản lý đơn nghỉ việc & yêu cầu offboard. Admin xử lý cuối sau khi Quản lý đã duyệt.
           </p>
         </div>

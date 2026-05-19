@@ -314,21 +314,21 @@ const Home: React.FC = () => {
               )}
             </div>
             <div>
-              <p className="text-sm font-medium text-white/50 tracking-widest uppercase mb-1">Chào mừng trở lại</p>
+              <p className="text-sm font-medium text-white/80 tracking-widest uppercase mb-1">Chào mừng trở lại</p>
               <h1 className="text-3xl font-extrabold tracking-tight leading-tight">
                 {employee?.full_name || user?.username || 'Nhân viên'}
               </h1>
-              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-white/65">
+              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-white/90">
                 <span className="flex items-center gap-1.5">
-                  <UserIcon className="h-4 w-4 text-white/40" />
+                  <UserIcon className="h-4 w-4 text-white/70" />
                   {user?.username || 'N/A'}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <BuildingOfficeIcon className="h-4 w-4 text-white/40" />
+                  <BuildingOfficeIcon className="h-4 w-4 text-white/70" />
                   {loading ? 'Đang tải...' : (department?.name || employee?.department?.name || 'Chưa phân phòng')}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <CalendarIcon className="h-4 w-4 text-white/40" />
+                  <CalendarIcon className="h-4 w-4 text-white/70" />
                   {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                 </span>
               </div>
@@ -441,7 +441,7 @@ const Home: React.FC = () => {
               <stat.icon className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{stat.label}</p>
+              <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">{stat.label}</p>
               <p className="text-2xl font-extrabold text-gray-900 mt-0.5 tracking-tight">{stat.value}</p>
             </div>
           </div>
@@ -457,7 +457,7 @@ const Home: React.FC = () => {
             </div>
             <div>
               <h2 className="text-base font-bold text-gray-900">Chúc mừng sinh nhật hôm nay</h2>
-              <p className="text-xs text-gray-400">{birthdayEmployees.length === 0 ? 'Không có sinh nhật hôm nay' : `${birthdayEmployees.length} nhân viên`}</p>
+              <p className="text-xs text-gray-600">{birthdayEmployees.length === 0 ? 'Không có sinh nhật hôm nay' : `${birthdayEmployees.length} nhân viên`}</p>
             </div>
           </div>
         </div>
@@ -505,10 +505,10 @@ const Home: React.FC = () => {
         <div className={birthdayEmployees.length > 0 ? 'pt-4 border-t border-gray-100' : ''}>
           <div className="flex items-center gap-2 mb-3">
             <CakeIcon className="h-4 w-4 text-gray-300" />
-            <h3 className="text-sm font-semibold text-gray-400">Sinh nhật ngày mai</h3>
+            <h3 className="text-sm font-semibold text-gray-600">Sinh nhật ngày mai</h3>
           </div>
           {tomorrowBirthdayEmployees.length === 0 ? (
-            <p className="text-sm text-gray-400">Không có sinh nhật ngày mai.</p>
+            <p className="text-sm text-gray-600">Không có sinh nhật ngày mai.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {tomorrowBirthdayEmployees.map((emp) => (

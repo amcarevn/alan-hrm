@@ -149,7 +149,7 @@ const PositionEmployees: React.FC = () => {
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
               {position?.title || 'Đang tải...'}
             </h1>
-            <p className="text-sm text-gray-600 mt-0.5">
+            <p className="text-sm text-gray-900 mt-0.5">
               {position?.code && `Mã: ${position.code}`}
               {position?.department && position.department.length > 0 && ` • ${position.department.map((d) => d.name).join(', ')}`}
             </p>

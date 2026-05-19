@@ -177,7 +177,7 @@ const RoleList: React.FC = () => {
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
             Quản lý phân quyền nhân viên
           </h1>
-          <p className="text-sm text-gray-600 mt-0.5">
+          <p className="text-sm text-gray-900 mt-0.5">
             Quản lý quyền hạn: phê duyệt công, tạo nhân viên, chấm công, tài sản, v.v.
           </p>
         </div>

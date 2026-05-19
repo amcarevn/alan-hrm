@@ -161,7 +161,7 @@ const RecruitmentNeeds: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Nhu cầu tuyển dụng</h1>
-          <p className="text-gray-500 mt-1 text-sm">Quản lý yêu cầu tuyển dụng từ phòng ban</p>
+          <p className="text-gray-900 mt-1 text-sm">Quản lý yêu cầu tuyển dụng từ phòng ban</p>
         </div>
         <button
           onClick={openCreate}

@@ -120,7 +120,7 @@ const AttendanceRanking: React.FC = () => {
       <div className="flex items-center gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Bảng xếp hạng chấm công</h1>
-          <p className="text-sm text-gray-600 mt-0.5">Thống kê nhân viên đi sớm và đúng giờ theo tháng</p>
+          <p className="text-sm text-gray-900 mt-0.5">Thống kê nhân viên đi sớm và đúng giờ theo tháng</p>
         </div>
       </div>
 

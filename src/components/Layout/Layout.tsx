@@ -9,7 +9,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
   const { drawerOpen, drawerInitialItem, unreadIds, markRead, closeDrawer } = useNotificationDrawer();
 
   return (
-    <div className="h-full flex flex-col bg-[#BED8F4]">
+    <div className="h-full flex flex-col bg-primary-100">
       <Sidebar onCollapseChange={setIsSidebarCollapsed} />
 
       <div className={`flex flex-col flex-1 min-h-0 transition-all duration-300 ${isSidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'}`}>

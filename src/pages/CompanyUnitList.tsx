@@ -217,7 +217,7 @@ const CompanyUnitList: React.FC = () => {
       {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Quản lý Đơn vị làm việc</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-gray-900 mt-1">
           Quản lý danh sách các công ty thành viên, chi nhánh, cấu hình mã định danh và mã nhận diện sinh nhân viên.
         </p>
       </div>
@@ -282,7 +282,7 @@ const CompanyUnitList: React.FC = () => {
         <div className="flex justify-between items-center mb-5">
           <div>
             <h2 className="text-sm font-bold text-gray-900">Danh sách Đơn vị</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Tổng số: {units.length} đơn vị</p>
+            <p className="text-xs text-gray-900 mt-0.5">Tổng số: {units.length} đơn vị</p>
           </div>
           <button
             className="btn-primary"

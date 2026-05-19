@@ -1065,7 +1065,7 @@ const EmployeeList: React.FC = () => {
       <div className="flex items-center gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Quản lý nhân viên</h1>
-          <p className="text-sm text-gray-600">Quản lý thông tin nhân viên, phòng ban, chức vụ và các thông tin liên quan.</p>
+          <p className="text-sm text-gray-900">Quản lý thông tin nhân viên, phòng ban, chức vụ và các thông tin liên quan.</p>
         </div>
       </div>
 

@@ -513,7 +513,7 @@ const BulkContracts: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Hợp đồng hàng loạt</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-gray-900 mt-1">
           Gắn hợp đồng nhanh cho nhiều nhân viên cùng lúc và xem trước PDF trước khi in.
         </p>
       </div>

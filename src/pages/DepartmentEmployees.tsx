@@ -145,7 +145,7 @@ const DepartmentEmployees: React.FC = () => {
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
               {department?.name || 'Đang tải...'}
             </h1>
-            <p className="text-sm text-gray-600 mt-0.5">
+            <p className="text-sm text-gray-900 mt-0.5">
               {department?.code && `Mã: ${department.code}`}
               {department?.description && ` • ${department.description}`}
             </p>

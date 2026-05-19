@@ -165,7 +165,7 @@ const DepartmentList: React.FC = () => {
       <div className="flex items-center">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Quản lý phòng ban</h1>
-          <p className="text-sm text-gray-600 mt-0.5">Quản lý thông tin phòng ban, cấu trúc tổ chức và phân cấp.</p>
+          <p className="text-sm text-gray-900 mt-0.5">Quản lý thông tin phòng ban, cấu trúc tổ chức và phân cấp.</p>
         </div>
       </div>
 

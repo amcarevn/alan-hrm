@@ -89,7 +89,7 @@ const SectionList: React.FC = () => {
       <div className="flex items-center">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Quản lý bộ phận</h1>
-          <p className="text-sm text-gray-600 mt-0.5">Quản lý các bộ phận trực thuộc phòng ban trong tổ chức.</p>
+          <p className="text-sm text-gray-900 mt-0.5">Quản lý các bộ phận trực thuộc phòng ban trong tổ chức.</p>
         </div>
       </div>
 

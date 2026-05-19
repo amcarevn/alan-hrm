@@ -120,7 +120,7 @@ const SectionEdit: React.FC = () => {
         <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Chỉnh sửa bộ phận</h1>
-            <p className="text-sm text-gray-600 mt-0.5">Cập nhật thông tin bộ phận</p>
+            <p className="text-sm text-gray-900 mt-0.5">Cập nhật thông tin bộ phận</p>
           </div>
         </div>
       </div>

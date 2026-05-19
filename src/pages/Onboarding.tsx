@@ -600,7 +600,7 @@ const Onboarding: React.FC = () => {
         <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Onboard nhân sự</h1>
-            <p className="text-sm text-gray-600 mt-0.5">Quản lý quy trình tuyển dụng và onboarding nhân viên mới.</p>
+            <p className="text-sm text-gray-900 mt-0.5">Quản lý quy trình tuyển dụng và onboarding nhân viên mới.</p>
           </div>
         </div>
       </div>
@@ -636,7 +636,7 @@ const Onboarding: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <div>
             <h2 className="text-sm font-bold text-gray-900">Quy trình onboarding</h2>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-700">
               Tổng: {totalCount} ứng viên đang trong quá trình onboarding
             </p>
           </div>
@@ -780,7 +780,7 @@ const Onboarding: React.FC = () => {
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">
                         <div className="font-medium">{item.full_name || item.candidate_name}</div>
                         {item.candidate_email && (
-                          <div className="text-xs text-gray-400">{item.candidate_email}</div>
+                          <div className="text-xs text-gray-600">{item.candidate_email}</div>
                         )}
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap">

@@ -57,7 +57,7 @@ const ShiftConfiguration: React.FC = () => {
         <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Cấu hình ca làm</h1>
-            <p className="text-sm text-gray-600 mt-0.5">Gán ca làm theo cá nhân, vị trí hoặc phòng ban.</p>
+            <p className="text-sm text-gray-900 mt-0.5">Gán ca làm theo cá nhân, vị trí hoặc phòng ban.</p>
           </div>
         </div>
       </div>
