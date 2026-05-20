@@ -53,6 +53,7 @@ const EmployeeList: React.FC = () => {
       const params: any = { page, page_size: pageSize };
       if (search) params.search = search;
       if (status !== 'all') params.employment_status = status;
+      if (search || status === 'PAUSED') params.include_inactive = true;
       if (department !== 'all') params.department = department;
       if (contractType !== 'all') params.contract_type = contractType;
       
@@ -1019,12 +1020,13 @@ const EmployeeList: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, isActive?: boolean) => {
+    if (isActive === false) {
+      return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-600">Vô hiệu hoá</span>;
+    }
     switch (status) {
       case 'ACTIVE':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-600">Đang làm việc</span>;
-      case 'SUSPENDED':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-600">Tạm dừng</span>;
       case 'INACTIVE':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-600">Đã nghỉ</span>;
       case 'PROBATION':
@@ -1145,6 +1147,7 @@ const EmployeeList: React.FC = () => {
                 { value: 'all', label: 'Tất cả trạng thái' },
                 { value: 'ACTIVE', label: 'Đang làm việc' },
                 { value: 'PROBATION', label: 'Thử việc' },
+                { value: 'PAUSED', label: 'Vô hiệu hoá' },
                 { value: 'INACTIVE', label: 'Đã nghỉ' },
               ]}
               onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
@@ -1191,8 +1194,7 @@ const EmployeeList: React.FC = () => {
             <p className="text-gray-500 text-sm">Tổng số: {totalCount} nhân viên</p>
           </div>
             <div className="flex space-x-2">
-              {isAdmin &&(
-                <button 
+              <button
                   className={`px-4 py-2 rounded-xl transition-colors flex items-center ${
                     isSendingEmails || emailCooldownRemaining > 0
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -1225,9 +1227,7 @@ const EmployeeList: React.FC = () => {
                     </>
                   )}
                 </button>
-              )}
-              {(isAdmin || isSuperUser) && (
-                <button
+              <button
                   className="bg-amber-500 text-white px-4 py-2 rounded-xl hover:bg-amber-600 transition-colors flex items-center"
                   onClick={() => { setShowImportDialog(true); setImportFile(null); setImportResult(null); }}
                 >
@@ -1236,7 +1236,6 @@ const EmployeeList: React.FC = () => {
                   </svg>
                   Nhập từ file
                 </button>
-              )}
               <button
                 className="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition-colors flex items-center"
                 onClick={handleExport}
@@ -1246,8 +1245,7 @@ const EmployeeList: React.FC = () => {
                 </svg>
                 Xuất danh sách
               </button>
-              {(isAdmin || isSuperUser) && (
-                <button
+              <button
                   className="bg-primary-700 text-white px-4 py-2 rounded-xl hover:bg-primary-800 transition-colors flex items-center"
                   onClick={handleExportAll}
                 >
@@ -1256,7 +1254,6 @@ const EmployeeList: React.FC = () => {
                   </svg>
                   Xuất toàn bộ
                 </button>
-              )}
 
               <button 
                 className="btn-primary"
@@ -1384,7 +1381,7 @@ const EmployeeList: React.FC = () => {
                         <div className="text-sm text-gray-900">{employee.position?.title || 'Chưa phân chức vụ'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(employee.employment_status)}
+                        {getStatusBadge(employee.employment_status, employee.is_active)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
@@ -1400,7 +1397,7 @@ const EmployeeList: React.FC = () => {
                           >
                             Sửa
                           </button>
-                          {employee.employment_status === 'ACTIVE' ? (
+                          {employee.is_active !== false ? (
                             <button
                               onClick={() => handleDeactivate(employee.id)}
                               className="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors"
