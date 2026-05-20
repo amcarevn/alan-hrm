@@ -347,6 +347,21 @@ export const onboardingService = {
   },
 
   /**
+   * Lấy thông tin onboarding (bao gồm file URLs) theo employee_id (string code).
+   */
+  getByEmployeeId: async (employeeId: string): Promise<OnboardingProcess | null> => {
+    try {
+      const response: AxiosResponse<OnboardingProcess> = await managementApi.get(
+        `/api-hrm/super-admin/onboarding/`,
+        { params: { employee_id: employeeId } }
+      );
+      return response.data;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
    * Upload/replace files bằng employee_id (string code).
    * BE tự tìm OnboardingProcess qua reverse OneToOne.
    */

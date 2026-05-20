@@ -6,7 +6,6 @@ import {
   sectionsAPI,
   positionsAPI,
   companyUnitsAPI,
-  EmployeeUpdateData,
 } from '../utils/api';
 import { SelectBox } from '@/components/LandingLayout/SelectBox';
 import { WORK_LOCATION_OPTIONS } from '../constants/onboarding';
@@ -36,7 +35,7 @@ const GENDER_OPTIONS = [
 
 const EMPLOYMENT_STATUS_OPTIONS = [
   { label: 'Đang làm việc', value: 'ACTIVE' },
-  { label: 'Tạm dừng', value: 'SUSPENDED' },
+  { label: 'Vô hiệu hoá', value: 'PAUSED' },
   { label: 'Đã nghỉ', value: 'INACTIVE' },
 ];
 
@@ -187,6 +186,7 @@ const EmployeeEdit: React.FC = () => {
     facebook_link: '',
 
     // Thông tin công việc
+    is_active: true,
     employment_status: 'ACTIVE',
     start_date: '',
     end_date: '',
@@ -294,12 +294,13 @@ const EmployeeEdit: React.FC = () => {
         marital_status: e.marital_status || '',
         facebook_link: e.facebook_link || ei.facebook_link || '',
 
+        is_active: e.is_active !== false,
         employment_status: e.employment_status || 'ACTIVE',
         start_date: toDisplayDate(e.start_date),
         end_date: toDisplayDate(e.end_date),
         position_id: e.position?.id,
         department_id: e.department?.id,
-        manager_id: typeof e.manager === 'number' ? e.manager : e.manager?.id,
+        manager_id: typeof e.manager === 'number' ? e.manager : (e.manager?.id ?? null),
         rank: e.rank || '',
         section: e.section || '',
         doctor_team: e.doctor_team || '',
@@ -359,9 +360,12 @@ const EmployeeEdit: React.FC = () => {
       });
       setVneidCurrentUrl(e.vneid_screenshot_url || (e.vneid_screenshot ? String(e.vneid_screenshot) : null));
       setVneidFile(null);
-      setDiplomaCurrentUrl(e.diploma_file_url || null);
+
+      // diploma_file_url và citizen_id_file_url thuộc OnboardingProcess — fetch riêng
+      const onboarding = await onboardingService.getByEmployeeId(e.employee_id).catch(() => null);
+      setDiplomaCurrentUrl(onboarding?.diploma_file_url || null);
       setDiplomaFile(null);
-      setCitizenIdCurrentUrl(e.citizen_id_file_url || null);
+      setCitizenIdCurrentUrl(onboarding?.citizen_id_file_url || null);
       setCitizenIdFile(null);
       setError(null);
     } catch (err: any) {
@@ -406,13 +410,39 @@ const EmployeeEdit: React.FC = () => {
     } catch (err) { console.error('Failed to load company units:', err); }
   };
 
+  const calcProbationEndDate = (startDateDisplay: string, months: string): string => {
+    const parts = startDateDisplay.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    const m = parseInt(months);
+    if (!parts || isNaN(m) || m <= 0) return '';
+    const d = new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, parseInt(parts[1]));
+    d.setMonth(d.getMonth() + m);
+    d.setDate(d.getDate() - 1);
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  };
+
   const handleInput = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev: any) => ({ ...prev, [name]: value }));
+    setFormData((prev: any) => {
+      const next = { ...prev, [name]: value };
+      if (name === 'probation_months' && prev.start_date) {
+        next.probation_end_date = calcProbationEndDate(prev.start_date, value);
+      }
+      if (name === 'start_date' && prev.probation_months) {
+        next.probation_end_date = calcProbationEndDate(value, prev.probation_months);
+      }
+      return next;
+    });
   };
 
   const handleSelect = (name: string, value: any) => {
-    setFormData((prev: any) => ({ ...prev, [name]: value }));
+    setFormData((prev: any) => {
+      const next = { ...prev, [name]: value };
+      if (name === 'employment_status') {
+        if (value === 'INACTIVE' || value === 'PAUSED') next.is_active = false;
+        else if (value === 'ACTIVE' || value === 'PROBATION') next.is_active = true;
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -429,6 +459,7 @@ const EmployeeEdit: React.FC = () => {
         employee_id: formData.employee_id.trim(),
         full_name: formData.full_name.trim(),
         gender: formData.gender,
+        is_active: formData.is_active,
         employment_status: formData.employment_status,
         is_hr: formData.is_hr,
       };
@@ -447,7 +478,8 @@ const EmployeeEdit: React.FC = () => {
       add('facebook_link', formData.facebook_link?.trim());
 
       add('start_date', toApiDate(formData.start_date));
-      add('end_date', toApiDate(formData.end_date));
+      // end_date luôn gửi để cho phép xóa (null = xóa ngày nghỉ việc)
+      payload['end_date'] = toApiDate(formData.end_date) || null;
       add('position_id', formData.position_id);
       add('department_id', formData.department_id);
       if (formData.manager_id !== undefined) payload['manager_id'] = formData.manager_id;
@@ -472,7 +504,8 @@ const EmployeeEdit: React.FC = () => {
       add('official_start_date', toApiDate(formData.official_start_date));
       add('education_level', formData.education_level);
 
-      add('termination_reason', formData.termination_reason?.trim());
+      // termination_reason luôn gửi để cho phép xóa khi đổi trạng thái
+      payload['termination_reason'] = formData.termination_reason?.trim() || null;
       add('employment_status_notes', formData.employment_status_notes?.trim());
 
       add('cccd_number', formData.cccd_number?.trim());
@@ -517,7 +550,7 @@ const EmployeeEdit: React.FC = () => {
       add('emergency_contact_occupation', formData.emergency_contact_occupation?.trim());
       add('emergency_contact_address', formData.emergency_contact_address?.trim());
 
-      await employeesAPI.update(parseInt(id!), payload);
+      await employeesAPI.partialUpdate(parseInt(id!), payload);
 
       // Upload VNeID screenshot nếu admin chọn file mới (field thuộc Employee)
       if (vneidFile && formData.employee_id) {
@@ -779,7 +812,21 @@ const EmployeeEdit: React.FC = () => {
               onChange={(v) => handleSelect('company_unit_id', v ? Number(v) : undefined)}
             />
 
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-colors ${formData.is_active ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100' : 'bg-red-50 border-red-200 hover:bg-red-100'}`}>
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={formData.is_active}
+                  onChange={(e) => handleSelect('is_active', e.target.checked)}
+                />
+                <div>
+                  <p className={`text-sm font-medium ${formData.is_active ? 'text-emerald-700' : 'text-red-700'}`}>
+                    {formData.is_active ? 'Đang hoạt động' : 'Đã vô hiệu hoá'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">Bỏ tick để vô hiệu hoá tài khoản nhân viên này</p>
+                </div>
+              </label>
               <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 cursor-pointer hover:bg-primary-50 transition-colors">
                 <input
                   type="checkbox"
