@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   PlusIcon,
   PencilIcon,
@@ -7,6 +8,7 @@ import {
   CheckIcon,
 } from '@heroicons/react/24/outline';
 import { SelectBox } from '../../components/LandingLayout/SelectBox';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import {
   recruitmentService,
   RecruitmentNeedListItem,
@@ -23,8 +25,8 @@ const EMPLOYMENT_TYPE_OPTIONS: { value: EmploymentType; label: string }[] = [
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  OPEN: 'bg-green-100 text-green-800',
-  IN_PROGRESS: 'bg-blue-100 text-blue-800',
+  OPEN: 'bg-emerald-100 text-emerald-800',
+  IN_PROGRESS: 'bg-primary-100 text-primary-800',
   FILLED: 'bg-gray-100 text-gray-800',
   CANCELLED: 'bg-red-100 text-red-800',
 };
@@ -155,14 +157,15 @@ const RecruitmentNeeds: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Nhu cầu tuyển dụng</h1>
-          <p className="text-gray-600 mt-2">Quản lý yêu cầu tuyển dụng từ phòng ban</p>
+          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Nhu cầu tuyển dụng</h1>
+          <p className="text-gray-900 mt-1 text-sm">Quản lý yêu cầu tuyển dụng từ phòng ban</p>
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors text-sm font-medium"
+          className="btn-primary flex items-center gap-2"
         >
           <PlusIcon className="h-4 w-4" />
           Thêm nhu cầu
@@ -170,122 +173,125 @@ const RecruitmentNeeds: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
         <div className="flex gap-2 flex-wrap">
-        {[
-          { value: 'all', label: 'Tất cả' },
-          { value: 'OPEN', label: 'Đang mở' },
-          { value: 'IN_PROGRESS', label: 'Đang tuyển' },
-          { value: 'FILLED', label: 'Đã tuyển đủ' },
-          { value: 'CANCELLED', label: 'Đã hủy' },
-        ].map(opt => (
-          <button
-            key={opt.value}
-            onClick={() => setStatusFilter(opt.value)}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              statusFilter === opt.value
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
+          {[
+            { value: 'all', label: 'Tất cả' },
+            { value: 'OPEN', label: 'Đang mở' },
+            { value: 'IN_PROGRESS', label: 'Đang tuyển' },
+            { value: 'FILLED', label: 'Đã tuyển đủ' },
+            { value: 'CANCELLED', label: 'Đã hủy' },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setStatusFilter(opt.value)}
+              className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${
+                statusFilter === opt.value
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>
+        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl border border-red-100 text-sm">{error}</div>
       )}
 
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+            <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />
           ))}
         </div>
       ) : filteredNeeds.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <p>Chưa có nhu cầu tuyển dụng nào</p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center text-gray-400">
+          <p className="text-sm">Chưa có nhu cầu tuyển dụng nào</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vị trí</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phòng ban</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SL</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Loại</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày onboard</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tạo lúc</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredNeeds.map(need => (
-                <tr key={need.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <p className="text-sm font-medium text-gray-900">{need.position_name}</p>
-                    {need.position_display && need.position_display !== need.position_name && (
-                      <p className="text-xs text-gray-400">{need.position_display}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{need.department_name || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700 text-center">{need.headcount}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{need.employment_type_display}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[need.status] ?? 'bg-gray-100 text-gray-800'}`}
-                    >
-                      {need.status_display}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {need.target_onboard_date
-                      ? new Date(need.target_onboard_date).toLocaleDateString('vi-VN')
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
-                    {new Date(need.created_at).toLocaleDateString('vi-VN')}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center gap-2 justify-end">
-                      <button
-                        onClick={() => openEdit(need)}
-                        className="text-gray-400 hover:text-blue-600 transition-colors"
-                        title="Chỉnh sửa"
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirmId(need.id)}
-                        className="text-gray-400 hover:text-red-600 transition-colors"
-                        title="Xóa"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="table-header">Vị trí</th>
+                  <th className="table-header">Phòng ban</th>
+                  <th className="table-header">SL</th>
+                  <th className="table-header">Loại</th>
+                  <th className="table-header">Trạng thái</th>
+                  <th className="table-header">Ngày onboard</th>
+                  <th className="table-header">Tạo lúc</th>
+                  <th className="table-header" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {filteredNeeds.map(need => (
+                  <tr key={need.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="table-cell">
+                      <p className="text-sm font-semibold text-gray-900">{need.position_name}</p>
+                      {need.position_display && need.position_display !== need.position_name && (
+                        <p className="text-xs text-gray-400">{need.position_display}</p>
+                      )}
+                    </td>
+                    <td className="table-cell text-sm text-gray-600">{need.department_name || '—'}</td>
+                    <td className="table-cell text-sm text-gray-600 text-center">{need.headcount}</td>
+                    <td className="table-cell text-sm text-gray-600">{need.employment_type_display}</td>
+                    <td className="table-cell">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[need.status] ?? 'bg-gray-100 text-gray-800'}`}
+                      >
+                        {need.status_display}
+                      </span>
+                    </td>
+                    <td className="table-cell text-sm text-gray-600">
+                      {need.target_onboard_date
+                        ? new Date(need.target_onboard_date).toLocaleDateString('vi-VN')
+                        : '—'}
+                    </td>
+                    <td className="table-cell text-sm text-gray-400">
+                      {new Date(need.created_at).toLocaleDateString('vi-VN')}
+                    </td>
+                    <td className="table-cell text-right">
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          onClick={() => openEdit(need)}
+                          className="h-8 w-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                          title="Chỉnh sửa"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirmId(need.id)}
+                          className="h-8 w-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Xóa"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {/* Create/Edit Modal */}
-      {showModal && (
+      {showModal && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="text-base font-bold text-gray-900">
                 {editingId ? 'Cập nhật nhu cầu' : 'Thêm nhu cầu tuyển dụng'}
               </h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => setShowModal(false)}
+                className="h-8 w-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
@@ -298,7 +304,7 @@ const RecruitmentNeeds: React.FC = () => {
                   type="text"
                   value={form.position_name}
                   onChange={e => setForm(f => ({ ...f, position_name: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                   placeholder="VD: Backend Developer"
                 />
               </div>
@@ -310,7 +316,7 @@ const RecruitmentNeeds: React.FC = () => {
                     min="1"
                     value={form.headcount}
                     onChange={e => setForm(f => ({ ...f, headcount: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field"
                   />
                 </div>
                 <div>
@@ -331,7 +337,7 @@ const RecruitmentNeeds: React.FC = () => {
                     type="number"
                     value={form.expected_salary_min}
                     onChange={e => setForm(f => ({ ...f, expected_salary_min: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field"
                     placeholder="VD: 15000000"
                   />
                 </div>
@@ -343,7 +349,7 @@ const RecruitmentNeeds: React.FC = () => {
                     type="number"
                     value={form.expected_salary_max}
                     onChange={e => setForm(f => ({ ...f, expected_salary_max: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field"
                     placeholder="VD: 25000000"
                   />
                 </div>
@@ -356,7 +362,7 @@ const RecruitmentNeeds: React.FC = () => {
                   type="date"
                   value={form.target_onboard_date}
                   onChange={e => setForm(f => ({ ...f, target_onboard_date: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
               </div>
               <div>
@@ -365,23 +371,27 @@ const RecruitmentNeeds: React.FC = () => {
                   rows={2}
                   value={form.reason}
                   onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                   placeholder="Mô tả lý do tuyển dụng..."
                 />
               </div>
-              {formError && <p className="text-sm text-red-600">{formError}</p>}
-              <div className="flex justify-end gap-3 pt-2">
+              {formError && (
+                <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-xl border border-red-100">
+                  {formError}
+                </p>
+              )}
+              <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  className="btn-secondary"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+                  className="btn-primary flex items-center gap-2 disabled:opacity-50"
                 >
                   {saving ? (
                     <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -393,34 +403,18 @@ const RecruitmentNeeds: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Delete confirm */}
-      {deleteConfirmId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <h3 className="text-base font-semibold text-gray-900 mb-2">Xác nhận xóa</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Bạn có chắc muốn xóa nhu cầu tuyển dụng này không?
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={() => handleDelete(deleteConfirmId)}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-              >
-                Xóa
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={deleteConfirmId !== null}
+        title="Xác nhận xóa"
+        message="Bạn có chắc muốn xóa nhu cầu tuyển dụng này không?"
+        onConfirm={() => deleteConfirmId !== null && handleDelete(deleteConfirmId)}
+        onClose={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 };

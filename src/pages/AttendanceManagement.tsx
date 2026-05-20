@@ -203,6 +203,10 @@ const AttendanceManagement: React.FC = () => {
   const [forgotCheckinTime, setForgotCheckinTime] = useState<string | null>(null);
   const [forgotCheckoutTime, setForgotCheckoutTime] = useState<string | null>(null);
 
+  // Shift selection for business_trip / first_day
+  const [businessTripShift, setBusinessTripShift] = useState<'morning' | 'afternoon' | 'full_day'>('full_day');
+  const [firstDayShift, setFirstDayShift] = useState<'morning' | 'afternoon' | 'full_day'>('full_day');
+
   // Confirmation modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
@@ -459,7 +463,7 @@ const AttendanceManagement: React.FC = () => {
   // Icon render helper
   // Icon render helper
   const renderIcon = (iconName: string, isSelected: boolean) => {
-    const iconClass = `w-4 h-4 mr-2 ${isSelected ? 'text-purple-500' : 'text-gray-400'}`;
+    const iconClass = `w-4 h-4 mr-2 ${isSelected ? 'text-violet-500' : 'text-gray-400'}`;
     switch (iconName) {
       case 'clock':
         return <ClockIcon className={iconClass} />;
@@ -1411,8 +1415,8 @@ const AttendanceManagement: React.FC = () => {
     <div className="space-y-6">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Quản lý chấm công</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Quản lý chấm công</h1>
+          <p className="text-gray-900 mt-0.5 text-sm">
             Theo dõi và quản lý chấm công, đi muộn, về sớm, nghỉ phép của nhân
             viên.
           </p>
@@ -1422,14 +1426,14 @@ const AttendanceManagement: React.FC = () => {
             setShowRequestHistoryDrawer(true);
             setHistoryActiveTab('all');
           }}
-          className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white border border-purple-200 text-purple-700 rounded-xl shadow-sm hover:bg-purple-50 hover:border-purple-300 hover:shadow-md transition-all duration-200 font-medium text-sm"
+          className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white border border-violet-200 text-violet-700 rounded-xl shadow-sm hover:bg-violet-50 hover:border-violet-300 hover:shadow-md transition-all duration-200 font-medium text-sm"
         >
           <ClipboardDocumentListIcon className="h-5 w-5" />
           <span className="hidden sm:inline">Lịch sử đơn tháng</span>
           <span className="sm:hidden">Lịch sử</span>
           {/* Badge tổng số đơn */}
           {(monthlyRequestHistory.explanations.length + monthlyRequestHistory.registrations.length + monthlyRequestHistory.onlineWorks.length) > 0 && (
-            <span className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-purple-600 text-white rounded-full">
+            <span className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-violet-600 text-white rounded-full">
               {monthlyRequestHistory.explanations.length + monthlyRequestHistory.registrations.length + monthlyRequestHistory.onlineWorks.length}
             </span>
           )}
@@ -1445,7 +1449,7 @@ const AttendanceManagement: React.FC = () => {
 
       {/* Upload Section - Only visible for users with permission */}
       {canUploadAttendance && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
@@ -1500,7 +1504,7 @@ const AttendanceManagement: React.FC = () => {
                     disabled={uploading}
                     className={`px-4 py-2 rounded-md transition-colors ${uploading
                       ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                       }`}
                   >
                     {uploading ? 'Đang upload...' : 'Upload'}
@@ -1509,11 +1513,11 @@ const AttendanceManagement: React.FC = () => {
               </div>
 
               {selectedFile && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-md w-full max-w-md">
+                <div className="mt-4 p-3 bg-primary-50 rounded-md w-full max-w-md">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <svg
-                        className="w-5 h-5 text-blue-500 mr-2"
+                        className="w-5 h-5 text-primary-500 mr-2"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -1540,14 +1544,14 @@ const AttendanceManagement: React.FC = () => {
               {uploadMessage && (
                 <div
                   className={`mt-4 p-3 rounded-md w-full max-w-md ${uploadMessage.type === 'success'
-                    ? 'bg-green-50 text-green-800'
+                    ? 'bg-emerald-50 text-emerald-800'
                     : 'bg-red-50 text-red-800'
                     }`}
                 >
                   <div className="flex items-center">
                     {uploadMessage.type === 'success' ? (
                       <svg
-                        className="w-5 h-5 text-green-500 mr-2"
+                        className="w-5 h-5 text-emerald-500 mr-2"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -1635,13 +1639,13 @@ const AttendanceManagement: React.FC = () => {
             </div>
           </div>
 
-          <div className="group bg-white p-4 rounded-2xl shadow-sm border border-blue-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+          <div className="group bg-white p-4 rounded-2xl shadow-sm border border-primary-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-primary-500"></div>
             <div className="flex items-center justify-between mb-3">
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <CalendarIcon className="h-6 w-6 text-blue-600" />
+              <div className="p-2 bg-primary-50 rounded-lg">
+                <CalendarIcon className="h-6 w-6 text-primary-600" />
               </div>
-              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Tháng này</span>
+              <span className="text-[10px] font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Tháng này</span>
             </div>
             <h3 className="text-sm font-semibold text-gray-600">Tổng ngày công</h3>
             <div className="flex items-baseline gap-1 mt-1">
@@ -1652,13 +1656,13 @@ const AttendanceManagement: React.FC = () => {
             </div>
           </div>
 
-          <div className="group bg-white p-4 rounded-2xl shadow-sm border border-green-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>
+          <div className="group bg-white p-4 rounded-2xl shadow-sm border border-emerald-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
             <div className="flex items-center justify-between mb-3">
-              <div className="p-2 bg-green-50 rounded-lg">
-                <CheckCircleIcon className="h-6 w-6 text-green-600" />
+              <div className="p-2 bg-emerald-50 rounded-lg">
+                <CheckCircleIcon className="h-6 w-6 text-emerald-600" />
               </div>
-              <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Ổn định</span>
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Ổn định</span>
             </div>
             <h3 className="text-sm font-semibold text-gray-600">Ngày đủ công</h3>
             <div className="flex items-baseline gap-1 mt-1">
@@ -1669,13 +1673,13 @@ const AttendanceManagement: React.FC = () => {
             </div>
           </div>
 
-          <div className="group bg-white p-4 rounded-2xl shadow-sm border border-yellow-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500"></div>
+          <div className="group bg-white p-4 rounded-2xl shadow-sm border border-amber-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
             <div className="flex items-center justify-between mb-3">
-              <div className="p-2 bg-yellow-50 rounded-lg">
-                <ClockIcon className="h-6 w-6 text-yellow-600" />
+              <div className="p-2 bg-amber-50 rounded-lg">
+                <ClockIcon className="h-6 w-6 text-amber-600" />
               </div>
-              <span className="text-[10px] font-bold text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Cần chú ý</span>
+              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Cần chú ý</span>
             </div>
             <h3 className="text-sm font-semibold text-gray-600">Số phút Muộn/Sớm</h3>
             <div className="flex items-baseline gap-1 mt-1">
@@ -1703,13 +1707,13 @@ const AttendanceManagement: React.FC = () => {
             </div>
           </div>
 
-          <div className="group bg-white p-4 rounded-2xl shadow-sm border border-purple-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
+          <div className="group bg-white p-4 rounded-2xl shadow-sm border border-violet-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-violet-500"></div>
             <div className="flex items-center justify-between mb-3">
-              <div className="p-2 bg-purple-50 rounded-lg">
-                <ExclamationTriangleIcon className="h-6 w-6 text-purple-600" />
+              <div className="p-2 bg-violet-50 rounded-lg">
+                <ExclamationTriangleIcon className="h-6 w-6 text-violet-600" />
               </div>
-              <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Chưa hoàn thành</span>
+              <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Chưa hoàn thành</span>
             </div>
             <h3 className="text-sm font-semibold text-gray-600">Quên chấm công</h3>
             <div className="flex items-baseline gap-1 mt-1">
@@ -1801,18 +1805,18 @@ const AttendanceManagement: React.FC = () => {
             const remainingMonthlyLeave = attendanceStats?.remaining_leave ?? 1;
 
             return (
-              <div className="group bg-white p-4 rounded-xl border border-indigo-100 hover:shadow-md transition-all duration-300">
+              <div className="group bg-white p-4 rounded-xl border border-primary-100 hover:shadow-md transition-all duration-300">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-indigo-50 rounded-lg">
-                    <HeartIcon className="h-5 w-5 text-indigo-600" />
+                  <div className="p-2 bg-primary-50 rounded-lg">
+                    <HeartIcon className="h-5 w-5 text-primary-600" />
                   </div>
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-tight">Nghỉ phép tháng</h3>
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-bold text-indigo-600">
+                  <span className="text-2xl font-bold text-primary-600">
                     {remainingMonthlyLeave}
                   </span>
-                  <span className="text-[10px] text-indigo-500 font-medium">/{maxMonthlyLeave} ngày</span>
+                  <span className="text-[10px] text-primary-500 font-medium">/{maxMonthlyLeave} ngày</span>
                 </div>
               </div>
             );
@@ -1824,36 +1828,36 @@ const AttendanceManagement: React.FC = () => {
               const remainingOnline = Math.max(0, maxOnline - usedOnline);
 
               return (
-                <div className="group bg-white p-4 rounded-xl border border-teal-100 hover:shadow-md transition-all duration-300">
+                <div className="group bg-white p-4 rounded-xl border border-emerald-100 hover:shadow-md transition-all duration-300">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-teal-50 rounded-lg">
-                      <ComputerDesktopIcon className="h-5 w-5 text-teal-600" />
+                    <div className="p-2 bg-emerald-50 rounded-lg">
+                      <ComputerDesktopIcon className="h-5 w-5 text-emerald-600" />
                     </div>
                     <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-tight">Online</h3>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold text-teal-600">
+                    <span className="text-2xl font-bold text-emerald-600">
                       {remainingOnline}
                     </span>
-                    <span className="text-[10px] text-teal-500 font-medium">/{maxOnline} lần</span>
+                    <span className="text-[10px] text-emerald-500 font-medium">/{maxOnline} lần</span>
                   </div>
                 </div>
               );
             })()}
 
           {attendanceStats?.max_explanations_per_month > 0 && (
-            <div className="group bg-white p-4 rounded-xl border border-cyan-100 hover:shadow-md transition-all duration-300">
+            <div className="group bg-white p-4 rounded-xl border border-primary-100 hover:shadow-md transition-all duration-300">
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-cyan-50 rounded-lg">
-                  <ChatBubbleBottomCenterTextIcon className="h-5 w-5 text-cyan-600" />
+                <div className="p-2 bg-primary-50 rounded-lg">
+                  <ChatBubbleBottomCenterTextIcon className="h-5 w-5 text-primary-600" />
                 </div>
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-tight">Giải trình công</h3>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-cyan-600">
+                <span className="text-2xl font-bold text-primary-600">
                   {attendanceStats?.remaining_explanations || 0}
                 </span>
-                <span className="text-[10px] text-cyan-500 font-medium">/{attendanceStats?.max_explanations_per_month || 0} lần</span>
+                <span className="text-[10px] text-primary-500 font-medium">/{attendanceStats?.max_explanations_per_month || 0} lần</span>
               </div>
             </div>
           )}
@@ -1872,8 +1876,8 @@ const AttendanceManagement: React.FC = () => {
       </div>
 
       {/* Disciplinary Regulations & Labor Rules Section */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-8">
-        <div className="bg-gradient-to-r from-red-50 to-orange-50 px-6 py-4 border-b border-red-100 flex items-center justify-between">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-8">
+        <div className="bg-gradient-to-r from-red-50 to-amber-50 px-6 py-4 border-b border-red-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-red-100 rounded-lg shadow-sm">
               <ExclamationCircleIcon className="h-5 w-5 text-red-600" />
@@ -2110,13 +2114,13 @@ const AttendanceManagement: React.FC = () => {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <span
                                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${record.status === 'LEAVE'
-                                      ? 'bg-indigo-100 text-indigo-800'
+                                      ? 'bg-primary-100 text-primary-800'
                                       : record.status === 'INCOMPLETE_ATTENDANCE' ||
                                         ((record.check_in || record.check_out) &&
                                           (!record.check_in || !record.check_out))
-                                        ? 'bg-purple-100 text-purple-800'
+                                        ? 'bg-violet-100 text-violet-800'
                                         : record.status === 'PRESENT'
-                                          ? 'bg-green-100 text-green-800'
+                                          ? 'bg-emerald-100 text-emerald-800'
                                           : record.status === 'LATE' ||
                                             record.status === 'EARLY_LEAVE' ||
                                             record.status === 'LATE_EARLY'
@@ -2124,7 +2128,7 @@ const AttendanceManagement: React.FC = () => {
                                             : record.status === 'ABSENT'
                                               ? 'bg-red-100 text-red-800'
                                               : record.status === 'HALF_DAY'
-                                                ? 'bg-orange-100 text-orange-800'
+                                                ? 'bg-amber-100 text-amber-800'
                                                 : 'bg-gray-100 text-gray-800'
                                       }`}
                                   >
@@ -2232,13 +2236,13 @@ const AttendanceManagement: React.FC = () => {
                                   </span>
                                   <span
                                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${record.status === 'LEAVE'
-                                      ? 'bg-indigo-100 text-indigo-800'
+                                      ? 'bg-primary-100 text-primary-800'
                                       : record.status === 'INCOMPLETE_ATTENDANCE' ||
                                         ((record.check_in || record.check_out) &&
                                           (!record.check_in || !record.check_out))
-                                        ? 'bg-purple-100 text-purple-800'
+                                        ? 'bg-violet-100 text-violet-800'
                                         : record.status === 'PRESENT'
-                                          ? 'bg-green-100 text-green-800'
+                                          ? 'bg-emerald-100 text-emerald-800'
                                           : record.status === 'LATE' ||
                                             record.status === 'EARLY_LEAVE' ||
                                             record.status === 'LATE_EARLY'
@@ -2246,7 +2250,7 @@ const AttendanceManagement: React.FC = () => {
                                             : record.status === 'ABSENT'
                                               ? 'bg-red-100 text-red-800'
                                               : record.status === 'HALF_DAY'
-                                                ? 'bg-orange-100 text-orange-800'
+                                                ? 'bg-amber-100 text-amber-800'
                                                 : 'bg-gray-100 text-gray-800'
                                       }`}
                                   >
@@ -2280,13 +2284,13 @@ const AttendanceManagement: React.FC = () => {
                                         <span>{record.notes}</span>
                                       )}
                                       {record.late_minutes > 0 && (
-                                        <span className="text-orange-600">
+                                        <span className="text-amber-600">
                                           {record.notes ? ' · ' : ''}Muộn{' '}
                                           {record.late_minutes} phút
                                         </span>
                                       )}
                                       {record.early_leave_minutes > 0 && (
-                                        <span className="text-orange-600">
+                                        <span className="text-amber-600">
                                           {record.notes || record.late_minutes > 0
                                             ? ' · '
                                             : ''}
@@ -2516,7 +2520,7 @@ const AttendanceManagement: React.FC = () => {
                               <li key={ev.id} className="ml-4">
                                 <div
                                   className={`absolute w-3 h-3 rounded-full mt-1.5 -left-1.5 border ${approved
-                                    ? 'bg-green-500 border-green-300'
+                                    ? 'bg-emerald-500 border-emerald-300'
                                     : rejected
                                       ? 'bg-red-500 border-red-300'
                                       : 'bg-gray-300 border-gray-200'
@@ -2524,7 +2528,7 @@ const AttendanceManagement: React.FC = () => {
                                 />
                                 <div
                                   className={`p-3 rounded-lg border ${approved
-                                    ? 'bg-green-50 border-green-200'
+                                    ? 'bg-emerald-50 border-emerald-200'
                                     : rejected
                                       ? 'bg-red-50 border-red-200'
                                       : 'bg-gray-50 border-gray-200'
@@ -2533,11 +2537,11 @@ const AttendanceManagement: React.FC = () => {
                                   <div className="flex flex-wrap items-center gap-2 mb-1">
                                     <span
                                       className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${ev.event_type === 'attendance'
-                                        ? 'bg-blue-100 text-blue-800'
+                                        ? 'bg-primary-100 text-primary-800'
                                         : ev.event_type === 'explanation' || (ev.event_type === 'explanation_approval' && (ev.recordStatus === 'LEAVE' || ev.data?.explanation_type === 'LEAVE'))
-                                          ? 'bg-indigo-100 text-indigo-800'
+                                          ? 'bg-primary-100 text-primary-800'
                                           : ['overtime', 'extra_hours', 'night_shift', 'live', 'online_work', 'off_duty'].includes(ev.event_type) || ev.event_type === 'registration_approval' || ev.event_type === 'request_approval'
-                                            ? 'bg-purple-100 text-purple-800'
+                                            ? 'bg-violet-100 text-violet-800'
                                             : 'bg-gray-100 text-gray-800'
                                         }`}
                                     >
@@ -2546,7 +2550,7 @@ const AttendanceManagement: React.FC = () => {
                                         : (eventTypeLabel[ev.event_type] || ev.event_type)}
                                     </span>
                                     {approved && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 whitespace-nowrap">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 whitespace-nowrap">
                                         ✓ Đã duyệt
                                       </span>
                                     )}
@@ -2589,7 +2593,7 @@ const AttendanceManagement: React.FC = () => {
                                       ) : (
                                         <>
                                           {ev.data?.explanation_type === 'INCOMPLETE_ATTENDANCE' && (
-                                            <div className="bg-purple-50 p-2 rounded-lg mb-2 text-purple-800 border border-purple-100">
+                                            <div className="bg-violet-50 p-2 rounded-lg mb-2 text-violet-800 border border-violet-100">
                                               <p className="font-bold flex items-center">
                                                 <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                                 {(() => {
@@ -2741,7 +2745,7 @@ const AttendanceManagement: React.FC = () => {
                     {/* Luôn hiện nút làm đơn bổ sung để cho phép tạo đơn đăng ký (OT, tăng ca...) bất kể trạng thái ngày */}
                     <button
                       onClick={handleOpenSupplementaryRequest}
-                      className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                      className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
                     >
                       <DocumentPlusIcon className="h-5 w-5 mr-2" />
                       Làm đơn bổ sung
@@ -2771,8 +2775,8 @@ const AttendanceManagement: React.FC = () => {
               <div className="inline-block align-bottom bg-white rounded-t-lg sm:rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl w-full">
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
                   <div className="sm:flex sm:items-start">
-                    <div className="mx-auto flex-shrink-0 flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full bg-purple-100 sm:mx-0">
-                      <DocumentPlusIcon className="h-5 w-5 md:h-6 md:w-6 text-purple-600" />
+                    <div className="mx-auto flex-shrink-0 flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full bg-violet-100 sm:mx-0">
+                      <DocumentPlusIcon className="h-5 w-5 md:h-6 md:w-6 text-violet-600" />
                     </div>
                     <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                       <div className="flex justify-between items-start">
@@ -2805,7 +2809,7 @@ const AttendanceManagement: React.FC = () => {
                         <div className="flex items-center">
                           <div
                             className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold text-sm transition-all duration-300 ${currentStep >= 1
-                              ? 'bg-purple-600 text-white shadow-lg'
+                              ? 'bg-violet-600 text-white shadow-lg'
                               : 'bg-gray-200 text-gray-500 border-2 border-gray-300'
                               }`}
                           >
@@ -2836,8 +2840,8 @@ const AttendanceManagement: React.FC = () => {
                         {/* Connector Line */}
                         <div
                           className={`w-12 sm:w-24 h-1 mx-4 rounded-full transition-all duration-500 ${currentStep >= 2
-                            ? 'bg-gradient-to-r from-purple-600 to-purple-600'
-                            : 'bg-gradient-to-r from-purple-600 to-gray-300'
+                            ? 'bg-gradient-to-r from-violet-600 to-violet-600'
+                            : 'bg-gradient-to-r from-violet-600 to-gray-300'
                             }`}
                         />
 
@@ -2845,7 +2849,7 @@ const AttendanceManagement: React.FC = () => {
                         <div className="flex items-center">
                           <div
                             className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold text-sm transition-all duration-300 ${currentStep >= 2
-                              ? 'bg-purple-600 text-white shadow-lg'
+                              ? 'bg-violet-600 text-white shadow-lg'
                               : 'bg-gray-200 text-gray-500 border-2 border-gray-300'
                               }`}
                           >
@@ -2925,13 +2929,13 @@ const AttendanceManagement: React.FC = () => {
                                   type="button"
                                   onClick={() => handleContextSelect('explanation')}
                                   className={`group relative p-5 bg-white border-2 rounded-xl shadow-sm transition-all duration-200 text-left ${selectedContext === 'explanation'
-                                    ? 'border-purple-500 ring-2 ring-purple-100 hover:border-purple-600'
-                                    : 'border-gray-200 hover:border-purple-400'
+                                    ? 'border-violet-500 ring-2 ring-violet-100 hover:border-violet-600'
+                                    : 'border-gray-200 hover:border-violet-400'
                                   }`}
                                 >
                                   <div className="flex items-start space-x-4">
-                                    <div className={`p-3 rounded-lg ${selectedContext === 'explanation' ? 'bg-purple-100' : 'bg-gray-100'}`}>
-                                      <svg className={`w-6 h-6 ${selectedContext === 'explanation' ? 'text-purple-600' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className={`p-3 rounded-lg ${selectedContext === 'explanation' ? 'bg-violet-100' : 'bg-gray-100'}`}>
+                                      <svg className={`w-6 h-6 ${selectedContext === 'explanation' ? 'text-violet-600' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                       </svg>
                                     </div>
@@ -2948,13 +2952,13 @@ const AttendanceManagement: React.FC = () => {
                                 type="button"
                                 onClick={() => handleContextSelect('registration')}
                                 className={`group relative p-5 bg-white border-2 rounded-xl shadow-sm transition-all duration-200 text-left ${selectedContext === 'registration'
-                                  ? 'border-purple-500 ring-2 ring-purple-100 hover:border-purple-600'
-                                  : 'border-gray-200 hover:border-purple-400'
+                                  ? 'border-violet-500 ring-2 ring-violet-100 hover:border-violet-600'
+                                  : 'border-gray-200 hover:border-violet-400'
                                 }`}
                               >
                                 <div className="flex items-start space-x-4">
-                                  <div className={`p-3 rounded-lg ${selectedContext === 'registration' ? 'bg-purple-100' : 'bg-blue-50'}`}>
-                                    <svg className={`w-6 h-6 ${selectedContext === 'registration' ? 'text-purple-600' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <div className={`p-3 rounded-lg ${selectedContext === 'registration' ? 'bg-violet-100' : 'bg-primary-50'}`}>
+                                    <svg className={`w-6 h-6 ${selectedContext === 'registration' ? 'text-violet-600' : 'text-primary-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                     </svg>
                                   </div>
@@ -2980,13 +2984,13 @@ const AttendanceManagement: React.FC = () => {
                                       ${isQuotaExhausted 
                                         ? 'opacity-60 grayscale-[0.5] cursor-not-allowed bg-gray-50/50 border-gray-100' 
                                         : selectedContext === 'monthly_leave' 
-                                          ? 'border-purple-500 ring-2 ring-purple-100' 
-                                          : 'border-gray-200 hover:border-purple-400'
+                                          ? 'border-violet-500 ring-2 ring-violet-100' 
+                                          : 'border-gray-200 hover:border-violet-400'
                                       }`}
                                   >
                                     <div className="flex items-start space-x-4">
-                                      <div className={`p-3 rounded-lg ${selectedContext === 'monthly_leave' ? 'bg-purple-100' : 'bg-indigo-50'}`}>
-                                        <svg className={`w-6 h-6 ${selectedContext === 'monthly_leave' ? 'text-purple-600' : 'text-indigo-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <div className={`p-3 rounded-lg ${selectedContext === 'monthly_leave' ? 'bg-violet-100' : 'bg-primary-50'}`}>
+                                        <svg className={`w-6 h-6 ${selectedContext === 'monthly_leave' ? 'text-violet-600' : 'text-primary-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
                                       </div>
@@ -3026,13 +3030,13 @@ const AttendanceManagement: React.FC = () => {
                                       ${isOnlineQuotaExhausted 
                                         ? 'opacity-60 grayscale-[0.5] cursor-not-allowed bg-gray-50/50 border-gray-100' 
                                         : selectedContext === 'online_work' 
-                                          ? 'border-purple-500 ring-2 ring-purple-100 hover:border-purple-600' 
-                                          : 'border-gray-200 hover:border-purple-400'
+                                          ? 'border-violet-500 ring-2 ring-violet-100 hover:border-violet-600' 
+                                          : 'border-gray-200 hover:border-violet-400'
                                       }`}
                                   >
                                     <div className="flex items-start space-x-4">
-                                      <div className={`p-3 rounded-lg ${selectedContext === 'online_work' ? 'bg-purple-100' : 'bg-teal-50'}`}>
-                                        <svg className={`w-6 h-6 ${selectedContext === 'online_work' ? 'text-purple-600' : 'text-teal-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <div className={`p-3 rounded-lg ${selectedContext === 'online_work' ? 'bg-violet-100' : 'bg-emerald-50'}`}>
+                                        <svg className={`w-6 h-6 ${selectedContext === 'online_work' ? 'text-violet-600' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                         </svg>
                                       </div>
@@ -3203,15 +3207,15 @@ const AttendanceManagement: React.FC = () => {
                                     type="button"
                                     onClick={() => handleReasonSelect(reason.id)}
                                     className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium border-2 transition-all duration-150 ${isSelected
-                                      ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-sm'
+                                      ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
                                       : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'
-                                      } ${isNonQuota && !isSelected ? 'border-dashed border-indigo-200' : ''}`}
+                                      } ${isNonQuota && !isSelected ? 'border-dashed border-primary-200' : ''}`}
                                   >
                                     {renderIcon(reason.icon, isSelected)}
                                     {reason.label}
                                     {isSelected && (
                                       <svg
-                                        className="w-4 h-4 ml-2 text-purple-500"
+                                        className="w-4 h-4 ml-2 text-violet-500"
                                         fill="currentColor"
                                         viewBox="0 0 20 20"
                                       >
@@ -3224,7 +3228,7 @@ const AttendanceManagement: React.FC = () => {
                                     )}
                                   </button>
                                   {isNonQuota && (
-                                    <div className="absolute -top-2 -right-1 bg-indigo-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tighter opacity-0 group-hover/chip:opacity-100 transition-opacity whitespace-nowrap">
+                                    <div className="absolute -top-2 -right-1 bg-primary-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tighter opacity-0 group-hover/chip:opacity-100 transition-opacity whitespace-nowrap">
                                       Không mất lượt
                                     </div>
                                   )}
@@ -3234,6 +3238,82 @@ const AttendanceManagement: React.FC = () => {
                           </div>
                         </div>
                       )}
+
+
+                    {/* === Shift Selection for Business Trip === */}
+                    {selectedContext === 'explanation' && selectedReason === 'business_trip' && (
+                      <div className="space-y-3 mb-4 animate-fadeIn">
+                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                          Chọn ca
+                        </h3>
+                        <div className="flex flex-wrap gap-3">
+                          {[
+                            { id: 'morning' as const, label: 'Ca sáng' },
+                            { id: 'afternoon' as const, label: 'Ca chiều' },
+                            { id: 'full_day' as const, label: 'Cả ngày' },
+                          ].map((shift) => {
+                            const isSelected = businessTripShift === shift.id;
+                            return (
+                              <button
+                                key={shift.id}
+                                type="button"
+                                onClick={() => setBusinessTripShift(shift.id)}
+                                className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium border-2 transition-all duration-150 ${isSelected
+                                  ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
+                                  : 'border-dashed border-primary-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+                                }`}
+                              >
+                                {renderIcon('briefcase', isSelected)}
+                                {shift.label}
+                                {isSelected && (
+                                  <svg className="w-4 h-4 ml-2 text-violet-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* === Shift Selection for First Day === */}
+                    {selectedContext === 'explanation' && selectedReason === 'first_day' && (
+                      <div className="space-y-3 mb-4 animate-fadeIn">
+                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                          Chọn ca
+                        </h3>
+                        <div className="flex flex-wrap gap-3">
+                          {[
+                            { id: 'morning' as const, label: 'Ca sáng' },
+                            { id: 'afternoon' as const, label: 'Ca chiều' },
+                            { id: 'full_day' as const, label: 'Cả ngày' },
+                          ].map((shift) => {
+                            const isSelected = firstDayShift === shift.id;
+                            return (
+                              <button
+                                key={shift.id}
+                                type="button"
+                                onClick={() => setFirstDayShift(shift.id)}
+                                className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium border-2 transition-all duration-150 ${isSelected
+                                  ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
+                                  : 'border-dashed border-primary-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+                                }`}
+                              >
+                                {renderIcon('calendar', isSelected)}
+                                {shift.label}
+                                {isSelected && (
+                                  <svg className="w-4 h-4 ml-2 text-violet-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
 
                     {/* === Time Info for Late/Early Leave === */}
                     {selectedContext === 'explanation' &&
@@ -3252,7 +3332,7 @@ const AttendanceManagement: React.FC = () => {
                                   <div className="bg-white rounded-lg p-3 border border-gray-100">
                                     <div className="flex items-center space-x-2 mb-1">
                                       <svg
-                                        className="w-4 h-4 text-green-500"
+                                        className="w-4 h-4 text-emerald-500"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -3317,11 +3397,11 @@ const AttendanceManagement: React.FC = () => {
                                 {selectedReason === 'late_minutes' &&
                                   attendanceDetails[0]?.late_minutes > 0 && (
                                     <>
-                                      <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                                      <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center space-x-2">
                                             <svg
-                                              className="w-5 h-5 text-yellow-600"
+                                              className="w-5 h-5 text-amber-600"
                                               fill="none"
                                               stroke="currentColor"
                                               viewBox="0 0 24 24"
@@ -3333,17 +3413,17 @@ const AttendanceManagement: React.FC = () => {
                                                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                                               />
                                             </svg>
-                                            <span className="text-sm font-medium text-yellow-800">
+                                            <span className="text-sm font-medium text-amber-800">
                                               Số phút đi muộn
                                             </span>
                                           </div>
-                                          <span className="text-lg font-bold text-yellow-700">
+                                          <span className="text-lg font-bold text-amber-700">
                                             {attendanceDetails[0].late_minutes}{' '}
                                             phút
                                           </span>
                                         </div>
                                         {(attendanceDetails[0].late_penalty || 0) > 0 && (
-                                          <div className="mt-2 pt-2 border-t border-yellow-200 space-y-1">
+                                          <div className="mt-2 pt-2 border-t border-amber-200 space-y-1">
                                             <div className="flex items-center justify-between">
                                               <span className="text-xs font-bold text-red-600 uppercase tracking-tighter">Số tiền phạt:</span>
                                               <span className="text-sm font-black text-red-700">
@@ -3361,11 +3441,11 @@ const AttendanceManagement: React.FC = () => {
                                   attendanceDetails[0]?.early_leave_minutes >
                                   0 && (
                                     <>
-                                      <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                                      <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center space-x-2">
                                             <svg
-                                              className="w-5 h-5 text-yellow-600"
+                                              className="w-5 h-5 text-amber-600"
                                               fill="none"
                                               stroke="currentColor"
                                               viewBox="0 0 24 24"
@@ -3377,11 +3457,11 @@ const AttendanceManagement: React.FC = () => {
                                                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                                               />
                                             </svg>
-                                            <span className="text-sm font-medium text-yellow-800">
+                                            <span className="text-sm font-medium text-amber-800">
                                               Số phút về sớm
                                             </span>
                                           </div>
-                                          <span className="text-lg font-bold text-yellow-700">
+                                          <span className="text-lg font-bold text-amber-700">
                                             {
                                               attendanceDetails[0]
                                                 .early_leave_minutes
@@ -3390,7 +3470,7 @@ const AttendanceManagement: React.FC = () => {
                                           </span>
                                         </div>
                                         {(attendanceDetails[0].early_leave_penalty || 0) > 0 && (
-                                          <div className="mt-2 pt-2 border-t border-yellow-200 space-y-1">
+                                          <div className="mt-2 pt-2 border-t border-amber-200 space-y-1">
                                             <div className="flex items-center justify-between">
                                               <span className="text-xs font-bold text-red-600 uppercase tracking-tighter">Số tiền phạt:</span>
                                               <span className="text-sm font-black text-red-700">
@@ -3445,7 +3525,7 @@ const AttendanceManagement: React.FC = () => {
                             value={formNote}
                             onChange={(e) => setFormNote(e.target.value)}
                             placeholder="Nhập lý do đi muộn/về sớm cụ thể..."
-                            className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
+                            className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
                           />
                         </div>
                       )}
@@ -3475,7 +3555,7 @@ const AttendanceManagement: React.FC = () => {
                                   onChange={(e) =>
                                     setOvertimeStartTime(e.target.value)
                                   }
-                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200"
+                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200"
                                 />
                               </div>
 
@@ -3494,7 +3574,7 @@ const AttendanceManagement: React.FC = () => {
                                   onChange={(e) =>
                                     setOvertimeEndTime(e.target.value)
                                   }
-                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200"
+                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200"
                                 />
                               </div>
                             </div>
@@ -3515,7 +3595,7 @@ const AttendanceManagement: React.FC = () => {
                                     className={`text-lg font-bold ${overtimeDuration <= 0 ||
                                       overtimeDuration < 2
                                       ? 'text-red-600'
-                                      : 'text-purple-700'
+                                      : 'text-violet-700'
                                       }`}
                                   >
                                     {overtimeDuration.toFixed(1)} giờ
@@ -3564,7 +3644,7 @@ const AttendanceManagement: React.FC = () => {
                                 value={formNote}
                                 onChange={(e) => setFormNote(e.target.value)}
                                 placeholder="Nhập ghi chú, lý do tăng ca chi tiết..."
-                                className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
+                                className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
                               />
                             </div>
                           </div>
@@ -3625,7 +3705,7 @@ const AttendanceManagement: React.FC = () => {
                                   onChange={(e) =>
                                     setExtraHoursStartTime(e.target.value)
                                   }
-                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200"
+                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200"
                                 />
                               </div>
 
@@ -3644,7 +3724,7 @@ const AttendanceManagement: React.FC = () => {
                                   onChange={(e) =>
                                     setExtraHoursEndTime(e.target.value)
                                   }
-                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200"
+                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200"
                                 />
                               </div>
                             </div>
@@ -3666,7 +3746,7 @@ const AttendanceManagement: React.FC = () => {
                                     className={`text-lg font-bold ${extraHoursDuration <= 0 ||
                                       extraHoursDuration < 2
                                       ? 'text-red-600'
-                                      : 'text-purple-700'
+                                      : 'text-violet-700'
                                       }`}
                                   >
                                     {extraHoursDuration.toFixed(1)} giờ
@@ -3714,7 +3794,7 @@ const AttendanceManagement: React.FC = () => {
                                 value={formNote}
                                 onChange={(e) => setFormNote(e.target.value)}
                                 placeholder="Nhập ghi chú, lý do làm thêm giờ..."
-                                className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
+                                className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
                               />
                             </div>
                           </div>
@@ -3801,24 +3881,24 @@ const AttendanceManagement: React.FC = () => {
                                 const colorMap: Record<string, { card: string; badge: string; dot: string }> = {
                                   blue: {
                                     card: isSelected
-                                      ? 'bg-blue-600 border-blue-600 text-white shadow-md'
-                                      : 'bg-white border-blue-200 text-gray-700 hover:border-blue-400 hover:bg-blue-50',
-                                    badge: isSelected ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-700',
-                                    dot: 'bg-blue-400',
+                                      ? 'bg-primary-600 border-primary-600 text-white shadow-md'
+                                      : 'bg-white border-primary-200 text-gray-700 hover:border-primary-400 hover:bg-primary-50',
+                                    badge: isSelected ? 'bg-primary-500 text-white' : 'bg-primary-50 text-primary-700',
+                                    dot: 'bg-primary-400',
                                   },
                                   indigo: {
                                     card: isSelected
-                                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
-                                      : 'bg-white border-indigo-200 text-gray-700 hover:border-indigo-400 hover:bg-indigo-50',
-                                    badge: isSelected ? 'bg-indigo-500 text-white' : 'bg-indigo-50 text-indigo-700',
-                                    dot: 'bg-indigo-400',
+                                      ? 'bg-primary-600 border-primary-600 text-white shadow-md'
+                                      : 'bg-white border-primary-200 text-gray-700 hover:border-primary-400 hover:bg-primary-50',
+                                    badge: isSelected ? 'bg-primary-500 text-white' : 'bg-primary-50 text-primary-700',
+                                    dot: 'bg-primary-400',
                                   },
                                   purple: {
                                     card: isSelected
-                                      ? 'bg-purple-600 border-purple-600 text-white shadow-md'
-                                      : 'bg-white border-purple-200 text-gray-700 hover:border-purple-400 hover:bg-purple-50',
-                                    badge: isSelected ? 'bg-purple-500 text-white' : 'bg-purple-50 text-purple-700',
-                                    dot: 'bg-purple-400',
+                                      ? 'bg-violet-600 border-violet-600 text-white shadow-md'
+                                      : 'bg-white border-violet-200 text-gray-700 hover:border-violet-400 hover:bg-violet-50',
+                                    badge: isSelected ? 'bg-violet-500 text-white' : 'bg-violet-50 text-violet-700',
+                                    dot: 'bg-violet-400',
                                   },
                                 };
                                 const c = colorMap[preset.color];
@@ -3859,7 +3939,7 @@ const AttendanceManagement: React.FC = () => {
                           {nightShiftStartTime && nightShiftEndTime && (
                             <div className={`flex items-center justify-between bg-white rounded-xl border px-4 py-3 ${nightShiftDuration <= 0 || nightShiftDuration < 2 ? 'border-red-300' : 'border-gray-200'}`}>
                               <span className="text-sm text-gray-600">Tổng thời gian trực:</span>
-                              <span className={`text-lg font-bold ${nightShiftDuration <= 0 || nightShiftDuration < 2 ? 'text-red-600' : 'text-purple-700'}`}>
+                              <span className={`text-lg font-bold ${nightShiftDuration <= 0 || nightShiftDuration < 2 ? 'text-red-600' : 'text-violet-700'}`}>
                                 {nightShiftDuration.toFixed(1)} giờ
                               </span>
                             </div>
@@ -3879,7 +3959,7 @@ const AttendanceManagement: React.FC = () => {
                               value={formNote}
                               onChange={(e) => setFormNote(e.target.value)}
                               placeholder="Nhập ghi chú, ca trực cụ thể..."
-                              className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
+                              className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
                             />
                           </div>
 
@@ -3953,7 +4033,7 @@ const AttendanceManagement: React.FC = () => {
                                   onChange={(e) =>
                                     setLiveStartTime(e.target.value)
                                   }
-                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200"
+                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200"
                                 />
                               </div>
 
@@ -3970,7 +4050,7 @@ const AttendanceManagement: React.FC = () => {
                                   id="live-end"
                                   value={liveEndTime}
                                   onChange={(e) => setLiveEndTime(e.target.value)}
-                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200"
+                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200"
                                 />
                               </div>
                             </div>
@@ -3990,7 +4070,7 @@ const AttendanceManagement: React.FC = () => {
                                   <span
                                     className={`text-lg font-bold ${liveDuration <= 0 || liveDuration < 2
                                       ? 'text-red-600'
-                                      : 'text-purple-700'
+                                      : 'text-violet-700'
                                       }`}
                                   >
                                     {liveDuration.toFixed(1)} giờ
@@ -4013,7 +4093,7 @@ const AttendanceManagement: React.FC = () => {
                                 value={formNote}
                                 onChange={(e) => setFormNote(e.target.value)}
                                 placeholder="Nhập ghi chú, phiên live cụ thể..."
-                                className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
+                                className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
                               />
                             </div>
 
@@ -4045,7 +4125,7 @@ const AttendanceManagement: React.FC = () => {
                                   )}
 
                                 {/* Night live session indicator */}
-                                <div className="mt-3 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg p-3 border border-pink-200">
+                                <div className="mt-3 bg-gradient-to-r from-pink-50 to-violet-50 rounded-lg p-3 border border-pink-200">
                                   <div className="flex items-center space-x-2">
                                     <svg
                                       className="w-5 h-5 text-pink-600"
@@ -4090,7 +4170,7 @@ const AttendanceManagement: React.FC = () => {
                             value={formNote}
                             onChange={(e) => setFormNote(e.target.value)}
                             placeholder="Nhập ghi chú về ngày đầu đi làm..."
-                            className="block w-full rounded-xl border-2 border-gray-200 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200 resize-none"
+                            className="block w-full rounded-xl border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none"
                           />
                           <p className="text-xs text-gray-500">
                             Vui lòng mô tả chi tiết về ngày đầu đi làm (ví dụ:
@@ -4115,7 +4195,7 @@ const AttendanceManagement: React.FC = () => {
                             value={formNote}
                             onChange={(e) => setFormNote(e.target.value)}
                             placeholder="Nhập ghi chú về chuyến công tác..."
-                            className="block w-full rounded-xl border-2 border-gray-200 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200 resize-none"
+                            className="block w-full rounded-xl border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none"
                           />
                           <p className="text-xs text-gray-500">
                             Vui lòng mô tả chi tiết về chuyến công tác (ví dụ: địa
@@ -4140,7 +4220,7 @@ const AttendanceManagement: React.FC = () => {
                             value={formNote}
                             onChange={(e) => setFormNote(e.target.value)}
                             placeholder="Nhập ghi chú về ca làm việc online (VD: nội dung công việc, kết quả dự kiến...)"
-                            className="block w-full rounded-xl border-2 border-gray-200 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 transition-colors duration-200 resize-none"
+                            className="block w-full rounded-xl border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none"
                           />
                           <p className="text-xs text-gray-500">
                             Mô tả chi tiết để quản lý xem xét phê duyệt đơn làm
@@ -4158,7 +4238,7 @@ const AttendanceManagement: React.FC = () => {
 
                           {/* Tiêu đề */}
                           <div className="flex items-center gap-2 mb-1">
-                            <div className="w-1 h-5 bg-purple-500 rounded-full"></div>
+                            <div className="w-1 h-5 bg-violet-500 rounded-full"></div>
                             <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
                               Bạn quên chấm công lúc nào?
                             </h3>
@@ -4171,25 +4251,25 @@ const AttendanceManagement: React.FC = () => {
                                 id: 'checkin',
                                 label: 'Quên\nCheck-in',
                                 icon: <ArrowLeftOnRectangleIcon className="w-6 h-6" />,
-                                activeColor: 'bg-purple-600 border-purple-600 text-white shadow-lg',
-                                inactiveColor: 'bg-white border-gray-200 text-gray-600 hover:border-purple-300 hover:bg-purple-50',
-                                dotColor: 'bg-purple-500',
+                                activeColor: 'bg-violet-600 border-violet-600 text-white shadow-lg',
+                                inactiveColor: 'bg-white border-gray-200 text-gray-600 hover:border-violet-300 hover:bg-violet-50',
+                                dotColor: 'bg-violet-500',
                               },
                               {
                                 id: 'checkout',
                                 label: 'Quên\nCheck-out',
                                 icon: <ArrowRightOnRectangleIcon className="w-6 h-6" />,
-                                activeColor: 'bg-orange-500 border-orange-500 text-white shadow-lg',
-                                inactiveColor: 'bg-white border-gray-200 text-gray-600 hover:border-orange-300 hover:bg-orange-50',
-                                dotColor: 'bg-orange-500',
+                                activeColor: 'bg-amber-500 border-amber-500 text-white shadow-lg',
+                                inactiveColor: 'bg-white border-gray-200 text-gray-600 hover:border-amber-300 hover:bg-amber-50',
+                                dotColor: 'bg-amber-500',
                               },
                               {
                                 id: 'both',
                                 label: 'Cả\nhai',
                                 icon: <ArrowsRightLeftIcon className="w-6 h-6" />,
-                                activeColor: 'bg-gradient-to-br from-purple-600 to-orange-500 border-transparent text-white shadow-lg',
-                                inactiveColor: 'bg-white border-gray-200 text-gray-600 hover:border-purple-300 hover:bg-purple-50',
-                                dotColor: 'bg-purple-500',
+                                activeColor: 'bg-gradient-to-br from-violet-600 to-amber-500 border-transparent text-white shadow-lg',
+                                inactiveColor: 'bg-white border-gray-200 text-gray-600 hover:border-violet-300 hover:bg-violet-50',
+                                dotColor: 'bg-violet-500',
                               },
                             ].map((type) => {
                               const isActive = forgotPunchType === type.id;
@@ -4220,14 +4300,14 @@ const AttendanceManagement: React.FC = () => {
 
                           {/* Bước 2a: Chọn giờ check-in */}
                           {(forgotPunchType === 'checkin' || forgotPunchType === 'both') && (
-                            <div className="rounded-2xl border border-purple-100 overflow-hidden">
-                              <div className="bg-purple-600 px-4 py-2.5 flex items-center gap-2">
+                            <div className="rounded-2xl border border-violet-100 overflow-hidden">
+                              <div className="bg-violet-600 px-4 py-2.5 flex items-center gap-2">
                                 <svg className="w-4 h-4 text-white opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5-4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                                 </svg>
                                 <span className="text-xs font-bold text-white tracking-wide uppercase">Giờ check-in bị quên</span>
                               </div>
-                              <div className="bg-purple-50 p-3 flex gap-2">
+                              <div className="bg-violet-50 p-3 flex gap-2">
                                 {[
                                   { value: '07:30', label: '7h30', desc: 'Sáng' },
                                   { value: '08:00', label: '8h00', desc: 'Sáng' },
@@ -4242,10 +4322,10 @@ const AttendanceManagement: React.FC = () => {
                                       key={opt.value}
                                       type="button"
                                       onClick={() => setForgotCheckinTime(sel ? null : opt.value)}
-                                      className={`flex-1 flex flex-col items-center py-2.5 rounded-xl border-2 transition-all duration-150 ${sel ? 'bg-purple-600 border-purple-600 shadow-md scale-[1.04]' : 'bg-white border-purple-200 hover:border-purple-400 hover:bg-purple-50'}`}
+                                      className={`flex-1 flex flex-col items-center py-2.5 rounded-xl border-2 transition-all duration-150 ${sel ? 'bg-violet-600 border-violet-600 shadow-md scale-[1.04]' : 'bg-white border-violet-200 hover:border-violet-400 hover:bg-violet-50'}`}
                                     >
-                                      <span className={`text-sm font-extrabold ${sel ? 'text-white' : 'text-purple-700'}`}>{opt.label}</span>
-                                      <span className={`text-[10px] mt-0.5 font-medium ${sel ? 'text-purple-200' : 'text-gray-400'}`}>{opt.desc}</span>
+                                      <span className={`text-sm font-extrabold ${sel ? 'text-white' : 'text-violet-700'}`}>{opt.label}</span>
+                                      <span className={`text-[10px] mt-0.5 font-medium ${sel ? 'text-violet-200' : 'text-gray-400'}`}>{opt.desc}</span>
                                     </button>
                                   );
                                 })}
@@ -4255,14 +4335,14 @@ const AttendanceManagement: React.FC = () => {
 
                           {/* Bước 2b: Chọn giờ check-out */}
                           {(forgotPunchType === 'checkout' || forgotPunchType === 'both') && (
-                            <div className="rounded-2xl border border-orange-100 overflow-hidden">
-                              <div className="bg-orange-500 px-4 py-2.5 flex items-center gap-2">
+                            <div className="rounded-2xl border border-amber-100 overflow-hidden">
+                              <div className="bg-amber-500 px-4 py-2.5 flex items-center gap-2">
                                 <svg className="w-4 h-4 text-white opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                 </svg>
                                 <span className="text-xs font-bold text-white tracking-wide uppercase">Giờ check-out bị quên</span>
                               </div>
-                              <div className="bg-orange-50 p-3 flex gap-2">
+                              <div className="bg-amber-50 p-3 flex gap-2">
                                 {[
                                   { value: '12:00', label: '12h00', desc: 'Trưa' },
                                   { value: '16:30', label: '16h30', desc: 'Chiều' },
@@ -4276,10 +4356,10 @@ const AttendanceManagement: React.FC = () => {
                                       key={opt.value}
                                       type="button"
                                       onClick={() => setForgotCheckoutTime(sel ? null : opt.value)}
-                                      className={`flex-1 flex flex-col items-center py-2.5 rounded-xl border-2 transition-all duration-150 ${sel ? 'bg-orange-500 border-orange-500 shadow-md scale-[1.04]' : 'bg-white border-orange-200 hover:border-orange-400 hover:bg-orange-50'}`}
+                                      className={`flex-1 flex flex-col items-center py-2.5 rounded-xl border-2 transition-all duration-150 ${sel ? 'bg-amber-500 border-amber-500 shadow-md scale-[1.04]' : 'bg-white border-amber-200 hover:border-amber-400 hover:bg-amber-50'}`}
                                     >
-                                      <span className={`text-sm font-extrabold ${sel ? 'text-white' : 'text-orange-600'}`}>{opt.label}</span>
-                                      <span className={`text-[10px] mt-0.5 font-medium ${sel ? 'text-orange-200' : 'text-gray-400'}`}>{opt.desc}</span>
+                                      <span className={`text-sm font-extrabold ${sel ? 'text-white' : 'text-amber-600'}`}>{opt.label}</span>
+                                      <span className={`text-[10px] mt-0.5 font-medium ${sel ? 'text-amber-200' : 'text-gray-400'}`}>{opt.desc}</span>
                                     </button>
                                   );
                                 })}
@@ -4333,12 +4413,12 @@ const AttendanceManagement: React.FC = () => {
                       (!formNote?.trim() && selectedReason !== 'incomplete_attendance' && selectedContext !== 'monthly_leave' && selectedReason !== 'off_duty')
                     }
                     className={`w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-xl border border-transparent shadow-lg text-base font-semibold transition-all duration-200 ${isSubmitting
-                      ? 'bg-purple-400 text-white cursor-wait'
+                      ? 'bg-violet-400 text-white cursor-wait'
                       : (selectedContext &&
                         selectedReason) &&
                         isRegistrationTimeValid() &&
                         (formNote?.trim() || selectedReason === 'incomplete_attendance' || selectedContext === 'monthly_leave' || selectedReason === 'off_duty')
-                        ? 'text-white bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transform hover:scale-[1.02]'
+                        ? 'text-white bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transform hover:scale-[1.02]'
                         : 'text-gray-400 bg-gray-200 cursor-not-allowed'
                       }`}
                   >
@@ -4383,10 +4463,10 @@ const AttendanceManagement: React.FC = () => {
                   (selectedContext === 'monthly_leave' ||
                     selectedContext === 'online_work' ||
                     selectedReason) && (
-                    <div className="px-6 py-3 bg-green-50 border-t border-green-100">
-                      <div className="flex items-center text-sm text-green-700">
+                    <div className="px-6 py-3 bg-emerald-50 border-t border-emerald-100">
+                      <div className="flex items-center text-sm text-emerald-700">
                         <svg
-                          className="w-5 h-5 mr-2 text-green-500"
+                          className="w-5 h-5 mr-2 text-emerald-500"
                           fill="currentColor"
                           viewBox="0 0 20 20"
                         >
@@ -4452,9 +4532,9 @@ const AttendanceManagement: React.FC = () => {
               <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all">
                 {/* Icon */}
                 <div className="flex justify-center mb-4">
-                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
+                  <div className="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center">
                     <svg
-                      className="w-8 h-8 text-purple-600"
+                      className="w-8 h-8 text-violet-600"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -4529,7 +4609,7 @@ const AttendanceManagement: React.FC = () => {
                             Lý do
                           </span>
                         </div>
-                        <span className="text-sm font-semibold text-purple-700">
+                        <span className="text-sm font-semibold text-violet-700">
                           {
                             (selectedContext === 'explanation'
                               ? explanationReasons
@@ -4545,14 +4625,14 @@ const AttendanceManagement: React.FC = () => {
                     )}
                     {/* Row: Shift (Optional, for Night Shift) */}
                     {selectedReason === 'night_shift' && (
-                      <div className="flex justify-between items-center bg-indigo-50/50 p-2 rounded-xl border border-indigo-100/50">
-                        <div className="flex items-center text-indigo-600">
+                      <div className="flex justify-between items-center bg-primary-50/50 p-2 rounded-xl border border-primary-100/50">
+                        <div className="flex items-center text-primary-600">
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                           <span className="text-[10px] uppercase font-bold tracking-wider">Ca trực</span>
                         </div>
-                        <span className="text-sm font-bold text-indigo-700">
+                        <span className="text-sm font-bold text-primary-700">
                           {!nightShiftStartTime && !nightShiftEndTime ? 'CheckPage' : (nightShiftStartTime === '13:00' ? 'Chiều tối' : 'Ca gãy')}
                         </span>
                       </div>
@@ -4625,8 +4705,8 @@ const AttendanceManagement: React.FC = () => {
                       selectedReason &&
                       ['overtime', 'extra_hours', 'night_shift', 'live'].includes(selectedReason as any) &&
                       !(selectedReason === 'night_shift' && !nightShiftStartTime && !nightShiftEndTime) && (
-                        <div className="flex justify-between items-center p-2 bg-purple-50 rounded-xl">
-                          <div className="flex items-center text-purple-700">
+                        <div className="flex justify-between items-center p-2 bg-violet-50 rounded-xl">
+                          <div className="flex items-center text-violet-700">
                             <svg
                               className="w-4 h-4 mr-2"
                               fill="none"
@@ -4644,7 +4724,7 @@ const AttendanceManagement: React.FC = () => {
                               Thời gian
                             </span>
                           </div>
-                          <span className="text-sm font-black text-purple-800">
+                          <span className="text-sm font-black text-violet-800">
                             {selectedReason === 'extra_hours'
                               ? `${extraHoursStartTime} — ${extraHoursEndTime}`
                               : selectedReason === 'night_shift'
@@ -4704,8 +4784,8 @@ const AttendanceManagement: React.FC = () => {
                       handleSubmitSupplementaryRequest();
                     }}
                     className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg flex items-center justify-center ${isSubmitting
-                      ? 'bg-purple-400 text-white cursor-wait'
-                      : 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
+                      ? 'bg-violet-400 text-white cursor-wait'
+                      : 'bg-gradient-to-r from-violet-600 to-violet-700 text-white hover:from-violet-700 hover:to-violet-800'
                       }`}
                   >
                     {isSubmitting ? (
@@ -4737,7 +4817,7 @@ const AttendanceManagement: React.FC = () => {
               <div className="relative w-screen max-w-md transform transition-transform duration-300 ease-in-out">
                 <div className="flex h-full flex-col bg-white shadow-2xl">
                   {/* Header */}
-                  <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-5 py-4">
+                  <div className="bg-gradient-to-r from-violet-600 to-violet-700 px-5 py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
@@ -4745,7 +4825,7 @@ const AttendanceManagement: React.FC = () => {
                         </div>
                         <div>
                           <h2 className="text-base font-bold text-white">Lịch sử đơn tháng</h2>
-                          <p className="text-purple-200 text-xs mt-0.5">
+                          <p className="text-violet-200 text-xs mt-0.5">
                             Tháng {currentDate.getMonth() + 1}/{currentDate.getFullYear()}
                           </p>
                         </div>
@@ -4761,8 +4841,8 @@ const AttendanceManagement: React.FC = () => {
                     {/* Summary badges */}
                     <div className="mt-3 flex gap-2 flex-wrap">
                       {[
-                        { label: 'Giải trình', count: monthlyRequestHistory.explanations.length, color: 'bg-blue-400' },
-                        { label: 'Nghỉ phép', count: monthlyRequestHistory.leaveRequests.length, color: 'bg-indigo-400' },
+                        { label: 'Giải trình', count: monthlyRequestHistory.explanations.length, color: 'bg-primary-400' },
+                        { label: 'Nghỉ phép', count: monthlyRequestHistory.leaveRequests.length, color: 'bg-primary-400' },
                         { label: 'Đăng ký', count: monthlyRequestHistory.registrations.length, color: 'bg-amber-400' },
                         { label: 'Làm việc online', count: monthlyRequestHistory.onlineWorks.length, color: 'bg-teal-400' },
                       ].map((item) => (
@@ -4794,13 +4874,13 @@ const AttendanceManagement: React.FC = () => {
                           key={tab.key}
                           onClick={() => setHistoryActiveTab(tab.key as any)}
                           className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors ${historyActiveTab === tab.key
-                            ? 'border-purple-600 text-purple-700'
+                            ? 'border-violet-600 text-violet-700'
                             : 'border-transparent text-gray-500 hover:text-gray-700'
                             }`}
                         >
                           {tab.label}
                           {tab.count > 0 && (
-                            <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full ${historyActiveTab === tab.key ? 'bg-purple-100 text-purple-700' : 'bg-gray-200 text-gray-600'
+                            <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full ${historyActiveTab === tab.key ? 'bg-violet-100 text-violet-700' : 'bg-gray-200 text-gray-600'
                               }`}>
                               {tab.count}
                             </span>
@@ -4849,7 +4929,7 @@ const AttendanceManagement: React.FC = () => {
                         <div className="p-4 space-y-3 bg-gray-50/50 min-h-full">
                           {allItems.map((item, idx) => {
                             const statusConfig = ({
-                              APPROVED: { label: 'Đã duyệt', cls: 'bg-green-50 text-green-700 ring-1 ring-green-600/20' },
+                              APPROVED: { label: 'Đã duyệt', cls: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20' },
                               REJECTED: { label: 'Từ chối', cls: 'bg-red-50 text-red-700 ring-1 ring-red-600/20' },
                               PENDING: { label: 'Chờ duyệt', cls: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20' },
                               DRAFT: { label: 'Nháp', cls: 'bg-gray-50 text-gray-600 ring-1 ring-gray-500/20' },
@@ -4858,13 +4938,13 @@ const AttendanceManagement: React.FC = () => {
 
                             const typeConfig = (() => {
                               if (item._type === 'explanation' && item.explanation_type === 'LEAVE') {
-                                return { label: 'Nghỉ phép tháng', bg: 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-600/20' };
+                                return { label: 'Nghỉ phép tháng', bg: 'bg-primary-50 text-primary-700 ring-1 ring-primary-600/20' };
                               }
                               if (item._type === 'registration' && item.registration_type === 'OFF_DUTY') {
                                 return { label: 'Đăng ký Vào/Ra trực', bg: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20' };
                               }
                               return ({
-                                explanation: { label: 'Giải trình', bg: 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/20' },
+                                explanation: { label: 'Giải trình', bg: 'bg-primary-50 text-primary-700 ring-1 ring-primary-600/20' },
                                 registration: { label: 'Đăng ký', bg: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20' },
                                 online_work: { label: 'Làm việc online', bg: 'bg-teal-50 text-teal-700 ring-1 ring-teal-600/20' },
                               } as Record<string, { label: string; bg: string }>)[item._type] || { label: getExplanationTypeLabel(item._type), bg: 'bg-gray-50 text-gray-700 ring-1 ring-gray-600/20' };
@@ -4887,7 +4967,7 @@ const AttendanceManagement: React.FC = () => {
                             }
 
                             return (
-                              <div key={`${item._type}-${item.id}-${idx}`} className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all duration-300">
+                              <div key={`${item._type}-${item.id}-${idx}`} className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-violet-200 transition-all duration-300">
                                 <div className="flex flex-col gap-3">
                                   {/* Header: Badges & Code */}
                                   <div className="flex justify-between items-center">
@@ -4961,7 +5041,7 @@ const AttendanceManagement: React.FC = () => {
                                       <span className="text-xs font-semibold">{displayDate}</span>
                                     </div>
                                     {item.registration_type !== 'OFF_DUTY' && (item.start_time || item.end_time || item.check_in || item.check_out) && (
-                                      <div className="flex items-center gap-1.5 text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
+                                      <div className="flex items-center gap-1.5 text-violet-600 bg-violet-50 px-2 py-0.5 rounded-md">
                                         <ClockIcon className="h-3.5 w-3.5" />
                                         <span className="text-[11px] font-bold">
                                           {item.start_time || item.check_in || '--'} — {item.end_time || item.check_out || '--'}
@@ -4984,7 +5064,7 @@ const AttendanceManagement: React.FC = () => {
                       onClick={() => {
                         refreshAllData();
                       }}
-                      className="w-full flex items-center justify-center gap-2 py-2 text-sm text-purple-600 font-medium hover:text-purple-700 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 py-2 text-sm text-violet-600 font-medium hover:text-violet-700 transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -5023,15 +5103,15 @@ const AttendanceManagement: React.FC = () => {
                 <div>
                   <div
                     className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full ${notification.type === 'success'
-                      ? 'bg-green-100'
+                      ? 'bg-emerald-100'
                       : notification.type === 'error'
                         ? 'bg-red-100'
-                        : 'bg-yellow-100'
+                        : 'bg-amber-100'
                       }`}
                   >
                     {notification.type === 'success' ? (
                       <CheckCircleIcon
-                        className="h-6 w-6 text-green-600"
+                        className="h-6 w-6 text-emerald-600"
                         aria-hidden="true"
                       />
                     ) : notification.type === 'error' ? (
@@ -5041,7 +5121,7 @@ const AttendanceManagement: React.FC = () => {
                       />
                     ) : (
                       <ClockIcon
-                        className="h-6 w-6 text-yellow-600"
+                        className="h-6 w-6 text-amber-600"
                         aria-hidden="true"
                       />
                     )}
@@ -5059,10 +5139,10 @@ const AttendanceManagement: React.FC = () => {
                   <button
                     type="button"
                     className={`inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:text-sm transition-colors ${notification.type === 'success'
-                      ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500'
                       : notification.type === 'error'
                         ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                        : 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
+                        : 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500'
                       }`}
                     onClick={() =>
                       setNotification((prev) => ({ ...prev, show: false }))

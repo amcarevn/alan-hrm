@@ -259,169 +259,168 @@ export default function AssetAssignModal({ isOpen, onClose, onSuccess, asset, on
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <DialogPanel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-                <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
+              <DialogPanel className="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                {/* Modal Header */}
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <DialogTitle as="h3" className="text-base font-semibold leading-6 text-gray-900">
+                    Bàn giao tài sản thiết bị
+                  </DialogTitle>
                   <button
                     type="button"
-                    className="rounded-md bg-white text-gray-400 hover:text-gray-500"
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-500 transition-colors"
                     onClick={onClose}
                   >
                     <span className="sr-only">Đóng</span>
-                    <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                    <XMarkIcon className="h-5 w-5" aria-hidden="true" />
                   </button>
                 </div>
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                    <DialogTitle as="h3" className="text-xl font-semibold leading-6 text-gray-900 border-b pb-3 border-gray-200">
-                      Bàn giao tài sản thiết bị
-                    </DialogTitle>
-                    <div className={`mt-4 mb-4 p-4 rounded-xl border ${asset.assigned_to_name ? 'bg-amber-50 border-amber-200' : 'bg-primary-50 border-primary-100'}`}>
-                      <div className="flex justify-between items-start">
-                        <p className={`text-sm ${asset.assigned_to_name ? 'text-amber-800' : 'text-primary-800'}`}>
-                          <strong>Tài sản:</strong> [{asset.asset_code}] {asset.name}
+
+                {/* Modal Body */}
+                <div className="px-6 py-4">
+                  {/* Asset Info Block */}
+                  <div className={`mb-4 p-4 rounded-xl border ${asset.assigned_to_name ? 'bg-amber-50 border-amber-200' : 'bg-primary-50 border-primary-100'}`}>
+                    <div className="flex justify-between items-start">
+                      <p className={`text-sm ${asset.assigned_to_name ? 'text-amber-800' : 'text-primary-800'}`}>
+                        <strong>Tài sản:</strong> [{asset.asset_code}] {asset.name}
+                      </p>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold border uppercase tracking-tight ${
+                        asset.condition === 'EXCELLENT' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                        asset.condition === 'GOOD' ? 'bg-primary-100 text-primary-700 border-primary-200' :
+                        asset.condition === 'FAIR' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                        'bg-red-100 text-red-700 border-red-200'
+                      }`}>
+                        {asset.condition_display}
+                      </span>
+                    </div>
+                    {asset.assigned_to_name && (
+                      <div className="mt-3 bg-white/60 backdrop-blur-sm rounded-lg p-2.5 border border-amber-200">
+                        <p className="text-xs text-amber-700 flex items-center gap-2 font-semibold">
+                          <UserIcon className="h-4 w-4 text-amber-500" />
+                          Đang được sử dụng bởi: <span className="text-amber-900">{asset.assigned_to_name}</span>
                         </p>
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold border uppercase tracking-tight ${
-                          asset.condition === 'EXCELLENT' ? 'bg-green-100 text-green-700 border-green-200' :
-                          asset.condition === 'GOOD' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                          asset.condition === 'FAIR' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-                          'bg-red-100 text-red-700 border-red-200'
-                        }`}>
-                          {asset.condition_display}
-                        </span>
                       </div>
-                      {asset.assigned_to_name && (
-                        <div className="mt-3 bg-white/60 backdrop-blur-sm rounded-lg p-2.5 border border-amber-200">
-                          <p className="text-xs text-amber-700 flex items-center gap-2 font-semibold">
-                            <UserIcon className="h-4 w-4 text-amber-500" />
-                            Đang được sử dụng bởi: <span className="text-amber-900">{asset.assigned_to_name}</span>
-                          </p>
-                        </div>
-                      )}
-                      {isUnusable && (
-                        <div className="mt-3 bg-rose-50 border-rose-200 border rounded-lg p-3">
-                          <p className="text-xs text-rose-700 font-bold flex items-center gap-2 uppercase tracking-wide">
-                            <svg className="h-4 w-4 text-rose-500" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z" />
-                            </svg>
-                            Không thể bàn giao: Tình trạng thiết bị hỏng hoặc kém ({asset.condition_display})
-                          </p>
-                          <p className="text-[10px] text-rose-600 mt-1 italic">Vui lòng điều chỉnh tình trạng vật lý sang Tốt hoặc Bình thường trước khi thực hiện bàn giao.</p>
-                        </div>
-                      )}
+                    )}
+                    {isUnusable && (
+                      <div className="mt-3 bg-rose-50 border-rose-200 border rounded-lg p-3">
+                        <p className="text-xs text-rose-700 font-bold flex items-center gap-2 uppercase tracking-wide">
+                          <svg className="h-4 w-4 text-rose-500" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z" />
+                          </svg>
+                          Không thể bàn giao: Tình trạng thiết bị hỏng hoặc kém ({asset.condition_display})
+                        </p>
+                        <p className="text-[10px] text-rose-600 mt-1 italic">Vui lòng điều chỉnh tình trạng vật lý sang Tốt hoặc Bình thường trước khi thực hiện bàn giao.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <form id="assign-form" onSubmit={handleSubmit} className="space-y-4">
+                    <SelectBox
+                      label="Nhân viên nhận bàn giao"
+                      value={formData.employee_id}
+                      options={employees}
+                      onChange={handleEmployeeChange}
+                      placeholder="Tìm kiếm mã, tên nhân viên"
+                      searchable={true}
+                    />
+
+                    <div>
+                      <label htmlFor="assigned_date" className="block text-xs font-medium text-gray-600 mb-1">Ngày bàn giao</label>
+                      <input
+                        type="date"
+                        name="assigned_date"
+                        id="assigned_date"
+                        value={formData.assigned_date}
+                        onChange={handleChange}
+                        className="input-field"
+                        required
+                      />
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                      <SelectBox
-                        label="Nhân viên nhận bàn giao"
-                        value={formData.employee_id}
-                        options={employees}
-                        onChange={handleEmployeeChange}
-                        placeholder="Tìm kiếm mã, tên nhân viên"
-                        searchable={true}
-                      />
-
+                    {hasQuantity && (
                       <div>
-                        <label htmlFor="assigned_date" className="block text-sm font-medium text-gray-700">Ngày bàn giao</label>
+                        <label htmlFor="quantity" className="block text-xs font-medium text-gray-600 mb-1">
+                          Số lượng bàn giao
+                        </label>
                         <input
-                          type="date"
-                          name="assigned_date"
-                          id="assigned_date"
-                          value={formData.assigned_date}
-                          onChange={handleChange}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                          type="number"
+                          name="quantity"
+                          id="quantity"
+                          min={1}
+                          max={remainingQty}
+                          value={formData.quantity}
+                          onChange={(e) => {
+                            const n = parseInt(e.target.value) || 0;
+                            setFormData((prev) => ({ ...prev, quantity: n }));
+                            if (n > remainingQty) {
+                              setQuantityError(`Chỉ còn ${remainingQty} màn hình khả dụng`);
+                            } else if (n < 1) {
+                              setQuantityError('Số lượng tối thiểu là 1');
+                            } else {
+                              setQuantityError(null);
+                            }
+                          }}
+                          className={`input-field ${quantityError ? 'border-red-400 focus:ring-red-500' : ''}`}
                           required
                         />
+                        {quantityError ? (
+                          <p className="mt-1 text-xs text-red-600">{quantityError}</p>
+                        ) : (
+                          <p className="mt-1 text-xs text-gray-500">
+                            Còn lại {remainingQty} màn hình có thể bàn giao
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <div>
+                      <div className="flex justify-between items-end mb-1">
+                        <label htmlFor="notes" className="block text-xs font-medium text-gray-600">Ghi chú tình trạng lúc giao</label>
+                        <span className="text-[10px] text-gray-400">Chọn nhanh bên dưới</span>
                       </div>
 
-                      {hasQuantity && (
-                        <div>
-                          <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
-                            Số lượng bàn giao
-                          </label>
-                          <input
-                            type="number"
-                            name="quantity"
-                            id="quantity"
-                            min={1}
-                            max={remainingQty}
-                            value={formData.quantity}
-                            onChange={(e) => {
-                              const n = parseInt(e.target.value) || 0;
-                              setFormData((prev) => ({ ...prev, quantity: n }));
-                              if (n > remainingQty) {
-                                setQuantityError(`Chỉ còn ${remainingQty} màn hình khả dụng`);
-                              } else if (n < 1) {
-                                setQuantityError('Số lượng tối thiểu là 1');
-                              } else {
-                                setQuantityError(null);
-                              }
-                            }}
-                            className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
-                              quantityError
-                                ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500'
-                                : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
-                            }`}
-                            required
-                          />
-                          {quantityError ? (
-                            <p className="mt-1 text-xs text-rose-600">{quantityError}</p>
-                          ) : (
-                            <p className="mt-1 text-xs text-gray-500">
-                              Còn lại {remainingQty} màn hình có thể bàn giao
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      <div>
-                        <div className="flex justify-between items-end mb-1">
-                          <label htmlFor="notes" className="block text-sm font-medium text-gray-700">Ghi chú tình trạng lúc giao</label>
-                          <span className="text-[10px] text-gray-400">Chọn nhanh bên dưới</span>
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {QUICK_STATUS_TAGS.map((tag) => (
-                            <button
-                              key={tag}
-                              type="button"
-                              onClick={() => handleTagClick(tag)}
-                              className="inline-flex items-center rounded-full bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 hover:bg-indigo-50 hover:text-indigo-700 hover:ring-indigo-700/30 transition-all active:scale-95"
-                            >
-                              + {tag}
-                            </button>
-                          ))}
-                        </div>
-
-                        <textarea
-                          name="notes"
-                          id="notes"
-                          rows={3}
-                          value={formData.notes}
-                          onChange={handleChange}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                          placeholder="Mô tả cụ thể tình trạng (VD: Chuột móp, màn trầy...)"
-                        />
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {QUICK_STATUS_TAGS.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => handleTagClick(tag)}
+                            className="inline-flex items-center rounded-full bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 hover:bg-primary-50 hover:text-primary-700 hover:ring-primary-700/30 transition-all active:scale-95"
+                          >
+                            + {tag}
+                          </button>
+                        ))}
                       </div>
 
-                      <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-                        <button
-                          type="submit"
-                          disabled={loading || !isFormValid}
-                          className={`inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-white shadow-sm sm:ml-3 sm:w-auto ${isFormValid ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-300 cursor-not-allowed'
-                            }`}
-                        >
-                          {loading ? 'Đang lưu...' : 'Xác nhận Bàn Giao'}
-                        </button>
-                        <button
-                          type="button"
-                          className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
-                          onClick={onClose}
-                        >
-                          Hủy
-                        </button>
-                      </div>
-                    </form>
-                  </div>
+                      <textarea
+                        name="notes"
+                        id="notes"
+                        rows={3}
+                        value={formData.notes}
+                        onChange={handleChange}
+                        className="input-field"
+                        placeholder="Mô tả cụ thể tình trạng (VD: Chuột móp, màn trầy...)"
+                      />
+                    </div>
+                  </form>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex flex-row-reverse gap-3">
+                  <button
+                    type="submit"
+                    form="assign-form"
+                    disabled={loading || !isFormValid}
+                    className={`btn-primary ${(!isFormValid || loading) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {loading ? 'Đang lưu...' : 'Xác nhận Bàn Giao'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={onClose}
+                  >
+                    Hủy
+                  </button>
                 </div>
               </DialogPanel>
             </TransitionChild>
@@ -455,7 +454,7 @@ export default function AssetAssignModal({ isOpen, onClose, onSuccess, asset, on
                 leaveFrom="opacity-100 translate-y-0 sm:scale-100"
                 leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
               >
-                <DialogPanel className="relative transform overflow-hidden rounded-2xl bg-white p-6 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md">
+                <DialogPanel className="relative transform overflow-hidden rounded-2xl bg-white p-6 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md">
                   <div className="sm:flex sm:items-start">
                     <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 sm:mx-0 sm:h-10 sm:w-10">
                       <svg className="h-6 w-6 text-rose-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
@@ -466,7 +465,7 @@ export default function AssetAssignModal({ isOpen, onClose, onSuccess, asset, on
                       <DialogTitle as="h3" className="text-base font-bold leading-6 text-gray-900 uppercase">
                         Cần thu hồi trước khi bàn giao
                       </DialogTitle>
-                      <div className="mt-3 bg-rose-50 p-3 rounded-lg border border-rose-100">
+                      <div className="mt-3 bg-rose-50 p-3 rounded-xl border border-rose-100">
                         <p className="text-sm text-gray-600">
                           Tài sản này đang được sử dụng bởi <span className="text-rose-800 font-bold underline">{asset.assigned_to_name}</span>.
                         </p>
@@ -479,14 +478,14 @@ export default function AssetAssignModal({ isOpen, onClose, onSuccess, asset, on
                   <div className="mt-6 flex flex-col sm:flex-row-reverse gap-3">
                     <button
                       type="button"
-                      className="inline-flex w-full justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-rose-700 transition-all active:scale-95"
+                      className="btn-danger w-full justify-center"
                       onClick={() => { onRequestReturn?.(); onClose(); }}
                     >
                       Thu hồi ngay
                     </button>
                     <button
                       type="button"
-                      className="inline-flex w-full justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-all active:scale-95"
+                      className="btn-secondary w-full justify-center"
                       onClick={() => setShowConfirmDialog(false)}
                     >
                       Hủy thao tác
@@ -525,7 +524,7 @@ export default function AssetAssignModal({ isOpen, onClose, onSuccess, asset, on
                 leaveFrom="opacity-100 translate-y-0 sm:scale-100"
                 leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
               >
-                <DialogPanel className="relative transform overflow-hidden rounded-2xl bg-white p-6 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md">
+                <DialogPanel className="relative transform overflow-hidden rounded-2xl bg-white p-6 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md">
                   <div className="sm:flex sm:items-start">
                     <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 sm:mx-0 sm:h-10 sm:w-10">
                       <svg className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
@@ -540,7 +539,7 @@ export default function AssetAssignModal({ isOpen, onClose, onSuccess, asset, on
                         <p>
                           Tài sản <span className="font-semibold text-gray-900">[{asset.asset_code}] {asset.name}</span> đang có một yêu cầu bàn giao:
                         </p>
-                        <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 space-y-1">
+                        <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 space-y-1">
                           <p className="text-sm font-semibold text-amber-900">
                             Nhận máy: {pendingConflict?.assigned_to_name || '—'}
                           </p>
@@ -570,14 +569,14 @@ export default function AssetAssignModal({ isOpen, onClose, onSuccess, asset, on
                     <button
                       type="button"
                       disabled={loading}
-                      className="inline-flex w-full justify-center rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-amber-700 transition-all active:scale-95 disabled:bg-amber-300"
+                      className={`inline-flex w-full justify-center rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-amber-700 transition-all active:scale-95 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                       onClick={() => handleSubmit(null, { overridePending: true })}
                     >
                       {loading ? 'Đang xử lý...' : 'Hủy yêu cầu cũ & tạo mới'}
                     </button>
                     <button
                       type="button"
-                      className="inline-flex w-full justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-all active:scale-95"
+                      className="btn-secondary w-full justify-center"
                       onClick={() => setPendingConflict(null)}
                     >
                       Hủy thao tác
@@ -625,7 +624,7 @@ export default function AssetAssignModal({ isOpen, onClose, onSuccess, asset, on
                 leaveFrom="opacity-100 translate-y-0 sm:scale-100"
                 leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
               >
-                <DialogPanel className="relative transform overflow-hidden rounded-2xl bg-white p-6 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md">
+                <DialogPanel className="relative transform overflow-hidden rounded-2xl bg-white p-6 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md">
                   <div className="sm:flex sm:items-start">
                     <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 sm:mx-0 sm:h-10 sm:w-10">
                       <InformationCircleIcon className="h-6 w-6 text-primary-600" />
@@ -638,7 +637,7 @@ export default function AssetAssignModal({ isOpen, onClose, onSuccess, asset, on
                         <p>
                           Tài sản <span className="font-semibold text-gray-900">[{asset.asset_code}] {asset.name}</span> sẽ được gửi yêu cầu bàn giao đến:
                         </p>
-                        <p className="rounded-lg bg-primary-50 border border-primary-100 px-3 py-2 font-semibold text-primary-800">
+                        <p className="rounded-xl bg-primary-50 border border-primary-100 px-3 py-2 font-semibold text-primary-800">
                           {selectedEmployeeLabel || 'Nhân viên đã chọn'}
                         </p>
                         <p className="text-xs italic text-gray-500">
@@ -651,14 +650,14 @@ export default function AssetAssignModal({ isOpen, onClose, onSuccess, asset, on
                     <button
                       type="button"
                       disabled={loading}
-                      className="inline-flex w-full justify-center rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-primary-700 transition-all active:scale-95 disabled:bg-primary-300"
+                      className={`btn-primary w-full justify-center ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                       onClick={() => handleSubmit(null, { skipDialog: true })}
                     >
                       {loading ? 'Đang xử lý...' : 'Xác nhận gửi'}
                     </button>
                     <button
                       type="button"
-                      className="inline-flex w-full justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-all active:scale-95"
+                      className="btn-secondary w-full justify-center"
                       onClick={() => setShowManagerConfirm(false)}
                     >
                       Hủy

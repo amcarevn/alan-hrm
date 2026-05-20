@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { XMarkIcon, ArrowDownTrayIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 interface Props {
@@ -72,7 +73,7 @@ const PdfPreviewModal: React.FC<Props> = ({ open, title, loader, downloadFilenam
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl h-[92vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b bg-gray-50">
@@ -122,7 +123,8 @@ const PdfPreviewModal: React.FC<Props> = ({ open, title, loader, downloadFilenam
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

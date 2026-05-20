@@ -208,12 +208,12 @@ export default function AssetCreateModal({ isOpen, onClose, onSuccess }: AssetCr
    */
   const isFormValid = () => {
     let isValid = formData.name.trim() !== '';
-    
+
     if (formData.asset_type === 'SIM') {
       const phone = formData.phone_number || '';
       isValid = isValid && /^\d{10}$/.test(phone.trim());
     }
-    
+
     return isValid;
   };
 
@@ -328,324 +328,324 @@ export default function AssetCreateModal({ isOpen, onClose, onSuccess }: AssetCr
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <DialogPanel className="relative transform rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6 max-h-[90vh] overflow-y-auto">
-                <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
+              <DialogPanel className="relative transform rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+                {/* Modal Header */}
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+                  <DialogTitle as="h3" className="text-lg font-semibold leading-6 text-gray-900">
+                    Thêm tài sản mới
+                  </DialogTitle>
                   <button
                     type="button"
-                    className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-500 transition-colors"
                     onClick={onClose}
                   >
                     <span className="sr-only">Close</span>
-                    <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                    <XMarkIcon className="h-5 w-5" aria-hidden="true" />
                   </button>
                 </div>
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 w-full text-center sm:mt-0 sm:text-left">
-                    <DialogTitle as="h3" className="text-lg font-semibold leading-6 text-gray-900 border-b pb-3">
-                      Thêm tài sản mới
-                    </DialogTitle>
-                    <form onSubmit={handleSubmit} className="mt-4 space-y-5">
 
-                      {/* ── Section 1: Thông tin thiết bị ── */}
-                      <section>
-                        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Thông tin thiết bị</h4>
-                        <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-                          <div className="sm:col-span-2">
-                            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                              Mã thiết bị (Dán nhãn) <span className="text-red-500">*</span>
+                {/* Modal Body */}
+                <div className="overflow-y-auto flex-1 px-6 py-5">
+                  <form onSubmit={handleSubmit} className="space-y-5">
+
+                    {/* ── Section 1: Thông tin thiết bị ── */}
+                    <section>
+                      <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Thông tin thiết bị</h4>
+                      <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                        <div className="sm:col-span-2">
+                          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                            Mã thiết bị (Dán nhãn) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="name"
+                            id="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            className="input-field mt-1"
+                            placeholder="VD: TA0123131..."
+                          />
+                        </div>
+
+                        <SelectBox
+                          label="Phân loại"
+                          value={formData.asset_type}
+                          options={ASSET_TYPES}
+                          onChange={(val) => handleSelectChange('asset_type', val)}
+                        />
+
+                        <SelectBox
+                          label="Tình trạng"
+                          value={formData.condition}
+                          options={ASSET_CONDITIONS}
+                          onChange={(val) => handleSelectChange('condition', val)}
+                        />
+
+                        {/* Màn hình / Khác: Số lượng */}
+                        {['MONITOR', 'OTHER'].includes(formData.asset_type) && (
+                          <div className="sm:col-span-2 bg-violet-50/60 p-4 rounded-xl border border-violet-100">
+                            <h4 className="text-[11px] font-semibold text-violet-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 bg-violet-500 rounded-full"></div>
+                              Số lượng tài sản
+                            </h4>
+                            <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                              <div>
+                                <label htmlFor="monitor_quantity" className="block text-sm font-medium text-gray-700">Số lượng</label>
+                                <input type="number" name="monitor_quantity" id="monitor_quantity" min="1" step="1"
+                                  value={formData.monitor_quantity} onChange={handleChange}
+                                  className="input-field mt-1"
+                                  placeholder="VD: 1, 2, 3..." />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* SIM: Thông tin chi tiết */}
+                        {formData.asset_type === 'SIM' && (
+                          <div className="sm:col-span-2 bg-emerald-50/60 p-4 rounded-xl border border-emerald-100">
+                            <h4 className="text-[11px] font-semibold text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                              Thông tin Sim
+                            </h4>
+                            <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                              <div>
+                                <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700">Số điện thoại</label>
+                                <input type="text" name="phone_number" id="phone_number" value={formData.phone_number} onChange={handleChange}
+                                  className="input-field mt-1"
+                                  placeholder="VD: 0912345678" />
+                                {formData.phone_number && !/^\d{10}$/.test(formData.phone_number.trim()) && (
+                                  <p className="mt-1 text-xs text-red-500">Số điện thoại phải gồm đúng 10 chữ số.</p>
+                                )}
+                              </div>
+                              <SelectBox
+                                label="Nhà mạng"
+                                value={formData.network_provider}
+                                options={NETWORK_PROVIDERS}
+                                onChange={(val) => handleSelectChange('network_provider', val)}
+                              />
+                              <SelectBox
+                                label="Phân loại Sim"
+                                value={formData.sim_type}
+                                options={SIM_TYPES}
+                                onChange={(val) => handleSelectChange('sim_type', val)}
+                              />
+                              <div>
+                                <label htmlFor="doctor" className="block text-sm font-medium text-gray-700">Bác sĩ</label>
+                                <input type="text" name="doctor" id="doctor" value={formData.doctor} onChange={handleChange}
+                                  className="input-field mt-1"
+                                  placeholder="VD: Nguyễn Văn A..." />
+                              </div>
+                              <SelectBox
+                                label="Vùng miền"
+                                value={formData.region}
+                                options={REGIONS}
+                                onChange={(val) => handleSelectChange('region', val)}
+                                placeholder="-- Chọn vùng miền --"
+                              />
+                              <SelectBox
+                                label="Vị trí"
+                                value={formData.position_id}
+                                options={positions}
+                                onChange={(val) => handleSelectChange('position_id', val)}
+                                placeholder="-- Chọn vị trí --"
+                                searchable
+                              />
+                              <SelectBox
+                                label="Công ty"
+                                value={formData.sim_company}
+                                options={companyUnits}
+                                onChange={(val) => handleSelectChange('sim_company', val)}
+                                placeholder="-- Chọn công ty --"
+                                searchable
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* OTHER: Thông tin chi tiết */}
+                        {formData.asset_type === 'OTHER' && (
+                          <div className="sm:col-span-2 bg-gray-50/60 p-4 rounded-xl border border-gray-200">
+                            <h4 className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 bg-gray-500 rounded-full"></div>
+                              Thông tin loại khác
+                            </h4>
+                            <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                              <div>
+                                <label htmlFor="other_type_name" className="block text-sm font-medium text-gray-700">Tên loại chi tiết</label>
+                                <input type="text" name="other_type_name" id="other_type_name" value={formData.other_type_name} onChange={handleChange}
+                                  className="input-field mt-1"
+                                  placeholder="VD: Máy chiếu, Camera..." />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Desktop: Cấu hình chi tiết inline */}
+                        {formData.asset_type === 'DESKTOP' && (
+                          <div className="sm:col-span-2 bg-primary-50/60 p-4 rounded-xl border border-primary-100">
+                            <h4 className="text-[11px] font-semibold text-primary-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 bg-primary-500 rounded-full"></div>
+                              Cấu hình chi tiết
+                            </h4>
+                            <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
+                              <div>
+                                <label htmlFor="cpu" className="block text-sm font-medium text-gray-700">CPU</label>
+                                <input type="text" name="cpu" id="cpu" value={formData.cpu} onChange={handleChange}
+                                  className="input-field mt-1"
+                                  placeholder="Core i7-13700K" />
+                              </div>
+                              <div>
+                                <label htmlFor="mainboard" className="block text-sm font-medium text-gray-700">Main</label>
+                                <input type="text" name="mainboard" id="mainboard" value={formData.mainboard} onChange={handleChange}
+                                  className="input-field mt-1"
+                                  placeholder="ASUS Z790-P" />
+                              </div>
+                              <div>
+                                <label htmlFor="ram" className="block text-sm font-medium text-gray-700">RAM</label>
+                                <input type="text" name="ram" id="ram" value={formData.ram} onChange={handleChange}
+                                  className="input-field mt-1"
+                                  placeholder="32GB DDR5" />
+                              </div>
+                              <div>
+                                <label htmlFor="storage" className="block text-sm font-medium text-gray-700">Ổ cứng</label>
+                                <input type="text" name="storage" id="storage" value={formData.storage} onChange={handleChange}
+                                  className="input-field mt-1"
+                                  placeholder="SSD 1TB NVMe" />
+                              </div>
+                              <div>
+                                <label htmlFor="vga" className="block text-sm font-medium text-gray-700">VGA</label>
+                                <input type="text" name="vga" id="vga" value={formData.vga} onChange={handleChange}
+                                  className="input-field mt-1"
+                                  placeholder="RTX 4070 Ti" />
+                              </div>
+                              <div>
+                                <label htmlFor="power_supply" className="block text-sm font-medium text-gray-700">Nguồn</label>
+                                <input type="text" name="power_supply" id="power_supply" value={formData.power_supply} onChange={handleChange}
+                                  className="input-field mt-1"
+                                  placeholder="Corsair 850W" />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {!['SIM', 'FURNITURE'].includes(formData.asset_type) && (
+                          <div>
+                            <label htmlFor="model" className="block text-sm font-medium text-gray-700">
+                              Model
                             </label>
                             <input
                               type="text"
-                              name="name"
-                              id="name"
-                              value={formData.name}
+                              name="model"
+                              id="model"
+                              value={formData.model}
                               onChange={handleChange}
-                              className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                              placeholder="VD: TA0123131..."
+                              className="input-field mt-1"
+                              placeholder="VD: M2 Pro, XPS 15..."
                             />
                           </div>
+                        )}
+                      </div>
+                    </section>
 
-                          <SelectBox
-                            label="Phân loại"
-                            value={formData.asset_type}
-                            options={ASSET_TYPES}
-                            onChange={(val) => handleSelectChange('asset_type', val)}
-                          />
+                    <hr className="border-gray-100" />
 
-                          <SelectBox
-                            label="Tình trạng"
-                            value={formData.condition}
-                            options={ASSET_CONDITIONS}
-                            onChange={(val) => handleSelectChange('condition', val)}
-                          />
-
-                          {/* Màn hình: Thông tin chi tiết */}
-                          {['MONITOR', 'OTHER'].includes(formData.asset_type) && (
-                            <div className="sm:col-span-2 bg-purple-50/60 p-4 rounded-xl border border-purple-100">
-                              <h4 className="text-xs font-semibold uppercase tracking-wide text-purple-500 mb-3 flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
-                                Số lượng tài sản
-                              </h4>
-                              <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-                                <div>
-                                  <label htmlFor="monitor_quantity" className="block text-sm font-medium text-gray-700">Số lượng</label>
-                                  <input type="number" name="monitor_quantity" id="monitor_quantity" min="1" step="1"
-                                    value={formData.monitor_quantity} onChange={handleChange}
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                                    placeholder="VD: 1, 2, 3..." />
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* SIM: Thông tin chi tiết */}
-                          {formData.asset_type === 'SIM' && (
-                            <div className="sm:col-span-2 bg-green-50/60 p-4 rounded-xl border border-green-100">
-                              <h4 className="text-xs font-semibold uppercase tracking-wide text-green-600 mb-3 flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                                Thông tin Sim
-                              </h4>
-                              <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-                                <div>
-                                  <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700">Số điện thoại</label>
-                                  <input type="text" name="phone_number" id="phone_number" value={formData.phone_number} onChange={handleChange}
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                                    placeholder="VD: 0912345678" />
-                                  {formData.phone_number && !/^\d{10}$/.test(formData.phone_number.trim()) && (
-                                    <p className="mt-1 text-xs text-red-500">Số điện thoại phải gồm đúng 10 chữ số.</p>
-                                  )}
-                                </div>
-                                <SelectBox
-                                  label="Nhà mạng"
-                                  value={formData.network_provider}
-                                  options={NETWORK_PROVIDERS}
-                                  onChange={(val) => handleSelectChange('network_provider', val)}
-                                />
-                                <SelectBox
-                                  label="Phân loại Sim"
-                                  value={formData.sim_type}
-                                  options={SIM_TYPES}
-                                  onChange={(val) => handleSelectChange('sim_type', val)}
-                                />
-                                <div>
-                                  <label htmlFor="doctor" className="block text-sm font-medium text-gray-700">Bác sĩ</label>
-                                  <input type="text" name="doctor" id="doctor" value={formData.doctor} onChange={handleChange}
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                                    placeholder="VD: Nguyễn Văn A..." />
-                                </div>
-                                <SelectBox
-                                  label="Vùng miền"
-                                  value={formData.region}
-                                  options={REGIONS}
-                                  onChange={(val) => handleSelectChange('region', val)}
-                                  placeholder="-- Chọn vùng miền --"
-                                />
-                                <SelectBox
-                                  label="Vị trí"
-                                  value={formData.position_id}
-                                  options={positions}
-                                  onChange={(val) => handleSelectChange('position_id', val)}
-                                  placeholder="-- Chọn vị trí --"
-                                  searchable
-                                />
-                                <SelectBox
-                                  label="Công ty"
-                                  value={formData.sim_company}
-                                  options={companyUnits}
-                                  onChange={(val) => handleSelectChange('sim_company', val)}
-                                  placeholder="-- Chọn công ty --"
-                                  searchable
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          {/* OTHER: Thông tin chi tiết */}
-                          {formData.asset_type === 'OTHER' && (
-                            <div className="sm:col-span-2 bg-gray-50/60 p-4 rounded-xl border border-gray-200">
-                              <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3 flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 bg-gray-500 rounded-full"></div>
-                                Thông tin loại khác
-                              </h4>
-                              <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-                                <div>
-                                  <label htmlFor="other_type_name" className="block text-sm font-medium text-gray-700">Tên loại chi tiết</label>
-                                  <input type="text" name="other_type_name" id="other_type_name" value={formData.other_type_name} onChange={handleChange}
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                                    placeholder="VD: Máy chiếu, Camera..." />
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Desktop: Cấu hình chi tiết inline */}
-                          {formData.asset_type === 'DESKTOP' && (
-                            <div className="sm:col-span-2 bg-blue-50/60 p-4 rounded-xl border border-blue-100">
-                              <h4 className="text-xs font-semibold uppercase tracking-wide text-blue-500 mb-3 flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                                Cấu hình chi tiết
-                              </h4>
-                              <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
-                                <div>
-                                  <label htmlFor="cpu" className="block text-sm font-medium text-gray-700">CPU</label>
-                                  <input type="text" name="cpu" id="cpu" value={formData.cpu} onChange={handleChange}
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                                    placeholder="Core i7-13700K" />
-                                </div>
-                                <div>
-                                  <label htmlFor="mainboard" className="block text-sm font-medium text-gray-700">Main</label>
-                                  <input type="text" name="mainboard" id="mainboard" value={formData.mainboard} onChange={handleChange}
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                                    placeholder="ASUS Z790-P" />
-                                </div>
-                                <div>
-                                  <label htmlFor="ram" className="block text-sm font-medium text-gray-700">RAM</label>
-                                  <input type="text" name="ram" id="ram" value={formData.ram} onChange={handleChange}
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                                    placeholder="32GB DDR5" />
-                                </div>
-                                <div>
-                                  <label htmlFor="storage" className="block text-sm font-medium text-gray-700">Ổ cứng</label>
-                                  <input type="text" name="storage" id="storage" value={formData.storage} onChange={handleChange}
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                                    placeholder="SSD 1TB NVMe" />
-                                </div>
-                                <div>
-                                  <label htmlFor="vga" className="block text-sm font-medium text-gray-700">VGA</label>
-                                  <input type="text" name="vga" id="vga" value={formData.vga} onChange={handleChange}
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                                    placeholder="RTX 4070 Ti" />
-                                </div>
-                                <div>
-                                  <label htmlFor="power_supply" className="block text-sm font-medium text-gray-700">Nguồn</label>
-                                  <input type="text" name="power_supply" id="power_supply" value={formData.power_supply} onChange={handleChange}
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                                    placeholder="Corsair 850W" />
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {!['SIM', 'FURNITURE'].includes(formData.asset_type) && (
-                            <div>
-                              <label htmlFor="model" className="block text-sm font-medium text-gray-700">
-                                Model
-                              </label>
-                              <input
-                                type="text"
-                                name="model"
-                                id="model"
-                                value={formData.model}
-                                onChange={handleChange}
-                                className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                                placeholder="VD: M2 Pro, XPS 15..."
-                              />
-                            </div>
-                          )}
+                    {/* ── Section 2: Mua sắm & Quản lý ── */}
+                    <section>
+                      <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Mua sắm & Quản lý</h4>
+                      <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                        <div>
+                          <label htmlFor="supplier" className="block text-sm font-medium text-gray-700">Nhà cung cấp</label>
+                          <input type="text" name="supplier" id="supplier" value={formData.supplier} onChange={handleChange}
+                            className="input-field mt-1"
+                            placeholder="Tên đơn vị cung cấp" />
                         </div>
-                      </section>
 
-                      <hr className="border-gray-100" />
+                        <div>
+                          <label htmlFor="purchase_date" className="block text-sm font-medium text-gray-700">Ngày mua</label>
+                          <input type="date" name="purchase_date" id="purchase_date" value={formData.purchase_date} onChange={handleChange}
+                            className="input-field mt-1" />
+                        </div>
 
-                      {/* ── Section 2: Mua sắm & Quản lý ── */}
-                      <section>
-                        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Mua sắm & Quản lý</h4>
-                        <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-                          <div>
-                            <label htmlFor="supplier" className="block text-sm font-medium text-gray-700">Nhà cung cấp</label>
-                            <input type="text" name="supplier" id="supplier" value={formData.supplier} onChange={handleChange}
-                              className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                              placeholder="Tên đơn vị cung cấp" />
-                          </div>
+                        <div>
+                          <label htmlFor="warranty_period" className="block text-sm font-medium text-gray-700">Bảo hành (tháng)</label>
+                          <input
+                            type="number"
+                            name="warranty_period"
+                            id="warranty_period"
+                            min="0"
+                            step="1"
+                            value={formData.warranty_period}
+                            onChange={handleChange}
+                            className="input-field mt-1"
+                            placeholder="VD: 12"
+                          />
+                        </div>
 
-                          <div>
-                            <label htmlFor="purchase_date" className="block text-sm font-medium text-gray-700">Ngày mua</label>
-                            <input type="date" name="purchase_date" id="purchase_date" value={formData.purchase_date} onChange={handleChange}
-                              className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
-                          </div>
+                        <SelectBox
+                          label="Phòng ban quản lý"
+                          value={formData.department}
+                          options={departments}
+                          onChange={(val) => handleSelectChange('department', val)}
+                          placeholder="-- Chọn phòng ban --"
+                          searchable
+                        />
 
-                          <div>
-                            <label htmlFor="warranty_period" className="block text-sm font-medium text-gray-700">Bảo hành (tháng)</label>
-                            <input
-                              type="number"
-                              name="warranty_period"
-                              id="warranty_period"
-                              min="0"
-                              step="1"
-                              value={formData.warranty_period}
-                              onChange={handleChange}
-                              className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                              placeholder="VD: 12"
-                            />
-                          </div>
-
+                        {formData.department && (
                           <SelectBox
-                            label="Phòng ban quản lý"
-                            value={formData.department}
-                            options={departments}
-                            onChange={(val) => handleSelectChange('department', val)}
-                            placeholder="-- Chọn phòng ban --"
+                            label="Người quản lý (Kho)"
+                            value={formData.managed_by}
+                            options={employees}
+                            onChange={(val) => handleSelectChange('managed_by', val)}
+                            placeholder="-- Chọn người quản lý --"
                             searchable
                           />
-
-                          {formData.department && (
-                            <SelectBox
-                              label="Người quản lý (Kho)"
-                              value={formData.managed_by}
-                              options={employees}
-                              onChange={(val) => handleSelectChange('managed_by', val)}
-                              placeholder="-- Chọn người quản lý --"
-                              searchable
-                            />
-                          )}
-                        </div>
-                      </section>
-
-                      <hr className="border-gray-100" />
-
-                      {/* ── Section 3: Ghi chú ── */}
-                      <section>
-                        <label htmlFor="description" className="block text-sm font-medium text-gray-700">Mô tả / Ghi chú</label>
-                        <textarea
-                          id="description"
-                          name="description"
-                          rows={2}
-                          value={formData.description}
-                          onChange={handleChange}
-                          className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                          placeholder="Thông tin bổ sung hoặc lưu ý..."
-                        />
-                      </section>
-
-                      {/* ── Footer buttons ── */}
-                      <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
-                        <button
-                          type="button"
-                          className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 bg-white ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-colors"
-                          onClick={onClose}
-                        >
-                          Hủy
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={loading || !isFormValid()}
-                          className={`inline-flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all ${isFormValid()
-                              ? 'bg-primary-600 hover:bg-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600'
-                              : 'bg-gray-300 cursor-not-allowed opacity-70'
-                            }`}
-                          title={!isFormValid() ? 'Vui lòng điền Mã thiết bị' : ''}
-                        >
-                          {loading && (
-                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                          )}
-                          {loading ? 'Đang thêm...' : 'Thêm tài sản'}
-                        </button>
+                        )}
                       </div>
-                    </form>
-                  </div>
+                    </section>
+
+                    <hr className="border-gray-100" />
+
+                    {/* ── Section 3: Ghi chú ── */}
+                    <section>
+                      <label htmlFor="description" className="block text-sm font-medium text-gray-700">Mô tả / Ghi chú</label>
+                      <textarea
+                        id="description"
+                        name="description"
+                        rows={2}
+                        value={formData.description}
+                        onChange={handleChange}
+                        className="input-field mt-1"
+                        placeholder="Thông tin bổ sung hoặc lưu ý..."
+                      />
+                    </section>
+                  </form>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex items-center justify-end gap-3 shrink-0">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={onClose}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    form="asset-create-form"
+                    disabled={loading || !isFormValid()}
+                    onClick={handleSubmit}
+                    className={`btn-primary inline-flex items-center gap-2 ${!isFormValid() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title={!isFormValid() ? 'Vui lòng điền Mã thiết bị' : ''}
+                  >
+                    {loading && (
+                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    )}
+                    {loading ? 'Đang thêm...' : 'Thêm tài sản'}
+                  </button>
                 </div>
               </DialogPanel>
             </TransitionChild>

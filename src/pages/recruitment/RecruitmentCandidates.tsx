@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
   CheckIcon,
   NoSymbolIcon,
+  UserGroupIcon,
+  PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import {
   recruitmentService,
@@ -13,6 +16,7 @@ import {
   CandidateSource,
 } from '../../services/recruitment.service';
 import { SelectBox } from '../../components/LandingLayout/SelectBox';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
 const SOURCE_OPTIONS: { value: CandidateSource; label: string }[] = [
   { value: 'DIRECT', label: 'Ứng tuyển trực tiếp' },
@@ -221,22 +225,22 @@ const RecruitmentCandidates: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Page header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Ứng viên</h1>
-          <p className="text-gray-600 mt-2">Quản lý hồ sơ ứng viên</p>
+        <div className="flex items-center">
+          <div>
+            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Ứng viên</h1>
+            <p className="text-sm text-gray-900">Quản lý hồ sơ ứng viên</p>
+          </div>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors text-sm font-medium"
-        >
+        <button onClick={openCreate} className="btn-primary flex items-center gap-2">
           <PlusIcon className="h-4 w-4" />
           Thêm ứng viên
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
+      {/* Filter bar */}
+      <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
         <div className="flex flex-wrap gap-3">
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -244,7 +248,7 @@ const RecruitmentCandidates: React.FC = () => {
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-field pl-9 pr-4 py-2 text-sm"
               placeholder="Tìm theo tên, email, SĐT..."
             />
           </div>
@@ -275,118 +279,132 @@ const RecruitmentCandidates: React.FC = () => {
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>
+        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-2xl border border-red-100 text-sm">
+          {error}
+        </div>
       )}
 
+      {/* Content */}
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+            <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />
           ))}
         </div>
       ) : candidates.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <p>Chưa có ứng viên nào</p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+          <div className="h-12 w-12 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <UserGroupIcon className="h-6 w-6 text-gray-400" />
+          </div>
+          <p className="text-sm text-gray-500">Chưa có ứng viên nào</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ứng viên</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vị trí hiện tại</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">KN (năm)</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nguồn</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Đơn ứng tuyển</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {candidates.map(c => (
-                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <p className="text-sm font-medium text-gray-900">{c.full_name}</p>
-                    <p className="text-xs text-gray-400">{c.email}</p>
-                    {c.phone && <p className="text-xs text-gray-400">{c.phone}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {c.current_position || '—'}
-                    {c.current_company && (
-                      <p className="text-xs text-gray-400">{c.current_company}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 text-center">
-                    {c.experience_years ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{c.source_display}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700 text-center">
-                    {c.application_count}
-                  </td>
-                  <td className="px-4 py-3">
-                    {c.is_blacklisted ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        Blacklist
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Hoạt động
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center gap-2 justify-end">
-                      <button
-                        onClick={() => openEdit(c.id)}
-                        className="text-gray-400 hover:text-blue-600 transition-colors text-xs font-medium"
-                        title="Chỉnh sửa"
-                      >
-                        Sửa
-                      </button>
-                      {c.is_blacklisted ? (
-                        <button
-                          onClick={() => setUnblacklistConfirmId(c.id)}
-                          className="text-gray-400 hover:text-green-600 transition-colors"
-                          title="Xóa khỏi blacklist"
-                        >
-                          <CheckIcon className="h-4 w-4" />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setBlacklistId(c.id);
-                            setBlacklistReason('');
-                          }}
-                          className="text-gray-400 hover:text-red-600 transition-colors"
-                          title="Thêm vào blacklist"
-                        >
-                          <NoSymbolIcon className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="table-header px-4 py-3 text-left">Ứng viên</th>
+                  <th className="table-header px-4 py-3 text-left">Vị trí hiện tại</th>
+                  <th className="table-header px-4 py-3 text-left">KN (năm)</th>
+                  <th className="table-header px-4 py-3 text-left">Nguồn</th>
+                  <th className="table-header px-4 py-3 text-left">Đơn ứng tuyển</th>
+                  <th className="table-header px-4 py-3 text-left">Trạng thái</th>
+                  <th className="px-4 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {candidates.map(c => (
+                  <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-semibold text-gray-900">{c.full_name}</p>
+                      <p className="text-xs text-gray-400">{c.email}</p>
+                      {c.phone && <p className="text-xs text-gray-400">{c.phone}</p>}
+                    </td>
+                    <td className="table-cell px-4 py-3">
+                      {c.current_position || '—'}
+                      {c.current_company && (
+                        <p className="text-xs text-gray-400">{c.current_company}</p>
+                      )}
+                    </td>
+                    <td className="table-cell px-4 py-3 text-center">
+                      {c.experience_years ?? '—'}
+                    </td>
+                    <td className="table-cell px-4 py-3">{c.source_display}</td>
+                    <td className="table-cell px-4 py-3 text-center">
+                      {c.application_count}
+                    </td>
+                    <td className="px-4 py-3">
+                      {c.is_blacklisted ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                          Blacklist
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                          Hoạt động
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          onClick={() => openEdit(c.id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors"
+                          title="Chỉnh sửa"
+                        >
+                          <PencilSquareIcon className="h-3.5 w-3.5" />
+                          Sửa
+                        </button>
+                        {c.is_blacklisted ? (
+                          <button
+                            onClick={() => setUnblacklistConfirmId(c.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                            title="Xóa khỏi blacklist"
+                          >
+                            <CheckIcon className="h-3.5 w-3.5" />
+                            Gỡ BL
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setBlacklistId(c.id);
+                              setBlacklistReason('');
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors"
+                            title="Thêm vào blacklist"
+                          >
+                            <NoSymbolIcon className="h-3.5 w-3.5" />
+                            Blacklist
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* Create/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white">
-              <h2 className="text-lg font-semibold text-gray-900">
+      {/* Create / Edit Modal */}
+      {showModal && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl">
+              <h2 className="text-base font-bold text-gray-900">
                 {editingId ? 'Cập nhật ứng viên' : 'Thêm ứng viên mới'}
               </h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => setShowModal(false)}
+                className="h-8 w-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
+
+            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -396,7 +414,7 @@ const RecruitmentCandidates: React.FC = () => {
                     type="text"
                     value={form.full_name}
                     onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field w-full"
                   />
                 </div>
                 <div>
@@ -407,7 +425,7 @@ const RecruitmentCandidates: React.FC = () => {
                     type="email"
                     value={form.email}
                     onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field w-full"
                   />
                 </div>
               </div>
@@ -418,7 +436,7 @@ const RecruitmentCandidates: React.FC = () => {
                     type="tel"
                     value={form.phone}
                     onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field w-full"
                   />
                 </div>
                 <div>
@@ -442,7 +460,7 @@ const RecruitmentCandidates: React.FC = () => {
                     type="date"
                     value={form.date_of_birth}
                     onChange={e => setForm(f => ({ ...f, date_of_birth: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field w-full"
                   />
                 </div>
                 <div>
@@ -454,7 +472,7 @@ const RecruitmentCandidates: React.FC = () => {
                     min="0"
                     value={form.experience_years}
                     onChange={e => setForm(f => ({ ...f, experience_years: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field w-full"
                   />
                 </div>
               </div>
@@ -465,7 +483,7 @@ const RecruitmentCandidates: React.FC = () => {
                     type="text"
                     value={form.current_company}
                     onChange={e => setForm(f => ({ ...f, current_company: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field w-full"
                   />
                 </div>
                 <div>
@@ -474,7 +492,7 @@ const RecruitmentCandidates: React.FC = () => {
                     type="text"
                     value={form.current_position}
                     onChange={e => setForm(f => ({ ...f, current_position: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field w-full"
                   />
                 </div>
               </div>
@@ -495,7 +513,7 @@ const RecruitmentCandidates: React.FC = () => {
                     type="number"
                     value={form.expected_salary}
                     onChange={e => setForm(f => ({ ...f, expected_salary: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-field w-full"
                     placeholder="VD: 20000000"
                   />
                 </div>
@@ -506,7 +524,7 @@ const RecruitmentCandidates: React.FC = () => {
                   type="url"
                   value={form.cv_url}
                   onChange={e => setForm(f => ({ ...f, cv_url: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field w-full"
                   placeholder="https://..."
                 />
               </div>
@@ -516,7 +534,7 @@ const RecruitmentCandidates: React.FC = () => {
                   type="text"
                   value={form.skills}
                   onChange={e => setForm(f => ({ ...f, skills: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field w-full"
                   placeholder="Python, Django, PostgreSQL..."
                 />
               </div>
@@ -526,7 +544,7 @@ const RecruitmentCandidates: React.FC = () => {
                   type="text"
                   value={form.education}
                   onChange={e => setForm(f => ({ ...f, education: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field w-full"
                 />
               </div>
               <div>
@@ -535,92 +553,89 @@ const RecruitmentCandidates: React.FC = () => {
                   rows={2}
                   value={form.notes}
                   onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field w-full"
                 />
               </div>
-              {formError && <p className="text-sm text-red-600">{formError}</p>}
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
-                >
-                  {saving ? (
-                    <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <CheckIcon className="h-4 w-4" />
-                  )}
-                  {editingId ? 'Cập nhật' : 'Tạo mới'}
-                </button>
-              </div>
+              {formError && (
+                <p className="text-sm text-red-600">{formError}</p>
+              )}
             </form>
+
+            {/* Modal footer */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="btn-secondary"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                form=""
+                disabled={saving}
+                onClick={handleSubmit}
+                className="btn-primary flex items-center gap-2 disabled:opacity-50"
+              >
+                {saving ? (
+                  <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <CheckIcon className="h-4 w-4" />
+                )}
+                {editingId ? 'Cập nhật' : 'Tạo mới'}
+              </button>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Blacklist Modal */}
-      {blacklistId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <h3 className="text-base font-semibold text-gray-900 mb-2">Thêm vào Blacklist</h3>
-            <p className="text-sm text-gray-600 mb-3">Nhập lý do blacklist ứng viên này:</p>
-            <textarea
-              rows={3}
-              value={blacklistReason}
-              onChange={e => setBlacklistReason(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 mb-4"
-              placeholder="VD: Vi phạm hợp đồng tại công ty cũ"
-            />
-            <div className="flex justify-end gap-3">
+      {blacklistId !== null && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4">
+            {/* Modal header */}
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h3 className="text-base font-bold text-gray-900">Thêm vào Blacklist</h3>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-sm text-gray-600 mb-3">Nhập lý do blacklist ứng viên này:</p>
+              <textarea
+                rows={3}
+                value={blacklistReason}
+                onChange={e => setBlacklistReason(e.target.value)}
+                className="input-field w-full"
+                placeholder="VD: Vi phạm hợp đồng tại công ty cũ"
+              />
+            </div>
+            {/* Modal footer */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button
                 onClick={() => setBlacklistId(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                className="btn-secondary"
               >
                 Hủy
               </button>
               <button
                 onClick={handleBlacklist}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                className="btn-danger"
               >
                 Blacklist
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Unblacklist Confirm Modal */}
-      {unblacklistConfirmId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <h3 className="text-base font-semibold text-gray-900 mb-2">Xóa khỏi Blacklist</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Bạn có chắc muốn xóa ứng viên này khỏi blacklist không?
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setUnblacklistConfirmId(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={() => handleUnblacklist(unblacklistConfirmId)}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
-              >
-                Xác nhận
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Unblacklist Confirm */}
+      <ConfirmDialog
+        open={unblacklistConfirmId !== null}
+        title="Xóa khỏi Blacklist"
+        message="Bạn có chắc muốn xóa ứng viên này khỏi blacklist không?"
+        onConfirm={() => unblacklistConfirmId !== null && handleUnblacklist(unblacklistConfirmId)}
+        onClose={() => setUnblacklistConfirmId(null)}
+      />
     </div>
   );
 };

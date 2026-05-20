@@ -357,7 +357,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
   if (loading) {
     return (
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex min-h-0 flex-1 flex-col bg-white border-r border-gray-200">
+        <div className="flex min-h-0 flex-1 flex-col bg-gradient-to-b from-primary-700 via-primary-800 to-primary-900 border-r border-primary-900">
           <div className="flex h-16 items-center px-4">
             <div className="h-8 w-8 rounded-lg bg-gray-200 animate-pulse"></div>
             <div className="ml-2 h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
@@ -443,37 +443,41 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
         <div key={item.name}>
           <button
             onClick={collapsed ? undefined : () => toggleGroup(item.name, expanded)}
-            className={`w-full group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
-              active ? 'bg-ruby-light text-ruby-primary' : 'text-gray-600 hover:bg-ruby-light/50 hover:text-ruby-primary'
+            className={`w-full group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-all ${
+              active
+                ? 'bg-white/25 text-white font-semibold'
+                : 'text-white hover:bg-white/10'
             } ${collapsed ? 'justify-center' : 'justify-between'}`}
             title={collapsed ? item.name : undefined}
           >
             <span className={`flex items-center ${collapsed ? '' : ''}`}>
               <item.icon
-                className={`h-6 w-6 flex-shrink-0 ${active ? 'text-ruby-primary' : 'text-gray-400 group-hover:text-ruby-primary'} ${collapsed ? '' : 'mr-3'}`}
+                className={`h-5 w-5 flex-shrink-0 ${active ? 'text-white' : 'text-white/95 group-hover:text-white'} ${collapsed ? '' : 'mr-3'}`}
               />
               {!collapsed && item.name}
             </span>
             {!collapsed && (
               <ChevronRightIcon
-                className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? 'rotate-90' : ''}`}
+                className={`h-4 w-4 transition-transform ${active ? 'text-white' : 'text-white/80'} ${expanded ? 'rotate-90' : ''}`}
               />
             )}
           </button>
           {!collapsed && expanded && (
-            <div className="ml-4 mt-0.5 space-y-0.5 border-l border-gray-200 pl-3">
+            <div className="ml-4 mt-0.5 space-y-0.5 border-l-2 border-white/20 pl-3">
               {visibleChildren.map(child => {
                 const childActive = location.pathname === child.href;
                 return (
                   <Link
                     key={child.name}
                     to={child.href}
-                    className={`group flex items-center px-2 py-1.5 text-sm font-medium rounded-md ${
-                      childActive ? 'bg-ruby-light text-ruby-primary' : 'text-gray-600 hover:bg-ruby-light/50 hover:text-ruby-primary'
+                    className={`group flex items-center px-2 py-1.5 text-sm rounded-md transition-all font-medium ${
+                      childActive
+                        ? 'bg-white/25 text-white font-semibold'
+                        : 'text-white hover:bg-white/10'
                     }`}
                   >
                     <child.icon
-                      className={`h-4 w-4 flex-shrink-0 mr-2 ${childActive ? 'text-ruby-primary' : 'text-gray-400 group-hover:text-ruby-primary'}`}
+                      className={`h-4 w-4 flex-shrink-0 mr-2 ${childActive ? 'text-white' : 'text-white/90 group-hover:text-white'}`}
                     />
                     {child.name}
                   </Link>
@@ -491,13 +495,15 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
       <Link
         key={item.name}
         to={item.href}
-        className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-          isActive ? 'bg-ruby-light text-ruby-primary' : 'text-gray-600 hover:bg-ruby-light/50 hover:text-ruby-primary'
+        className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-all ${
+          isActive
+            ? 'bg-white/25 text-white font-semibold'
+            : 'text-white hover:bg-white/10'
         } ${collapsed ? 'justify-center' : ''}`}
         title={collapsed ? item.name : undefined}
       >
         <item.icon
-          className={`h-6 w-6 flex-shrink-0 ${isActive ? 'text-ruby-primary' : 'text-gray-400 group-hover:text-ruby-primary'} ${collapsed ? '' : 'mr-3'}`}
+          className={`h-5 w-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-white/95 group-hover:text-white'} ${collapsed ? '' : 'mr-3'}`}
         />
         {!collapsed && item.name}
       </Link>
@@ -514,27 +520,25 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
           className="fixed inset-0 bg-gray-600 bg-opacity-75"
           onClick={() => setSidebarOpen(false)}
         />
-        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
-          <div className="flex h-16 items-center justify-between px-4">
-            <Link to="/" className="flex items-center gap-2">
-              <img src="/logo-alan.png" alt="Alan HRM" className="h-10 w-auto max-w-[160px] object-contain mix-blend-multiply" />
-            </Link>
+        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-gradient-to-b from-primary-700 via-primary-800 to-primary-900">
+          <div className="relative flex h-16 items-center justify-center border-b border-primary-600">
+            <img src="/logo_alan.png" alt="Trung Anh Group" className="h-10 w-auto max-w-[140px] object-contain drop-shadow-sm brightness-[400]" />
             <button
               onClick={() => setSidebarOpen(false)}
-              className="text-gray-400 hover:text-gray-600"
+              className="absolute right-3 text-white/70 hover:text-white"
             >
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
-          <nav className="flex-1 overflow-y-auto space-y-1 px-2 py-4">
+          <nav className="flex-1 overflow-y-auto space-y-1 px-2 py-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {navigation.map((item) => renderNavItem(item, false))}
           </nav>
 
           {/* User Info Section */}
           {user && (
-            <div className="border-t border-gray-200 px-2 py-4">
+            <div className="border-t border-primary-600 px-2 py-4">
               <Link to="/dashboard/settings" className="block">
-                <div className="flex items-center space-x-3 hover:bg-gray-50 p-2 rounded-lg transition-colors">
+                <div className="flex items-center space-x-3 hover:bg-white/10 p-2 rounded-lg transition-colors">
                   {user.hrm_user?.avatar_url ? (
                     <img
                       src={user.hrm_user.avatar_url}
@@ -542,21 +546,21 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
                       className="h-8 w-8 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="h-8 w-8 bg-gradient-to-br from-ruby-primary to-ruby-hover rounded-full flex items-center justify-center shadow-lg shadow-ruby-primary/20">
+                    <div className="h-8 w-8 bg-gradient-to-br from-white/30 to-white/10 rounded-full flex items-center justify-center shadow-lg shadow-black/10">
                       <span className="text-sm font-medium text-white">
                         {user.username?.charAt(0).toUpperCase()}
                       </span>
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-white truncate">
                       {user.username}
                     </p>
                     <div className="flex items-center space-x-2">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${userRole === 'ADMIN'
-                            ? 'bg-ruby-primary/10 text-ruby-primary'
-                            : 'bg-ruby-light text-ruby-primary'
+    ? 'bg-red-900/60 text-red-300'
+                        : 'bg-primary-700 text-primary-200'
                           }`}
                       >
                         {userRole}
@@ -575,16 +579,17 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
       <div
         className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 ${isCollapsed ? 'lg:w-16' : 'lg:w-64'}`}
       >
-        <div className="flex min-h-0 flex-1 flex-col bg-white border-r border-gray-200">
-          <div className="relative flex h-16 items-center justify-center">
+        <div className="flex min-h-0 flex-1 flex-col bg-gradient-to-b from-primary-700 via-primary-800 to-primary-900 border-r border-primary-900">
+          <div className="relative flex h-16 items-center justify-center border-b border-primary-600">
             {!isCollapsed && (
-              <Link to="/" className="flex items-center justify-center">
-                <img src="/logo-alan.png" alt="Alan HRM" className="h-14 w-auto object-contain mix-blend-multiply" />
-              </Link>
+              <img src="/logo_alan.png"
+                alt="Trung Anh Group"
+                className="h-12 w-auto max-w-[140px] object-contain drop-shadow-sm  brightness-[400]"
+              />
             )}
             <button
               onClick={handleCollapseToggle}
-              className="absolute right-2 p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              className="absolute right-2 p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-primary-800 transition-all duration-150"
               title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               {isCollapsed ? (
@@ -594,44 +599,41 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
               )}
             </button>
           </div>
-          <nav className="flex-1 overflow-y-auto space-y-1 px-2 py-4">
+          <nav className="flex-1 overflow-y-auto space-y-1 px-2 py-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {navigation.map((item) => renderNavItem(item, isCollapsed))}
           </nav>
 
           {/* User Info Section */}
           {!isCollapsed && user && (
-            <div className="border-t border-gray-200 px-2 py-3">
+            <div className="border-t border-primary-600 px-2 py-3">
 
               <Link to="/dashboard/settings" className="block">
-                <div className="flex items-center space-x-3 hover:bg-gray-50 p-2 rounded-lg transition-colors">
+                <div className="flex items-center space-x-3 hover:bg-primary-800 p-2 rounded-lg transition-colors">
                   {user.hrm_user?.avatar_url ? (
                     <img
                       src={user.hrm_user.avatar_url}
                       alt="Avatar"
-                      className="h-8 w-8 rounded-full object-cover flex-shrink-0"
+                      className="h-8 w-8 rounded-full object-cover ring-2 ring-primary-700 flex-shrink-0"
                     />
                   ) : (
-                    <div className="h-8 w-8 bg-gradient-to-br from-ruby-primary to-ruby-hover rounded-full flex items-center justify-center flex-shrink-0 shadow-lg shadow-ruby-primary/20">
-                      <span className="text-sm font-medium text-white">
+                    <div className="h-8 w-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center ring-2 ring-primary-700 flex-shrink-0">
+                      <span className="text-sm font-semibold text-white">
                         {(user.employee_profile?.full_name || user.hrm_user?.full_name || user.firstName || user.username)?.charAt(0).toUpperCase()}
                       </span>
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-white truncate">
                       {user.employee_profile?.full_name || user.hrm_user?.full_name || user.firstName || user.username}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">{user.username}</p>
-                    <div className="flex items-center space-x-2 mt-0.5">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${userRole === 'ADMIN'
-                            ? 'bg-ruby-primary/10 text-ruby-primary'
-                            : 'bg-ruby-light text-ruby-primary'
-                          }`}
-                      >
-                        {userRole}
-                      </span>
-                    </div>
+                    <p className="text-xs text-primary-400 truncate">{user.username}</p>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-0.5 ${
+                      userRole === 'ADMIN'
+                        ? 'bg-red-900/60 text-red-300'
+                        : 'bg-primary-700 text-primary-200'
+                    }`}>
+                      {userRole}
+                    </span>
                   </div>
                 </div>
               </Link>
@@ -642,20 +644,17 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
       </div>
 
       {/* Mobile menu button */}
-      <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:hidden">
+      <div className="sticky top-0 z-40 relative flex h-16 shrink-0 items-center border-b border-primary-800 bg-gradient-to-r from-primary-700 to-primary-800 px-4 sm:px-6 lg:hidden">
         <button
           type="button"
-          className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+          className="-m-2.5 p-2.5 text-white/80 hover:text-white"
           onClick={() => setSidebarOpen(true)}
         >
           <Bars3Icon className="h-6 w-6" />
         </button>
-        <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-lg bg-transparent flex items-center justify-center flex-shrink-0 border border-ruby-primary/20">
-              <span className="text-ruby-primary font-black text-xs tracking-tight">ALAN</span>
-            </div>
-            <span className="text-sm font-bold text-gray-900">ALAN Beauty Medical Clinic</span>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <Link to="/" className="pointer-events-auto">
+            <img src="/logo_alan.png" alt="Alan HRM" className="h-10 w-auto object-contain drop-shadow-sm brightness-[400]" />
           </Link>
         </div>
       </div>

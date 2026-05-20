@@ -367,34 +367,34 @@ export default function AssetEditModal({ isOpen, onClose, onSuccess, asset }: As
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <DialogPanel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6">
-                <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
+              <DialogPanel className="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                  <DialogTitle as="h3" className="text-base font-bold text-gray-900">
+                    Chỉnh sửa tài sản
+                  </DialogTitle>
                   <button
                     type="button"
-                    className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                    className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
                     onClick={onClose}
                   >
-                    <span className="sr-only">Close</span>
-                    <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                    <XMarkIcon className="h-5 w-5" />
                   </button>
                 </div>
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 w-full text-center sm:mt-0 sm:text-left">
-                    <DialogTitle as="h3" className="text-lg font-semibold leading-6 text-gray-900 border-b pb-3">
-                      Chỉnh sửa tài sản
-                    </DialogTitle>
-                    <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                <div className="px-6 py-5">
+                  <div className="w-full">
+                    <form onSubmit={handleSubmit} className="space-y-4">
                       <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
                         <div className="sm:col-span-1">
                           <label className="block text-sm font-medium text-gray-500">Mã</label>
-                          <div className="mt-1 block w-full px-3 py-2 bg-gray-100 rounded-md text-gray-700 sm:text-sm border border-gray-200">
+                          <div className="mt-1 block w-full px-3 py-2 bg-gray-100 rounded-xl text-gray-700 text-sm border border-gray-200">
                             {asset?.asset_code}
                           </div>
                         </div>
 
                         <div className="sm:col-span-1">
                           <label htmlFor="name" className="block text-sm font-medium text-gray-700">Mã thiết bị (Dán nhãn)</label>
-                          <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" placeholder="Nhập mã thiết bị (VD: TA0123...)" />
+                          <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} className="input-field mt-1" placeholder="Nhập mã thiết bị (VD: TA0123...)" />
                         </div>
 
                         {/* Phân loại asset */}
@@ -413,20 +413,22 @@ export default function AssetEditModal({ isOpen, onClose, onSuccess, asset }: As
                           onChange={(val) => handleSelectChange('condition', val)}
                         />
 
-                        {/* Trạng thái (Vận hành) — SIM dùng nhãn riêng (Mới chưa kích hoạt/Đang sử dụng/Tạm khóa/Đã cắt/Mất) */}
-                        <SelectBox
-                          label={formData.asset_type === 'SIM' ? 'Trạng thái Sim' : 'Trạng thái (Vận hành)'}
-                          value={formData.status}
-                          options={formData.asset_type === 'SIM' ? SIM_STATUSES : ASSET_STATUSES}
-                          onChange={(val) => handleSelectChange('status', val)}
-                        />
+                        {/* Trạng thái — chỉ hiện ở outer grid khi KHÔNG phải SIM (SIM có trạng thái riêng trong SIM section) */}
+                        {formData.asset_type !== 'SIM' && (
+                          <SelectBox
+                            label="Trạng thái (Vận hành)"
+                            value={formData.status}
+                            options={ASSET_STATUSES}
+                            onChange={(val) => handleSelectChange('status', val)}
+                          />
+                        )}
 
                         {/* Desktop Specific Fields (CPU, MAIN, RAM, Ổ CỨNG, VGA, NGUỒN) */}
                         {formData.asset_type === 'DESKTOP' && (
-                          <div className="sm:col-span-2 grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-4">
+                          <div className="sm:col-span-2 grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 bg-primary-50/50 p-4 rounded-xl border border-primary-100 mb-4">
                             <div className="sm:col-span-2">
-                              <h4 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <h4 className="text-sm font-semibold text-primary-900 flex items-center gap-2">
+                                <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
                                 Cấu hình chi tiết (Máy tính để bàn)
                               </h4>
                             </div>
@@ -434,46 +436,46 @@ export default function AssetEditModal({ isOpen, onClose, onSuccess, asset }: As
                             {/* CPU */}
                             <div>
                               <label htmlFor="cpu" className="block text-sm font-medium text-gray-700">Cpu</label>
-                              <input type="text" name="cpu" id="cpu" value={formData.cpu} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" placeholder="VD: Core i7-13700K" />
+                              <input type="text" name="cpu" id="cpu" value={formData.cpu} onChange={handleChange} className="input-field mt-1" placeholder="VD: Core i7-13700K" />
                             </div>
 
                             {/* Mainboard */}
                             <div>
                               <label htmlFor="mainboard" className="block text-sm font-medium text-gray-700">Main</label>
-                              <input type="text" name="mainboard" id="mainboard" value={formData.mainboard} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" placeholder="VD: ASUS Z790-P" />
+                              <input type="text" name="mainboard" id="mainboard" value={formData.mainboard} onChange={handleChange} className="input-field mt-1" placeholder="VD: ASUS Z790-P" />
                             </div>
 
                             {/* RAM */}
                             <div>
                               <label htmlFor="ram" className="block text-sm font-medium text-gray-700">Ram</label>
-                              <input type="text" name="ram" id="ram" value={formData.ram} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" placeholder="VD: 32GB (16GBx2) DDR5" />
+                              <input type="text" name="ram" id="ram" value={formData.ram} onChange={handleChange} className="input-field mt-1" placeholder="VD: 32GB (16GBx2) DDR5" />
                             </div>
 
                             {/* Storage */}
                             <div>
                               <label htmlFor="storage" className="block text-sm font-medium text-gray-700">Ổ cứng</label>
-                              <input type="text" name="storage" id="storage" value={formData.storage} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" placeholder="VD: SSD 1TB Samsung 980 Pro" />
+                              <input type="text" name="storage" id="storage" value={formData.storage} onChange={handleChange} className="input-field mt-1" placeholder="VD: SSD 1TB Samsung 980 Pro" />
                             </div>
 
                             {/* VGA */}
                             <div>
                               <label htmlFor="vga" className="block text-sm font-medium text-gray-700">Vga</label>
-                              <input type="text" name="vga" id="vga" value={formData.vga} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" placeholder="VD: RTX 4070 Ti 12GB" />
+                              <input type="text" name="vga" id="vga" value={formData.vga} onChange={handleChange} className="input-field mt-1" placeholder="VD: RTX 4070 Ti 12GB" />
                             </div>
 
                             {/* Power Supply */}
                             <div>
                               <label htmlFor="power_supply" className="block text-sm font-medium text-gray-700">Nguồn</label>
-                              <input type="text" name="power_supply" id="power_supply" value={formData.power_supply} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" placeholder="VD: Corsair RM850e 850W" />
+                              <input type="text" name="power_supply" id="power_supply" value={formData.power_supply} onChange={handleChange} className="input-field mt-1" placeholder="VD: Corsair RM850e 850W" />
                             </div>
                           </div>
                         )}
 
                         {/* MONITOR Specific Fields (Số lượng) */}
                         {['MONITOR', 'OTHER'].includes(formData.asset_type) && (
-                          <div className="sm:col-span-2 bg-purple-50/60 p-4 rounded-xl border border-purple-100 mb-4">
-                            <h4 className="text-xs font-semibold uppercase tracking-wide text-purple-500 mb-3 flex items-center gap-1.5">
-                              <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
+                          <div className="sm:col-span-2 bg-violet-50/60 p-4 rounded-xl border border-violet-100 mb-4">
+                            <h4 className="text-xs font-semibold uppercase tracking-wide text-violet-500 mb-3 flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 bg-violet-500 rounded-full"></div>
                               Số lượng tài sản
                             </h4>
                             <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
@@ -481,7 +483,7 @@ export default function AssetEditModal({ isOpen, onClose, onSuccess, asset }: As
                                 <label htmlFor="monitor_quantity" className="block text-sm font-medium text-gray-700">Số lượng</label>
                                 <input type="number" name="monitor_quantity" id="monitor_quantity" min="1" step="1"
                                   value={formData.monitor_quantity} onChange={handleChange}
-                                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                                  className="input-field mt-1"
                                   placeholder="VD: 1, 2, 3..." />
                               </div>
                             </div>
@@ -490,17 +492,25 @@ export default function AssetEditModal({ isOpen, onClose, onSuccess, asset }: As
 
                         {/* SIM Specific Fields (Số điện thoại, Nhà mạng) */}
                         {formData.asset_type === 'SIM' && (
-                          <div className="sm:col-span-2 grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 bg-green-50/50 p-4 rounded-xl border border-green-100 mb-4">
+                          <div className="sm:col-span-2 grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 mb-4">
                             <div className="sm:col-span-2">
-                              <h4 className="text-sm font-semibold text-green-900 flex items-center gap-2">
-                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <h4 className="text-sm font-semibold text-emerald-900 flex items-center gap-2">
+                                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
                                 Thông tin Sim
                               </h4>
                             </div>
-                            
+
+                            {/* Trạng thái Sim — đặt vào đây để tạo cặp với Số điện thoại */}
+                            <SelectBox
+                              label="Trạng thái Sim"
+                              value={formData.status}
+                              options={SIM_STATUSES}
+                              onChange={(val) => handleSelectChange('status', val)}
+                            />
+
                             <div>
                               <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700">Số điện thoại</label>
-                              <input type="text" name="phone_number" id="phone_number" value={(formData as any).phone_number} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" placeholder="VD: 0912345678" />
+                              <input type="text" name="phone_number" id="phone_number" value={(formData as any).phone_number} onChange={handleChange} className="input-field mt-1" placeholder="VD: 0912345678" />
                               {(formData as any).phone_number && !/^\d{10}$/.test(((formData as any).phone_number || '').trim()) && (
                                 <p className="mt-1 text-xs text-red-500">Số điện thoại phải gồm đúng 10 chữ số.</p>
                               )}
@@ -522,7 +532,7 @@ export default function AssetEditModal({ isOpen, onClose, onSuccess, asset }: As
 
                             <div>
                               <label htmlFor="doctor" className="block text-sm font-medium text-gray-700">Bác sĩ</label>
-                              <input type="text" name="doctor" id="doctor" value={(formData as any).doctor} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" placeholder="VD: Nguyễn Văn A" />
+                              <input type="text" name="doctor" id="doctor" value={(formData as any).doctor} onChange={handleChange} className="input-field mt-1" placeholder="VD: Nguyễn Văn A" />
                             </div>
 
                             <SelectBox
@@ -569,7 +579,7 @@ export default function AssetEditModal({ isOpen, onClose, onSuccess, asset }: As
                                 id="other_type_name"
                                 value={(formData as any).other_type_name}
                                 onChange={handleChange}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                                className="input-field mt-1"
                                 placeholder="Ví dụ: Máy chiếu, Camera, Bàn làm việc..."
                               />
                             </div>
@@ -581,20 +591,20 @@ export default function AssetEditModal({ isOpen, onClose, onSuccess, asset }: As
                         {!['SIM', 'FURNITURE'].includes(formData.asset_type) && (
                           <div>
                             <label htmlFor="model" className="block text-sm font-medium text-gray-700">Model</label>
-                            <input type="text" name="model" id="model" value={formData.model} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
+                            <input type="text" name="model" id="model" value={formData.model} onChange={handleChange} className="input-field mt-1" />
                           </div>
                         )}
 
                         {/* Nhà cung cấp */}
                         <div>
                           <label htmlFor="supplier" className="block text-sm font-medium text-gray-700">Nhà cung cấp</label>
-                          <input type="text" name="supplier" id="supplier" value={formData.supplier} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
+                          <input type="text" name="supplier" id="supplier" value={formData.supplier} onChange={handleChange} className="input-field mt-1" />
                         </div>
 
                         {/* Ngày mua */}
                         <div>
                           <label htmlFor="purchase_date" className="block text-sm font-medium text-gray-700">Ngày mua</label>
-                          <input type="date" name="purchase_date" id="purchase_date" value={formData.purchase_date} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
+                          <input type="date" name="purchase_date" id="purchase_date" value={formData.purchase_date} onChange={handleChange} className="input-field mt-1" />
                         </div>
 
                         {/* Thời hạn bảo hành */}
@@ -608,7 +618,7 @@ export default function AssetEditModal({ isOpen, onClose, onSuccess, asset }: As
                             step="1"
                             value={formData.warranty_period}
                             onChange={handleChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                            className="input-field mt-1"
                             placeholder="VD: 12"
                           />
                         </div>
@@ -624,22 +634,25 @@ export default function AssetEditModal({ isOpen, onClose, onSuccess, asset }: As
                         {/* Mô tả / Ghi chú */}
                         <div className="sm:col-span-2">
                           <label htmlFor="description" className="block text-sm font-medium text-gray-700">Mô tả / Ghi chú</label>
-                          <textarea id="description" name="description" rows={3} value={formData.description} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
+                          <textarea id="description" name="description" rows={3} value={formData.description} onChange={handleChange} className="input-field mt-1" />
                         </div>
                       </div>
 
-                      <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse space-x-reverse space-x-3">
-                        <button
-                          type="submit"
-                          disabled={loading || !isFormValid()}
-                          className={`inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-white shadow-sm sm:ml-3 sm:w-auto transition-all ${isFormValid() ? 'bg-primary-600 hover:bg-primary-700' : 'bg-gray-300 curson-not-allowed'}`}
-                        >
-                          {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
-                        </button>
-                        <button type="button" className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto" onClick={onClose}>Hủy</button>
-                      </div>
                     </form>
                   </div>
+                </div>
+                {/* Footer */}
+                <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+                  <button type="button" className="btn-secondary" onClick={onClose}>Hủy</button>
+                  <button
+                    type="submit"
+                    form="asset-edit-form"
+                    disabled={loading || !isFormValid()}
+                    onClick={handleSubmit as any}
+                    className={`btn-primary disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
+                  </button>
                 </div>
               </DialogPanel>
             </TransitionChild>

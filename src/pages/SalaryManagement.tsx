@@ -3883,7 +3883,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     <div className="space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-        <p className="text-gray-600 mt-2">{description}</p>
+        <p className="text-gray-900 mt-0.5 text-sm">{description}</p>
       </div>
 
       {!lockTab && (

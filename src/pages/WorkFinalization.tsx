@@ -65,14 +65,14 @@ const EmployeeListItem = React.memo(({
   return (
     <li
       onClick={() => onSelect(emp)}
-      className={`px-3 py-3 cursor-pointer hover:bg-indigo-50 transition-colors ${
-        isSelected ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''
+      className={`px-3 py-3 cursor-pointer hover:bg-primary-50 transition-colors ${
+        isSelected ? 'bg-primary-50 border-l-4 border-primary-500' : ''
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-            <UserIcon className="h-4 w-4 text-indigo-600" />
+          <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+            <UserIcon className="h-4 w-4 text-primary-600" />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
@@ -88,7 +88,7 @@ const EmployeeListItem = React.memo(({
                 </p>
               )}
               {emp.position && (
-                <p className="text-[10px] text-indigo-400 font-medium truncate">
+                <p className="text-[10px] text-primary-400 font-medium truncate">
                   {emp.position.title}
                 </p>
               )}
@@ -97,7 +97,7 @@ const EmployeeListItem = React.memo(({
         </div>
         <div className="flex-shrink-0 flex flex-col items-end gap-1">
           {rec ? (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
               <CheckCircleIcon className="w-3 h-3 mr-0.5" />
               Đã chốt
             </span>
@@ -115,8 +115,8 @@ const EmployeeListItem = React.memo(({
             title={isLocked ? 'Tháng này đã khóa chốt công' : undefined}
             className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded disabled:opacity-50 disabled:cursor-not-allowed ${
               rec
-                ? 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100'
-                : 'text-white bg-indigo-600 hover:bg-indigo-700'
+                ? 'text-primary-700 bg-primary-50 hover:bg-primary-100'
+                : 'text-white bg-primary-600 hover:bg-primary-700'
             }`}
           >
             {isBeingFinalized ? (
@@ -893,8 +893,8 @@ const WorkFinalization: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Chốt Công</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Chốt Công</h1>
+          <p className="mt-0.5 text-sm text-gray-900">
             Quản lý bảng tính công hàng tháng và xuất báo cáo tính lương
           </p>
         </div>
@@ -910,7 +910,7 @@ const WorkFinalization: React.FC = () => {
             className={`inline-flex items-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
               isLocked
                 ? 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100 focus:ring-red-500'
-                : 'border-green-300 text-green-700 bg-green-50 hover:bg-green-100 focus:ring-green-500'
+                : 'border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 focus:ring-emerald-500'
             }`}
           >
             {isLocked ? (
@@ -937,7 +937,7 @@ const WorkFinalization: React.FC = () => {
 
           <Link
             to="/dashboard/work-finalization/approvals"
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
           >
             <ClipboardDocumentCheckIcon className="w-4 h-4 mr-2" />
             Phê duyệt chốt công
@@ -946,7 +946,7 @@ const WorkFinalization: React.FC = () => {
             onClick={handleFinalizeAll}
             disabled={(isLocked && !canBypassLock) || finalizingAll || finalizingDepartment || finalizing !== null || exporting}
             title={isLocked ? 'Tháng này đã khóa chốt công' : undefined}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <BoltIcon className="w-4 h-4 mr-2" />
             {finalizingAll ? 'Đang chốt...' : `Chốt tất cả (Tháng ${selectedMonth}/${selectedYear})`}
@@ -956,7 +956,7 @@ const WorkFinalization: React.FC = () => {
               onClick={handleFinalizeDepartment}
               disabled={(isLocked && !canBypassLock) || finalizingDepartment || finalizingAll || finalizing !== null || exporting}
               title={isLocked ? 'Tháng này đã khóa chốt công' : undefined}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <BoltIcon className="w-4 h-4 mr-2" />
               {finalizingDepartment
@@ -967,7 +967,7 @@ const WorkFinalization: React.FC = () => {
           <button
             onClick={() => setShowPreviewModal(true)}
             disabled={records.length === 0}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <EyeIcon className="w-4 h-4 mr-2" />
             Xem trước
@@ -975,7 +975,7 @@ const WorkFinalization: React.FC = () => {
           <button
             onClick={() => setShowDailyPreviewModal(true)}
             disabled={dailyPivotRecords.length === 0}
-            className="inline-flex items-center px-4 py-2 border border-indigo-300 rounded-md shadow-sm text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-4 py-2 border border-primary-300 rounded-md shadow-sm text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <TableCellsIcon className="w-4 h-4 mr-2" />
             {`Bảng công chi tiết (${dailyPivotRecords.length})`}
@@ -983,7 +983,7 @@ const WorkFinalization: React.FC = () => {
           <button
             onClick={handleOpenViolationReport}
             disabled={!selectedDepartment || selectedDepartment === 'all' || loadingViolation}
-            className="inline-flex items-center px-4 py-2 border border-orange-300 rounded-md shadow-sm text-sm font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-4 py-2 border border-amber-300 rounded-md shadow-sm text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ShieldExclamationIcon className="w-4 h-4 mr-2" />
             {loadingViolation ? 'Đang tải...' : 'Báo cáo vi phạm'}
@@ -991,7 +991,7 @@ const WorkFinalization: React.FC = () => {
           <button
             onClick={handleExport}
             disabled={exporting || records.length === 0}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
             {exporting ? 'Đang xuất...' : `Xuất Excel (${records.length} đã chốt)`}
@@ -1001,13 +1001,13 @@ const WorkFinalization: React.FC = () => {
 
       {/* Alerts */}
       {error && (
-        <div className="flex items-center p-4 text-sm text-red-800 bg-red-50 rounded-lg border border-red-200">
+        <div className="flex items-center p-4 text-sm text-red-800 bg-red-50 rounded-2xl border border-red-200">
           <ExclamationCircleIcon className="w-5 h-5 mr-2 flex-shrink-0" />
           {error}
         </div>
       )}
       {successMsg && (
-        <div className="flex items-center p-4 text-sm text-green-800 bg-green-50 rounded-lg border border-green-200">
+        <div className="flex items-center p-4 text-sm text-emerald-800 bg-emerald-50 rounded-2xl border border-emerald-200">
           <CheckCircleIcon className="w-5 h-5 mr-2 flex-shrink-0" />
           {successMsg}
         </div>
@@ -1015,7 +1015,7 @@ const WorkFinalization: React.FC = () => {
 
       {/* Lock banner */}
       {isLocked && (
-        <div className="flex items-center justify-between p-4 text-sm bg-red-50 rounded-lg border border-red-200">
+        <div className="flex items-center justify-between p-4 text-sm bg-red-50 rounded-2xl border border-red-200">
           <div className="flex items-center gap-2 text-red-800">
             <LockClosedIcon className="w-5 h-5 flex-shrink-0" />
             <div>
@@ -1051,10 +1051,10 @@ const WorkFinalization: React.FC = () => {
 
       {/* Finalize-all result summary */}
       {finalizeAllResult && (
-        <div className="bg-white shadow rounded-lg p-4 border border-indigo-100">
+        <div className="bg-white shadow-sm rounded-2xl p-4 border border-primary-100">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-              <BoltIcon className="w-4 h-4 text-indigo-500" />
+              <BoltIcon className="w-4 h-4 text-primary-500" />
               Kết quả chốt công toàn công ty — Tháng {finalizeAllResult.month}/{finalizeAllResult.year}
             </span>
             <button
@@ -1065,7 +1065,7 @@ const WorkFinalization: React.FC = () => {
             </button>
           </div>
           <div className="flex gap-4 text-sm mb-3">
-            <span className="text-green-700 font-medium">✓ Đã xử lý: {finalizeAllResult.total_processed}</span>
+            <span className="text-emerald-700 font-medium">✓ Đã xử lý: {finalizeAllResult.total_processed}</span>
             {finalizeAllResult.total_errors > 0 && (
               <span className="text-red-600 font-medium">✗ Lỗi: {finalizeAllResult.total_errors}</span>
             )}
@@ -1087,10 +1087,10 @@ const WorkFinalization: React.FC = () => {
 
       {/* Finalize-department result summary */}
       {finalizeDepartmentResult && (
-        <div className="bg-white shadow rounded-lg p-4 border border-purple-100">
+        <div className="bg-white shadow-sm rounded-2xl p-4 border border-violet-100">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-              <BoltIcon className="w-4 h-4 text-purple-500" />
+              <BoltIcon className="w-4 h-4 text-violet-500" />
               Kết quả chốt công phòng ban — Tháng {finalizeDepartmentResult.month}/{finalizeDepartmentResult.year}
             </span>
             <button
@@ -1101,7 +1101,7 @@ const WorkFinalization: React.FC = () => {
             </button>
           </div>
           <div className="flex gap-4 text-sm mb-3">
-            <span className="text-green-700 font-medium">✓ Đã xử lý: {finalizeDepartmentResult.total_processed}</span>
+            <span className="text-emerald-700 font-medium">✓ Đã xử lý: {finalizeDepartmentResult.total_processed}</span>
             {finalizeDepartmentResult.total_errors > 0 && (
               <span className="text-red-600 font-medium">✗ Lỗi: {finalizeDepartmentResult.total_errors}</span>
             )}
@@ -1122,7 +1122,7 @@ const WorkFinalization: React.FC = () => {
       )}
 
       {/* Filters */}
-      <div className="bg-white shadow rounded-lg p-4">
+      <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
         <div className="flex items-center mb-3">
           <FunnelIcon className="w-4 h-4 mr-2 text-gray-500" />
           <span className="text-sm font-medium text-gray-700">Bộ lọc & Tìm kiếm</span>
@@ -1167,7 +1167,7 @@ const WorkFinalization: React.FC = () => {
                   setSelectedEmployee(null);
                 }}
                 placeholder="Tên hoặc mã NV..."
-                className="block w-full pl-10 pr-10 py-2 text-sm border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                className="block w-full pl-10 pr-10 py-2 text-sm border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               />
               {searchTerm && (
                 <button
@@ -1197,7 +1197,7 @@ const WorkFinalization: React.FC = () => {
       {/* Main two-panel layout */}
       <div className="flex gap-4 min-h-[600px]">
         {/* Left: Employee list */}
-        <div className="w-80 flex-shrink-0 bg-white shadow rounded-lg overflow-hidden flex flex-col">
+        <div className="w-80 flex-shrink-0 bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden flex flex-col">
           <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <span className="text-sm font-semibold text-gray-800">
               Danh sách nhân sự
@@ -1208,7 +1208,7 @@ const WorkFinalization: React.FC = () => {
           </div>
           {loadingEmployees ? (
             <div className="flex-1 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
             </div>
           ) : employees.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-sm text-gray-400 p-4 text-center">
@@ -1236,7 +1236,7 @@ const WorkFinalization: React.FC = () => {
         {/* Right: Calendar / Detail panel */}
         <div className="flex-1 min-w-0 flex flex-col gap-4">
           {!selectedEmployee ? (
-            <div className="flex-1 bg-white shadow rounded-lg flex flex-col items-center justify-center text-gray-400 p-10">
+            <div className="flex-1 bg-white shadow-sm rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-gray-400 p-10">
               <CalendarIcon className="h-16 w-16 mb-4 text-gray-200" />
               <p className="text-base font-medium">Chọn một nhân viên</p>
               <p className="text-sm mt-1">để xem lịch chấm công</p>
@@ -1244,10 +1244,10 @@ const WorkFinalization: React.FC = () => {
           ) : (
             <>
               {/* Employee info bar */}
-              <div className="bg-white shadow rounded-lg px-5 py-4 flex items-center justify-between">
+              <div className="bg-white shadow-sm rounded-2xl border border-gray-100 px-5 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <UserIcon className="h-5 w-5 text-indigo-600" />
+                  <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                    <UserIcon className="h-5 w-5 text-primary-600" />
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900">{selectedEmployee.full_name}</p>
@@ -1260,12 +1260,12 @@ const WorkFinalization: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   {finalizedRec ? (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-700">
                       <CheckCircleIcon className="w-4 h-4 mr-1" />
                       Đã chốt công tháng {selectedMonth}/{selectedYear}
                     </span>
                   ) : (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
                       Chưa chốt công tháng {selectedMonth}/{selectedYear}
                     </span>
                   )}
@@ -1273,7 +1273,7 @@ const WorkFinalization: React.FC = () => {
                     onClick={() => handleFinalize(selectedEmployee)}
                     disabled={(isLocked && !canBypassLock) || finalizing === selectedEmployee.employee_id}
                     title={isLocked ? 'Tháng này đã khóa chốt công' : undefined}
-                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {finalizing === selectedEmployee.employee_id ? (
                       <ArrowPathIcon className="w-4 h-4 animate-spin mr-1" />
@@ -1297,26 +1297,26 @@ const WorkFinalization: React.FC = () => {
 
               {/* Finalization details if finalized */}
               {finalizedRec && (
-                <div className="bg-white shadow rounded-lg p-5">
+                <div className="bg-white shadow-sm rounded-2xl border border-gray-100 p-5">
                   <h3 className="text-sm font-semibold text-gray-800 mb-4">
                     Kết quả chốt công tháng {selectedMonth}/{selectedYear}
                   </h3>
                   <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
                     {[
-                      { label: 'Công thử việc', value: String(finalizedRec.cong_thu_viec), cardCls: 'bg-blue-50', labelCls: 'text-blue-700', valCls: 'text-blue-800 font-bold' },
-                      { label: 'Công chính thức', value: `${finalizedRec.cong_chinh_thuc} công`, cardCls: 'bg-indigo-50', labelCls: 'text-indigo-700', valCls: 'text-indigo-800 font-bold' },
-                      { label: 'Công thực tế', value: `${finalizedRec.cong_thuc_te} công`, cardCls: 'bg-green-50', labelCls: 'text-green-700', valCls: 'text-green-800 font-bold' },
+                      { label: 'Công thử việc', value: String(finalizedRec.cong_thu_viec), cardCls: 'bg-primary-50', labelCls: 'text-primary-700', valCls: 'text-primary-800 font-bold' },
+                      { label: 'Công chính thức', value: `${finalizedRec.cong_chinh_thuc} công`, cardCls: 'bg-primary-50', labelCls: 'text-primary-700', valCls: 'text-primary-800 font-bold' },
+                      { label: 'Công thực tế', value: `${finalizedRec.cong_thuc_te} công`, cardCls: 'bg-emerald-50', labelCls: 'text-emerald-700', valCls: 'text-emerald-800 font-bold' },
                       { label: 'Tổng công', value: `${finalizedRec.tong_cong} công`, cardCls: 'bg-emerald-50', labelCls: 'text-emerald-700', valCls: 'text-emerald-800 font-extrabold' },
-                      { label: 'Nghỉ phép tháng', value: `${finalizedRec.nghi_phep} ngày`, cardCls: 'bg-indigo-50/50', labelCls: 'text-indigo-700', valCls: 'text-indigo-800 font-bold' },
-                      { label: 'Làm việc online', value: `${finalizedRec.lam_viec_online ?? 0} ngày`, cardCls: 'bg-cyan-50', labelCls: 'text-cyan-700', valCls: 'text-cyan-800 font-bold' },
-                      { label: 'Tăng ca', value: `${finalizedRec.tang_ca} giờ`, cardCls: 'bg-orange-50', labelCls: 'text-orange-700', valCls: 'text-orange-800 font-bold' },
-                      { label: 'Trực tối', value: `${finalizedRec.truc_toi} buổi`, cardCls: 'bg-purple-50', labelCls: 'text-purple-700', valCls: 'text-purple-800 font-bold' },
-                      { label: 'Làm thêm giờ', value: `${finalizedRec.lam_them_gio} giờ`, cardCls: 'bg-yellow-50', labelCls: 'text-yellow-700', valCls: 'text-yellow-800 font-bold' },
+                      { label: 'Nghỉ phép tháng', value: `${finalizedRec.nghi_phep} ngày`, cardCls: 'bg-primary-50/50', labelCls: 'text-primary-700', valCls: 'text-primary-800 font-bold' },
+                      { label: 'Làm việc online', value: `${finalizedRec.lam_viec_online ?? 0} ngày`, cardCls: 'bg-primary-50', labelCls: 'text-primary-700', valCls: 'text-primary-800 font-bold' },
+                      { label: 'Tăng ca', value: `${finalizedRec.tang_ca} giờ`, cardCls: 'bg-amber-50', labelCls: 'text-amber-700', valCls: 'text-amber-800 font-bold' },
+                      { label: 'Trực tối', value: `${finalizedRec.truc_toi} buổi`, cardCls: 'bg-violet-50', labelCls: 'text-violet-700', valCls: 'text-violet-800 font-bold' },
+                      { label: 'Làm thêm giờ', value: `${finalizedRec.lam_them_gio} giờ`, cardCls: 'bg-amber-50', labelCls: 'text-amber-700', valCls: 'text-amber-800 font-bold' },
                       { label: 'Live', value: `${finalizedRec.live} ca`, cardCls: 'bg-pink-50', labelCls: 'text-pink-700', valCls: 'text-pink-800 font-bold' },
-                      { label: 'PC Gửi xe', value: `${formatNumber(finalizedRec.phu_cap_gui_xe)}đ`, cardCls: 'bg-teal-50', labelCls: 'text-teal-700', valCls: 'text-teal-800 font-bold' },
+                      { label: 'PC Gửi xe', value: `${formatNumber(finalizedRec.phu_cap_gui_xe)}đ`, cardCls: 'bg-emerald-50', labelCls: 'text-emerald-700', valCls: 'text-emerald-800 font-bold' },
                       { label: 'Tổng phạt', value: `${formatNumber(finalizedRec.tong_phat)}đ`, cardCls: 'bg-red-50', labelCls: 'text-red-700', valCls: 'text-red-800 font-bold' },
                     ].map((item) => (
-                      <div key={item.label} className={`${item.cardCls} rounded-lg p-3`}>
+                      <div key={item.label} className={`${item.cardCls} rounded-2xl p-3`}>
                         <p className={`text-xs font-medium ${item.labelCls}`}>{item.label}</p>
                         <p className={`text-lg mt-0.5 ${item.valCls}`}>{item.value}</p>
                       </div>
@@ -1334,10 +1334,10 @@ const WorkFinalization: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[95vw] max-h-[90vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-green-100 flex items-center justify-center">
-                  <EyeIcon className="h-5 w-5 text-green-600" />
+                <div className="h-9 w-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                  <EyeIcon className="h-5 w-5" />
                 </div>
                 <div>
                   <h2 className="text-base font-semibold text-gray-900">
@@ -1373,7 +1373,7 @@ const WorkFinalization: React.FC = () => {
                     ].map((h) => (
                       <th
                         key={h}
-                        className="whitespace-nowrap px-3 py-2 text-center font-semibold text-white bg-blue-700 border border-blue-800"
+                        className="whitespace-nowrap px-3 py-2 text-center font-semibold text-white bg-primary-700 border border-primary-800"
                       >
                         {h}
                       </th>
@@ -1384,7 +1384,7 @@ const WorkFinalization: React.FC = () => {
                   {records.map((rec, idx) => {
                     const rowCls = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                     return (
-                      <tr key={rec.ma_nv} className={`${rowCls} hover:bg-blue-50 transition-colors`}>
+                      <tr key={rec.ma_nv} className={`${rowCls} hover:bg-primary-50 transition-colors`}>
                         <td className="px-3 py-1.5 text-center border border-gray-200">{rec.stt}</td>
                         <td className="px-3 py-1.5 font-mono border border-gray-200">{rec.ma_nv}</td>
                         <td className="px-3 py-1.5 whitespace-nowrap border border-gray-200">{rec.ho_va_ten}</td>
@@ -1418,7 +1418,7 @@ const WorkFinalization: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex-shrink-0">
               <span className="text-xs text-gray-500">
                 Hiển thị {records.length} bản ghi · Tháng {selectedMonth}/{selectedYear}
               </span>
@@ -1426,7 +1426,7 @@ const WorkFinalization: React.FC = () => {
                 <button
                   onClick={handlePreviewExport}
                   disabled={exporting}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ArrowDownTrayIcon className="w-4 h-4 mr-1.5" />
                   {exporting ? 'Đang xuất...' : 'Xuất Excel'}
@@ -1448,10 +1448,10 @@ const WorkFinalization: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[95vw] max-h-[90vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center">
-                  <ShieldExclamationIcon className="h-5 w-5 text-orange-600" />
+                <div className="h-9 w-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
+                  <ShieldExclamationIcon className="h-5 w-5" />
                 </div>
                 <div>
                   <h2 className="text-base font-semibold text-gray-900">
@@ -1477,7 +1477,7 @@ const WorkFinalization: React.FC = () => {
             <div className="flex-1 overflow-auto">
               {loadingViolation ? (
                 <div className="flex items-center justify-center h-40">
-                  <ArrowPathIcon className="w-6 h-6 animate-spin text-orange-500" />
+                  <ArrowPathIcon className="w-6 h-6 animate-spin text-amber-500" />
                   <span className="ml-2 text-sm text-gray-500">Đang tải dữ liệu...</span>
                 </div>
               ) : violationReport && violationReport.data.length > 0 ? (
@@ -1503,7 +1503,7 @@ const WorkFinalization: React.FC = () => {
                     {violationReport.data.map((item, idx) => {
                       const rowCls = idx % 2 === 0 ? 'bg-white' : 'bg-red-50';
                       return (
-                        <tr key={`${item.ma_nhan_vien}-${idx}`} className={`${rowCls} hover:bg-orange-50 transition-colors`}>
+                        <tr key={`${item.ma_nhan_vien}-${idx}`} className={`${rowCls} hover:bg-amber-50 transition-colors`}>
                           <td className="px-3 py-1.5 font-mono border border-gray-200">{item.ma_nhan_vien}</td>
                           <td className="px-3 py-1.5 whitespace-nowrap border border-gray-200">{item.ten_nhan_vien}</td>
                           <td className="px-3 py-1.5 whitespace-nowrap border border-gray-200">{item.phong_ban}</td>
@@ -1531,7 +1531,7 @@ const WorkFinalization: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex-shrink-0">
               <span className="text-xs text-gray-500">
                 {violationReport
                   ? `${violationReport.total_violations} vi phạm · Tháng ${violationReport.month}/${violationReport.year}`
@@ -1541,7 +1541,7 @@ const WorkFinalization: React.FC = () => {
                 <button
                   onClick={handleExportViolation}
                   disabled={exportingViolation || !violationReport || violationReport.data.length === 0}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ArrowDownTrayIcon className="w-4 h-4 mr-1.5" />
                   {exportingViolation ? 'Đang xuất...' : 'Tải Excel'}
@@ -1561,15 +1561,15 @@ const WorkFinalization: React.FC = () => {
       {/* Lock Confirm Modal */}
       {showLockConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className={`px-6 py-4 flex items-center gap-3 ${isLocked ? 'bg-green-50 border-b border-green-200' : 'bg-red-50 border-b border-red-200'}`}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className={`px-6 py-4 flex items-center gap-3 ${isLocked ? 'bg-emerald-50 border-b border-emerald-200' : 'bg-red-50 border-b border-red-200'}`}>
               {isLocked ? (
-                <LockOpenIcon className="w-6 h-6 text-green-600" />
+                <LockOpenIcon className="w-6 h-6 text-emerald-600" />
               ) : (
                 <LockClosedIcon className="w-6 h-6 text-red-600" />
               )}
               <div>
-                <h3 className={`text-base font-semibold ${isLocked ? 'text-green-900' : 'text-red-900'}`}>
+                <h3 className={`text-base font-semibold ${isLocked ? 'text-emerald-900' : 'text-red-900'}`}>
                   {isLocked ? 'Mở khóa chốt công' : 'Khóa chốt công'}
                 </h3>
                 <p className="text-sm text-gray-600">
@@ -1606,10 +1606,10 @@ const WorkFinalization: React.FC = () => {
               </p>
 
               {/* Đặt lịch tự động */}
-              <div className="rounded-lg border border-gray-200 overflow-hidden">
+              <div className="rounded-2xl border border-gray-200 overflow-hidden">
                 <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
                   <div className="flex items-center gap-2 text-xs font-medium text-gray-700">
-                    <ClockIcon className="w-4 h-4 text-indigo-500" />
+                    <ClockIcon className="w-4 h-4 text-primary-500" />
                     Đặt lịch tự động
                   </div>
                   {lockStartAt && (
@@ -1626,14 +1626,14 @@ const WorkFinalization: React.FC = () => {
 
                 <div className="p-3 space-y-3">
                   {lockStartAt ? (
-                    <div className="flex items-start gap-3 bg-indigo-50 rounded-lg px-3 py-2.5">
-                      <div className="flex-shrink-0 mt-0.5 h-7 w-7 rounded-full bg-indigo-100 flex items-center justify-center">
-                        <ClockIcon className="w-4 h-4 text-indigo-600" />
+                    <div className="flex items-start gap-3 bg-primary-50 rounded-xl px-3 py-2.5">
+                      <div className="flex-shrink-0 mt-0.5 h-7 w-7 rounded-full bg-primary-100 flex items-center justify-center">
+                        <ClockIcon className="w-4 h-4 text-primary-600" />
                       </div>
                       <div className="flex-1 min-w-0 text-xs">
-                        <p className="font-medium text-indigo-800 mb-1">Lịch đã đặt</p>
-                        <p className="text-indigo-700">
-                          <span className="text-indigo-500">Tự động khóa lúc:</span>{' '}
+                        <p className="font-medium text-primary-800 mb-1">Lịch đã đặt</p>
+                        <p className="text-primary-700">
+                          <span className="text-primary-500">Tự động khóa lúc:</span>{' '}
                           <strong>{new Date(lockStartAt).toLocaleString('vi-VN')}</strong>
                         </p>
                         <p className="text-amber-600 mt-0.5">
@@ -1651,7 +1651,7 @@ const WorkFinalization: React.FC = () => {
                       type="datetime-local"
                       value={lockStartAt}
                       onChange={(e) => setLockStartAt(e.target.value)}
-                      className="block w-full text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                      className="block w-full text-sm border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
                     />
                   </div>
 
@@ -1672,7 +1672,7 @@ const WorkFinalization: React.FC = () => {
                   onChange={(e) => setLockNote(e.target.value)}
                   placeholder={isLocked ? 'Lý do mở khóa...' : 'Lý do khóa...'}
                   rows={2}
-                  className="block w-full text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                  className="block w-full text-sm border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
 
@@ -1689,7 +1689,7 @@ const WorkFinalization: React.FC = () => {
               )}
             </div>
 
-            <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-2">
               <button
                 onClick={() => { setShowLockConfirm(false); setLockNote(''); }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
@@ -1701,7 +1701,7 @@ const WorkFinalization: React.FC = () => {
                 disabled={togglingLock}
                 className={`inline-flex items-center px-4 py-2 text-sm font-medium text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed ${
                   isLocked
-                    ? 'bg-green-600 hover:bg-green-700'
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
                     : 'bg-red-600 hover:bg-red-700'
                 }`}
               >
@@ -1728,10 +1728,10 @@ const WorkFinalization: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[98vw] max-h-[90vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-indigo-100 flex items-center justify-center">
-                  <TableCellsIcon className="h-5 w-5 text-indigo-600" />
+                <div className="h-9 w-9 rounded-xl bg-primary-100 flex items-center justify-center text-primary-600">
+                  <TableCellsIcon className="h-5 w-5" />
                 </div>
                 <div>
                   <h2 className="text-base font-semibold text-gray-900">
@@ -1755,30 +1755,30 @@ const WorkFinalization: React.FC = () => {
               <table className="min-w-full text-xs border-collapse">
                 <thead className="sticky top-0 z-10">
                   <tr>
-                    <th className="whitespace-nowrap px-2 py-2 text-center font-semibold text-white bg-indigo-700 border border-indigo-800">
+                    <th className="whitespace-nowrap px-2 py-2 text-center font-semibold text-white bg-primary-700 border border-primary-800">
                       STT
                     </th>
-                    <th className="whitespace-nowrap px-2 py-2 text-center font-semibold text-white bg-indigo-700 border border-indigo-800">
+                    <th className="whitespace-nowrap px-2 py-2 text-center font-semibold text-white bg-primary-700 border border-primary-800">
                       Mã NV
                     </th>
-                    <th className="whitespace-nowrap px-3 py-2 text-left font-semibold text-white bg-indigo-700 border border-indigo-800">
+                    <th className="whitespace-nowrap px-3 py-2 text-left font-semibold text-white bg-primary-700 border border-primary-800">
                       Họ và Tên
                     </th>
-                    <th className="whitespace-nowrap px-3 py-2 text-left font-semibold text-white bg-indigo-700 border border-indigo-800">
+                    <th className="whitespace-nowrap px-3 py-2 text-left font-semibold text-white bg-primary-700 border border-primary-800">
                       Phòng Ban
                     </th>
-                    <th className="whitespace-nowrap px-3 py-2 text-left font-semibold text-white bg-indigo-700 border border-indigo-800">
+                    <th className="whitespace-nowrap px-3 py-2 text-left font-semibold text-white bg-primary-700 border border-primary-800">
                       Vị Trí
                     </th>
                     {pivotDayHeaders.map((h) => (
                       <th
                         key={h.day}
-                        className="whitespace-nowrap px-1.5 py-2 text-center font-semibold text-white bg-indigo-700 border border-indigo-800 min-w-[52px]"
+                        className="whitespace-nowrap px-1.5 py-2 text-center font-semibold text-white bg-primary-700 border border-primary-800 min-w-[52px]"
                       >
                         {h.label}
                       </th>
                     ))}
-                    <th className="whitespace-nowrap px-2 py-2 text-center font-bold text-white bg-indigo-900 border border-indigo-800">
+                    <th className="whitespace-nowrap px-2 py-2 text-center font-bold text-white bg-primary-900 border border-primary-800">
                       Tổng
                     </th>
                   </tr>
@@ -1787,7 +1787,7 @@ const WorkFinalization: React.FC = () => {
                   {dailyPivotRecords.map((rec, idx) => {
                     const rowCls = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                     return (
-                      <tr key={rec.ma_nv} className={`${rowCls} hover:bg-indigo-50/40 transition-colors`}>
+                      <tr key={rec.ma_nv} className={`${rowCls} hover:bg-primary-50/40 transition-colors`}>
                         <td className="px-2 py-1.5 text-center border border-gray-200">
                           {idx + 1}
                         </td>
@@ -1807,11 +1807,11 @@ const WorkFinalization: React.FC = () => {
                           const creditStr = formatDailyCredit(d);
                           const cellCls =
                             d.day_type === 'P' ? 'bg-amber-50 text-amber-700 font-medium'
-                            : d.day_type === 'OLW' ? 'bg-cyan-50 text-cyan-700 font-medium'
-                            : d.day_type === 'L' ? 'bg-blue-50 text-blue-600 font-medium'
+                            : d.day_type === 'OLW' ? 'bg-primary-50 text-primary-700 font-medium'
+                            : d.day_type === 'L' ? 'bg-primary-50 text-primary-600 font-medium'
                             : d.is_weekend && !creditStr ? 'bg-gray-100 text-gray-400'
-                            : d.work_credit >= 1 ? 'text-green-700 font-medium'
-                            : d.work_credit > 0 ? 'text-orange-600 font-medium'
+                            : d.work_credit >= 1 ? 'text-emerald-700 font-medium'
+                            : d.work_credit > 0 ? 'text-amber-600 font-medium'
                             : '';
                           return (
                             <td
@@ -1823,7 +1823,7 @@ const WorkFinalization: React.FC = () => {
                             </td>
                           );
                         })}
-                        <td className="px-2 py-1.5 text-center font-bold text-indigo-700 border border-gray-200 bg-indigo-50/50">
+                        <td className="px-2 py-1.5 text-center font-bold text-primary-700 border border-gray-200 bg-primary-50/50">
                           {rec.tong_cong}
                         </td>
                       </tr>
@@ -1834,7 +1834,7 @@ const WorkFinalization: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex-shrink-0">
               <span className="text-xs text-gray-500">
                 {dailyPivotRecords.length} nhân viên · Tháng {selectedMonth}/{selectedYear}
               </span>
@@ -1842,7 +1842,7 @@ const WorkFinalization: React.FC = () => {
                 <button
                   onClick={handleExportDailyPivot}
                   disabled={exportingDaily}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ArrowDownTrayIcon className="w-4 h-4 mr-1.5" />
                   {exportingDaily ? 'Đang xuất...' : 'Xuất Excel'}

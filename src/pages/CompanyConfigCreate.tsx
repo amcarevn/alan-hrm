@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { companyConfigAPI, CompanyConfig } from '../utils/api';
 import { useNavigate } from 'react-router-dom';
+import {
+  ArrowLeftIcon,
+  Cog6ToothIcon,
+  ClockIcon,
+  CalendarDaysIcon,
+  BriefcaseIcon,
+} from '@heroicons/react/24/outline';
 
 const CompanyConfigCreate: React.FC = () => {
   const navigate = useNavigate();
@@ -31,7 +38,7 @@ const CompanyConfigCreate: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    
+
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       setFormData(prev => ({
@@ -53,7 +60,7 @@ const CompanyConfigCreate: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.code || !formData.name || !formData.effective_from) {
       setError('Vui lòng điền đầy đủ thông tin bắt buộc (Mã, Tên, Ngày hiệu lực)');
       return;
@@ -62,7 +69,7 @@ const CompanyConfigCreate: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const configData: Partial<CompanyConfig> = {
         code: formData.code.trim(),
         name: formData.name.trim(),
@@ -85,9 +92,9 @@ const CompanyConfigCreate: React.FC = () => {
       };
 
       await companyConfigAPI.createCompanyConfig(configData);
-      
+
       setSuccess('Tạo cấu hình công ty thành công!');
-      
+
       setTimeout(() => {
         navigate('/dashboard/company-configs');
       }, 2000);
@@ -100,65 +107,84 @@ const CompanyConfigCreate: React.FC = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
+    <div className="p-6 space-y-5">
+      {/* Header */}
+      <div>
         <button
           onClick={() => navigate('/dashboard/company-configs')}
-          className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 mb-4"
+          className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 mb-3"
         >
-          ← Quay lại
+          <ArrowLeftIcon className="h-4 w-4" />
+          Quay lại
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">Thêm cấu hình công ty mới</h1>
-        <p className="text-gray-600 mt-2">Tạo cấu hình giờ làm việc, ngày nghỉ lễ và các chính sách công ty</p>
+        <div className="flex items-center">
+          <div>
+            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+              Thêm cấu hình công ty mới
+            </h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Tạo cấu hình giờ làm việc, ngày nghỉ lễ và các chính sách công ty
+            </p>
+          </div>
+        </div>
       </div>
 
+      {/* Alerts */}
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+          <p className="text-sm font-medium text-red-800">{error}</p>
         </div>
       )}
 
       {success && (
-        <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-green-700">{success}</p>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+          <p className="text-sm font-medium text-emerald-800">{success}</p>
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Thông tin cơ bản */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
+              <BriefcaseIcon className="h-5 w-5" />
+            </div>
+            <h2 className="text-base font-bold text-gray-900 tracking-tight">Thông tin cơ bản</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mã cấu hình *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Mã cấu hình <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 name="code"
                 value={formData.code}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
                 placeholder="CONFIG_2024"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tên cấu hình *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Tên cấu hình <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
                 placeholder="Cấu hình công ty 2024"
                 required
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Mô tả
               </label>
               <textarea
@@ -166,14 +192,26 @@ const CompanyConfigCreate: React.FC = () => {
                 value={formData.description}
                 onChange={handleInputChange}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field resize-none"
                 placeholder="Mô tả về cấu hình công ty..."
               />
             </div>
+          </div>
+        </div>
 
+        {/* Giờ & Ngày làm việc */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
+              <ClockIcon className="h-5 w-5" />
+            </div>
+            <h2 className="text-base font-bold text-gray-900 tracking-tight">Giờ & Ngày làm việc</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Giờ làm việc/ngày *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Giờ làm việc/ngày <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -183,14 +221,14 @@ const CompanyConfigCreate: React.FC = () => {
                 min="1"
                 max="24"
                 step="0.5"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ngày làm việc/tuần *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Ngày làm việc/tuần <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -199,65 +237,14 @@ const CompanyConfigCreate: React.FC = () => {
                 onChange={handleInputChange}
                 min="1"
                 max="7"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hệ số OT ngày thường *
-              </label>
-              <input
-                type="number"
-                name="overtime_multiplier_weekday"
-                value={formData.overtime_multiplier_weekday}
-                onChange={handleInputChange}
-                min="1"
-                max="10"
-                step="0.1"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hệ số OT cuối tuần *
-              </label>
-              <input
-                type="number"
-                name="overtime_multiplier_weekend"
-                value={formData.overtime_multiplier_weekend}
-                onChange={handleInputChange}
-                min="1"
-                max="10"
-                step="0.1"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hệ số OT ngày lễ *
-              </label>
-              <input
-                type="number"
-                name="overtime_multiplier_holiday"
-                value={formData.overtime_multiplier_holiday}
-                onChange={handleInputChange}
-                min="1"
-                max="10"
-                step="0.1"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ngưỡng trễ (phút) *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Ngưỡng trễ (phút) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -266,14 +253,14 @@ const CompanyConfigCreate: React.FC = () => {
                 onChange={handleInputChange}
                 min="0"
                 max="240"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ngưỡng về sớm (phút) *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Ngưỡng về sớm (phút) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -282,14 +269,14 @@ const CompanyConfigCreate: React.FC = () => {
                 onChange={handleInputChange}
                 min="0"
                 max="240"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ngưỡng nửa ngày (giờ) *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Ngưỡng nửa ngày (giờ) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -299,14 +286,89 @@ const CompanyConfigCreate: React.FC = () => {
                 min="0"
                 max="12"
                 step="0.5"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Hệ số làm thêm giờ */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+              <Cog6ToothIcon className="h-5 w-5" />
+            </div>
+            <h2 className="text-base font-bold text-gray-900 tracking-tight">Hệ số làm thêm giờ (OT)</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Hệ số OT ngày thường <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="overtime_multiplier_weekday"
+                value={formData.overtime_multiplier_weekday}
+                onChange={handleInputChange}
+                min="1"
+                max="10"
+                step="0.1"
+                className="input-field"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ngày nghỉ phép/năm *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Hệ số OT cuối tuần <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="overtime_multiplier_weekend"
+                value={formData.overtime_multiplier_weekend}
+                onChange={handleInputChange}
+                min="1"
+                max="10"
+                step="0.1"
+                className="input-field"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Hệ số OT ngày lễ <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="overtime_multiplier_holiday"
+                value={formData.overtime_multiplier_holiday}
+                onChange={handleInputChange}
+                min="1"
+                max="10"
+                step="0.1"
+                className="input-field"
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Chính sách nghỉ phép */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-violet-100 text-violet-600 rounded-xl flex items-center justify-center">
+              <CalendarDaysIcon className="h-5 w-5" />
+            </div>
+            <h2 className="text-base font-bold text-gray-900 tracking-tight">Chính sách nghỉ phép</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Ngày nghỉ phép/năm <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -315,14 +377,14 @@ const CompanyConfigCreate: React.FC = () => {
                 onChange={handleInputChange}
                 min="0"
                 max="365"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ngày nghỉ ốm/năm *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Ngày nghỉ ốm/năm <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -331,14 +393,14 @@ const CompanyConfigCreate: React.FC = () => {
                 onChange={handleInputChange}
                 min="0"
                 max="365"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ngày nghỉ thai sản *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Ngày nghỉ thai sản <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -347,14 +409,14 @@ const CompanyConfigCreate: React.FC = () => {
                 onChange={handleInputChange}
                 min="0"
                 max="365"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ngày nghỉ thai sản chồng *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Ngày nghỉ thai sản chồng <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -363,14 +425,14 @@ const CompanyConfigCreate: React.FC = () => {
                 onChange={handleInputChange}
                 min="0"
                 max="365"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Số lần giải trình tối đa/tháng *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Số lần giải trình tối đa/tháng <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -379,14 +441,14 @@ const CompanyConfigCreate: React.FC = () => {
                 onChange={handleInputChange}
                 min="0"
                 max="100"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Số giờ bổ sung công tối đa/tháng *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Số giờ bổ sung công tối đa/tháng <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -396,27 +458,39 @@ const CompanyConfigCreate: React.FC = () => {
                 min="0"
                 max="200"
                 step="0.5"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
                 required
               />
             </div>
+          </div>
+        </div>
 
+        {/* Hiệu lực & Trạng thái */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-gray-100 text-gray-600 rounded-xl flex items-center justify-center">
+              <CalendarDaysIcon className="h-5 w-5" />
+            </div>
+            <h2 className="text-base font-bold text-gray-900 tracking-tight">Hiệu lực & Trạng thái</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ngày hiệu lực từ *
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Ngày hiệu lực từ <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
                 name="effective_from"
                 value={formData.effective_from}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Ngày hiệu lực đến
               </label>
               <input
@@ -424,43 +498,44 @@ const CompanyConfigCreate: React.FC = () => {
                 name="effective_to"
                 value={formData.effective_to}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="input-field"
               />
             </div>
 
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                name="is_active"
-                id="is_active"
-                checked={formData.is_active !== false}
-                onChange={handleInputChange}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-              <label htmlFor="is_active" className="ml-2 block text-sm text-gray-700">
-                Kích hoạt
+            <div className="md:col-span-2">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none w-fit">
+                <input
+                  type="checkbox"
+                  name="is_active"
+                  id="is_active"
+                  checked={formData.is_active !== false}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-semibold text-gray-700">Kích hoạt</span>
               </label>
             </div>
           </div>
+        </div>
 
-          <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={() => navigate('/dashboard/company-configs')}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {loading ? 'Đang tạo...' : 'Tạo cấu hình'}
-            </button>
-          </div>
-        </form>
-      </div>
+        {/* Action buttons */}
+        <div className="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard/company-configs')}
+            className="btn-secondary"
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-primary disabled:opacity-50"
+          >
+            {loading ? 'Đang tạo...' : 'Tạo cấu hình'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 };

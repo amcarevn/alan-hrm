@@ -5,6 +5,7 @@ import { employeesAPI, departmentsAPI, managementApi } from '../utils/api';
 import Pagination from '../components/Pagination';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
+import { KeyIcon } from '@heroicons/react/24/outline';
 
 interface Employee {
   id: number;
@@ -195,25 +196,27 @@ export default function PasswordReset() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Reset Mật Khẩu Nhân Viên</h1>
-        <p className="mt-2 text-gray-600">
-          Sử dụng công cụ này để reset mật khẩu cho nhân viên quên mật khẩu. Hệ thống sẽ gửi email tài khoản mới đến nhân viên.
-        </p>
+      <div className="flex items-center gap-3 mb-6">
+        <div>
+          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Cấp lại mật khẩu nhân viên</h1>
+          <p className="text-sm text-gray-900 mt-0.5">
+            Sử dụng công cụ này để reset mật khẩu cho nhân viên quên mật khẩu. Hệ thống sẽ gửi email tài khoản mới đến nhân viên.
+          </p>
+        </div>
       </div>
 
       {/* Message Alert */}
       {message && (
         <div
-          className={`p-4 rounded-md ${
+          className={`p-4 rounded-2xl border ${
             message.type === 'success'
-              ? 'bg-green-50 border border-green-200'
-              : 'bg-red-50 border border-red-200'
+              ? 'bg-emerald-50 border-emerald-200'
+              : 'bg-red-50 border-red-200'
           }`}
         >
           <p
             className={`text-sm font-medium ${
-              message.type === 'success' ? 'text-green-800' : 'text-red-800'
+              message.type === 'success' ? 'text-emerald-700' : 'text-red-700'
             }`}
           >
             {message.text}
@@ -222,14 +225,14 @@ export default function PasswordReset() {
       )}
 
       {/* Main card */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         {/* Filter section */}
-        <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+        <div className="mb-6 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Tìm kiếm nhân viên</h3>
+            <h3 className="text-sm font-bold text-gray-900">Tìm kiếm nhân viên</h3>
             {loading && (
-              <div className="flex items-center text-sm text-gray-500">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-primary-600"></div>
                 Đang tìm kiếm...
               </div>
             )}
@@ -246,7 +249,7 @@ export default function PasswordReset() {
                   value={filters.employee_id}
                   onChange={handleFilterChange}
                   placeholder="VD: TA00001"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="input-field"
                 />
               </div>
               <div>
@@ -259,7 +262,7 @@ export default function PasswordReset() {
                   value={filters.full_name}
                   onChange={handleFilterChange}
                   placeholder="VD: Nguyễn Văn A"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="input-field"
                 />
               </div>
               <div>
@@ -281,7 +284,7 @@ export default function PasswordReset() {
                   setCurrentPage(1);
                   setSelectedEmployee(null);
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="btn-secondary text-sm"
               >
                 Xóa bộ lọc
               </button>
@@ -292,7 +295,7 @@ export default function PasswordReset() {
         {/* List header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Danh sách nhân viên</h2>
+            <h2 className="text-sm font-bold text-gray-900">Danh sách nhân viên</h2>
             <p className="text-gray-500 text-sm">Tổng số: {totalCount} nhân viên</p>
           </div>
         </div>
@@ -304,13 +307,13 @@ export default function PasswordReset() {
             <p className="mt-4 text-gray-600">Đang tải danh sách nhân viên...</p>
           </div>
         ) : filteredEmployees.length === 0 ? (
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border border-gray-100 rounded-2xl overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NV</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Họ tên</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email cá nhân</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phòng ban</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
                 </tr>
@@ -331,13 +334,13 @@ export default function PasswordReset() {
             </table>
           </div>
         ) : (
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border border-gray-100 rounded-2xl overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NV</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Họ tên</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email cá nhân</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phòng ban</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
                 </tr>
@@ -347,7 +350,7 @@ export default function PasswordReset() {
                   <tr
                     key={employee.id}
                     className={`hover:bg-gray-50 transition-colors ${
-                      selectedEmployee?.id === employee.id ? 'bg-blue-50' : ''
+                      selectedEmployee?.id === employee.id ? 'bg-primary-50' : ''
                     }`}
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -366,13 +369,13 @@ export default function PasswordReset() {
                       <button
                         onClick={() => setConfirmTarget(employee)}
                         disabled={resetting}
-                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
                           resetting
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-red-50 text-red-600 hover:bg-red-100'
+                            ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
+                            : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
                         }`}
                       >
-                        {resetting ? 'Đang xử lý...' : 'Reset'}
+                        {resetting ? 'Đang xử lý...' : 'Cấp lại'}
                       </button>
                     </td>
                   </tr>
@@ -399,25 +402,25 @@ export default function PasswordReset() {
       </div>
 
       {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="font-semibold text-blue-900 mb-2">ℹ️ Thông tin cần biết</h3>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>✓ Mật khẩu mới sẽ được tạo ngẫu nhiên: <code className="bg-blue-100 px-2 py-1 rounded">amcare@XXXXX</code></li>
-          <li>✓ Email thông tin tài khoản sẽ được gửi đến nhân viên</li>
-          <li>✓ Nhân viên PHẢI đổi mật khẩu sau lần đăng nhập đầu tiên</li>
-          <li>✓ Hệ thống sẽ ghi nhận lịch sử reset mật khẩu</li>
+      <div className="bg-primary-50 border border-primary-200 rounded-2xl p-5">
+        <h3 className="text-sm font-bold text-primary-900 mb-2">Thông tin cần biết</h3>
+        <ul className="text-sm text-primary-700 space-y-1">
+          <li>✓ Mật khẩu mới sẽ được tạo ngẫu nhiên: <code className="bg-primary-100 px-2 py-0.5 rounded-md text-xs font-mono">amcare@XXXXX</code></li>
+          <li>✓ Email thông tin tài khoản sẽ được gửi tự động đến nhân viên</li>
+          <li>✓ Nhân viên BẮT BUỘC đổi mật khẩu sau lần đăng nhập đầu tiên</li>
+          <li>✓ Hệ thống sẽ ghi nhận lịch sử cấp lại mật khẩu</li>
         </ul>
       </div>
 
-      {/* Debug Info - Chỉ hiển thị khi có lỗi */}
+      {/* Cảnh báo - Chỉ hiển thị khi không có dữ liệu */}
       {employees.length === 0 && !loading && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h3 className="font-semibold text-yellow-900 mb-2">⚠️ Debug Info</h3>
-          <ul className="text-sm text-yellow-800 space-y-1">
-            <li>• Không có dữ liệu nhân viên được tải</li>
-            <li>• Vui lòng mở DevTools (F12) → Console để xem chi tiết lỗi</li>
-            <li>• Kiểm tra API endpoint: /api-hrm/employees/</li>
-            <li>• Kiểm tra authentication token</li>
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+          <h3 className="text-sm font-bold text-amber-900 mb-2">Không tải được danh sách nhân viên</h3>
+          <ul className="text-sm text-amber-700 space-y-1">
+            <li>• Không có dữ liệu nhân viên được tải về</li>
+            <li>• Vui lòng mở Công cụ phát triển (F12) → Bảng điều khiển để xem chi tiết lỗi</li>
+            <li>• Kiểm tra đường dẫn API: /api-hrm/employees/</li>
+            <li>• Kiểm tra phiên đăng nhập có còn hiệu lực không</li>
           </ul>
         </div>
       )}
@@ -425,9 +428,9 @@ export default function PasswordReset() {
       <ConfirmDialog
         open={confirmTarget !== null}
         variant="warning"
-        title="Reset mật khẩu nhân viên"
-        message={confirmTarget ? `Bạn có chắc muốn reset mật khẩu cho nhân viên ${confirmTarget.full_name}?` : ''}
-        confirmLabel="Reset"
+        title="Cấp lại mật khẩu nhân viên"
+        message={confirmTarget ? `Bạn có chắc muốn cấp lại mật khẩu cho nhân viên ${confirmTarget.full_name}?` : ''}
+        confirmLabel="Xác nhận"
         loading={resetting}
         onConfirm={handleResetPassword}
         onClose={() => setConfirmTarget(null)}

@@ -1,14 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
 import {
   BellIcon,
   MagnifyingGlassIcon,
   UserCircleIcon,
-  KeyIcon,
   ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/contexts/AuthContext';
-import ChangePasswordModal from '@/components/Layout/ChangePasswordModal';
 import { hrmAPI } from '@/utils/api';
 import { useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
 
@@ -37,8 +34,6 @@ const TYPE_BADGE: Record<string, string> = {
 
 export default function Header() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
-  const [changePasswordModalKey, setChangePasswordModalKey] = useState(0);
   const [bellOpen, setBellOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [page, setPage] = useState(1);
@@ -105,24 +100,13 @@ export default function Header() {
   const handleLogout = () => {
     logout();
     setUserMenuOpen(false);
-    setChangePasswordModalKey(0);
-  };
-
-  const handleOpenChangePassword = () => {
-    setUserMenuOpen(false);
-    setChangePasswordModalKey(prev => prev + 1);
-    setShowChangePasswordModal(true);
   };
 
   return (
     <>
       <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6">
         <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-          <div className="flex items-center">
-            <Link to="/" className="flex items-center gap-2">
-              <img src="/logo-alan.png" alt="Alan HRM" className="h-11 w-auto max-w-[180px] object-contain mix-blend-multiply" />
-            </Link>
-          </div>
+
           <form className="relative flex flex-1" action="#" method="GET">
             <label htmlFor="search-field" className="sr-only">
               Tìm kiếm
@@ -145,7 +129,7 @@ export default function Header() {
               <button
                 type="button"
                 onClick={() => setBellOpen((o) => !o)}
-                className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 relative"
+                className="-m-1.5 flex items-center p-1.5 text-gray-400 hover:text-gray-500 relative"
               >
                 <span className="sr-only">Xem thông báo</span>
                 <BellIcon className="h-6 w-6" aria-hidden="true" />
@@ -263,13 +247,6 @@ export default function Header() {
                     </div>
                     <div className="py-1">
                       <button
-                        onClick={handleOpenChangePassword}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                      >
-                        <KeyIcon className="h-4 w-4 mr-3 text-gray-400" />
-                        Đổi mật khẩu
-                      </button>
-                      <button
                         onClick={handleLogout}
                         className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                       >
@@ -285,14 +262,6 @@ export default function Header() {
         </div>
       </header>
 
-      {/* Change Password Modal */}
-      {showChangePasswordModal && (
-        <ChangePasswordModal
-          key={changePasswordModalKey}
-          onClose={() => setShowChangePasswordModal(false)}
-          onSuccess={() => { setShowChangePasswordModal(false); }}
-        />
-      )}
     </>
   );
 }

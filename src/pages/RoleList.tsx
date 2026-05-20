@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  ShieldCheckIcon,
+  UsersIcon,
+  UserGroupIcon,
+  BuildingOfficeIcon,
+  EyeIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  ExclamationCircleIcon,
+} from '@heroicons/react/24/outline';
+import {
   employeePermissionService,
   EmployeePermission,
   EmployeePermissionStats,
@@ -57,7 +67,6 @@ const RoleList: React.FC = () => {
       setStats(statsData);
     } catch (err: any) {
       console.error('Error fetching permission stats:', err);
-      // Set default stats to prevent UI breakage
       setStats({
         total: 0,
         employees_with_permissions: 0,
@@ -93,7 +102,6 @@ const RoleList: React.FC = () => {
     fetchDepartments();
   }, []);
 
-  // Debounced search
   useEffect(() => {
     if (searchTimeout) {
       clearTimeout(searchTimeout);
@@ -131,9 +139,9 @@ const RoleList: React.FC = () => {
 
   const getBadge = (hasPermission: boolean) => (
     hasPermission ? (
-      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Có quyền</span>
+      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-600">Có quyền</span>
     ) : (
-      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Không có quyền</span>
+      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-500">Không có</span>
     )
   );
 
@@ -155,115 +163,126 @@ const RoleList: React.FC = () => {
     { value: 'can_export_reports', label: 'Xuất báo cáo' },
   ];
 
+  const tableHeaders = [
+    'Mã NV', 'Họ tên', 'Phòng ban', 'Chức vụ',
+    'Phê duyệt công', 'Tạo nhân viên', 'Quản lý chấm công', 'Quản lý tài sản',
+    'Có quyền', 'Thao tác',
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Quản lý phân quyền nhân viên
-        </h1>
-        <p className="text-gray-600 mt-2">
-          Quản lý quyền hạn của nhân viên: phê duyệt công, tạo nhân viên,
-          quản lý chấm công, quản lý tài sản, v.v.
-        </p>
+    <div className="flex flex-col gap-6 flex-1 min-h-0">
+      {/* Page header */}
+      <div className="flex items-center">
+        <div>
+          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+            Quản lý phân quyền nhân viên
+          </h1>
+          <p className="text-sm text-gray-900 mt-0.5">
+            Quản lý quyền hạn: phê duyệt công, tạo nhân viên, chấm công, tài sản, v.v.
+          </p>
+        </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col flex-1 min-h-0 gap-6">
         {/* Statistics */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Thống kê phân quyền
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="font-medium text-blue-900 text-sm">
-                Tổng số nhân viên
-              </h3>
-              <p className="text-2xl font-bold text-blue-700 mt-1">
-                {stats.total}
-              </p>
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
+              <ShieldCheckIcon className="h-5 w-5" />
             </div>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <h3 className="font-medium text-green-900 text-sm">
-                Có phân quyền
-              </h3>
-              <p className="text-2xl font-bold text-green-700 mt-1">
-                {stats.employees_with_permissions}
-              </p>
+            <div>
+              <h2 className="text-sm font-bold text-gray-900">Thống kê phân quyền</h2>
+              <p className="text-xs text-gray-400">Tổng quan trạng thái phân quyền</p>
             </div>
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <h3 className="font-medium text-yellow-900 text-sm">
-                Chưa có phân quyền
-              </h3>
-              <p className="text-2xl font-bold text-yellow-700 mt-1">
-                {stats.employees_without_permissions}
-              </p>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
+                  <UsersIcon className="h-5 w-5" />
+                </div>
+              </div>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Tổng nhân viên</p>
+              <p className="text-2xl font-extrabold text-gray-900 tracking-tight mt-1">{stats.total}</p>
             </div>
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <h3 className="font-medium text-purple-900 text-sm">
-                Phòng ban có phân quyền
-              </h3>
-              <p className="text-2xl font-bold text-purple-700 mt-1">
-                {stats.department_stats.length}
-              </p>
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-emerald-500 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-9 w-9 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
+                  <ShieldCheckIcon className="h-5 w-5" />
+                </div>
+              </div>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Có phân quyền</p>
+              <p className="text-2xl font-extrabold text-gray-900 tracking-tight mt-1">{stats.employees_with_permissions}</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-amber-500 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-9 w-9 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+                  <UserGroupIcon className="h-5 w-5" />
+                </div>
+              </div>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Chưa phân quyền</p>
+              <p className="text-2xl font-extrabold text-gray-900 tracking-tight mt-1">{stats.employees_without_permissions}</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-violet-500 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-9 w-9 bg-violet-100 text-violet-600 rounded-xl flex items-center justify-center">
+                  <BuildingOfficeIcon className="h-5 w-5" />
+                </div>
+              </div>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Phòng ban</p>
+              <p className="text-2xl font-extrabold text-gray-900 tracking-tight mt-1">{stats.department_stats.length}</p>
             </div>
           </div>
         </div>
 
         {/* Search & Filter */}
-        <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+        <div className="bg-gray-50 rounded-2xl border border-gray-100 p-4">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Tìm kiếm phân quyền
-            </h3>
+            <h3 className="text-sm font-bold text-gray-900">Tìm kiếm phân quyền</h3>
             {loading && (
-              <div className="flex items-center text-sm text-gray-500">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+              <div className="flex items-center text-xs text-gray-500 gap-1.5">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
                 Đang tìm kiếm...
               </div>
             )}
           </div>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tìm kiếm theo mã, tên nhân viên
-                </label>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nhập mã NV, tên nhân viên..."
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Tìm kiếm tự động khi bạn gõ
-                </p>
-              </div>
-              <div>
-                <SelectBox<string>
-                  label="Phòng ban"
-                  value={departmentFilter}
-                  options={[
-                    { value: 'all', label: 'Tất cả phòng ban' },
-                    ...departments.map((dept) => ({ value: String(dept.id), label: dept.name })),
-                  ]}
-                  onChange={setDepartmentFilter}
-                />
-              </div>
-              <div>
-                <SelectBox<string>
-                  label="Loại quyền"
-                  value={permissionFilter}
-                  options={permissionOptions}
-                  onChange={setPermissionFilter}
-                />
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Tìm kiếm theo mã, tên nhân viên
+              </label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input-field"
+                placeholder="Nhập mã NV, tên nhân viên..."
+              />
             </div>
-            <div className="flex justify-end">
+            <div>
+              <SelectBox<string>
+                label="Phòng ban"
+                value={departmentFilter}
+                options={[
+                  { value: 'all', label: 'Tất cả phòng ban' },
+                  ...departments.map((dept) => ({ value: String(dept.id), label: dept.name })),
+                ]}
+                onChange={setDepartmentFilter}
+              />
+            </div>
+            <div>
+              <SelectBox<string>
+                label="Loại quyền"
+                value={permissionFilter}
+                options={permissionOptions}
+                onChange={setPermissionFilter}
+              />
+            </div>
+            <div className="flex items-end">
               <button
                 type="button"
                 onClick={handleReset}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="btn-secondary w-full"
               >
                 Đặt lại bộ lọc
               </button>
@@ -272,186 +291,77 @@ const RoleList: React.FC = () => {
         </div>
 
         {/* Header + Add button */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Danh sách phân quyền
-            </h2>
-            <p className="text-gray-500 text-sm">
-              Tổng số: {permissions.length} phân quyền
-            </p>
+            <h2 className="text-sm font-bold text-gray-900">Danh sách phân quyền</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Tổng số: {permissions.length} phân quyền</p>
           </div>
-          <div className="flex space-x-2">
-            <button
-              className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
-              onClick={() => navigate('/permissions/dashboard/roles/create')}
-            >
-              + Thêm phân quyền
-            </button>
-          </div>
+          <button
+            className="btn-primary"
+            onClick={() => navigate('/permissions/dashboard/roles/create')}
+          >
+            + Thêm phân quyền
+          </button>
         </div>
 
         {/* Content */}
+        <div className="flex flex-col flex-1 min-h-0">
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
+            <p className="mt-4 text-sm text-gray-500">Đang tải dữ liệu...</p>
           </div>
         ) : error ? (
           <div className="text-center py-12">
-            <div className="text-red-600 mb-4">
-              <svg
-                className="w-12 h-12 mx-auto"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+            <div className="h-12 w-12 bg-red-100 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <ExclamationCircleIcon className="h-6 w-6" />
             </div>
-            <p className="text-lg font-medium text-gray-900">
-              Đã xảy ra lỗi
-            </p>
-            <p className="text-gray-500 mt-1">{error}</p>
+            <p className="text-sm font-bold text-gray-900">Đã xảy ra lỗi</p>
+            <p className="text-xs text-gray-400 mt-1">{error}</p>
             <button
               onClick={() => fetchPermissions()}
-              className="mt-4 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
+              className="btn-primary mt-4"
             >
               Thử lại
             </button>
           </div>
-        ) : permissions.length === 0 ? (
-          <div className="border rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+        ) : (
+          <div className="border border-gray-100 rounded-2xl overflow-hidden flex-1">
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50">
+                <tr>
+                  {tableHeaders.map((h) => (
+                    <th key={h} className="table-header">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {permissions.length === 0 ? (
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Mã NV
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Họ tên
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Phòng ban
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Chức vụ
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Phê duyệt công
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tạo nhân viên
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Quản lý chấm công
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Quản lý tài sản
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Có quyền
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Thao tác
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  <tr>
-                    <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
-                      <div className="flex flex-col items-center">
-                        <svg
-                          className="w-12 h-12 text-gray-400 mb-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                          />
-                        </svg>
-                        <p className="text-lg font-medium text-gray-900">
-                          Chưa có phân quyền nào
-                        </p>
-                        <p className="text-gray-500 mt-1">
-                          Bắt đầu bằng cách thêm phân quyền mới
-                        </p>
+                    <td colSpan={10} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="h-12 w-12 bg-primary-100 text-primary-400 rounded-2xl flex items-center justify-center">
+                          <ShieldCheckIcon className="h-6 w-6" />
+                        </div>
+                        <p className="text-sm font-bold text-gray-900">Chưa có phân quyền nào</p>
+                        <p className="text-xs text-gray-400">Bắt đầu bằng cách thêm phân quyền mới</p>
                       </div>
                     </td>
                   </tr>
-                </tbody>
-              </table>
-          </div>
-        ) : (
-          <div className="border rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Mã NV
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Họ tên
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Phòng ban
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Chức vụ
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Phê duyệt công
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tạo nhân viên
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Quản lý chấm công
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Quản lý tài sản
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Có quyền
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Thao tác
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {permissions.map((perm: any) => (
-                    <tr key={perm.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {perm.employee_code || perm.employee?.employee_id || '-'}
-                        </div>
+                ) : (
+                  permissions.map((perm: any) => (
+                    <tr key={perm.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="table-cell font-medium">
+                        {perm.employee_code || perm.employee?.employee_id || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {perm.employee_name || perm.employee?.full_name || '-'}
-                        </div>
+                      <td className="table-cell font-medium">
+                        {perm.employee_name || perm.employee?.full_name || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {perm.department_name || perm.employee?.department?.name || '-'}
-                        </div>
+                      <td className="table-cell">
+                        {perm.department_name || perm.employee?.department?.name || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {perm.position_title || perm.employee?.position?.title || '-'}
-                        </div>
+                      <td className="table-cell">
+                        {perm.position_title || perm.employee?.position?.title || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getBadge(perm.can_approve_attendance)}
@@ -468,44 +378,39 @@ const RoleList: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getBadge(perm.has_any_permission)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-1">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
                           <button
                             onClick={() => navigate(`/permissions/dashboard/roles/${perm.id}`)}
-                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                            className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                             title="Xem"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
+                            <EyeIcon className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => navigate(`/permissions/dashboard/roles/${perm.id}/edit`)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                            className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                             title="Sửa"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
+                            <PencilSquareIcon className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(perm.id)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                             title="Xóa"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
+                            <TrashIcon className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
