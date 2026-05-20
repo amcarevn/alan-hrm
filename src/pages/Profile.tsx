@@ -1787,7 +1787,6 @@ const Profile: React.FC = () => {
                           options={CITIZEN_ID_ISSUE_PLACE_OPTIONS}
                           onChange={v => handleInputChange('cccd_issue_place', v)}
                           placeholder="Chọn nơi cấp..."
-                          portal
                         />
                       </div>
                     </div>

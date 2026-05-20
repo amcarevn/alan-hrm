@@ -32,7 +32,7 @@ export default function Login() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-primary-900">
+      <div className="min-h-screen flex items-center justify-center bg-primary-700">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
       </div>
     );
@@ -109,71 +109,68 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center bg-[#0F172A] px-4 overflow-hidden">
+    <div className="relative min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary-600 to-primary-800 px-4 overflow-hidden">
       {/* ── BACKGROUND ── */}
       <div className="absolute inset-0 pointer-events-none">
-        {/* Grid overlay */}
         <div
-          className="absolute inset-0 opacity-[0.07]"
+          className="absolute inset-0 opacity-[0.18]"
           style={{
             backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)`,
             backgroundSize: '36px 36px',
           }}
         />
-        {/* Blurred background blobs - Ruby Theme */}
-        <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full bg-ruby-primary opacity-[0.15] blur-[120px]" />
-        <div className="absolute top-1/2 right-1/3 w-72 h-72 rounded-full bg-ruby-accent opacity-[0.1] blur-[100px]" />
-        <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-ruby-primary opacity-[0.12] blur-[120px]" />
+        <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full bg-primary-900 opacity-[0.4] blur-[120px]" />
+        <div className="absolute top-1/2 right-1/3 w-72 h-72 rounded-full bg-white opacity-[0.05] blur-[100px]" />
+        <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-primary-900 opacity-[0.35] blur-[120px]" />
       </div>
 
       {/* ── LOGO + BRANDING ── */}
       <motion.div initial="hidden" animate="visible" className="relative z-10 flex flex-col items-center mb-10">
-        <motion.div custom={0} variants={fadeUp} className="mb-6">
-          <img 
-            src="/logo-alan.png" 
-            alt="ALAN Beauty Medical Clinic" 
-            className="h-24 w-auto max-w-[280px] rounded-xl shadow-2xl shadow-black/40 object-contain mix-blend-multiply" 
-          />
+        <motion.div custom={0} variants={fadeUp} className="mb-4">
+          <div className="bg-white rounded-2xl px-5 py-3 shadow-2xl shadow-black/30">
+            <img
+              src="/logo-alan.png"
+              alt="ALAN Beauty Medical Clinic"
+              className="h-16 w-auto max-w-[220px] object-contain"
+            />
+          </div>
         </motion.div>
-        <motion.div custom={1} variants={fadeUp} className="text-center">
-
-          <p className="text-ruby-accent text-sm font-medium mt-1 opacity-80">
-      Hệ thống Quản lý Nhân sự
-          </p>
-        </motion.div>
+        <motion.p custom={1} variants={fadeUp} className="text-primary-300 text-base mt-1.5">
+          Hệ thống Quản lý Nhân sự
+        </motion.p>
       </motion.div>
 
       {/* ── LOGIN CARD ── */}
       <motion.div
         custom={2} variants={fadeUp} initial="hidden" animate="visible"
-        className="relative z-10 w-full max-w-sm bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-3xl shadow-2xl p-10"
+        className="relative z-10 w-full max-w-sm bg-white/10 backdrop-blur-3xl border border-white/20 rounded-3xl shadow-2xl p-10"
       >
         <form onSubmit={handleSubmit} noValidate className="space-y-6">
           {/* Username */}
           <div>
-             <label className="block text-sm font-semibold text-gray-400 mb-2 px-1">
+             <label className="block text-sm font-semibold text-primary-100 mb-2 px-1">
               Tên đăng nhập
             </label>
             <input
               type="text"
               placeholder="Nhập tên đăng nhập"
               autoComplete="username"
-              className={`block w-full px-4 py-3 bg-white/5 border rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-ruby-primary/50 focus:border-ruby-primary/50 transition-all duration-300 ${
+              className={`block w-full px-4 py-3 bg-white border rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400 transition-all duration-300 ${
                 fieldErrors.username
-                  ? 'border-red-500/50 bg-red-500/5'
-                  : 'border-white/10 hover:border-white/20'
+                  ? 'border-red-300/60 bg-red-500/10'
+                  : 'border-gray-200 hover:border-primary-300'
               }`}
               value={formData.username}
               onChange={(e) => handleChange('username', e.target.value)}
             />
             {fieldErrors.username && (
-              <p className="mt-1.5 text-xs text-red-400 px-1">{fieldErrors.username}</p>
+              <p className="mt-1.5 text-xs text-red-200 px-1">{fieldErrors.username}</p>
             )}
           </div>
 
           {/* Mật khẩu */}
           <div>
-            <label className="block text-sm font-semibold text-gray-400 mb-2 px-1">
+            <label className="block text-sm font-semibold text-primary-100 mb-2 px-1">
               Mật khẩu
             </label>
             <div className="relative">
@@ -181,17 +178,17 @@ export default function Login() {
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Nhập mật khẩu"
                 autoComplete="current-password"
-                className={`block w-full px-4 py-3 pr-11 bg-white/5 border rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-ruby-primary/50 focus:border-ruby-primary/50 transition-all duration-300 ${
+                className={`block w-full px-4 py-3 pr-11 bg-white border rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400 transition-all duration-300 ${
                   fieldErrors.password
-                    ? 'border-red-500/50 bg-red-500/5'
-                    : 'border-white/10 hover:border-white/20'
+                    ? 'border-red-300/60 bg-red-500/10'
+                    : 'border-gray-200 hover:border-primary-300'
                 }`}
                 value={formData.password}
                 onChange={(e) => handleChange('password', e.target.value)}
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-500 hover:text-ruby-primary transition-colors"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-primary-600 transition-colors"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword
@@ -201,16 +198,16 @@ export default function Login() {
               </button>
             </div>
             {fieldErrors.password && (
-              <p className="mt-1.5 text-xs text-red-400 px-1">{fieldErrors.password}</p>
+              <p className="mt-1.5 text-xs text-red-200 px-1">{fieldErrors.password}</p>
             )}
           </div>
 
           {/* Server error */}
           {serverError && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3"
+              className="text-red-200 text-xs bg-red-500/20 border border-red-300/30 rounded-xl px-4 py-3"
             >
               {serverError}
             </motion.div>
@@ -219,7 +216,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={isLoggingIn}
-            className="w-full py-3 px-4 bg-ruby-primary hover:bg-ruby-hover active:bg-[#9B0B42] disabled:opacity-60 text-white text-base font-bold rounded-xl transition-colors mt-1 shadow-lg shadow-ruby-primary/30 flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 disabled:opacity-60 text-white text-base font-bold rounded-xl transition-colors mt-1 shadow-lg shadow-primary-900/40 flex items-center justify-center gap-2"
           >
             {isLoggingIn ? (
               <>

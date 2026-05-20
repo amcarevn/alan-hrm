@@ -295,7 +295,7 @@ const Home: React.FC = () => {
   return (
     <div className="space-y-5">
       {/* Welcome Header */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-ruby-primary to-ruby-hover rounded-2xl text-white shadow-lg">
+      <div className="relative overflow-hidden bg-gradient-to-r from-primary-500 to-primary-700 rounded-2xl text-white shadow-lg">
         {/* Decorative blobs */}
         <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-white/5" />
         <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-white/5" />
