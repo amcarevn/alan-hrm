@@ -164,7 +164,7 @@ export default function Login() {
               onChange={(e) => handleChange('username', e.target.value)}
             />
             {fieldErrors.username && (
-              <p className="mt-1.5 text-xs text-red-200 px-1">{fieldErrors.username}</p>
+              <p className="mt-1.5 text-xs text-white px-1">{fieldErrors.username}</p>
             )}
           </div>
 
@@ -198,7 +198,7 @@ export default function Login() {
               </button>
             </div>
             {fieldErrors.password && (
-              <p className="mt-1.5 text-xs text-red-200 px-1">{fieldErrors.password}</p>
+              <p className="mt-1.5 text-xs text-white px-1">{fieldErrors.password}</p>
             )}
           </div>
 
@@ -207,7 +207,7 @@ export default function Login() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-red-200 text-xs bg-red-500/20 border border-red-300/30 rounded-xl px-4 py-3"
+              className="text-white text-xs bg-red-500/20 border border-red-300/30 rounded-xl px-4 py-3"
             >
               {serverError}
             </motion.div>

@@ -984,7 +984,6 @@ const BulkContracts: React.FC = () => {
                           onChange={(id) => updateRow(emp.id, { template: templates.find((t) => t.id === id) || null })}
                           placeholder="Chọn template"
                           searchable
-                          portal
                         />
                         {hasSigned && (
                           <div className="flex items-center gap-1 text-xs text-amber-600">
@@ -1109,7 +1108,6 @@ const BulkContracts: React.FC = () => {
                                           }))}
                                           placeholder="Chọn template..."
                                           searchable
-                                          portal
                                         />
                                       ) : (
                                         <span className="text-gray-600">{c.template_name || '—'}</span>
