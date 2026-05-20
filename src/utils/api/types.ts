@@ -952,6 +952,7 @@ export interface CompanyUnit {
   id: number;
   name: string;
   code: string;
+  prefix_code?: string;
   description?: string;
   is_active: boolean;
   created_at: string;
