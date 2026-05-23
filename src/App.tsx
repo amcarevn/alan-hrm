@@ -39,6 +39,7 @@ import BotPermissionCreate from './pages/BotPermissionCreate';
 import BotPermissionEdit from './pages/BotPermissionEdit';
 import RoleEdit from './pages/RoleEdit';
 import EmployeeList from './pages/EmployeeList';
+import CTVList from './pages/CTVList';
 import EmployeeCreate from './pages/EmployeeCreate';
 import EmployeeShow from './pages/EmployeeShow';
 import EmployeeEdit from './pages/EmployeeEdit';
@@ -415,6 +416,18 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* CTV Routes */}
+          <Route
+            path="/dashboard/ctv"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <CTVList />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
           {/* HRM Routes */}
           <Route
             path="/dashboard/employees"

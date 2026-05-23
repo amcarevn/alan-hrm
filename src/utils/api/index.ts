@@ -47,6 +47,12 @@ export type {
   AttendanceRuleEngineResponse,
   BirthdayWish,
   CompanyUnit,
+  CTV,
+  CTVCreateData,
+  CTVStats,
+  CTVFilterEmployee,
+  CTVStatus,
+  CTVWorkType,
 } from './types';
 
 // Re-export all APIs
@@ -76,6 +82,8 @@ export {
   assetMaintenanceAPI,
 } from './assets.api';
 export { companyConfigAPI, hrmAPI, attendanceRuleAPI } from './company-config.api';
+export { ctvAPI } from './ctv.api';
+export type { CTVListParams } from './ctv.api';
 
 // Default export with all APIs
 import { authAPI } from './auth.api';
@@ -104,6 +112,7 @@ import {
   assetMaintenanceAPI,
 } from './assets.api';
 import { companyConfigAPI, hrmAPI, attendanceRuleAPI } from './company-config.api';
+import { ctvAPI } from './ctv.api';
 
 export default {
   auth: authAPI,
@@ -133,4 +142,5 @@ export default {
   dashboard: dashboardAPI,
   companyConfig: companyConfigAPI,
   companyUnits: companyUnitsAPI,
+  ctv: ctvAPI,
 };

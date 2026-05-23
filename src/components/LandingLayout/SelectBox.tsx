@@ -45,11 +45,11 @@ function SelectBoxInner<T>({
   const labelCls = isLg ? "block text-base font-semibold mb-1.5 text-gray-800" : "block text-sm font-medium mb-1 text-gray-700";
   const inputCls = isLg ? "w-full border-none py-[13px] pl-4 pr-10 text-base leading-normal text-gray-900 focus:ring-0" : "w-full border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 focus:ring-0";
   const wrapperCls = isLg
-    ? "relative w-full cursor-default overflow-hidden rounded-xl bg-white text-left shadow-sm border-2 border-gray-200 hover:border-gray-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all"
-    : "relative w-full cursor-default overflow-hidden rounded-lg bg-white text-left shadow-sm sm:text-sm border border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500";
+    ? "relative w-full cursor-default overflow-hidden rounded-xl bg-white text-left shadow-sm border-2 border-gray-200 hover:border-gray-300 focus-within:ring-2 focus-within:ring-primary-200 focus-within:border-primary-500 transition-all"
+    : "relative w-full cursor-default overflow-hidden rounded-lg bg-white text-left shadow-sm sm:text-sm border border-gray-200 focus-within:ring-2 focus-within:ring-primary-100 focus-within:border-primary-500";
   const buttonCls = isLg
-    ? "relative w-full cursor-pointer rounded-xl border-2 border-gray-200 hover:border-gray-300 bg-white py-[13px] pl-4 pr-10 text-left focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base shadow-sm transition-all"
-    : "relative w-full cursor-pointer rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-10 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm shadow-sm";
+    ? "relative w-full cursor-pointer rounded-xl border-2 border-gray-200 hover:border-gray-300 bg-white py-[13px] pl-4 pr-10 text-left focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-500 text-base shadow-sm transition-all"
+    : "relative w-full cursor-pointer rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-10 text-left focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-500 sm:text-sm shadow-sm";
 
   // COMBBOX MODE (Searchable)
   if (searchable) {
@@ -209,7 +209,7 @@ function MultiSelectBoxInner<T extends string>({
       {label && <label className="block text-sm font-medium mb-1 text-gray-700">{label}</label>}
       <Listbox value={value} onChange={() => {}} multiple>
         <div className="relative">
-          <Listbox.Button className="relative w-full cursor-pointer rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-10 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm shadow-sm">
+          <Listbox.Button className="relative w-full cursor-pointer rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-10 text-left focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-500 sm:text-sm shadow-sm">
             <span className="block truncate">{displayText}</span>
             <span className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer">
               <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
