@@ -35,8 +35,10 @@ const GENDER_OPTIONS = [
 
 const EMPLOYMENT_STATUS_OPTIONS = [
   { label: 'Đang làm việc', value: 'ACTIVE' },
-  { label: 'Vô hiệu hoá', value: 'PAUSED' },
+  { label: 'Thử việc', value: 'PROBATION' },
+  { label: 'Tạm dừng', value: 'PAUSED' },
   { label: 'Đã nghỉ', value: 'INACTIVE' },
+  { label: 'Vô hiệu hoá', value: 'DEACTIVATED' },
 ];
 
 const MARITAL_STATUS_OPTIONS = [

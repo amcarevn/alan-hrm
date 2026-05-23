@@ -18,7 +18,9 @@ const EmployeeList: React.FC = () => {
     total: 0,
     active: 0,
     probation: 0,
+    paused: 0,
     inactive: 0,
+    deactivated: 0,
     male: 0,
     female: 0,
     other: 0
@@ -97,7 +99,9 @@ const EmployeeList: React.FC = () => {
         total: statsData.total,
         active: statsData.active,
         probation: statsData.probation,
+        paused: statsData.paused ?? 0,
         inactive: statsData.inactive,
+        deactivated: statsData.deactivated ?? 0,
         male,
         female,
         other
@@ -232,7 +236,9 @@ const EmployeeList: React.FC = () => {
         switch (status) {
           case 'ACTIVE': return 'Đang làm việc';
           case 'INACTIVE': return 'Đã nghỉ';
+          case 'PAUSED': return 'Tạm dừng';
           case 'PROBATION': return 'Thử việc';
+          case 'DEACTIVATED': return 'Vô hiệu hoá';
           default: return status;
         }
       };
@@ -1027,10 +1033,14 @@ const EmployeeList: React.FC = () => {
     switch (status) {
       case 'ACTIVE':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-600">Đang làm việc</span>;
+      case 'PAUSED':
+        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Tạm dừng</span>;
       case 'INACTIVE':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-600">Đã nghỉ</span>;
       case 'PROBATION':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-600">Thử việc</span>;
+      case 'DEACTIVATED':
+        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Vô hiệu hoá</span>;
       default:
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{status}</span>;
     }
@@ -1075,22 +1085,30 @@ const EmployeeList: React.FC = () => {
         {/* Statistics Section - At the top as requested */}
         <div className="mb-8">
           <h2 className="text-sm font-bold text-gray-900 mb-4">Thống kê nhân viên</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-3">
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}>
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Tổng số</p>
               <p className="text-2xl font-extrabold text-primary-600 mt-1">{stats.total}</p>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-emerald-500 shadow-sm p-4">
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-emerald-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('ACTIVE'); setCurrentPage(1); }}>
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Đang làm việc</p>
               <p className="text-2xl font-extrabold text-emerald-600 mt-1">{stats.active}</p>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-amber-500 shadow-sm p-4">
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-amber-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('PROBATION'); setCurrentPage(1); }}>
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Thử việc</p>
               <p className="text-2xl font-extrabold text-amber-600 mt-1">{stats.probation}</p>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-red-500 shadow-sm p-4">
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-yellow-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('PAUSED'); setCurrentPage(1); }}>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Tạm dừng</p>
+              <p className="text-2xl font-extrabold text-yellow-600 mt-1">{stats.paused}</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-red-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('INACTIVE'); setCurrentPage(1); }}>
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Đã nghỉ</p>
               <p className="text-2xl font-extrabold text-red-600 mt-1">{stats.inactive}</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-gray-400 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('DEACTIVATED'); setCurrentPage(1); }}>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Vô hiệu hoá</p>
+              <p className="text-2xl font-extrabold text-gray-500 mt-1">{stats.deactivated}</p>
             </div>
             <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-300 shadow-sm p-4">
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Nam</p>
@@ -1147,8 +1165,9 @@ const EmployeeList: React.FC = () => {
                 { value: 'all', label: 'Tất cả trạng thái' },
                 { value: 'ACTIVE', label: 'Đang làm việc' },
                 { value: 'PROBATION', label: 'Thử việc' },
-                { value: 'PAUSED', label: 'Vô hiệu hoá' },
+                { value: 'PAUSED', label: 'Tạm dừng' },
                 { value: 'INACTIVE', label: 'Đã nghỉ' },
+                { value: 'DEACTIVATED', label: 'Vô hiệu hoá' },
               ]}
               onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
             />
