@@ -554,7 +554,7 @@ export interface EmployeeCreateData {
   personal_email?: string;
   bank_name?: string;
   bank_account?: string;
-  employment_status?: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE' | 'PROBATION';
+  employment_status?: 'ACTIVE' | 'PAUSED' | 'INACTIVE' | 'PROBATION';
   start_date?: string;
   end_date?: string;
   username: string;
@@ -584,7 +584,7 @@ export interface EmployeeUpdateData {
   cccd_issue_place?: string;
   permanent_residence?: string;
   current_address?: string;
-  employment_status?: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE' | 'PROBATION';
+  employment_status?: 'ACTIVE' | 'PROBATION' | 'PAUSED' | 'INACTIVE' | 'DEACTIVATED';
   start_date?: string;
   end_date?: string;
   user_id?: number;

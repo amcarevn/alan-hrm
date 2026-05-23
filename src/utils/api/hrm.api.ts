@@ -117,8 +117,10 @@ export const employeesAPI = {
   stats: async (): Promise<{
     total: number;
     active: number;
-    inactive: number;
     probation: number;
+    paused: number;
+    inactive: number;
+    deactivated: number;
     department_stats: Array<{
       department_id: number;
       department_name: string;
@@ -133,8 +135,10 @@ export const employeesAPI = {
     const response: AxiosResponse<{
       total: number;
       active: number;
-      inactive: number;
       probation: number;
+      paused: number;
+      inactive: number;
+      deactivated: number;
       department_stats: Array<{
         department_id: number;
         department_name: string;
