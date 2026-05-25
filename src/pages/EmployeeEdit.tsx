@@ -205,6 +205,7 @@ const EmployeeEdit: React.FC = () => {
     block: '',
     company_unit_id: undefined,
     is_hr: false,
+    is_bod: false,
     education_level: '',
     termination_reason: '',
     employment_status_notes: '',
@@ -313,6 +314,7 @@ const EmployeeEdit: React.FC = () => {
         block: e.block || '',
         company_unit_id: e.company_unit?.id ?? undefined,
         is_hr: e.is_hr || false,
+        is_bod: e.is_bod || false,
         education_level: e.education_level || '',
         termination_reason: e.termination_reason || '',
         employment_status_notes: e.employment_status_notes || '',
@@ -464,6 +466,7 @@ const EmployeeEdit: React.FC = () => {
         is_active: formData.is_active,
         employment_status: formData.employment_status,
         is_hr: formData.is_hr,
+        is_bod: formData.is_bod,
       };
 
       // Helper: only add if not empty
@@ -839,6 +842,21 @@ const EmployeeEdit: React.FC = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-700">Nhân viên HR</p>
                   <p className="text-xs text-gray-500 mt-0.5">Có quyền duyệt đơn và truy cập các chức năng quản lý nhân sự</p>
+                </div>
+              </label>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={formData.is_bod}
+                  onChange={(e) => handleSelect('is_bod', e.target.checked)}
+                />
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Nhân viên BOD</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Có quyền truy cập tính năng quản lý tính lương</p>
                 </div>
               </label>
             </div>

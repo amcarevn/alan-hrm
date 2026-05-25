@@ -963,7 +963,7 @@ function App() {
           <Route
             path="/dashboard/salary-management"
             element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
+              <ProtectedRoute requireBod>
                 <Layout>
                   <Navigate to="/dashboard/salary-management/config" replace />
                 </Layout>
@@ -973,7 +973,7 @@ function App() {
           <Route
             path="/dashboard/salary-management/config"
             element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
+              <ProtectedRoute requireBod>
                 <Layout>
                   <SalaryEmployeeConfig />
                 </Layout>
@@ -983,7 +983,7 @@ function App() {
           <Route
             path="/dashboard/salary-management/payroll"
             element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
+              <ProtectedRoute requireBod>
                 <Layout>
                   <SalaryPayroll />
                 </Layout>
@@ -993,7 +993,7 @@ function App() {
           <Route
             path="/dashboard/salary-management/penalty"
             element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
+              <ProtectedRoute requireBod>
                 <Layout>
                   <SalaryData />
                 </Layout>
@@ -1003,7 +1003,7 @@ function App() {
           <Route
             path="/dashboard/salary-management/overtime"
             element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
+              <ProtectedRoute requireBod>
                 <Layout>
                   <OvertimeRatePage />
                 </Layout>

@@ -5,9 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles?: string[];
+  requireBod?: boolean;
 }
 
-export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, allowedRoles, requireBod = false }: ProtectedRouteProps) {
   const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
@@ -111,6 +112,18 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
         // Redirect to home page if user doesn't have required role
         return <Navigate to="/home" replace />;
       }
+    }
+  }
+
+  if (requireBod && user) {
+    const isBod = Boolean(
+      user.employee_profile?.is_bod ||
+      user.hrm_user?.is_bod ||
+      (user as any)?.is_bod
+    );
+
+    if (!isBod) {
+      return <Navigate to="/home" replace />;
     }
   }
 

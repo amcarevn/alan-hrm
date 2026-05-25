@@ -40,6 +40,7 @@ interface NavigationItem {
   href: string;
   icon: any;
   roles: string[];
+  bodOnly?: boolean;
   departments?: string[]; // Optional department codes
   employeePermission?: string; // Optional employee_permission key that grants access
   children?: NavigationItem[]; // Sub-items for collapsible groups
@@ -216,30 +217,35 @@ const navigationItems: NavigationItem[] = [
     href: '/dashboard/salary-management/config',
     icon: CurrencyDollarIcon,
     roles: ['ADMIN', 'HR'],
+    bodOnly: true,
     children: [
       {
         name: 'Bảng lương',
         href: '/dashboard/salary-management/payroll',
         icon: TableCellsIcon,
-        roles: ['ADMIN'],
+        roles: ['ADMIN', 'USER', 'HR', 'STAFF'],
+        bodOnly: true,
       },
       {
         name: 'Cấu hình tính lương',
         href: '/dashboard/salary-management/config',
         icon: CurrencyDollarIcon,
-        roles: ['ADMIN'],
+        roles: ['ADMIN', 'USER', 'HR', 'STAFF'],
+        bodOnly: true,
       },
       {
         name: 'Dữ liệu',
         href: '/dashboard/salary-management/penalty',
         icon: ExclamationCircleIcon,
-        roles: ['ADMIN' ],
+        roles: ['ADMIN'],
+        bodOnly: true,
       },
       {
         name: 'Cấu hình tăng ca',
         href: '/dashboard/salary-management/overtime',
         icon: ClockIcon,
-        roles: ['ADMIN'],
+        roles: ['ADMIN', 'USER', 'HR', 'STAFF'],
+        bodOnly: true,
       },
     ],
   },
@@ -397,8 +403,17 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
 
   // Get employee_permission from user profile
   const employeePermission = user?.employee_permission;
+  const isBod = Boolean(
+    user?.employee_profile?.is_bod ||
+    user?.hrm_user?.is_bod ||
+    (user as any)?.is_bod
+  );
 
   const canAccessItem = (item: NavigationItem): boolean => {
+    if (item.bodOnly && !isBod) {
+      return false;
+    }
+
     // 1. Check if item requires a specific employee permission
     if (item.employeePermission && employeePermission?.[item.employeePermission as keyof typeof employeePermission]) {
       return true;

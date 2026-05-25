@@ -30,6 +30,7 @@ export interface User {
     full_name?: string;
     department?: string;
     department_code?: string;
+    is_bod?: boolean;
     [key: string]: any;
   };
   hrm_user?: {
@@ -38,6 +39,7 @@ export interface User {
     department?: string;
     department_code?: string;
     avatar_url?: string | null;
+    is_bod?: boolean;
     [key: string]: any;
   };
   employee_permission?: EmployeePermissions;
@@ -460,6 +462,7 @@ export interface Employee {
 
   // HR employee flag
   is_hr?: boolean;
+  is_bod?: boolean;
   manager_name: string;
   created_at: string;
   updated_at: string;
@@ -568,6 +571,7 @@ export interface EmployeeCreateData {
   department_id?: number;
   manager_id?: number;
   is_hr?: boolean;
+  is_bod?: boolean;
 }
 
 export interface EmployeeUpdateData {
@@ -594,6 +598,7 @@ export interface EmployeeUpdateData {
   department_id?: number;
   manager_id?: number;
   is_hr?: boolean;
+  is_bod?: boolean;
   marital_status?: string | null;
   file_status?: string;
   file_review_notes?: string;

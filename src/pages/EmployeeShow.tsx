@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { employeesAPI, Employee } from '../utils/api';
+import { useAuth } from '../contexts/AuthContext';
 import {
   ArrowLeftIcon,
   ArrowPathIcon,
@@ -139,6 +140,7 @@ const EmployeeShow: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -208,6 +210,11 @@ const EmployeeShow: React.FC = () => {
   })();
 
   const genderLabel = employee.gender === 'M' ? 'Nam' : employee.gender === 'F' ? 'Nữ' : employee.gender === 'O' ? 'Khác' : null;
+  const isBodUser = Boolean(
+    user?.employee_profile?.is_bod ||
+    user?.hrm_user?.is_bod ||
+    (user as any)?.is_bod
+  );
 
   return (
     <div className="space-y-6">
@@ -355,8 +362,12 @@ const EmployeeShow: React.FC = () => {
             <h3 className="text-sm font-bold text-gray-900">Lương & Hợp đồng</h3>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <InfoField label="Lương cơ bản" value={emp.basic_salary != null ? `${Number(emp.basic_salary).toLocaleString('vi-VN')} đ` : null} highlight />
-            <InfoField label="Phụ cấp" value={emp.allowance != null ? `${Number(emp.allowance).toLocaleString('vi-VN')} đ` : null} />
+            {isBodUser && (
+              <InfoField label="Lương cơ bản" value={emp.basic_salary != null ? `${Number(emp.basic_salary).toLocaleString('vi-VN')} đ` : null} highlight />
+            )}
+            {isBodUser && (
+              <InfoField label="Phụ cấp" value={emp.allowance != null ? `${Number(emp.allowance).toLocaleString('vi-VN')} đ` : null} />
+            )}
             <InfoField label="Tỷ lệ % doanh số hưởng" value={emp.revenue_percentage} />
             <InfoField label="Tỷ lệ % lợi nhuận hưởng" value={emp.profit_percentage} />
             <InfoField label="Loại hợp đồng" value={emp.contract_type ? (emp.contract_type_display || CONTRACT_TYPE_LABELS[emp.contract_type] || emp.contract_type) : null} full />

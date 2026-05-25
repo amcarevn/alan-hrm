@@ -58,6 +58,7 @@ const EmployeeCreate: React.FC = () => {
     department_id: undefined,
     manager_id: undefined,
     is_hr: false,
+    is_bod: false,
   });
 
   useEffect(() => {
@@ -191,6 +192,7 @@ const EmployeeCreate: React.FC = () => {
         }),
         ...(formData.manager_id && { manager_id: Number(formData.manager_id) }),
         is_hr: formData.is_hr,
+        is_bod: formData.is_bod,
       };
 
       const createdEmployee = await employeesAPI.create(employeeData);
@@ -531,6 +533,28 @@ const EmployeeCreate: React.FC = () => {
                     <p className="text-xs text-gray-500">
                       Nhân viên HR có quyền duyệt đơn, truy cập vào các chức
                       năng quản lý nhân sự
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <div className="col-span-1 md:col-span-2 border rounded-lg p-4 bg-gray-50">
+                <label className="flex gap-3">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={formData.is_bod}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        is_bod: e.target.checked,
+                      }))
+                    }
+                  />
+                  <div>
+                    <p className="font-medium">Nhân viên BOD</p>
+                    <p className="text-xs text-gray-500">
+                      Nhân viên BOD có quyền truy cập tính năng quản lý tính lương
                     </p>
                   </div>
                 </label>
