@@ -103,6 +103,8 @@ export const WORK_LOCATION_OPTIONS = [
   { value: '1E_TRUONG_TRINH', label: 'Số 1E Trường Trinh, Hà Nội' },
   { value: '50_TRUNG_PHUNG', label: 'Số 50 Trung Phụng, Hà Nội' },
   { value: '219_TRUNG_KINH', label: 'Số 219 Trung Kính, Cầu Giấy, Hà Nội' },
+  { value: '100_NGUYEN_DU', label: '100 Nguyễn Du' },
+  { value: '106_DAI_CO_VIET', label: '106 Đại Cồ Việt' },
 ];
 
 export const CITIZEN_ID_ISSUE_PLACE_OPTIONS = [

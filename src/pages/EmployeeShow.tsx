@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { employeesAPI, Employee } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
+import { WORK_LOCATION_OPTIONS } from '../constants/onboarding';
 import {
   ArrowLeftIcon,
   ArrowPathIcon,
@@ -24,6 +25,10 @@ import {
 // ============================================
 // CONSTANTS
 // ============================================
+
+const WORK_LOCATION_LABELS: Record<string, string> = Object.fromEntries(
+  WORK_LOCATION_OPTIONS.map(o => [o.value, o.label])
+);
 
 const PROBATION_RATE_LABELS: Record<string, string> = {
   OPTION_1: 'Tháng đầu 85%, tháng sau 85%',
@@ -289,7 +294,7 @@ const EmployeeShow: React.FC = () => {
             <InfoField label="Quản lý trực tiếp" value={employee.manager_name} />
             <InfoField label="Team Bác sĩ" value={emp.doctor_team} />
             <InfoField label="Hình thức làm việc" value={emp.work_form ? (WORK_FORM_LABELS[emp.work_form] || emp.work_form) : null} />
-            <InfoField label="Địa điểm làm việc" value={emp.work_location_display || emp.work_location} />
+            <InfoField label="Địa điểm làm việc" value={emp.work_location ? (WORK_LOCATION_LABELS[emp.work_location] || emp.work_location) : null} />
             <InfoField label="Vùng/Miền" value={emp.region} />
             <InfoField label="Khối" value={emp.block} />
             <InfoField label="Đơn vị" value={emp.company_unit?.name} />
