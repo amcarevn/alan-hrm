@@ -45,6 +45,8 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
       // Define allowed paths for staff
       const isManager = user?.is_manager || false
       const employeePermission = user?.employee_permission;
+      const isCtvLeader = user?.is_ctv_leader || user?.hrm_user?.is_ctv_leader || false;
+      const isCtvManager = user?.hrm_user?.can_manage_ctv || employeePermission?.can_manage_ctv || false;
 
       const isAllowedForStaff =
         currentPath === '/home' ||
@@ -59,6 +61,8 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
         (isManager && (currentPath === '/dashboard/onboarding' || currentPath.startsWith('/dashboard/onboarding/'))) ||
         (employeePermission?.can_manage_departments && (currentPath === '/dashboard/departments' || currentPath.startsWith('/dashboard/departments/'))) ||
         (employeePermission?.can_manage_positions && (currentPath === '/dashboard/positions' || currentPath.startsWith('/dashboard/positions/'))) ||
+        (isCtvManager && currentPath === '/dashboard/ctv') ||
+        (isCtvLeader && currentPath === '/dashboard/ctv') ||
         currentPath === '/dashboard/assigned-assets' ||
         currentPath === '/dashboard/ai' ||
         currentPath === '/dashboard/announcements';

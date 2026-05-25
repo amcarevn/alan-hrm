@@ -21,6 +21,7 @@ export interface User {
   permissions?: Permission[];
   is_super_admin?: boolean;
   is_superuser?: boolean;
+  is_ctv_leader?: boolean;
   
   // Additional fields from HRM backend
   employee_profile?: {
@@ -494,6 +495,7 @@ export interface EmployeePermissions {
   can_manage_leave_policies: boolean;
   can_view_reports: boolean;
   can_export_reports: boolean;
+  can_manage_ctv: boolean;
   has_any_permission: boolean;
   permission_summary: string;
 }
@@ -957,4 +959,75 @@ export interface CompanyUnit {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+// CTV (Cộng Tác Viên)
+export type CTVStatus = 'ACTIVE' | 'DISCUSSING' | 'INACTIVE';
+export type CTVWorkType = 'HIRE_IMAGE_MEDIA' | 'HIRE_PER_POST' | 'FREE_3_MONTHS';
+
+export interface CTV {
+  id: number;
+  ctv_id: string;
+  leader?: number | null;
+  leader_name?: string;
+  leader_code?: string;
+  assigned_employee: number | null;
+  assigned_employee_name?: string;
+  assigned_employee_code?: string;
+  assigned_employee_doctor_team?: string;
+  name: string;
+  phone: string;
+  service?: string;
+  date_received?: string;
+  first_post_time?: string;
+  end_time?: string;
+  work_type?: CTVWorkType | '';
+  work_type_display?: string;
+  status: CTVStatus;
+  status_display?: string;
+  payment_date?: string | null;
+  next_payment_date?: string | null;
+  note_marketing?: string;
+  previous_doctor?: string;
+  cccd_number?: string;
+  email?: string;
+  bank_account?: string;
+  bank_name?: string;
+  cccd_image?: string | null;
+  cccd_image_url?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CTVCreateData {
+  leader?: number | null;
+  assigned_employee?: number | null;
+  name: string;
+  phone: string;
+  service?: string;
+  date_received?: string;
+  first_post_time?: string;
+  end_time?: string;
+  work_type?: string;
+  status?: string;
+  note_marketing?: string;
+  previous_doctor?: string;
+  cccd_number?: string;
+  email?: string;
+  bank_account?: string;
+  bank_name?: string;
+}
+
+export interface CTVStats {
+  total: number;
+  active: number;
+  discussing: number;
+  inactive: number;
+}
+
+export interface CTVFilterEmployee {
+  id: number;
+  employee_id: string;
+  full_name: string;
+  doctor_team?: string | null;
 }

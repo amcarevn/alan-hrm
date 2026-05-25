@@ -31,6 +31,7 @@ import {
   GiftIcon,
   MagnifyingGlassIcon,
   MegaphoneIcon,
+  UsersIcon,
 } from '@heroicons/react/24/outline';
 
 // Define interface for navigation items
@@ -110,6 +111,15 @@ const navigationItems: NavigationItem[] = [
         roles: ['ADMIN', 'HR'],
       },
     ],
+  },
+
+  // --- Quản lý CTV ---
+  {
+    name: 'Quản lý CTV',
+    href: '/dashboard/ctv',
+    icon: UsersIcon,
+    roles: ['ADMIN'],
+    employeePermission: 'can_manage_ctv',
   },
 
   // --- Cơ cấu tổ chức ---
@@ -391,6 +401,14 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
   const canAccessItem = (item: NavigationItem): boolean => {
     // 1. Check if item requires a specific employee permission
     if (item.employeePermission && employeePermission?.[item.employeePermission as keyof typeof employeePermission]) {
+      return true;
+    }
+    // Fallback: check hrm_user (available immediately after login, before getProfile)
+    if (item.employeePermission === 'can_manage_ctv' && user?.hrm_user?.can_manage_ctv) {
+      return true;
+    }
+    // Special case: CTV leaders can always access CTV management
+    if (item.href === '/dashboard/ctv' && (user?.is_ctv_leader || user?.hrm_user?.is_ctv_leader)) {
       return true;
     }
     // 2. Check department access
