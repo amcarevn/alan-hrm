@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { employeesAPI, departmentsAPI, Employee, sendAccountEmailsAPI } from '../utils/api';
+import { WORK_LOCATION_OPTIONS } from '../constants/onboarding';
+
+const WORK_LOCATION_LABELS: Record<string, string> = Object.fromEntries(
+  WORK_LOCATION_OPTIONS.map(o => [o.value, o.label])
+);
 import { useAuth } from '../contexts/AuthContext';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
 import Pagination from '../components/Pagination';
@@ -487,7 +492,7 @@ const EmployeeList: React.FC = () => {
           block: emp.block || '',
           section: emp.section || '',
           rank: emp.rank || '',
-          work_location: emp.work_location || '',
+          work_location: emp.work_location ? (WORK_LOCATION_LABELS[emp.work_location] || emp.work_location) : '',
           doctor_team: emp.doctor_team || '',
           work_form: emp.work_form || '',
           work_type: (() => {
