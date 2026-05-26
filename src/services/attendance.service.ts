@@ -1,4 +1,4 @@
-import { managementApi } from '../utils/api';
+import { managementApi, API_BASE_URL } from '../utils/api';
 
 let attendanceStatsPromises: Record<string, Promise<AttendanceStats>> = {};
 let calendarViewPromises: Record<string, Promise<CalendarViewData>> = {};
@@ -967,6 +967,24 @@ class AttendanceService {
       console.error('Error editing attendance:', error);
       throw error;
     }
+  }
+
+  /**
+   * Đồng bộ chấm công từ lavian-spa về HRM
+   */
+  /**
+   * Streaming sync từ Lavian — trả về ReadableStreamDefaultReader để đọc SSE events.
+   * Dùng fetch thay vì axios vì axios không hỗ trợ streaming.
+   * Token lấy từ cùng nguồn với managementApi interceptor.
+   */
+  async syncFromLavianStream(year: number, month: number): Promise<ReadableStreamDefaultReader<Uint8Array>> {
+    const token = localStorage.getItem('accessToken');
+    const resp = await fetch(
+      `${API_BASE_URL}/api/v1/hrm/attendance/sync-from-lavian/stream/?year=${year}&month=${month}`,
+      { headers: { Authorization: `Bearer ${token ?? ''}` } }
+    );
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return resp.body!.getReader();
   }
 
   /**
