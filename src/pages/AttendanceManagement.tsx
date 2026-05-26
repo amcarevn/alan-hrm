@@ -28,6 +28,7 @@ import {
   ArrowLeftOnRectangleIcon,
   ArrowRightOnRectangleIcon,
   ArrowsRightLeftIcon,
+  ArrowPathIcon,
   CheckIcon,
   VideoCameraIcon as VideoIcon,
   HomeIcon,
@@ -74,6 +75,20 @@ const AttendanceManagement: React.FC = () => {
   const [refreshDataTrigger, setRefreshDataTrigger] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+
+  // === Đồng bộ chấm công ===
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [syncTotal, setSyncTotal] = useState(0);
+  const [syncEmployeeList, setSyncEmployeeList] = useState<Array<{
+    code: string; name: string; status: 'pending' | 'synced' | 'not_found' | 'error' | 'skipped';
+  }>>([]);
+  const [syncResult, setSyncResult] = useState<{
+    type: 'success' | 'error';
+    message: string;
+    stats?: { synced_employees: number; synced_days: number; skipped: number; errors: number; not_found: number };
+  } | null>(null);
 
   // === Lịch sử đơn tháng ===
   const [showRequestHistoryDrawer, setShowRequestHistoryDrawer] = useState(false);
@@ -509,7 +524,8 @@ const AttendanceManagement: React.FC = () => {
 
   // Check if user has permission to upload attendance files
   // For now, only ADMIN role can upload
-  const canUploadAttendance = user?.role === 'ADMIN';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+  const canUploadAttendance = isAdmin;
 
   // Effect 1: Fetch employee only on mount
   useEffect(() => {
@@ -1340,6 +1356,67 @@ const AttendanceManagement: React.FC = () => {
     }
   };
 
+  const handleSyncAttendance = async () => {
+    setIsSyncing(true);
+    setSyncResult(null);
+    setSyncProgress(0);
+    setSyncTotal(0);
+    setSyncEmployeeList([]);
+
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth() + 1;
+
+    try {
+      const reader = await attendanceService.syncFromLavianStream(year, month);
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === 'start') {
+              setSyncTotal(event.total);
+            } else if (event.type === 'progress') {
+              setSyncProgress(event.index + 1);
+              setSyncEmployeeList(prev => {
+                const next = [...prev];
+                const existing = next.findIndex(e => e.code === event.code);
+                const item = { code: event.code, name: event.name, status: event.status };
+                if (existing >= 0) next[existing] = item; else next.push(item);
+                return next;
+              });
+            } else if (event.type === 'done') {
+              const { synced_employees = 0, synced_days = 0, skipped = 0, errors = 0, not_found = 0 } = event.result;
+              setSyncResult({
+                type: 'success',
+                message: `Đồng bộ hoàn tất tháng ${month}/${year}`,
+                stats: { synced_employees, synced_days, skipped, errors, not_found },
+              });
+              await refreshAllData();
+            } else if (event.type === 'error') {
+              throw new Error(event.message);
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (err: any) {
+      setSyncResult({
+        type: 'error',
+        message: err?.message || 'Đồng bộ thất bại. Vui lòng thử lại.',
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setSelectedFile(file);
@@ -1421,12 +1498,26 @@ const AttendanceManagement: React.FC = () => {
             viên.
           </p>
         </div>
-        <button
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Nút Đồng bộ chấm công — chỉ ADMIN */}
+          {isAdmin && (
+            <button
+              onClick={() => { setSyncResult(null); setShowSyncModal(true); }}
+              disabled={isSyncing}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-emerald-200 text-emerald-700 rounded-xl shadow-sm hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-md transition-all duration-200 font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <ArrowPathIcon className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Đồng bộ chấm công</span>
+              <span className="sm:hidden">Đồng bộ</span>
+            </button>
+          )}
+
+          <button
           onClick={() => {
             setShowRequestHistoryDrawer(true);
             setHistoryActiveTab('all');
           }}
-          className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white border border-violet-200 text-violet-700 rounded-xl shadow-sm hover:bg-violet-50 hover:border-violet-300 hover:shadow-md transition-all duration-200 font-medium text-sm"
+          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-violet-200 text-violet-700 rounded-xl shadow-sm hover:bg-violet-50 hover:border-violet-300 hover:shadow-md transition-all duration-200 font-medium text-sm"
         >
           <ClipboardDocumentListIcon className="h-5 w-5" />
           <span className="hidden sm:inline">Lịch sử đơn tháng</span>
@@ -1437,8 +1528,170 @@ const AttendanceManagement: React.FC = () => {
               {monthlyRequestHistory.explanations.length + monthlyRequestHistory.registrations.length + monthlyRequestHistory.onlineWorks.length}
             </span>
           )}
-        </button>
+          </button>
+        </div>
       </div>
+
+      {/* Modal Đồng bộ chấm công */}
+      {showSyncModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+            {syncResult ? (
+              <>
+                {/* Kết quả */}
+                <div className="flex flex-col items-center text-center gap-3 mb-5">
+                  {syncResult.type === 'success' ? (
+                    <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <CheckCircleIcon className="h-8 w-8 text-emerald-500" />
+                    </div>
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
+                      <ExclamationCircleIcon className="h-8 w-8 text-red-500" />
+                    </div>
+                  )}
+                  <p className={`font-semibold text-base ${syncResult.type === 'success' ? 'text-emerald-700' : 'text-red-700'}`}>
+                    {syncResult.message}
+                  </p>
+                  {syncResult.type === 'success' && syncResult.stats && (
+                    <div className="w-full grid grid-cols-2 gap-2 mt-1">
+                      <div className="bg-emerald-50 rounded-xl px-3 py-2 text-center">
+                        <p className="text-xl font-bold text-emerald-700">{syncResult.stats.synced_employees}</p>
+                        <p className="text-xs text-emerald-600">Nhân viên đồng bộ</p>
+                      </div>
+                      <div className="bg-blue-50 rounded-xl px-3 py-2 text-center">
+                        <p className="text-xl font-bold text-blue-700">{syncResult.stats.synced_days}</p>
+                        <p className="text-xs text-blue-600">Ngày đồng bộ</p>
+                      </div>
+                      <div className="bg-amber-50 rounded-xl px-3 py-2 text-center">
+                        <p className="text-xl font-bold text-amber-600">{syncResult.stats.not_found}</p>
+                        <p className="text-xs text-amber-500">Không tìm thấy NV</p>
+                      </div>
+                      <div className="bg-red-50 rounded-xl px-3 py-2 text-center">
+                        <p className="text-xl font-bold text-red-600">{syncResult.stats.errors}</p>
+                        <p className="text-xs text-red-500">Lỗi</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Danh sách NV đã xử lý */}
+                {syncEmployeeList.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-gray-500 mb-2">Chi tiết nhân viên ({syncEmployeeList.length})</p>
+                    <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-100 divide-y divide-gray-50">
+                      {syncEmployeeList.map((emp, i) => (
+                        <div key={i} className="flex items-center justify-between px-3 py-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs text-gray-400 shrink-0">{emp.code}</span>
+                            <span className="text-sm text-gray-700 truncate">{emp.name}</span>
+                          </div>
+                          <span className={`text-xs font-medium shrink-0 ml-2 ${
+                            emp.status === 'synced' ? 'text-emerald-600' :
+                            emp.status === 'not_found' ? 'text-amber-600' :
+                            emp.status === 'error' ? 'text-red-500' : 'text-gray-400'
+                          }`}>
+                            {emp.status === 'synced' ? '✓ Đồng bộ' :
+                             emp.status === 'not_found' ? '— Không tìm thấy' :
+                             emp.status === 'error' ? '✗ Lỗi' : 'Bỏ qua'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => { setShowSyncModal(false); setSyncEmployeeList([]); }}
+                  className="w-full py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm transition-colors"
+                >
+                  Đóng
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col items-center text-center gap-3 mb-5">
+                  <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <ArrowPathIcon className={`h-8 w-8 text-emerald-600 ${isSyncing ? 'animate-spin' : ''}`} />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">Đồng bộ chấm công</h3>
+                  <p className="text-sm text-gray-500">
+                    Hệ thống sẽ lấy dữ liệu chấm công tháng{' '}
+                    <span className="font-semibold text-gray-700">
+                      {currentDate.getMonth() + 1}/{currentDate.getFullYear()}
+                    </span>{' '}
+                    từ Lavian và cập nhật vào HRM.
+                  </p>
+                </div>
+
+                {/* Progress + danh sách đang sync */}
+                {isSyncing && (
+                  <div className="mb-5">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                      <span>Đang đồng bộ...</span>
+                      <span>{syncProgress}{syncTotal > 0 ? `/${syncTotal}` : ''} nhân viên</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden mb-3">
+                      <div
+                        className="h-2 rounded-full bg-emerald-500 transition-all duration-200 ease-out"
+                        style={{ width: syncTotal > 0 ? `${Math.round((syncProgress / syncTotal) * 100)}%` : '5%' }}
+                      />
+                    </div>
+                    {/* Danh sách NV real-time */}
+                    {syncEmployeeList.length > 0 && (
+                      <div className="max-h-52 overflow-y-auto rounded-xl border border-gray-100 divide-y divide-gray-50">
+                        {[...syncEmployeeList].reverse().map((emp, i) => (
+                          <div key={i} className="flex items-center justify-between px-3 py-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs text-gray-400 shrink-0">{emp.code}</span>
+                              <span className="text-sm text-gray-700 truncate">{emp.name}</span>
+                            </div>
+                            <span className={`text-xs font-medium shrink-0 ml-2 ${
+                              emp.status === 'synced' ? 'text-emerald-600' :
+                              emp.status === 'not_found' ? 'text-amber-500' :
+                              emp.status === 'error' ? 'text-red-500' : 'text-gray-400'
+                            }`}>
+                              {emp.status === 'synced' ? '✓' :
+                               emp.status === 'not_found' ? '—' :
+                               emp.status === 'error' ? '✗' : '…'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowSyncModal(false)}
+                    disabled={isSyncing}
+                    className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm transition-colors disabled:opacity-50"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={handleSyncAttendance}
+                    disabled={isSyncing}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {isSyncing ? (
+                      <>
+                        <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                        Đang đồng bộ...
+                      </>
+                    ) : (
+                      <>
+                        <ArrowPathIcon className="h-4 w-4" />
+                        Đồng bộ ngay
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Banner hạn chốt công */}
       <FinalizationLockBanner
@@ -1447,160 +1700,6 @@ const AttendanceManagement: React.FC = () => {
         bypassRoles={['ADMIN']}
       />
 
-      {/* Upload Section - Only visible for users with permission */}
-      {canUploadAttendance && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                Upload file chấm công
-              </h2>
-              <p className="text-gray-500 text-sm">
-                Upload file Excel hoặc CSV để import dữ liệu chấm công
-              </p>
-            </div>
-          </div>
-
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-            <div className="flex flex-col items-center">
-              <svg
-                className="w-12 h-12 text-gray-400 mb-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
-
-              <p className="text-gray-600 mb-2">
-                Kéo thả file vào đây hoặc click để chọn file
-              </p>
-              <p className="text-gray-500 text-sm mb-4">
-                Hỗ trợ file Excel (.xlsx, .xls) hoặc CSV (.csv)
-              </p>
-
-              <div className="flex items-center space-x-4">
-                <label className="cursor-pointer bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">
-                  <span>Chọn file</span>
-                  <input
-                    id="attendance-file"
-                    type="file"
-                    className="hidden"
-                    accept=".xlsx,.xls,.csv"
-                    onChange={handleFileChange}
-                    disabled={uploading}
-                  />
-                </label>
-
-                {selectedFile && (
-                  <button
-                    onClick={handleUpload}
-                    disabled={uploading}
-                    className={`px-4 py-2 rounded-md transition-colors ${uploading
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      }`}
-                  >
-                    {uploading ? 'Đang upload...' : 'Upload'}
-                  </button>
-                )}
-              </div>
-
-              {selectedFile && (
-                <div className="mt-4 p-3 bg-primary-50 rounded-md w-full max-w-md">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <svg
-                        className="w-5 h-5 text-primary-500 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        />
-                      </svg>
-                      <span className="text-gray-700 font-medium truncate">
-                        {selectedFile.name}
-                      </span>
-                    </div>
-                    <span className="text-gray-500 text-sm">
-                      {(selectedFile.size / 1024).toFixed(2)} KB
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {uploadMessage && (
-                <div
-                  className={`mt-4 p-3 rounded-md w-full max-w-md ${uploadMessage.type === 'success'
-                    ? 'bg-emerald-50 text-emerald-800'
-                    : 'bg-red-50 text-red-800'
-                    }`}
-                >
-                  <div className="flex items-center">
-                    {uploadMessage.type === 'success' ? (
-                      <svg
-                        className="w-5 h-5 text-emerald-500 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="w-5 h-5 text-red-500 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    )}
-                    <span>{uploadMessage.text}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-4 text-sm text-gray-500">
-            <p className="font-medium mb-1">Hướng dẫn:</p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>
-                File cần có cấu trúc cột: Mã NV, Tên NV, Ngày, Giờ vào, Giờ ra,
-                Ghi chú
-              </li>
-              <li>Định dạng ngày: DD/MM/YYYY hoặc YYYY-MM-DD</li>
-              <li>Định dạng giờ: HH:MM (24h)</li>
-              <li>Dung lượng file tối đa: 10MB</li>
-            </ul>
-          </div>
-        </div>
-      )}
 
       {/* Skeleton Loading for Stats */}
       {loading && initialLoading && (
