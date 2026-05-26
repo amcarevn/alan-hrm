@@ -11,6 +11,7 @@ import { SelectBox } from '@/components/LandingLayout/SelectBox';
 import { WORK_LOCATION_OPTIONS } from '../constants/onboarding';
 import onboardingService from '../services/onboarding.service';
 import { toDisplayDate, toApiDate } from '../utils/dateUtils';
+import DateInput from '../components/DateInput';
 import {
   UserIcon,
   BriefcaseIcon,
@@ -642,8 +643,7 @@ const EmployeeEdit: React.FC = () => {
             />
 
             <Field label="Ngày sinh">
-              <input type="text" placeholder="DD/MM/YYYY" name="date_of_birth" value={formData.date_of_birth}
-                onChange={handleInput} className={inputClass} />
+              <DateInput name="date_of_birth" value={formData.date_of_birth} onChange={handleInput} className={inputClass} />
             </Field>
 
             <Field label="Số điện thoại">
@@ -702,18 +702,15 @@ const EmployeeEdit: React.FC = () => {
             />
 
             <Field label="Ngày bắt đầu">
-              <input type="text" placeholder="DD/MM/YYYY" name="start_date" value={formData.start_date}
-                onChange={handleInput} className={inputClass} />
+              <DateInput name="start_date" value={formData.start_date} onChange={handleInput} className={inputClass} />
             </Field>
 
             <Field label="Ngày nghỉ việc">
-              <input type="text" placeholder="DD/MM/YYYY" name="end_date" value={formData.end_date}
-                onChange={handleInput} className={inputClass} />
+              <DateInput name="end_date" value={formData.end_date} onChange={handleInput} className={inputClass} />
             </Field>
 
             <Field label="Ngày lên chính thức">
-              <input type="text" placeholder="DD/MM/YYYY" name="official_start_date" value={formData.official_start_date}
-                onChange={handleInput} className={inputClass} />
+              <DateInput name="official_start_date" value={formData.official_start_date} onChange={handleInput} className={inputClass} />
             </Field>
 
             <SelectBox
@@ -891,8 +888,7 @@ const EmployeeEdit: React.FC = () => {
             </Field>
 
             <Field label="Ngày cấp CCCD">
-              <input type="text" placeholder="DD/MM/YYYY" name="cccd_issue_date" value={formData.cccd_issue_date}
-                onChange={handleInput} className={inputClass} />
+              <DateInput name="cccd_issue_date" value={formData.cccd_issue_date} onChange={handleInput} className={inputClass} />
             </Field>
 
             <SelectBox
@@ -1008,8 +1004,7 @@ const EmployeeEdit: React.FC = () => {
             </Field>
 
             <Field label="Ngày kết thúc thử việc">
-              <input type="text" placeholder="DD/MM/YYYY" name="probation_end_date" value={formData.probation_end_date}
-                onChange={handleInput} className={inputClass} />
+              <DateInput name="probation_end_date" value={formData.probation_end_date} onChange={handleInput} className={inputClass} />
             </Field>
 
             <SelectBox
@@ -1021,13 +1016,11 @@ const EmployeeEdit: React.FC = () => {
             />
 
             <Field label="Ngày bắt đầu hợp đồng">
-              <input type="text" placeholder="DD/MM/YYYY" name="contract_start_date" value={formData.contract_start_date}
-                onChange={handleInput} className={inputClass} />
+              <DateInput name="contract_start_date" value={formData.contract_start_date} onChange={handleInput} className={inputClass} />
             </Field>
 
             <Field label="Ngày kết thúc hợp đồng">
-              <input type="text" placeholder="DD/MM/YYYY" name="contract_end_date" value={formData.contract_end_date}
-                onChange={handleInput} className={inputClass} />
+              <DateInput name="contract_end_date" value={formData.contract_end_date} onChange={handleInput} className={inputClass} />
             </Field>
 
             <Field label="Tỷ lệ % doanh số hưởng">
@@ -1105,8 +1098,7 @@ const EmployeeEdit: React.FC = () => {
             </Field>
 
             <Field label="Ngày sinh">
-              <input type="text" placeholder="DD/MM/YYYY" name="emergency_contact_dob" value={formData.emergency_contact_dob}
-                onChange={handleInput} className={inputClass} />
+              <DateInput name="emergency_contact_dob" value={formData.emergency_contact_dob} onChange={handleInput} className={inputClass} />
             </Field>
 
             <Field label="Nghề nghiệp">
