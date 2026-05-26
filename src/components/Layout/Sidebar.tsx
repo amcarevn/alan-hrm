@@ -106,7 +106,7 @@ const navigationItems: NavigationItem[] = [
         roles: ['ADMIN', 'HR'],
       },
       {
-        name: 'Reset mật khẩu',
+        name: 'Cấp lại mật khẩu',
         href: '/dashboard/password-reset',
         icon: KeyIcon,
         roles: ['ADMIN', 'HR'],

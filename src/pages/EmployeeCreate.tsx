@@ -86,7 +86,7 @@ const EmployeeCreate: React.FC = () => {
 
   const loadPositions = async () => {
     try {
-      const response = await positionsAPI.list();
+      const response = await positionsAPI.list({ page_size: 1000 });
       setPositions(response.results);
     } catch (err) {
       console.error('Failed to load positions:', err);
@@ -444,13 +444,12 @@ const EmployeeCreate: React.FC = () => {
               <SelectBox
                 label="Phòng ban"
                 value={formData.department_id || ''}
-                options={[
-                  { value: '', label: 'Chọn phòng ban' },
-                  ...departments.map((dept) => ({
-                    value: dept.id,
-                    label: dept.name,
-                  })),
-                ]}
+                placeholder="Chọn phòng ban"
+                searchable
+                options={departments.map((dept) => ({
+                  value: dept.id,
+                  label: dept.name,
+                }))}
                 onChange={(val) =>
                   setFormData({ ...formData, department_id: val })
                 }
@@ -459,10 +458,9 @@ const EmployeeCreate: React.FC = () => {
               <SelectBox
                 label="Chức vụ"
                 value={formData.position_id}
-                options={[
-                  { value: undefined, label: 'Chọn chức vụ' },
-                  ...positions.map((p) => ({ value: p.id, label: p.title })),
-                ]}
+                placeholder="Chọn chức vụ"
+                searchable
+                options={positions.map((p) => ({ value: p.id, label: p.title }))}
                 onChange={(val) =>
                   setFormData({ ...formData, position_id: val })
                 }
@@ -471,19 +469,12 @@ const EmployeeCreate: React.FC = () => {
               <SelectBox
                 label="Quản lý trực tiếp"
                 value={formData.manager_id}
-                options={[
-                  { value: undefined, label: 'Không có quản lý' },
-                  ...employees
-                    .filter(
-                      (emp) =>
-                        positions.find((p) => p.id === emp.position?.id)
-                          ?.is_management === true
-                    )
-                    .map((emp) => ({
-                      value: emp.id,
-                      label: `${emp.full_name} (${emp.employee_id}) - ${emp.department?.name ?? 'Chưa có phòng ban'}`,
-                    })),
-                ]}
+                placeholder="Tìm kiếm quản lý..."
+                searchable
+                options={employees.map((emp) => ({
+                  value: emp.id,
+                  label: `${emp.full_name} (${emp.employee_id}) - ${emp.department?.name ?? 'Chưa có phòng ban'}`,
+                }))}
                 onChange={(val) =>
                   setFormData({ ...formData, manager_id: val })
                 }

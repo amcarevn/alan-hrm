@@ -129,8 +129,8 @@ const InfoField: React.FC<{ label: string; value?: any; highlight?: boolean; ful
   const isEmpty = display === 'Chưa có dữ liệu';
   return (
     <div className={full ? 'col-span-2' : ''}>
-      <label className="text-xs text-gray-400">{label}</label>
-      <p className={`text-sm ${isEmpty ? 'text-gray-400 italic font-normal' : highlight ? 'font-semibold text-primary-600' : 'font-medium text-gray-900'}`}>
+      <label className="text-sm font-semibold text-gray-700">{label}</label>
+      <p className={`text-base mt-0.5 ${isEmpty ? 'text-gray-400 italic font-normal' : highlight ? 'font-semibold text-primary-600' : 'font-semibold text-black'}`}>
         {display}
       </p>
     </div>
@@ -233,7 +233,7 @@ const EmployeeShow: React.FC = () => {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">{employee.full_name}</h1>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm font-semibold text-gray-800 mt-1">
               {employee.position?.title || 'N/A'} — {employee.department?.name || 'N/A'}
             </p>
           </div>
@@ -413,15 +413,15 @@ const EmployeeShow: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs text-gray-400">Tên đăng nhập</label>
+                <label className="text-sm font-semibold text-gray-700">Tên đăng nhập</label>
                 <p className="text-sm font-medium text-gray-900">{employee.user.username || 'Chưa có tài khoản'}</p>
               </div>
               <div>
-                <label className="text-xs text-gray-400">Email</label>
+                <label className="text-sm font-semibold text-gray-700">Email</label>
                 <p className="text-sm font-medium text-gray-900">{employee.user.email || 'Chưa cập nhật'}</p>
               </div>
               <div>
-                <label className="text-xs text-gray-400">Nhân viên HR</label>
+                <label className="text-sm font-semibold text-gray-700">Nhân viên HR</label>
                 <p className="text-sm font-medium text-gray-900">{employee.is_hr ? 'Có' : 'Không'}</p>
               </div>
             </div>
