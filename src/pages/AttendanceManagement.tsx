@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AttendanceCalendar from '../components/AttendanceCalendar';
 import FinalizationLockBanner from '../components/FinalizationLockBanner';
@@ -1533,7 +1534,7 @@ const AttendanceManagement: React.FC = () => {
       </div>
 
       {/* Modal Đồng bộ chấm công */}
-      {showSyncModal && (
+      {showSyncModal && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
             {syncResult ? (
@@ -1690,7 +1691,8 @@ const AttendanceManagement: React.FC = () => {
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Banner hạn chốt công */}
