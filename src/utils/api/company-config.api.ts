@@ -180,9 +180,32 @@ export const companyConfigAPI = {
     message: string;
     shift: ShiftConfig;
   }> => {
+    // Merge với danh sách hiện tại để tránh set() ghi đè người cũ
+    const current = await managementApi.get(`/api-hrm/shift-configs/${shiftConfigId}/`);
+    const payload: typeof data = {};
+
+    if (data.employee_ids) {
+      const existing: number[] = (current.data.apply_to_employees || []).map((e: any) =>
+        typeof e === 'number' ? e : e.id
+      );
+      payload.employee_ids = [...new Set([...existing, ...data.employee_ids])];
+    }
+    if (data.position_ids) {
+      const existing: number[] = (current.data.apply_to_positions || []).map((e: any) =>
+        typeof e === 'number' ? e : e.id
+      );
+      payload.position_ids = [...new Set([...existing, ...data.position_ids])];
+    }
+    if (data.department_ids) {
+      const existing: number[] = (current.data.apply_to_departments || []).map((e: any) =>
+        typeof e === 'number' ? e : e.id
+      );
+      payload.department_ids = [...new Set([...existing, ...data.department_ids])];
+    }
+
     const response: AxiosResponse = await managementApi.post(
       `/api-hrm/shift-configs/${shiftConfigId}/assign/`,
-      data
+      payload
     );
     return response.data;
   },
