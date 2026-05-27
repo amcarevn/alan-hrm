@@ -216,6 +216,7 @@ const IndividualMode: React.FC<{
   const [filterEnd, setFilterEnd] = useState('');
   const [assigning, setAssigning] = useState<number | null>(null);
   const [removing, setRemoving] = useState<number | null>(null);
+  const [shiftSearch, setShiftSearch] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -297,6 +298,7 @@ const IndividualMode: React.FC<{
     if (assignedIds.has(s.id)) return false;
     if (filterStart && s.start_time !== filterStart) return false;
     if (filterEnd && s.end_time !== filterEnd) return false;
+    if (shiftSearch && !s.name.toLowerCase().includes(shiftSearch.toLowerCase())) return false;
     return true;
   });
   const isMatch = (s: ShiftConfig) =>
@@ -425,6 +427,25 @@ const IndividualMode: React.FC<{
             <h2 className="text-sm font-bold text-gray-900">Gán ca làm mới</h2>
           </div>
 
+          <div className="mb-4 relative">
+            <MagnifyingGlassIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={shiftSearch}
+              onChange={(e) => setShiftSearch(e.target.value)}
+              placeholder="Tìm ca theo tên..."
+              className="input-field pl-9"
+            />
+            {shiftSearch && (
+              <button
+                onClick={() => setShiftSearch('')}
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
           <div className="mb-4 grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -468,7 +489,7 @@ const IndividualMode: React.FC<{
             <div className="text-center py-6">
               <InformationCircleIcon className="mx-auto h-10 w-10 text-gray-200 mb-2" />
               <p className="text-sm text-gray-400">
-                {filterStart || filterEnd ? 'Không có ca phù hợp với giờ đã chọn.' : 'Tất cả ca làm đã được gán.'}
+                {shiftSearch ? `Không tìm thấy ca nào khớp "${shiftSearch}".` : filterStart || filterEnd ? 'Không có ca phù hợp với giờ đã chọn.' : 'Tất cả ca làm đã được gán.'}
               </p>
             </div>
           ) : (
@@ -522,6 +543,7 @@ const EntityMode: React.FC<{
   const [filterStart, setFilterStart] = useState('');
   const [filterEnd, setFilterEnd] = useState('');
   const [assigning, setAssigning] = useState<number | null>(null);
+  const [shiftSearch, setShiftSearch] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -584,6 +606,7 @@ const EntityMode: React.FC<{
   const filteredShifts = allShifts.filter((s) => {
     if (filterStart && s.start_time !== filterStart) return false;
     if (filterEnd && s.end_time !== filterEnd) return false;
+    if (shiftSearch && !s.name.toLowerCase().includes(shiftSearch.toLowerCase())) return false;
     return true;
   });
   const isMatch = (s: ShiftConfig) =>
@@ -673,6 +696,25 @@ const EntityMode: React.FC<{
             Tất cả nhân viên thuộc {label} này sẽ áp dụng ca được chọn (nếu không có ca riêng cá nhân).
           </div>
 
+          <div className="mb-4 relative">
+            <MagnifyingGlassIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={shiftSearch}
+              onChange={(e) => setShiftSearch(e.target.value)}
+              placeholder="Tìm ca theo tên..."
+              className="input-field pl-9"
+            />
+            {shiftSearch && (
+              <button
+                onClick={() => setShiftSearch('')}
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
           <div className="mb-4 grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -715,7 +757,9 @@ const EntityMode: React.FC<{
           ) : sortedShifts.length === 0 ? (
             <div className="text-center py-6">
               <InformationCircleIcon className="mx-auto h-10 w-10 text-gray-200 mb-2" />
-              <p className="text-sm text-gray-400">Không có ca nào phù hợp với bộ lọc.</p>
+              <p className="text-sm text-gray-400">
+                {shiftSearch ? `Không tìm thấy ca nào khớp "${shiftSearch}".` : 'Không có ca nào phù hợp với bộ lọc.'}
+              </p>
             </div>
           ) : (
             <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
