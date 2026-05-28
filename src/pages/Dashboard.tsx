@@ -32,16 +32,13 @@ interface HRMDashboardStats {
   employee_stats: {
     total: number;
     active: number;
-    new_official_this_month: number;
     probation: number;
-    new_probation_this_month: number;
     inactive: number;
-    account_active: number;
     new_last_30_days: number;
     recent_hires: number;
     gender_distribution: { male: number; female: number; other: number };
   };
-  department_stats: Array<{ id: number; name: string; code: string; employee_count: number; official_count: number; probation_count: number }>;
+  department_stats: Array<{ id: number; name: string; code: string; employee_count: number }>;
   asset_stats: {
     total: number;
     in_use: number;
@@ -95,44 +92,16 @@ const DonutCard = ({
   data,
   centerValue,
   centerLabel,
-  maxItems = 0,
 }: {
   title: string;
   sub?: string;
   data: { name: string; value: number; color: string }[];
   centerValue: string | number;
   centerLabel: string;
-  maxItems?: number;
 }) => {
-  const [showAll, setShowAll] = React.useState(false);
   const total = data.reduce((s, d) => s + d.value, 0);
   const numericCenter = typeof centerValue === 'number' ? centerValue : 0;
   const { endAngle, startAngle, animationDuration } = usePieAnimation();
-
-  const visibleData = data.filter(d => d.value > 0);
-  const limitedData = maxItems > 0 ? visibleData.slice(0, maxItems) : visibleData;
-  const extraData = maxItems > 0 ? visibleData.slice(maxItems) : [];
-
-  const LegendRow = ({ item }: { item: { name: string; value: number; color: string } }) => {
-    const pct = total > 0 ? (item.value / total) * 100 : 0;
-    return (
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-            <span className="text-[11px] text-gray-600 truncate">{item.name}</span>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-            <span className="text-[11px] font-bold text-gray-900 tabular-nums">
-              <AnimatedNum value={item.value} />
-            </span>
-            <span className="text-[10px] text-gray-400 w-8 text-right tabular-nums">{pct.toFixed(0)}%</span>
-          </div>
-        </div>
-        <ProgressBar pct={pct} color={item.color} />
-      </div>
-    );
-  };
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-5">
@@ -178,29 +147,32 @@ const DonutCard = ({
           </ResponsiveContainer>
         </div>
 
-        {/* Legend — top items */}
-        <div className="flex-1 min-w-0 space-y-2.5">
-          {limitedData.map(item => <LegendRow key={item.name} item={item} />)}
-          {extraData.length > 0 && (
-            <button
-              onClick={() => setShowAll(v => !v)}
-              className="mt-1 text-[11px] font-semibold text-primary-600 hover:text-primary-800 transition-colors flex items-center gap-1"
-            >
-              {showAll ? 'Thu gọn' : `Xem tất cả ${visibleData.length} phòng ban`}
-              <span className={`inline-block transition-transform duration-200 ${showAll ? 'rotate-180' : ''}`}>▾</span>
-            </button>
-          )}
+        {/* Legend */}
+        <div className="flex-1 space-y-2.5 min-w-0">
+          {data.filter(d => d.value > 0).map((item) => {
+            const pct = total > 0 ? (item.value / total) * 100 : 0;
+            return (
+              <div key={item.name}>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                    <span className="text-[11px] text-gray-600 truncate">{item.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                    <span className="text-[11px] font-bold text-gray-900 tabular-nums">
+                      <AnimatedNum value={item.value} />
+                    </span>
+                    <span className="text-[10px] text-gray-400 w-8 text-right tabular-nums">
+                      {pct.toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+                <ProgressBar pct={pct} color={item.color} />
+              </div>
+            );
+          })}
         </div>
       </div>
-
-      {/* Expanded — full width grid tất cả phòng ban */}
-      {showAll && extraData.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-2.5 max-h-64 overflow-y-auto pr-1">
-            {visibleData.map(item => <LegendRow key={item.name} item={item} />)}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -310,8 +282,17 @@ const Dashboard = () => {
     { name: 'Bảo trì', value: stats.asset_stats.under_maintenance, color: '#f59e0b' },
   ];
 
+  const sortedDepts = [...stats.department_stats].sort((a, b) => b.employee_count - a.employee_count);
+  const deptDonutData = [
+    ...sortedDepts.slice(0, 5).map((d, i) => ({ name: d.name, value: d.employee_count, color: CHART_COLORS[i] })),
+    ...(sortedDepts.length > 5
+      ? [{ name: 'Khác', value: sortedDepts.slice(5).reduce((s, d) => s + d.employee_count, 0), color: '#9ca3af' }]
+      : []),
+  ];
+
   const deptBarData = [...stats.department_stats]
     .sort((a, b) => b.employee_count - a.employee_count)
+    .slice(0, 6)
     .map((d, i) => ({ name: d.name, value: d.employee_count, color: CHART_COLORS[i % CHART_COLORS.length] }));
 
   const assetTypeData = [...stats.asset_stats.type_distribution]
@@ -357,18 +338,15 @@ const Dashboard = () => {
       {/* ── Tab: Tổng quan ── */}
       {activeTab === 'overview' && (
         <div className="flex flex-col gap-5 flex-1">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <StatCard name="Tổng nhân viên" rawValue={stats.employee_stats.total} formatter={formatNumber}
-              subtext=""
-              icon={UsersIcon} iconBg="bg-primary-100 text-primary-600" trend={(stats.employee_stats.new_official_this_month ?? 0) + stats.employee_stats.new_last_30_days} />
-            <StatCard name="Chính thức" rawValue={stats.employee_stats.active} formatter={formatNumber}
-              subtext=""
-              icon={UsersIcon} iconBg="bg-emerald-100 text-emerald-600" trend={stats.employee_stats.new_official_this_month ?? 0} />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard name="Tổng nhân viên" rawValue={stats.employee_stats.active + stats.employee_stats.probation} formatter={formatNumber}
+              subtext={`${formatNumber(stats.employee_stats.active)} đang làm việc`}
+              icon={UsersIcon} iconBg="bg-primary-100 text-primary-600" trend={stats.trends.employee_growth} />
             <StatCard name="Thử việc" rawValue={stats.employee_stats.probation} formatter={formatNumber}
-              subtext=""
-              icon={UserPlusIcon} iconBg="bg-amber-100 text-amber-600" trend={stats.employee_stats.new_probation_this_month ?? 0} />
+              subtext={`${formatNumber(stats.employee_stats.new_last_30_days)} mới / 30 ngày`}
+              icon={UserPlusIcon} iconBg="bg-amber-100 text-amber-600" trend={null} />
             <StatCard name="Tài sản đang dùng" rawValue={stats.asset_stats.in_use} formatter={formatNumber}
-              subtext=""
+              subtext={`${formatNumber(stats.asset_stats.total)} tổng tài sản`}
               icon={ComputerDesktopIcon} iconBg="bg-emerald-100 text-emerald-600" trend={stats.trends.asset_growth} />
             <StatCard name="Giá trị tài sản" rawValue={stats.asset_stats.total_value} formatter={formatCurrency}
               subtext={`${formatNumber(stats.asset_stats.current_assignments)} đang gán`}
@@ -383,34 +361,32 @@ const Dashboard = () => {
       {/* ── Tab: Nhân viên ── */}
       {activeTab === 'employee' && (
         <div className="space-y-5">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard name="Tổng nhân viên" rawValue={stats.employee_stats.total} formatter={formatNumber}
-              subtext=""
-              icon={UsersIcon} iconBg="bg-primary-100 text-primary-600" trend={(stats.employee_stats.new_official_this_month ?? 0) + stats.employee_stats.new_last_30_days} />
-            <StatCard name="Chính thức" rawValue={stats.employee_stats.active} formatter={formatNumber}
-              subtext=""
-              icon={UsersIcon} iconBg="bg-emerald-100 text-emerald-600" trend={stats.employee_stats.new_official_this_month ?? 0} />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard name="Đang làm việc" rawValue={stats.employee_stats.active} formatter={formatNumber}
+              subtext={`Tổng ${formatNumber(stats.employee_stats.active + stats.employee_stats.probation)} nhân viên`}
+              icon={UsersIcon} iconBg="bg-primary-100 text-primary-600" trend={stats.trends.employee_growth} />
             <StatCard name="Thử việc" rawValue={stats.employee_stats.probation} formatter={formatNumber}
-              subtext=""
-              icon={UserPlusIcon} iconBg="bg-amber-100 text-amber-600" trend={stats.employee_stats.new_probation_this_month ?? 0} />
+              subtext={`${formatNumber(stats.employee_stats.new_last_30_days)} mới / 30 ngày`}
+              icon={UserPlusIcon} iconBg="bg-amber-100 text-amber-600" trend={null} />
             <StatCard name="Mới tuyển dụng" rawValue={stats.employee_stats.recent_hires} formatter={formatNumber}
               subtext="Trong 30 ngày gần nhất"
               icon={UserGroupIcon} iconBg="bg-emerald-100 text-emerald-600" trend={null} />
+            <StatCard name="Tổng cộng" rawValue={stats.employee_stats.active + stats.employee_stats.probation} formatter={formatNumber}
+              subtext="Đang hoạt động"
+              icon={UserGroupIcon} iconBg="bg-violet-100 text-violet-600" trend={null} />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <DonutCard title="Tổng nhân viên" sub="Chính thức & Thử việc"
-              data={[
-                { name: 'Chính thức', value: stats.employee_stats.active, color: '#10b981' },
-                { name: 'Thử việc', value: stats.employee_stats.probation, color: '#f59e0b' },
-              ]}
-              centerValue={stats.employee_stats.active + stats.employee_stats.probation} centerLabel="Đang làm" />
             <DonutCard title="Phân bố giới tính" data={genderData}
-              centerValue={stats.employee_stats.gender_distribution.male + stats.employee_stats.gender_distribution.female + stats.employee_stats.gender_distribution.other} centerLabel="Nhân viên" />
+              centerValue={stats.employee_stats.total} centerLabel="Nhân viên" />
+            <DonutCard title="Tóm tắt phòng ban" sub="Top 5 phòng ban" data={deptDonutData}
+              centerValue={stats.employee_stats.active} centerLabel="Đang làm" />
           </div>
-          <DonutCard title="Phân bố nhân sự theo phòng ban" data={deptBarData}
-            centerValue={stats.employee_stats.active + stats.employee_stats.probation} centerLabel="Đang làm"
-            maxItems={6} />
-
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <DonutCard title="Phân bố nhân sự theo phòng ban" sub="Top 6 phòng ban" data={deptBarData}
+              centerValue={stats.employee_stats.total} centerLabel="Tổng NV" />
+            <DonutCard title="Hoạt động gần đây" sub="7 ngày qua" data={safeActivityData}
+              centerValue={totalActivities} centerLabel="Hoạt động" />
+          </div>
         </div>
       )}
 

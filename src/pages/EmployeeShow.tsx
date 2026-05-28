@@ -96,10 +96,11 @@ const CCCD_ISSUE_PLACE_LABELS: Record<string, string> = {
 
 const getStatusBadge = (status: string) => {
   const config: Record<string, { label: string; color: string }> = {
-    OFFICIAL: { label: 'Chính thức', color: 'bg-emerald-100 text-emerald-600' },
+    ACTIVE: { label: 'Đang làm việc', color: 'bg-emerald-100 text-emerald-600' },
     PROBATION: { label: 'Thử việc', color: 'bg-amber-100 text-amber-600' },
     PAUSED: { label: 'Tạm dừng', color: 'bg-amber-100 text-amber-700' },
     INACTIVE: { label: 'Đã nghỉ', color: 'bg-red-100 text-red-600' },
+    DEACTIVATED: { label: 'Vô hiệu hoá', color: 'bg-gray-100 text-gray-600' },
   };
   const c = config[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
   return (
@@ -238,13 +239,6 @@ const EmployeeShow: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             {getStatusBadge(employee.employment_status)}
-            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-              employee.account_status === 'DEACTIVATED'
-                ? 'bg-gray-100 text-gray-500'
-                : 'bg-green-50 text-green-600'
-            }`}>
-              {employee.account_status === 'DEACTIVATED' ? 'Vô hiệu hoá' : 'Hoạt động'}
-            </span>
             <button
               onClick={() => navigate(`/dashboard/employees/${employee.id}/edit`)}
               className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors"
@@ -304,11 +298,10 @@ const EmployeeShow: React.FC = () => {
             <InfoField label="Vùng/Miền" value={emp.region} />
             <InfoField label="Khối" value={emp.block} />
             <InfoField label="Đơn vị" value={emp.company_unit?.name} />
-            <InfoField label="Trạng thái làm việc" value={
+            <InfoField label="Trạng thái" value={
               emp.employment_status === 'PAUSED' ? 'Tạm dừng' :
               emp.employment_status === 'INACTIVE' ? 'Đã nghỉ' :
-              emp.employment_status === 'PROBATION' ? 'Thử việc' :
-              'Chính thức'
+              'Đang làm việc'
             } />
             <InfoField label="Ghi chú công việc" value={emp.employment_status_notes} full />
           </div>
@@ -430,16 +423,6 @@ const EmployeeShow: React.FC = () => {
               <div>
                 <label className="text-sm font-semibold text-gray-700">Nhân viên HR</label>
                 <p className="text-sm font-medium text-gray-900">{employee.is_hr ? 'Có' : 'Không'}</p>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400">Trạng thái tài khoản</label>
-                <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                  employee.account_status === 'DEACTIVATED'
-                    ? 'bg-gray-100 text-gray-600'
-                    : 'bg-emerald-100 text-emerald-600'
-                }`}>
-                  {employee.account_status === 'DEACTIVATED' ? 'Vô hiệu hoá' : 'Hoạt động'}
-                </span>
               </div>
             </div>
           </div>

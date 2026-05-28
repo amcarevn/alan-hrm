@@ -184,7 +184,7 @@ const DepartmentEmployees: React.FC = () => {
                 value={statusFilter}
                 options={[
                   { value: 'all', label: 'Tất cả trạng thái' },
-                  { value: 'OFFICIAL', label: 'Chính thức' },
+                  { value: 'ACTIVE', label: 'Đang làm việc' },
                   { value: 'PROBATION', label: 'Thử việc' },
                   { value: 'INACTIVE', label: 'Đã nghỉ' },
                 ]}
