@@ -513,15 +513,15 @@ const Profile: React.FC = () => {
         </div>
         <div className="mt-4 sm:mt-0 flex items-center gap-3">
           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-            employee.employment_status === 'OFFICIAL'
+            employee.employment_status === 'ACTIVE'
               ? 'bg-emerald-100 text-emerald-600'
               : employee.employment_status === 'PROBATION'
                 ? 'bg-amber-100 text-amber-600'
                 : 'bg-gray-100 text-gray-500'
           }`}>
             <UserIcon className="h-4 w-4 mr-1" />
-            {employee.employment_status === 'OFFICIAL'
-              ? 'Chính thức'
+            {employee.employment_status === 'ACTIVE'
+              ? 'Đang làm việc'
               : employee.employment_status === 'PROBATION'
                 ? 'Đang thử việc'
                 : 'Đã nghỉ việc'}

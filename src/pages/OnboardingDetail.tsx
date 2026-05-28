@@ -937,7 +937,7 @@ const OnboardingDetail: React.FC = () => {
             work_form: employeeProfile?.work_form ?? onboarding.work_form ?? '',
             region: employeeProfile?.region ?? onboarding.region ?? '',
             block: employeeProfile?.block ?? onboarding.block ?? '',
-            employment_status: employeeProfile?.employment_status ?? 'OFFICIAL',
+            employment_status: employeeProfile?.employment_status ?? 'ACTIVE',
             employment_status_notes: (employeeProfile as any)?.employment_status_notes ?? onboarding.employment_status_notes ?? '',
             start_date: employeeProfile?.start_date ?? onboarding.start_date ?? '',
             work_location: (employeeProfile as any)?.work_location ?? '',
@@ -960,8 +960,7 @@ const OnboardingDetail: React.FC = () => {
             <InfoField label="Trạng thái" value={
               employeeProfile?.employment_status === 'PAUSED' ? 'Tạm dừng' :
               employeeProfile?.employment_status === 'INACTIVE' ? 'Đã nghỉ' :
-              employeeProfile?.employment_status === 'PROBATION' ? 'Thử việc' :
-              'Chính thức'
+              'Đang làm việc'
             } />
             <InfoField label="Ghi chú công việc" value={safeDisplay((employeeProfile as any)?.employment_status_notes || onboarding.employment_status_notes)} full />
           </div>
@@ -1443,7 +1442,7 @@ const OnboardingDetail: React.FC = () => {
                 ])}
               </div>
               {ef('Trạng thái làm việc', 'employment_status', undefined, [
-                { value: 'OFFICIAL', label: 'Chính thức' },
+                { value: 'ACTIVE', label: 'Đang làm việc' },
                 { value: 'PAUSED', label: 'Tạm dừng' },
                 { value: 'INACTIVE', label: 'Đã nghỉ' },
               ])}

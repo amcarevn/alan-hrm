@@ -117,10 +117,10 @@ const PositionEmployees: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, { label: string; cls: string }> = {
-      OFFICIAL:  { label: 'Chính thức',    cls: 'bg-emerald-100 text-emerald-700' },
-      PROBATION: { label: 'Thử việc',      cls: 'bg-amber-100 text-amber-700' },
-      PAUSED:    { label: 'Tạm dừng',      cls: 'bg-amber-100 text-amber-700' },
+      ACTIVE:    { label: 'Đang làm việc', cls: 'bg-emerald-100 text-emerald-700' },
+      SUSPENDED: { label: 'Tạm dừng',      cls: 'bg-amber-100 text-amber-700' },
       INACTIVE:  { label: 'Đã nghỉ',       cls: 'bg-red-100 text-red-700' },
+      PROBATION: { label: 'Thử việc',      cls: 'bg-amber-100 text-amber-700' },
     };
     const cfg = map[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
     return (
@@ -188,7 +188,7 @@ const PositionEmployees: React.FC = () => {
                 value={statusFilter}
                 options={[
                   { value: 'all', label: 'Tất cả trạng thái' },
-                  { value: 'OFFICIAL', label: 'Chính thức' },
+                  { value: 'ACTIVE', label: 'Đang làm việc' },
                   { value: 'PROBATION', label: 'Thử việc' },
                   { value: 'INACTIVE', label: 'Đã nghỉ' },
                 ]}
