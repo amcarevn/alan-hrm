@@ -340,10 +340,10 @@ const Dashboard = () => {
         <div className="flex flex-col gap-5 flex-1">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard name="Tổng nhân viên" rawValue={stats.employee_stats.active + stats.employee_stats.probation} formatter={formatNumber}
-              subtext={`${formatNumber(stats.employee_stats.active)} đang làm việc`}
+              subtext=""
               icon={UsersIcon} iconBg="bg-primary-100 text-primary-600" trend={stats.trends.employee_growth} />
             <StatCard name="Thử việc" rawValue={stats.employee_stats.probation} formatter={formatNumber}
-              subtext={`${formatNumber(stats.employee_stats.new_last_30_days)} mới / 30 ngày`}
+              subtext=""
               icon={UserPlusIcon} iconBg="bg-amber-100 text-amber-600" trend={null} />
             <StatCard name="Tài sản đang dùng" rawValue={stats.asset_stats.in_use} formatter={formatNumber}
               subtext={`${formatNumber(stats.asset_stats.total)} tổng tài sản`}
@@ -377,13 +377,13 @@ const Dashboard = () => {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <DonutCard title="Phân bố giới tính" data={genderData}
-              centerValue={stats.employee_stats.total} centerLabel="Nhân viên" />
+              centerValue={stats.employee_stats.active + stats.employee_stats.probation} centerLabel="Nhân viên" />
             <DonutCard title="Tóm tắt phòng ban" sub="Top 5 phòng ban" data={deptDonutData}
-              centerValue={stats.employee_stats.active} centerLabel="Đang làm" />
+              centerValue={stats.employee_stats.active + stats.employee_stats.probation} centerLabel="Đang làm & TV" />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <DonutCard title="Phân bố nhân sự theo phòng ban" sub="Top 6 phòng ban" data={deptBarData}
-              centerValue={stats.employee_stats.total} centerLabel="Tổng NV" />
+              centerValue={stats.employee_stats.active + stats.employee_stats.probation} centerLabel="Tổng NV" />
             <DonutCard title="Hoạt động gần đây" sub="7 ngày qua" data={safeActivityData}
               centerValue={totalActivities} centerLabel="Hoạt động" />
           </div>
