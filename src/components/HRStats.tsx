@@ -162,6 +162,7 @@ const HRStats: React.FC = () => {
   const listDepts = sorted.slice(0, 7);
   const cardDepts = sorted.slice(0, 5);
   const active = stats.employee_stats.active;
+  const totalActiveAndProbation = stats.employee_stats.active + stats.employee_stats.probation;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4 h-full">
@@ -213,7 +214,7 @@ const HRStats: React.FC = () => {
                 <Label
                   content={({ viewBox }) => {
                     const { cx, cy } = viewBox as any;
-                    return <DonutCenter value={active} label="Nhân viên" subtitle="đang làm việc" cx={cx} cy={cy} fontSize={34} />;
+                    return <DonutCenter value={totalActiveAndProbation} label="Nhân viên" subtitle="Đang làm & Thử việc" cx={cx} cy={cy} fontSize={34} />;
                   }}
                   position="center"
                 />
@@ -235,7 +236,7 @@ const HRStats: React.FC = () => {
           <div className="flex-1 space-y-3 overflow-y-auto">
             {listDepts.map((dept, idx) => {
               const color = CHART_COLORS[idx] ?? '#9ca3af';
-              const p = active > 0 ? (dept.employee_count / active) * 100 : 0;
+              const p = totalActiveAndProbation > 0 ? (dept.employee_count / totalActiveAndProbation) * 100 : 0;
               return (
                 <div key={dept.id} className="flex items-center gap-2.5">
                   <span
@@ -275,7 +276,7 @@ const HRStats: React.FC = () => {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-8 gap-y-2.5 max-h-64 overflow-y-auto pr-1">
             {sorted.map((dept, idx) => {
               const color = CHART_COLORS[idx % CHART_COLORS.length];
-              const p = active > 0 ? (dept.employee_count / active) * 100 : 0;
+              const p = totalActiveAndProbation > 0 ? (dept.employee_count / totalActiveAndProbation) * 100 : 0;
               return (
                 <div key={dept.id}>
                   <div className="flex items-center justify-between mb-1">
@@ -312,7 +313,7 @@ const HRStats: React.FC = () => {
         </p>
         <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
           {cardDepts.map((dept, idx) => (
-            <DeptMiniCard key={dept.id} dept={dept} idx={idx} active={active} />
+            <DeptMiniCard key={dept.id} dept={dept} idx={idx} active={totalActiveAndProbation} />
           ))}
 
           {/* Card tổng hợp */}
