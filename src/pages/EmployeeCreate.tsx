@@ -17,8 +17,8 @@ const genderOptions: SelectOption<'M' | 'F' | 'O'>[] = [
   { value: 'O', label: 'Khác' },
 ];
 
-const employmentOptions: SelectOption<'ACTIVE' | 'PROBATION' | 'INACTIVE'>[] = [
-  { value: 'ACTIVE', label: 'Đang làm việc' },
+const employmentOptions: SelectOption<'OFFICIAL' | 'PROBATION' | 'INACTIVE'>[] = [
+  { value: 'OFFICIAL', label: 'Chính thức' },
   { value: 'PROBATION', label: 'Thử việc' },
   { value: 'INACTIVE', label: 'Đã nghỉ' },
 ];
@@ -46,7 +46,7 @@ const EmployeeCreate: React.FC = () => {
     personal_email: '',
     bank_name: '',
     bank_account: '',
-    employment_status: 'ACTIVE',
+    employment_status: 'OFFICIAL',
     start_date: '',
     end_date: '',
     username: '',
