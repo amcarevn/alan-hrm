@@ -35,11 +35,10 @@ const GENDER_OPTIONS = [
 ];
 
 const EMPLOYMENT_STATUS_OPTIONS = [
-  { label: 'Đang làm việc', value: 'ACTIVE' },
+  { label: 'Chính thức', value: 'OFFICIAL' },
   { label: 'Thử việc', value: 'PROBATION' },
   { label: 'Tạm dừng', value: 'PAUSED' },
   { label: 'Đã nghỉ', value: 'INACTIVE' },
-  { label: 'Vô hiệu hoá', value: 'DEACTIVATED' },
 ];
 
 const MARITAL_STATUS_OPTIONS = [
@@ -190,7 +189,8 @@ const EmployeeEdit: React.FC = () => {
 
     // Thông tin công việc
     is_active: true,
-    employment_status: 'ACTIVE',
+    account_status: 'ACTIVE',
+    employment_status: 'OFFICIAL',
     start_date: '',
     end_date: '',
     position_id: undefined,
@@ -299,7 +299,8 @@ const EmployeeEdit: React.FC = () => {
         facebook_link: e.facebook_link || ei.facebook_link || '',
 
         is_active: e.is_active !== false,
-        employment_status: e.employment_status || 'ACTIVE',
+        account_status: e.account_status || 'ACTIVE',
+        employment_status: e.employment_status || 'OFFICIAL',
         start_date: toDisplayDate(e.start_date),
         end_date: toDisplayDate(e.end_date),
         position_id: e.position?.id,
@@ -442,9 +443,9 @@ const EmployeeEdit: React.FC = () => {
   const handleSelect = (name: string, value: any) => {
     setFormData((prev: any) => {
       const next = { ...prev, [name]: value };
-      if (name === 'employment_status') {
-        if (value === 'INACTIVE' || value === 'PAUSED') next.is_active = false;
-        else if (value === 'ACTIVE' || value === 'PROBATION') next.is_active = true;
+      // is_active được điều khiển bởi account_status, không phải employment_status
+      if (name === 'account_status') {
+        next.is_active = value === 'ACTIVE';
       }
       return next;
     });
@@ -465,6 +466,7 @@ const EmployeeEdit: React.FC = () => {
         full_name: formData.full_name.trim(),
         gender: formData.gender,
         is_active: formData.is_active,
+        account_status: formData.account_status,
         employment_status: formData.employment_status,
         is_hr: formData.is_hr,
         is_bod: formData.is_bod,
@@ -701,6 +703,17 @@ const EmployeeEdit: React.FC = () => {
               onChange={(v) => handleSelect('employment_status', v)}
             />
 
+            <SelectBox
+              label="Trạng thái tài khoản"
+              value={formData.account_status}
+              placeholder="Chọn trạng thái tài khoản"
+              options={[
+                { label: 'Hoạt động', value: 'ACTIVE' },
+                { label: 'Vô hiệu hoá', value: 'DEACTIVATED' },
+              ]}
+              onChange={(v) => handleSelect('account_status', v)}
+            />
+
             <Field label="Ngày bắt đầu">
               <DateInput name="start_date" value={formData.start_date} onChange={handleInput} className={inputClass} />
             </Field>
@@ -814,34 +827,18 @@ const EmployeeEdit: React.FC = () => {
               onChange={(v) => handleSelect('company_unit_id', v ? Number(v) : undefined)}
             />
 
-            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-colors ${formData.is_active ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100' : 'bg-red-50 border-red-200 hover:bg-red-100'}`}>
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
-                  checked={formData.is_active}
-                  onChange={(e) => handleSelect('is_active', e.target.checked)}
-                />
-                <div>
-                  <p className={`text-sm font-medium ${formData.is_active ? 'text-emerald-700' : 'text-red-700'}`}>
-                    {formData.is_active ? 'Đang hoạt động' : 'Đã vô hiệu hoá'}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">Bỏ tick để vô hiệu hoá tài khoản nhân viên này</p>
-                </div>
-              </label>
-              <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 cursor-pointer hover:bg-primary-50 transition-colors">
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
-                  checked={formData.is_hr}
-                  onChange={(e) => handleSelect('is_hr', e.target.checked)}
-                />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Nhân viên HR</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Có quyền duyệt đơn và truy cập các chức năng quản lý nhân sự</p>
-                </div>
-              </label>
-            </div>
+            <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 cursor-pointer hover:bg-primary-50 transition-colors">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={formData.is_hr}
+                onChange={(e) => handleSelect('is_hr', e.target.checked)}
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-700">Nhân viên HR</p>
+                <p className="text-xs text-gray-500 mt-0.5">Có quyền duyệt đơn và truy cập các chức năng quản lý nhân sự</p>
+              </div>
+            </label>
 
             <div className="md:col-span-2">
               <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border cursor-pointer">

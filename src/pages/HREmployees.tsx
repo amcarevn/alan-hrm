@@ -139,12 +139,14 @@ const HREmployees: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'ACTIVE':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Đang làm việc</span>;
-      case 'INACTIVE':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Đã nghỉ</span>;
+      case 'OFFICIAL':
+        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Chính thức</span>;
       case 'PROBATION':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Thử việc</span>;
+      case 'PAUSED':
+        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">Tạm dừng</span>;
+      case 'INACTIVE':
+        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Đã nghỉ</span>;
       default:
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{status}</span>;
     }
@@ -194,7 +196,7 @@ const HREmployees: React.FC = () => {
             <div className="bg-green-50 p-4 rounded-lg">
               <h3 className="font-medium text-green-900 text-sm">Đang làm việc</h3>
               <p className="text-2xl font-bold text-green-700 mt-1">
-                {employees.filter(e => e.employment_status === 'ACTIVE').length}
+                {employees.filter(e => e.employment_status === 'OFFICIAL').length}
               </p>
             </div>
             <div className="bg-yellow-50 p-4 rounded-lg">
@@ -266,7 +268,7 @@ const HREmployees: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">Tất cả trạng thái</option>
-                  <option value="ACTIVE">Đang làm việc</option>
+                  <option value="OFFICIAL">Chính thức</option>
                   <option value="PROBATION">Thử việc</option>
                   <option value="INACTIVE">Đã nghỉ</option>
                 </select>
@@ -442,7 +444,7 @@ const HREmployees: React.FC = () => {
                           >
                             Sửa
                           </button>
-                          {employee.employment_status === 'ACTIVE' ? (
+                          {employee.employment_status === 'OFFICIAL' ? (
                             <button 
                               onClick={() => handleDeactivate(employee.id)}
                               className="text-yellow-600 hover:text-yellow-900"

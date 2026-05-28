@@ -32,6 +32,7 @@ const EmployeeList: React.FC = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [accountStatusFilter, setAccountStatusFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [contractTypeFilter, setContractTypeFilter] = useState<string>('all');
   const [expiringSoonFilter, setExpiringSoonFilter] = useState<string>('all');
@@ -54,12 +55,13 @@ const EmployeeList: React.FC = () => {
 
   const SEND_EMAIL_COOLDOWN_KEY = 'send_all_emails_cooldown_until';
   const COOLDOWN_DURATION = 120; // 2 phút (giây)
-  const fetchEmployees = async (search = '', status = 'all', department = 'all', page = 1, pageSize = 20, contractType = 'all', expiringSoon = 'all') => {
+  const fetchEmployees = async (search = '', status = 'all', department = 'all', page = 1, pageSize = 20, contractType = 'all', expiringSoon = 'all', accStatus = 'all') => {
     try {
       setLoading(true);
       const params: any = { page, page_size: pageSize };
       if (search) params.search = search;
       if (status !== 'all') params.employment_status = status;
+      if (accStatus !== 'all') params.account_status = accStatus;
       if (search || status === 'PAUSED') params.include_inactive = true;
       if (department !== 'all') params.department = department;
       if (contractType !== 'all') params.contract_type = contractType;
@@ -90,8 +92,8 @@ const EmployeeList: React.FC = () => {
       const statsData = await employeesAPI.stats();
       
       // Fetch active employees to calculate gender stats
-      const activeEmployees = await employeesAPI.list({ 
-        employment_status: 'ACTIVE',
+      const activeEmployees = await employeesAPI.list({
+        employment_status: 'OFFICIAL',
         page_size: 10000
       });
       
@@ -167,8 +169,8 @@ const EmployeeList: React.FC = () => {
     }
 
     const timeout = setTimeout(() => {
-      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter);
-    }, 300); // 300ms debounce delay
+      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, accountStatusFilter);
+    }, 300);
 
     setSearchTimeout(timeout);
 
@@ -177,21 +179,21 @@ const EmployeeList: React.FC = () => {
         clearTimeout(searchTimeout);
       }
     };
-  }, [searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter]);
+  }, [searchTerm, statusFilter, accountStatusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchEmployees(searchTerm, statusFilter, departmentFilter, 1, itemsPerPage, contractTypeFilter, expiringSoonFilter);
+    fetchEmployees(searchTerm, statusFilter, departmentFilter, 1, itemsPerPage, contractTypeFilter, expiringSoonFilter, accountStatusFilter);
   };
 
   const handleReset = () => {
     setSearchTerm('');
     setStatusFilter('all');
+    setAccountStatusFilter('all');
     setDepartmentFilter('all');
     setContractTypeFilter('all');
     setExpiringSoonFilter('all');
     setCurrentPage(1);
-    // Don't call fetchEmployees here, the useEffect will handle it
   };
 
   const handleDelete = async (id: number) => {
@@ -239,11 +241,10 @@ const EmployeeList: React.FC = () => {
 
       const getStatusLabel = (status: string) => {
         switch (status) {
-          case 'ACTIVE': return 'Đang làm việc';
+          case 'OFFICIAL': return 'Chính thức';
           case 'INACTIVE': return 'Đã nghỉ';
           case 'PAUSED': return 'Tạm dừng';
           case 'PROBATION': return 'Thử việc';
-          case 'DEACTIVATED': return 'Vô hiệu hoá';
           default: return status;
         }
       };
@@ -336,7 +337,7 @@ const EmployeeList: React.FC = () => {
 
       const getStatusLabel = (status: string) => {
         switch (status) {
-          case 'ACTIVE': return 'Đang làm việc';
+          case 'OFFICIAL': return 'Chính thức';
           case 'INACTIVE': return 'Đã nghỉ';
           case 'PROBATION': return 'Thử việc';
           case 'PAUSED': return 'Tạm dừng';
@@ -808,7 +809,7 @@ const EmployeeList: React.FC = () => {
       }
     };
 
-    applyDropdown('employment_status', ['Đang làm việc', 'Tạm dừng', 'Đã nghỉ']);
+    applyDropdown('employment_status', ['Chính thức', 'Thử việc', 'Tạm dừng', 'Đã nghỉ']);
     applyDropdown('rank', ['Chủ tịch', 'Giám đốc', 'Phó Giám đốc', 'Leader', 'Trưởng phòng', 'Trưởng phòng tập sự', 'Phó phòng', 'Nhân viên', 'Thực tập sinh']);
     applyDropdown('work_form', ['Toàn thời gian', 'Bán thời gian', 'Hợp đồng', 'Thực tập', 'Cộng tác viên']);
     applyDropdown('education_level', ['Trung học phổ thông', 'Cao đẳng', 'Đại học', 'Thạc sĩ', 'Tiến sĩ', 'Khác']);
@@ -851,7 +852,7 @@ const EmployeeList: React.FC = () => {
       employee_id: 'TA00001',
       start_date: '01/01/2024',
       full_name: 'Nguyễn Văn A',
-      employment_status: 'Đang làm việc',
+      employment_status: 'Chính thức',
       region: '',
       block: '',
       department: 'Phòng Nhân sự',
@@ -1031,24 +1032,26 @@ const EmployeeList: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string, isActive?: boolean) => {
-    if (isActive === false) {
-      return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-600">Vô hiệu hoá</span>;
-    }
+  const getWorkStatusBadge = (status: string) => {
     switch (status) {
-      case 'ACTIVE':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-600">Đang làm việc</span>;
+      case 'OFFICIAL':
+        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-600">Chính thức</span>;
       case 'PAUSED':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Tạm dừng</span>;
       case 'INACTIVE':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-600">Đã nghỉ</span>;
       case 'PROBATION':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-600">Thử việc</span>;
-      case 'DEACTIVATED':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Vô hiệu hoá</span>;
       default:
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{status}</span>;
     }
+  };
+
+  const getAccountStatusBadge = (accountStatus: string) => {
+    if (accountStatus === 'DEACTIVATED') {
+      return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-500">Vô hiệu hoá</span>;
+    }
+    return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-50 text-green-600">Hoạt động</span>;
   };
 
   const getGenderText = (gender: string) => {
@@ -1095,8 +1098,8 @@ const EmployeeList: React.FC = () => {
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Tổng số</p>
               <p className="text-2xl font-extrabold text-primary-600 mt-1">{stats.total}</p>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-emerald-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('ACTIVE'); setCurrentPage(1); }}>
-              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Đang làm việc</p>
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-emerald-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('OFFICIAL'); setCurrentPage(1); }}>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Chính thức</p>
               <p className="text-2xl font-extrabold text-emerald-600 mt-1">{stats.active}</p>
             </div>
             <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-amber-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('PROBATION'); setCurrentPage(1); }}>
@@ -1111,8 +1114,8 @@ const EmployeeList: React.FC = () => {
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Đã nghỉ</p>
               <p className="text-2xl font-extrabold text-red-600 mt-1">{stats.inactive}</p>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-gray-400 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('DEACTIVATED'); setCurrentPage(1); }}>
-              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Vô hiệu hoá</p>
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-gray-400 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setAccountStatusFilter('DEACTIVATED'); setCurrentPage(1); }}>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Vô hiệu hoá TK</p>
               <p className="text-2xl font-extrabold text-gray-500 mt-1">{stats.deactivated}</p>
             </div>
             <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-300 shadow-sm p-4">
@@ -1164,17 +1167,26 @@ const EmployeeList: React.FC = () => {
               />
             </div>
             <SelectBox<string>
-              label="Trạng thái"
+              label="Trạng thái làm việc"
               value={statusFilter}
               options={[
-                { value: 'all', label: 'Tất cả trạng thái' },
-                { value: 'ACTIVE', label: 'Đang làm việc' },
+                { value: 'all', label: 'Tất cả' },
+                { value: 'OFFICIAL', label: 'Chính thức' },
                 { value: 'PROBATION', label: 'Thử việc' },
                 { value: 'PAUSED', label: 'Tạm dừng' },
                 { value: 'INACTIVE', label: 'Đã nghỉ' },
-                { value: 'DEACTIVATED', label: 'Vô hiệu hoá' },
               ]}
               onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
+            />
+            <SelectBox<string>
+              label="Trạng thái tài khoản"
+              value={accountStatusFilter}
+              options={[
+                { value: 'all', label: 'Tất cả' },
+                { value: 'ACTIVE', label: 'Hoạt động' },
+                { value: 'DEACTIVATED', label: 'Vô hiệu hoá' },
+              ]}
+              onChange={(v) => { setAccountStatusFilter(v); setCurrentPage(1); }}
             />
             <SelectBox<string>
               label="Phòng ban"
@@ -1327,7 +1339,10 @@ const EmployeeList: React.FC = () => {
                     Chức vụ
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Trạng thái
+                    Trạng thái làm việc
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Trạng thái tài khoản
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Thao tác
@@ -1336,7 +1351,7 @@ const EmployeeList: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center">
                       <div className="h-12 w-12 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center mx-auto mb-4">
                         <UsersIcon className="h-7 w-7" />
@@ -1371,7 +1386,10 @@ const EmployeeList: React.FC = () => {
                       Chức vụ
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Trạng thái
+                      Trạng thái làm việc
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Trạng thái tài khoản
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Thao tác
@@ -1405,7 +1423,10 @@ const EmployeeList: React.FC = () => {
                         <div className="text-sm text-gray-900">{employee.position?.title || 'Chưa phân chức vụ'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(employee.employment_status, employee.is_active)}
+                        {getWorkStatusBadge(employee.employment_status)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getAccountStatusBadge(employee.account_status || 'ACTIVE')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
@@ -1421,12 +1442,12 @@ const EmployeeList: React.FC = () => {
                           >
                             Sửa
                           </button>
-                          {employee.is_active !== false ? (
+                          {(employee.account_status || 'ACTIVE') !== 'DEACTIVATED' ? (
                             <button
                               onClick={() => handleDeactivate(employee.id)}
                               className="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors"
                             >
-                              Vô hiệu hóa
+                              Vô hiệu hóa TK
                             </button>
                           ) : (
                             <button

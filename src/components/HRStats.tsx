@@ -11,8 +11,6 @@ import {
   EllipsisHorizontalIcon,
   ChevronRightIcon,
   UserGroupIcon,
-  ArrowUpIcon,
-  MinusIcon,
 } from '@heroicons/react/24/outline';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
 
@@ -26,7 +24,7 @@ interface HRStatsData {
     recent_hires: number;
     gender_distribution: { male: number; female: number; other: number };
   };
-  department_stats: Array<{ id: number; name: string; code: string; employee_count: number }>;
+  department_stats: Array<{ id: number; name: string; code: string; employee_count: number; official_count: number; probation_count: number }>;
   asset_stats: {
     total: number; in_use: number; idle: number; under_maintenance: number;
     total_value: number; current_assignments: number; upcoming_maintenance: number;
@@ -67,38 +65,22 @@ const DeptMiniCard = ({
   active: number;
 }) => {
   const p = active > 0 ? (dept.employee_count / active) * 100 : 0;
-  const isTop = idx === 0;
-  const isGood = p >= 2;
+  const color = idx === 0 ? '#10b981' : p >= 5 ? '#1B65B8' : '#6b7280';
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ borderLeft: '4px solid #1B65B8' }}>
       <div className="flex items-start justify-between mb-2">
         <span className="text-[11px] font-semibold text-gray-600 truncate max-w-[90px]">{dept.name}</span>
-        <div className="flex gap-0.5 flex-shrink-0">
-          {[0,1,2].map(i => (
-            <span key={i} className="h-1.5 w-1.5 rounded-full"
-              style={{ backgroundColor: '#1B65B8', opacity: 0.3 + i * 0.2 }} />
-          ))}
-        </div>
+        <span
+          className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+          style={{ backgroundColor: `${color}18`, color }}
+        >
+          {p.toFixed(1)}%
+        </span>
       </div>
       <p className="text-3xl font-extrabold text-gray-800 tracking-tight leading-none mb-1">
         <AnimatedNum value={dept.employee_count} />
       </p>
-      <div className="flex items-center gap-1.5">
-        <span className="text-[11px] text-gray-400">Nhân viên</span>
-        {isTop ? (
-          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600">
-            <ArrowUpIcon className="h-2.5 w-2.5" />{p.toFixed(1)}%
-          </span>
-        ) : isGood ? (
-          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary-600">
-            <ArrowUpIcon className="h-2.5 w-2.5" />{p.toFixed(1)}%
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-0.5 text-[10px] text-gray-400">
-            <MinusIcon className="h-2.5 w-2.5" />{p.toFixed(1)}%
-          </span>
-        )}
-      </div>
+      <span className="text-[11px] text-gray-400">Nhân viên · tỷ lệ</span>
     </div>
   );
 };
@@ -213,7 +195,7 @@ const HRStats: React.FC = () => {
                 <Label
                   content={({ viewBox }) => {
                     const { cx, cy } = viewBox as any;
-                    return <DonutCenter value={active} label="Nhân viên" subtitle="đang làm việc" cx={cx} cy={cy} fontSize={34} />;
+                    return <DonutCenter value={stats.employee_stats.active + stats.employee_stats.probation} label="Chính thức & Thử việc" cx={cx} cy={cy} fontSize={28} />;
                   }}
                   position="center"
                 />
@@ -235,20 +217,23 @@ const HRStats: React.FC = () => {
           <div className="flex-1 space-y-3 overflow-y-auto">
             {listDepts.map((dept, idx) => {
               const color = CHART_COLORS[idx] ?? '#9ca3af';
-              const p = active > 0 ? (dept.employee_count / active) * 100 : 0;
               return (
-                <div key={dept.id} className="flex items-center gap-2.5">
-                  <span
-                    className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: color }}
-                  />
-                  <span className="flex-1 text-sm text-gray-700 truncate min-w-0">{dept.name}</span>
-                  <span className="text-sm font-extrabold text-gray-900 flex-shrink-0">
-                    <AnimatedNum value={dept.employee_count} />
-                  </span>
-                  <span className="text-xs text-gray-400 flex-shrink-0 w-10 text-right tabular-nums">
-                    {p.toFixed(1)}%
-                  </span>
+                <div key={dept.id}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                    <span className="flex-1 text-xs font-semibold text-gray-700 truncate min-w-0">{dept.name}</span>
+                    <span className="text-xs font-extrabold text-gray-900 flex-shrink-0">
+                      <AnimatedNum value={dept.employee_count} />
+                    </span>
+                  </div>
+                  <div className="flex gap-3 pl-4">
+                    <span className="text-[11px] text-emerald-600 font-medium">
+                      Chính thức: <AnimatedNum value={dept.official_count ?? 0} />
+                    </span>
+                    <span className="text-[11px] text-amber-500 font-medium">
+                      Thử việc: <AnimatedNum value={dept.probation_count ?? 0} />
+                    </span>
+                  </div>
                 </div>
               );
             })}

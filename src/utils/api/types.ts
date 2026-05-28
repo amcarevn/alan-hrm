@@ -348,7 +348,8 @@ export interface Employee {
 
   // Trạng thái
   is_active?: boolean;
-  employment_status: 'ACTIVE' | 'PAUSED' | 'INACTIVE' | 'PROBATION';
+  account_status: 'ACTIVE' | 'DEACTIVATED';
+  employment_status: 'OFFICIAL' | 'PAUSED' | 'INACTIVE' | 'PROBATION';
   employment_status_notes?: string;
   start_date?: string;
   end_date?: string;
@@ -559,7 +560,7 @@ export interface EmployeeCreateData {
   personal_email?: string;
   bank_name?: string;
   bank_account?: string;
-  employment_status?: 'ACTIVE' | 'PAUSED' | 'INACTIVE' | 'PROBATION';
+  employment_status?: 'OFFICIAL' | 'PAUSED' | 'INACTIVE' | 'PROBATION';
   start_date?: string;
   end_date?: string;
   username: string;
@@ -590,7 +591,8 @@ export interface EmployeeUpdateData {
   cccd_issue_place?: string;
   permanent_residence?: string;
   current_address?: string;
-  employment_status?: 'ACTIVE' | 'PROBATION' | 'PAUSED' | 'INACTIVE' | 'DEACTIVATED';
+  account_status?: 'ACTIVE' | 'DEACTIVATED';
+  employment_status?: 'OFFICIAL' | 'PROBATION' | 'PAUSED' | 'INACTIVE';
   start_date?: string;
   end_date?: string;
   user_id?: number;
