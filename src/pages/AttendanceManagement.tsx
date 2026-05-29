@@ -147,6 +147,7 @@ const AttendanceManagement: React.FC = () => {
     LATE: 'Đơn giải trình đi muộn',
     EARLY_LEAVE: 'Đơn giải trình về sớm',
     INCOMPLETE_ATTENDANCE: 'Đơn giải trình quên chấm công',
+    INSUFFICIENT_HOURS: 'Đơn giải trình không đủ giờ công',
     BUSINESS_TRIP: 'Đơn giải trình công tác',
     FIRST_DAY: 'Đơn giải trình ngày đầu',
     OVERTIME: 'Đơn đăng ký tăng ca',
@@ -187,7 +188,8 @@ const AttendanceManagement: React.FC = () => {
     | 'early_leave_minutes'
     | 'first_day'
     | 'business_trip'
-    | 'incomplete_attendance';
+    | 'incomplete_attendance'
+    | 'insufficient_hours';
   type RegistrationReason = 'overtime' | 'extra_hours' | 'night_shift' | 'live' | 'off_duty';
   type OnlineWorkReason = 'morning' | 'afternoon' | 'full_day' | 'checkpage';
   type LeaveReason = 'morning' | 'afternoon' | 'full_day';
@@ -362,6 +364,7 @@ const AttendanceManagement: React.FC = () => {
       { id: 'late_minutes', label: 'Đi muộn', icon: 'clock' },
       { id: 'early_leave_minutes', label: 'Về sớm', icon: 'clock' },
       { id: 'incomplete_attendance', label: 'Quên chấm công', icon: 'warning' },
+      { id: 'insufficient_hours', label: 'Không đủ giờ công', icon: 'clock' },
       { id: 'business_trip', label: 'Đi công tác', icon: 'briefcase' },
       { id: 'first_day', label: 'Ngày đầu đi làm', icon: 'calendar' },
     ];
@@ -887,7 +890,7 @@ const AttendanceManagement: React.FC = () => {
       return;
     }
 
-    if (!formNote?.trim() && selectedReason !== 'incomplete_attendance' && selectedContext !== 'monthly_leave' && selectedReason !== 'off_duty') {
+    if (!formNote?.trim() && selectedReason !== 'incomplete_attendance' && selectedReason !== 'insufficient_hours' && selectedContext !== 'monthly_leave' && selectedReason !== 'off_duty') {
       showNotify(
         'error',
         'Thiếu ghi chú',
@@ -1223,6 +1226,7 @@ const AttendanceManagement: React.FC = () => {
           late_minutes: 'LATE',
           early_leave_minutes: 'EARLY_LEAVE',
           incomplete_attendance: 'INCOMPLETE_ATTENDANCE',
+          insufficient_hours: 'INSUFFICIENT_HOURS',
           business_trip: 'BUSINESS_TRIP',
           first_day: 'FIRST_DAY',
         };
@@ -1620,7 +1624,7 @@ const AttendanceManagement: React.FC = () => {
                     <span className="font-semibold text-gray-700">
                       {currentDate.getMonth() + 1}/{currentDate.getFullYear()}
                     </span>{' '}
-                    từ Lavian và cập nhật vào HRM.
+                    từ APP ALAN và cập nhật vào ALAN HRM.
                   </p>
                 </div>
 
@@ -2148,7 +2152,18 @@ const AttendanceManagement: React.FC = () => {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {attendanceDetails.map((record, index) => (
+                            {attendanceDetails.map((record, index) => {
+                              // Override status từ calendar engine (chính xác hơn attendance record)
+                              // record.status từ attendance API = 'ABSENT' cho ngày Lavian-sync → không đáng tin
+                              const _calStatus = selectedDayData?.day_status || '';
+                              const _ec = selectedDayData?.engine_context || {};
+                              const _isInsuffHours = _calStatus === 'INSUFFICIENT_HOURS' || !!_ec.is_insufficient_hours;
+                              // Ưu tiên engine_context (đã override bằng Lavian raw ở BE)
+                              // Fallback sang record khi engine_context chưa có (ngày không qua Lavian)
+                              const _hasEngineData = _ec.late_minutes !== undefined || _ec.early_leave_minutes !== undefined;
+                              const _lateMins  = _hasEngineData ? (_ec.late_minutes  || 0) : record.late_minutes;
+                              const _earlyMins = _hasEngineData ? (_ec.early_leave_minutes || 0) : record.early_leave_minutes;
+                              return (
                               <tr key={record.id || index}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                   {record.shift_type_display || 'Cả ngày'}
@@ -2214,68 +2229,66 @@ const AttendanceManagement: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <span
-                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${record.status === 'LEAVE'
-                                      ? 'bg-primary-100 text-primary-800'
-                                      : record.status === 'INCOMPLETE_ATTENDANCE' ||
-                                        ((record.check_in || record.check_out) &&
-                                          (!record.check_in || !record.check_out))
-                                        ? 'bg-violet-100 text-violet-800'
-                                        : record.status === 'PRESENT'
-                                          ? 'bg-emerald-100 text-emerald-800'
-                                          : record.status === 'LATE' ||
-                                            record.status === 'EARLY_LEAVE' ||
-                                            record.status === 'LATE_EARLY'
-                                            ? 'bg-amber-100 text-amber-800'
-                                            : record.status === 'ABSENT'
-                                              ? 'bg-red-100 text-red-800'
-                                              : record.status === 'HALF_DAY'
+                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                      _isInsuffHours
+                                        ? 'bg-orange-100 text-orange-800'
+                                        : record.status === 'INCOMPLETE_ATTENDANCE' ||
+                                          ((record.check_in || record.check_out) && (!record.check_in || !record.check_out))
+                                          ? 'bg-violet-100 text-violet-800'
+                                          : record.status === 'LEAVE'
+                                            ? 'bg-primary-100 text-primary-800'
+                                            : record.status === 'PRESENT'
+                                              ? 'bg-emerald-100 text-emerald-800'
+                                              : record.status === 'LATE' || record.status === 'EARLY_LEAVE' || record.status === 'LATE_EARLY'
                                                 ? 'bg-amber-100 text-amber-800'
-                                                : 'bg-gray-100 text-gray-800'
-                                      }`}
+                                                : record.status === 'ABSENT'
+                                                  ? 'bg-red-100 text-red-800'
+                                                  : record.status === 'HALF_DAY'
+                                                    ? 'bg-amber-100 text-amber-800'
+                                                    : 'bg-gray-100 text-gray-800'
+                                    }`}
                                   >
-                                    {record.status === 'INCOMPLETE_ATTENDANCE' ||
-                                      ((record.check_in || record.check_out) &&
-                                        (!record.check_in || !record.check_out))
-                                      ? 'Quên chấm công'
-                                      : record.status_display ||
-                                      ATTENDANCE_STATUS_MAP[record.status] ||
-                                      (record.status === 'PRESENT' ? 'Đủ công' : record.status)}
+                                    {_isInsuffHours
+                                      ? 'Không đủ giờ công'
+                                      : record.status === 'INCOMPLETE_ATTENDANCE' ||
+                                        ((record.check_in || record.check_out) && (!record.check_in || !record.check_out))
+                                        ? 'Quên chấm công'
+                                        : record.status_display ||
+                                          ATTENDANCE_STATUS_MAP[record.status] ||
+                                          (record.status === 'PRESENT' ? 'Đủ công' : record.status)}
                                   </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                   <div className="space-y-1">
                                     {record.notes && <div>{record.notes}</div>}
-                                    {(record.late_minutes > 0 ||
-                                      record.early_leave_minutes > 0) && (
-                                        <div className="text-xs text-gray-600">
-                                          {record.late_minutes > 0 && (
-                                            <div>
-                                              Đi muộn: {record.late_minutes} phút
-                                            </div>
-                                          )}
-                                          {record.early_leave_minutes > 0 && (
-                                            <div>
-                                              Về sớm: {record.early_leave_minutes}{' '}
-                                              phút
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    {!record.notes &&
-                                      record.late_minutes === 0 &&
-                                      record.early_leave_minutes === 0 && (
-                                        <div>-</div>
-                                      )}
+                                    {(_lateMins > 0 || _earlyMins > 0) && (
+                                      <div className="text-xs text-gray-600">
+                                        {_lateMins > 0 && <div>Đi muộn: {_lateMins} phút</div>}
+                                        {_earlyMins > 0 && <div>Về sớm: {_earlyMins} phút</div>}
+                                      </div>
+                                    )}
+                                    {!record.notes && _lateMins === 0 && _earlyMins === 0 && (
+                                      <div>{_isInsuffHours ? 'Không đủ giờ công' : '-'}</div>
+                                    )}
                                   </div>
                                 </td>
                               </tr>
-                            ))}
+                              );
+                            })}
                           </tbody>
                         </table>
 
                         {/* Mobile: Card layout */}
                         <div className="md:hidden divide-y divide-gray-100">
                           {attendanceDetails.map((record, index) => {
+                            // Override status từ calendar engine (dùng chung với desktop table)
+                            const _calStatus2 = selectedDayData?.day_status || '';
+                            const _ec2 = selectedDayData?.engine_context || {};
+                            const _isInsuff2  = _calStatus2 === 'INSUFFICIENT_HOURS' || !!_ec2.is_insufficient_hours;
+                            const _hasEngineData2 = _ec2.late_minutes !== undefined || _ec2.early_leave_minutes !== undefined;
+                            const _late2  = _hasEngineData2 ? (_ec2.late_minutes  || 0) : record.late_minutes;
+                            const _early2 = _hasEngineData2 ? (_ec2.early_leave_minutes || 0) : record.early_leave_minutes;
+
                             const checkIn = (() => {
                               if (
                                 (record.status === 'INCOMPLETE_ATTENDANCE' ||
@@ -2336,32 +2349,33 @@ const AttendanceManagement: React.FC = () => {
                                     {record.shift_type_display || 'Cả ngày'}
                                   </span>
                                   <span
-                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${record.status === 'LEAVE'
-                                      ? 'bg-primary-100 text-primary-800'
-                                      : record.status === 'INCOMPLETE_ATTENDANCE' ||
-                                        ((record.check_in || record.check_out) &&
-                                          (!record.check_in || !record.check_out))
-                                        ? 'bg-violet-100 text-violet-800'
-                                        : record.status === 'PRESENT'
-                                          ? 'bg-emerald-100 text-emerald-800'
-                                          : record.status === 'LATE' ||
-                                            record.status === 'EARLY_LEAVE' ||
-                                            record.status === 'LATE_EARLY'
-                                            ? 'bg-amber-100 text-amber-800'
-                                            : record.status === 'ABSENT'
-                                              ? 'bg-red-100 text-red-800'
-                                              : record.status === 'HALF_DAY'
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                                      _isInsuff2
+                                        ? 'bg-orange-100 text-orange-800'
+                                        : record.status === 'INCOMPLETE_ATTENDANCE' ||
+                                          ((record.check_in || record.check_out) && (!record.check_in || !record.check_out))
+                                          ? 'bg-violet-100 text-violet-800'
+                                          : record.status === 'LEAVE'
+                                            ? 'bg-primary-100 text-primary-800'
+                                            : record.status === 'PRESENT'
+                                              ? 'bg-emerald-100 text-emerald-800'
+                                              : record.status === 'LATE' || record.status === 'EARLY_LEAVE' || record.status === 'LATE_EARLY'
                                                 ? 'bg-amber-100 text-amber-800'
-                                                : 'bg-gray-100 text-gray-800'
-                                      }`}
+                                                : record.status === 'ABSENT'
+                                                  ? 'bg-red-100 text-red-800'
+                                                  : record.status === 'HALF_DAY'
+                                                    ? 'bg-amber-100 text-amber-800'
+                                                    : 'bg-gray-100 text-gray-800'
+                                    }`}
                                   >
-                                    {record.status === 'INCOMPLETE_ATTENDANCE' ||
-                                      ((record.check_in || record.check_out) &&
-                                        (!record.check_in || !record.check_out))
-                                      ? 'Quên chấm công'
-                                      : record.status_display ||
-                                      ATTENDANCE_STATUS_MAP[record.status] ||
-                                      (record.status === 'PRESENT' ? 'Đủ công' : record.status)}
+                                    {_isInsuff2
+                                      ? 'Không đủ giờ công'
+                                      : record.status === 'INCOMPLETE_ATTENDANCE' ||
+                                        ((record.check_in || record.check_out) && (!record.check_in || !record.check_out))
+                                        ? 'Quên chấm công'
+                                        : record.status_display ||
+                                          ATTENDANCE_STATUS_MAP[record.status] ||
+                                          (record.status === 'PRESENT' ? 'Đủ công' : record.status)}
                                   </span>
                                 </div>
                                 {/* Row 2: Times + Hours */}
@@ -2377,29 +2391,24 @@ const AttendanceManagement: React.FC = () => {
                                   </span>
                                 </div>
                                 {/* Row 3: Notes/penalties (if any) */}
-                                {(record.notes ||
-                                  record.late_minutes > 0 ||
-                                  record.early_leave_minutes > 0) && (
-                                    <div className="text-xs text-gray-500">
-                                      {record.notes && (
-                                        <span>{record.notes}</span>
-                                      )}
-                                      {record.late_minutes > 0 && (
-                                        <span className="text-amber-600">
-                                          {record.notes ? ' · ' : ''}Muộn{' '}
-                                          {record.late_minutes} phút
-                                        </span>
-                                      )}
-                                      {record.early_leave_minutes > 0 && (
-                                        <span className="text-amber-600">
-                                          {record.notes || record.late_minutes > 0
-                                            ? ' · '
-                                            : ''}
-                                          Sớm {record.early_leave_minutes} phút
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
+                                {(record.notes || _late2 > 0 || _early2 > 0 || _isInsuff2) && (
+                                  <div className="text-xs text-gray-500">
+                                    {record.notes && <span>{record.notes}</span>}
+                                    {_late2 > 0 && (
+                                      <span className="text-amber-600">
+                                        {record.notes ? ' · ' : ''}Muộn {_late2} phút
+                                      </span>
+                                    )}
+                                    {_early2 > 0 && (
+                                      <span className="text-amber-600">
+                                        {record.notes || _late2 > 0 ? ' · ' : ''}Sớm {_early2} phút
+                                      </span>
+                                    )}
+                                    {_isInsuff2 && _late2 === 0 && _early2 === 0 && !record.notes && (
+                                      <span className="text-orange-600">Không đủ giờ công</span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
@@ -2605,8 +2614,8 @@ const AttendanceManagement: React.FC = () => {
                               ...Object.values(EXPLANATION_TYPE_MAP),
                               'Tăng ca', 'Làm thêm giờ', 'Trực tối', 'Live', 'Livestream',
                               'Ca CheckPage', 'Ca chiều tối', 'Ca gãy',
-                              'Giải trình đi muộn', 'Giải trình về sớm', 'Giải trình quên chấm công', 'Giải trình đi công tác', 'Giải trình ngày đầu đi làm',
-                              'Đi muộn', 'Về sớm', 'Quên chấm công', 'Làm online checkpage', 'Làm online', 'Nghỉ phép'
+                              'Giải trình đi muộn', 'Giải trình về sớm', 'Giải trình quên chấm công', 'Giải trình không đủ giờ công', 'Giải trình đi công tác', 'Giải trình ngày đầu đi làm',
+                              'Đi muộn', 'Về sớm', 'Quên chấm công', 'Không đủ giờ công', 'Làm online checkpage', 'Làm online', 'Nghỉ phép'
                             ].filter(Boolean);
                             prefixes.sort((a, b) => b.length - a.length);
 
@@ -3016,7 +3025,7 @@ const AttendanceManagement: React.FC = () => {
 
                           const detail = attendanceDetails[0];
                           const statusStr = detail?.status?.toUpperCase() || '';
-                          const hasViolations = (detail?.late_minutes || 0) > 0 || (detail?.early_leave_minutes || 0) > 0 || ['LATE', 'EARLY_LEAVE', 'LATE_EARLY', 'INCOMPLETE_ATTENDANCE'].includes(statusStr);
+                          const hasViolations = (detail?.late_minutes || 0) > 0 || (detail?.early_leave_minutes || 0) > 0 || ['LATE', 'EARLY_LEAVE', 'LATE_EARLY', 'INCOMPLETE_ATTENDANCE', 'INSUFFICIENT_HOURS'].includes(statusStr);
                           
                           const showExplanationCard = (!isFullPresent || hasViolations) && !hasApprovedExplanation;
                           const showMonthlyLeaveCard = !hasApprovedLeave;
@@ -3204,6 +3213,7 @@ const AttendanceManagement: React.FC = () => {
                                       late_minutes: 'LATE',
                                       early_leave_minutes: 'EARLY_LEAVE',
                                       incomplete_attendance: 'INCOMPLETE_ATTENDANCE',
+                                      insufficient_hours: 'INSUFFICIENT_HOURS',
                                       business_trip: 'BUSINESS_TRIP',
                                       first_day: 'FIRST_DAY'
                                     } as Record<string, string>)[reason.id]);
@@ -3211,10 +3221,17 @@ const AttendanceManagement: React.FC = () => {
                                   });
                                   if (isAlreadyApproved) return false;
 
-                                  // 2. Các logic lọc theo dữ liệu thực tế (giữ nguyên logic cũ nhưng làm gọn hơn)
-                                  const isIncomplete = detail?.status === 'INCOMPLETE_ATTENDANCE';
-                                  if (reason.id === 'late_minutes') return !isIncomplete && (detail?.late_minutes || 0) > 0;
-                                  if (reason.id === 'early_leave_minutes') return !isIncomplete && (detail?.early_leave_minutes || 0) > 0;
+                                  // 2. Dùng selectedDayData.day_status làm nguồn chính xác
+                                  // (detail.status từ attendance API = 'ABSENT' cho ngày Lavian-sync)
+                                  const calDayStatus = selectedDayData?.day_status || '';
+                                  const isIncomplete = calDayStatus === 'FORGOT_CC'
+                                    || selectedDayData?.engine_context?.is_incomplete === true
+                                    || detail?.status === 'INCOMPLETE_ATTENDANCE';
+                                  const isInsufficientHours = calDayStatus === 'INSUFFICIENT_HOURS'
+                                    || selectedDayData?.engine_context?.is_insufficient_hours === true;
+                                  if (reason.id === 'insufficient_hours') return isInsufficientHours;
+                                  if (reason.id === 'late_minutes') return !isIncomplete && !isInsufficientHours && (detail?.late_minutes || 0) > 0;
+                                  if (reason.id === 'early_leave_minutes') return !isIncomplete && !isInsufficientHours && (detail?.early_leave_minutes || 0) > 0;
                                   if (reason.id === 'incomplete_attendance') return isIncomplete;
                                   if (reason.id === 'first_day') return !detail || detail.status === 'ABSENT';
                                   if (reason.id === 'business_trip') {
@@ -4473,6 +4490,31 @@ const AttendanceManagement: React.FC = () => {
 
 
 
+                    {/* === Không đủ giờ công: chỉ cần lý do, không cần timeline === */}
+                    {selectedContext === 'explanation' && selectedReason === 'insufficient_hours' && (
+                      <div className="space-y-4 mb-6 animate-fadeIn">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-1 h-5 bg-violet-500 rounded-full"></div>
+                          <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+                            Lý do không đủ giờ công
+                          </h3>
+                        </div>
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                          <p className="text-sm text-amber-700">
+                            Hệ thống đã ghi nhận bạn có mặt nhưng thời gian làm việc chưa đạt ngưỡng tối thiểu.
+                            Vui lòng nhập lý do để quản lý xem xét phê duyệt công.
+                          </p>
+                        </div>
+                        <textarea
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 resize-none"
+                          rows={3}
+                          placeholder="Nhập lý do (vd: Có lịch hẹn khách hàng buổi chiều, về sớm để xử lý...)"
+                          value={formNote}
+                          onChange={e => setFormNote(e.target.value)}
+                        />
+                      </div>
+                    )}
+
                     {/* Placeholder when no context selected */}
                     {!selectedContext && (
                       <div className="text-center py-8 text-gray-400">
@@ -4511,14 +4553,14 @@ const AttendanceManagement: React.FC = () => {
                         selectedContext === 'online_work') &&
                         !selectedReason) ||
                       !isRegistrationTimeValid() ||
-                      (!formNote?.trim() && selectedReason !== 'incomplete_attendance' && selectedContext !== 'monthly_leave' && selectedReason !== 'off_duty')
+                      (!formNote?.trim() && selectedReason !== 'incomplete_attendance' && selectedReason !== 'insufficient_hours' && selectedContext !== 'monthly_leave' && selectedReason !== 'off_duty')
                     }
                     className={`w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-xl border border-transparent shadow-lg text-base font-semibold transition-all duration-200 ${isSubmitting
                       ? 'bg-violet-400 text-white cursor-wait'
                       : (selectedContext &&
                         selectedReason) &&
                         isRegistrationTimeValid() &&
-                        (formNote?.trim() || selectedReason === 'incomplete_attendance' || selectedContext === 'monthly_leave' || selectedReason === 'off_duty')
+                        (formNote?.trim() || selectedReason === 'incomplete_attendance' || selectedReason === 'insufficient_hours' || selectedContext === 'monthly_leave' || selectedReason === 'off_duty')
                         ? 'text-white bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transform hover:scale-[1.02]'
                         : 'text-gray-400 bg-gray-200 cursor-not-allowed'
                       }`}
@@ -4742,6 +4784,7 @@ const AttendanceManagement: React.FC = () => {
                     {/* Row: Note */}
                     {formNote &&
                       (selectedReason === 'incomplete_attendance' ||
+                        selectedReason === 'insufficient_hours' ||
                         selectedReason === 'business_trip' ||
                         selectedReason === 'first_day' ||
                         selectedContext === 'registration' ||
