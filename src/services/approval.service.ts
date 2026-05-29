@@ -105,11 +105,11 @@ class ApprovalService {
   }
 
   // Duyệt attendance explanation
-  async approveAttendanceExplanation(explanationId: number, note?: string): Promise<any> {
+  async approveAttendanceExplanation(explanationId: number, note?: string, targetCredit?: number): Promise<any> {
     try {
-      const response = await managementApi.post(`/api-hrm/attendance-explanations/${explanationId}/approve/`, {
-        approval_note: note || ''
-      });
+      const body: Record<string, any> = { approval_note: note || '' };
+      if (targetCredit !== undefined) body.target_credit = targetCredit;
+      const response = await managementApi.post(`/api-hrm/attendance-explanations/${explanationId}/approve/`, body);
       return response.data;
     } catch (error) {
       console.error('Error approving attendance explanation:', error);

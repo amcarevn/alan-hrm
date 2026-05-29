@@ -650,6 +650,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
           'LATE': 'Đã duyệt đi muộn',
           'EARLY_LEAVE': 'Đã duyệt về sớm',
           'INCOMPLETE_ATTENDANCE': 'Đã duyệt quên chấm công',
+          'INSUFFICIENT_HOURS': 'Đã duyệt không đủ giờ công',
           'LEAVE': 'Đã duyệt nghỉ phép tháng',
           'BUSINESS_TRIP': 'Đã duyệt đi công tác',
           'FIRST_DAY': 'Đã duyệt làm ngày đầu'

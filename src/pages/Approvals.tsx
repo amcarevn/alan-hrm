@@ -141,6 +141,7 @@ const Approvals: React.FC = () => {
     'APPROVE'
   );
   const [approvalNote, setApprovalNote] = useState('');
+  const [selectedCredit, setSelectedCredit] = useState<0.5 | 1 | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorModalOpen, setErrorModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -660,37 +661,40 @@ const Approvals: React.FC = () => {
   const canApproveExplanation = (explanation: any): boolean => {
     if (!currentEmployee) return false;
 
-    // Người tạo đơn không thể duyệt đơn của chính mình
-    if (explanation.employee_id === currentEmployee.id) {
-      return false;
-    }
-
-    // QUAN TRỌNG: Nếu người làm đơn là HR, chỉ quản lý trực tiếp mới được duyệt
-    const employeeIsHR = explanation.employee_is_hr || false;
-
     // Kiểm tra quyền dựa trên vai trò và cấp bậc
     const isAdminUser =
       currentEmployee.user?.is_staff || currentEmployee.user?.is_superuser;
-    // Chỉ dùng cờ is_hr
     const isHRUser = currentEmployee.is_hr === true;
-
-    // Kiểm tra quyền can_approve_attendance từ permissions
     const hasApprovalPermission =
       currentEmployee.permissions?.can_approve_attendance || false;
+    const canActAsHR = isHRUser || hasApprovalPermission;
 
-    // Nếu người làm đơn là HR
+    const employeeIsHR = explanation.employee_is_hr || false;
+
+    // HR tự duyệt đơn của chính mình được (ở bước HR, sau khi manager đã duyệt)
+    const isSelf = explanation.employee_id === currentEmployee.id;
+    if (isSelf) {
+      // Cho phép nếu là bước HR (manager đã duyệt, chưa có HR duyệt) và người dùng là HR
+      if (canActAsHR && explanation.direct_manager_approved === true && !explanation.hr_approved) {
+        return true;
+      }
+      return false;
+    }
+
+    // Nếu người làm đơn là HR: 2 bước — manager rồi đến HR (kể cả chính mình lẫn HR khác)
     if (employeeIsHR) {
-      // Admin vẫn có thể duyệt
-      if (isAdminUser) {
+      if (isAdminUser) return true;
+
+      // Bước 1: chỉ quản lý trực tiếp
+      if (explanation.employee_manager_id === currentEmployee.id && !explanation.direct_manager_approved) {
         return true;
       }
 
-      // Chỉ quản lý trực tiếp mới được duyệt (và chưa duyệt)
-      if (explanation.employee_manager_id === currentEmployee.id) {
-        return !explanation.direct_manager_approved;
+      // Bước 2: bất kỳ HR nào (kể cả chính nhân viên đó) đều có thể duyệt
+      if (canActAsHR && explanation.direct_manager_approved === true && !explanation.hr_approved) {
+        return true;
       }
 
-      // HR không được duyệt đơn của HR khác
       return false;
     }
 
@@ -849,6 +853,7 @@ const Approvals: React.FC = () => {
     setTargetItem(item);
     setActionType('APPROVE');
     setApprovalNote('Đã duyệt');
+    setSelectedCredit(null);
     setActionModalOpen(true);
   };
 
@@ -878,6 +883,20 @@ const Approvals: React.FC = () => {
 
       const note = approvalNote || (isApprove ? 'Đã duyệt' : 'Đã từ chối');
 
+      // Kiểm tra HR cần chọn target_credit cho INSUFFICIENT_HOURS
+      const itemData = targetItem.data || targetItem;
+      const isInsufficientHoursApproval =
+        isApprove &&
+        itemData?.explanation_type === 'INSUFFICIENT_HOURS' &&
+        itemData?.direct_manager_approved === true &&
+        !itemData?.hr_approved;
+      if (isInsufficientHoursApproval && selectedCredit === null) {
+        setErrorMessage('Vui lòng chọn số công phê duyệt (0.5 hoặc 1 công)');
+        setErrorModalOpen(true);
+        setIsProcessing(false);
+        return;
+      }
+
       if (isApprove) {
         if (targetItem._itemType === 'WORK_FINALIZATION') {
           await workFinalizationApprovalService.approve(targetItem.id, { note });
@@ -888,7 +907,11 @@ const Approvals: React.FC = () => {
         } else if (targetItem._itemType === 'LEAVE') {
           await approvalService.approveMonthlyLeaveRequest(targetItem.id, note);
         } else {
-          await approvalService.approveAttendanceExplanation(targetItem.id, note);
+          await approvalService.approveAttendanceExplanation(
+            targetItem.id,
+            note,
+            isInsufficientHoursApproval ? (selectedCredit ?? undefined) : undefined,
+          );
         }
       } else {
         if (targetItem._itemType === 'WORK_FINALIZATION') {
@@ -3948,6 +3971,32 @@ const Approvals: React.FC = () => {
 
             {/* Content */}
             <div className="p-6">
+              {/* Credit selector: chỉ hiện khi HR duyệt đơn INSUFFICIENT_HOURS sau manager */}
+              {actionType === 'APPROVE' &&
+                (targetItem?.data || targetItem)?.explanation_type === 'INSUFFICIENT_HOURS' &&
+                (targetItem?.data || targetItem)?.direct_manager_approved === true &&
+                !(targetItem?.data || targetItem)?.hr_approved && (
+                <div className="mb-5">
+                  <p className="text-sm font-bold text-gray-700 mb-3">Chọn số công phê duyệt <span className="text-red-500">*</span></p>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCredit(0.5)}
+                      className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all ${selectedCredit === 0.5 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-300'}`}
+                    >
+                      0.5 công<br /><span className="text-xs font-normal">Nửa ngày</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCredit(1)}
+                      className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all ${selectedCredit === 1 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-300'}`}
+                    >
+                      1 công<br /><span className="text-xs font-normal">Cả ngày</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="mb-4">
                 <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">Nội dung ghi chú:</p>
                 <textarea
