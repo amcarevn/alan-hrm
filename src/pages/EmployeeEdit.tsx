@@ -439,9 +439,32 @@ const EmployeeEdit: React.FC = () => {
     });
   };
 
+  const CONTRACT_TO_STATUS: Record<string, string> = {
+    PROBATION:          'PROBATION',
+    INTERN:             'PROBATION',
+    COLLABORATOR:       'PROBATION',
+    ONE_YEAR:           'ACTIVE',
+    TWO_YEAR:           'ACTIVE',
+    INDEFINITE:         'ACTIVE',
+    SERVICE:            'ACTIVE',
+    CONFIDENTIALITY:    'ACTIVE',
+    COMPANY_RULES:      'ACTIVE',
+    NURSING_COMMITMENT: 'ACTIVE',
+  };
+
   const handleSelect = (name: string, value: any) => {
     setFormData((prev: any) => {
       const next = { ...prev, [name]: value };
+
+      // Sync employment_status theo contract_type
+      if (name === 'contract_type' && value) {
+        const mapped = CONTRACT_TO_STATUS[value];
+        if (mapped && !['INACTIVE', 'PAUSED', 'DEACTIVATED'].includes(prev.employment_status)) {
+          next.employment_status = mapped;
+          next.is_active = mapped !== 'INACTIVE' && mapped !== 'PAUSED';
+        }
+      }
+
       if (name === 'employment_status') {
         if (value === 'INACTIVE' || value === 'PAUSED') next.is_active = false;
         else if (value === 'ACTIVE' || value === 'PROBATION') next.is_active = true;
