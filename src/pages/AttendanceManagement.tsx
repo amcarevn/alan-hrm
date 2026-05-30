@@ -376,9 +376,9 @@ const AttendanceManagement: React.FC = () => {
   }[] = [
       { id: 'overtime', label: 'Tăng ca', icon: 'bolt' },
       // { id: 'extra_hours', label: 'Làm thêm giờ', icon: 'clock' }, // tạm ẩn vì có chức năng giống Tăng ca
-      { id: 'night_shift', label: 'Trực tối', icon: 'moon' },
-      { id: 'live', label: 'Live', icon: 'video' },
-      { id: 'off_duty', label: 'Vào/Ra trực', icon: 'briefcase' },
+      // { id: 'night_shift', label: 'Trực tối', icon: 'moon' },
+      // { id: 'live', label: 'Live', icon: 'video' },
+      // { id: 'off_duty', label: 'Vào/Ra trực', icon: 'briefcase' },
     ];
 
   const onlineWorkReasons: {
@@ -738,24 +738,54 @@ const AttendanceManagement: React.FC = () => {
     calendarArray.forEach((day: any) => {
       const dayRegs = day.registrations || [];
       dayRegs.forEach((r: any) => {
+        // event_type từ BE là lowercase: "explanation", "overtime", "online_work", "leave_request"...
         const type = (r.event_type || '').toUpperCase();
-        // Fallback or use event_date from data, or day.date as fallback
-        const details = r.data || r;
-        
-        const item = { ...details };
+        const dataField = r.data || {};
+
+        // Merge toàn bộ: data JSONField trước, sau đó top-level fields ghi đè
+        // calendar-view BE chỉ inject 1 số field ở top-level: id, event_type, notes,
+        // created_at, check_in, check_out, overtime_hours, explanation, status, status_display, data
+        const item: any = {
+          ...dataField,                                    // explanation_type, reason, request_code, registration_type, attendance_date...
+          id:              r.id,
+          event_type:      r.event_type,
+          notes:           r.notes,
+          created_at:      r.created_at,
+          created_by:      r.created_by,
+          status:          r.status || dataField.status,  // BE inject top-level từ data.status
+          status_display:  r.status_display,
+          check_in:        r.check_in,                    // top-level TimeField (HH:MM)
+          check_out:       r.check_out,                   // top-level TimeField (HH:MM)
+          overtime_hours:  r.overtime_hours,
+        };
+
+        // attendance_date: data field có thể đã có, fallback về ngày calendar
+        if (!item.attendance_date && !item.work_date) {
+          item.attendance_date = day.date || null;
+        }
+
+        // registration_type: lưu trong data JSONField với key "registration_type"
+        // (OVERTIME, NIGHT_SHIFT, LIVE, EXTRA_HOURS, OFF_DUTY, BUSINESS_TRIP)
+        // fallback sang event_type nếu chưa có
+        if (type !== 'EXPLANATION' && type !== 'ONLINE_WORK' && !item.registration_type) {
+          item.registration_type = type;
+        }
+
+        // Fallback created_at cho sorting nếu thiếu
         if (!item.created_at && day.date) {
-            item.created_at = new Date(day.date).toISOString(); // fake created_at for sorting if missing
+          item.created_at = new Date(day.date).toISOString();
         }
 
         if (type === 'EXPLANATION') {
-          if (details.explanation_type === 'LEAVE') {
+          if (dataField.explanation_type === 'LEAVE') {
             leaveRequests.push(item);
           } else {
             explanations.push(item);
           }
-        } else if (type === 'ONLINE_WORK') {
+        } else if (type === 'ONLINE_WORK' || type === 'LEAVE_REQUEST') {
           onlineWorks.push(item);
         } else {
+          // OVERTIME, EXTRA_HOURS, NIGHT_SHIFT, LIVE, LIVESTREAM, OFF_DUTY
           registrations.push(item);
         }
       });
@@ -890,7 +920,7 @@ const AttendanceManagement: React.FC = () => {
       return;
     }
 
-    if (!formNote?.trim() && selectedReason !== 'incomplete_attendance' && selectedReason !== 'insufficient_hours' && selectedContext !== 'monthly_leave' && selectedReason !== 'off_duty') {
+    if (!formNote?.trim() && selectedReason !== 'insufficient_hours' && selectedContext !== 'monthly_leave' && selectedReason !== 'off_duty') {
       showNotify(
         'error',
         'Thiếu ghi chú',
@@ -1347,8 +1377,17 @@ const AttendanceManagement: React.FC = () => {
       // Kiểm tra khóa chốt công (HTTP 423)
       if (error.response?.status === 423 && error.response?.data?.error === 'FINALIZATION_LOCKED') {
         showNotify('error', 'Đã khóa chốt công', error.response.data.message || `Tháng này đã đóng chốt công. Không thể tạo đơn. Vui lòng liên hệ HCNS để biết chi tiết.`);
+      } else if (error.response?.status === 403) {
+        // BE trả {"error": "..."} cho các trường hợp bị từ chối (PROBATION, không có quyền...)
+        const forbiddenMsg =
+          error.response?.data?.error ||
+          error.response?.data?.detail ||
+          error.response?.data?.message ||
+          'Bạn không có quyền thực hiện thao tác này.';
+        showNotify('error', 'Không được phép', forbiddenMsg);
       } else {
         const errorMessage =
+          error.response?.data?.error ||
           error.response?.data?.detail ||
           error.response?.data?.message ||
           (selectedContext === 'online_work'
@@ -1709,8 +1748,8 @@ const AttendanceManagement: React.FC = () => {
 
       {/* Skeleton Loading for Stats */}
       {loading && initialLoading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          {[1, 2, 3, 4, 5].map((i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="bg-gray-50 h-32 rounded-2xl animate-pulse border border-gray-100"></div>
           ))}
         </div>
@@ -1718,7 +1757,7 @@ const AttendanceManagement: React.FC = () => {
 
       {/* Summary Statistics - Responsive Grid */}
       {!initialLoading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           {/* === KPIs chính === */}
           <div className="group bg-white p-4 rounded-2xl shadow-sm border border-red-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-1/2 h-full bg-gradient-to-r from-red-600 to-transparent opacity-5"></div>
@@ -1833,8 +1872,8 @@ const AttendanceManagement: React.FC = () => {
 
       {/* Skeleton Loading for Secondary Stats */}
       {loading && initialLoading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7 gap-4 mb-10">
-          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+          {[1, 2, 3].map((i) => (
             <div key={i} className="bg-gray-50 h-24 rounded-xl animate-pulse border border-gray-100"></div>
           ))}
         </div>
@@ -1842,7 +1881,7 @@ const AttendanceManagement: React.FC = () => {
 
       {/* Công việc bổ sung & Hạn mức */}
       {!initialLoading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7 gap-4 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
           {/* === Công việc bổ sung / Loại hình làm việc === */}
           <div className="group bg-white p-4 rounded-xl border border-amber-100 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-3 mb-2">
@@ -1859,7 +1898,8 @@ const AttendanceManagement: React.FC = () => {
             </div>
           </div>
 
-          <div className="group bg-white p-4 rounded-xl border border-violet-100 hover:shadow-md transition-all duration-300">
+          {/* Làm thêm — tạm ẩn */}
+          {/* <div className="group bg-white p-4 rounded-xl border border-violet-100 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-violet-50 rounded-lg">
                 <BriefcaseIcon className="h-5 w-5 text-violet-600" />
@@ -1872,9 +1912,10 @@ const AttendanceManagement: React.FC = () => {
               </span>
               <span className="text-[10px] text-violet-500 font-medium">giờ</span>
             </div>
-          </div>
+          </div> */}
 
-          <div className="group bg-white p-4 rounded-xl border border-slate-100 hover:shadow-md transition-all duration-300">
+          {/* Trực tối — tạm ẩn */}
+          {/* <div className="group bg-white p-4 rounded-xl border border-slate-100 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-slate-50 rounded-lg">
                 <MoonIcon className="h-5 w-5 text-slate-600" />
@@ -1887,9 +1928,10 @@ const AttendanceManagement: React.FC = () => {
               </span>
               <span className="text-[10px] text-slate-500 font-medium">ca</span>
             </div>
-          </div>
+          </div> */}
 
-          <div className="group bg-white p-4 rounded-xl border border-rose-100 hover:shadow-md transition-all duration-300">
+          {/* Live — tạm ẩn */}
+          {/* <div className="group bg-white p-4 rounded-xl border border-rose-100 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-rose-50 rounded-lg">
                 <VideoCameraIcon className="h-5 w-5 text-rose-600" />
@@ -1902,7 +1944,7 @@ const AttendanceManagement: React.FC = () => {
               </span>
               <span className="text-[10px] text-rose-500 font-medium">ca</span>
             </div>
-          </div>
+          </div> */}
 
           {/* === Hạn mức còn lại === */}
           {(() => {
@@ -1927,7 +1969,8 @@ const AttendanceManagement: React.FC = () => {
             );
           })()}
 
-          {(() => {
+          {/* Online — tạm ẩn */}
+          {/* {(() => {
               const maxOnline = attendanceStats?.max_online_work_per_month || 3;
               const usedOnline = (attendanceStats?.max_online_work_per_month || 0) - (attendanceStats?.remaining_online_work || 0);
               const remainingOnline = Math.max(0, maxOnline - usedOnline);
@@ -1948,7 +1991,7 @@ const AttendanceManagement: React.FC = () => {
                   </div>
                 </div>
               );
-            })()}
+            })()} */}
 
           {attendanceStats?.max_explanations_per_month > 0 && (
             <div className="group bg-white p-4 rounded-xl border border-primary-100 hover:shadow-md transition-all duration-300">
@@ -2855,7 +2898,7 @@ const AttendanceManagement: React.FC = () => {
                     {/* Luôn hiện nút làm đơn bổ sung để cho phép tạo đơn đăng ký (OT, tăng ca...) bất kể trạng thái ngày */}
                     <button
                       onClick={handleOpenSupplementaryRequest}
-                      className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+                      className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                     >
                       <DocumentPlusIcon className="h-5 w-5 mr-2" />
                       Làm đơn bổ sung
@@ -2885,8 +2928,8 @@ const AttendanceManagement: React.FC = () => {
               <div className="inline-block align-bottom bg-white rounded-t-lg sm:rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl w-full">
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
                   <div className="sm:flex sm:items-start">
-                    <div className="mx-auto flex-shrink-0 flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full bg-violet-100 sm:mx-0">
-                      <DocumentPlusIcon className="h-5 w-5 md:h-6 md:w-6 text-violet-600" />
+                    <div className="mx-auto flex-shrink-0 flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary-100 sm:mx-0">
+                      <DocumentPlusIcon className="h-5 w-5 md:h-6 md:w-6 text-primary-600" />
                     </div>
                     <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                       <div className="flex justify-between items-start">
@@ -2919,7 +2962,7 @@ const AttendanceManagement: React.FC = () => {
                         <div className="flex items-center">
                           <div
                             className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold text-sm transition-all duration-300 ${currentStep >= 1
-                              ? 'bg-violet-600 text-white shadow-lg'
+                              ? 'bg-primary-600 text-white shadow-lg'
                               : 'bg-gray-200 text-gray-500 border-2 border-gray-300'
                               }`}
                           >
@@ -2950,8 +2993,8 @@ const AttendanceManagement: React.FC = () => {
                         {/* Connector Line */}
                         <div
                           className={`w-12 sm:w-24 h-1 mx-4 rounded-full transition-all duration-500 ${currentStep >= 2
-                            ? 'bg-gradient-to-r from-violet-600 to-violet-600'
-                            : 'bg-gradient-to-r from-violet-600 to-gray-300'
+                            ? 'bg-gradient-to-r from-primary-600 to-primary-600'
+                            : 'bg-gradient-to-r from-primary-600 to-gray-300'
                             }`}
                         />
 
@@ -2959,7 +3002,7 @@ const AttendanceManagement: React.FC = () => {
                         <div className="flex items-center">
                           <div
                             className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold text-sm transition-all duration-300 ${currentStep >= 2
-                              ? 'bg-violet-600 text-white shadow-lg'
+                              ? 'bg-primary-600 text-white shadow-lg'
                               : 'bg-gray-200 text-gray-500 border-2 border-gray-300'
                               }`}
                           >
@@ -3013,10 +3056,10 @@ const AttendanceManagement: React.FC = () => {
                             r.event_type?.toUpperCase() === 'EXPLANATION' &&
                             r.data?.explanation_type !== 'LEAVE'
                           );
-                          const hasApprovedOnlineWork = registrations.some((r: any) => 
-                            r.status?.toUpperCase() === 'APPROVED' && 
-                            r.event_type?.toUpperCase() === 'ONLINE_WORK'
-                          );
+                          // const hasApprovedOnlineWork = registrations.some((r: any) =>
+                          //   r.status?.toUpperCase() === 'APPROVED' &&
+                          //   r.event_type?.toUpperCase() === 'ONLINE_WORK'
+                          // );
                           const hasApprovedLeave = registrations.some((r: any) => 
                             r.status?.toUpperCase() === 'APPROVED' && 
                             r.event_type?.toUpperCase() === 'EXPLANATION' &&
@@ -3029,7 +3072,7 @@ const AttendanceManagement: React.FC = () => {
                           
                           const showExplanationCard = (!isFullPresent || hasViolations) && !hasApprovedExplanation;
                           const showMonthlyLeaveCard = !hasApprovedLeave;
-                          const showOnlineWorkCard = !hasApprovedOnlineWork;
+                          // const showOnlineWorkCard = !hasApprovedOnlineWork;
 
                           return (
                             <>
@@ -3039,13 +3082,13 @@ const AttendanceManagement: React.FC = () => {
                                   type="button"
                                   onClick={() => handleContextSelect('explanation')}
                                   className={`group relative p-5 bg-white border-2 rounded-xl shadow-sm transition-all duration-200 text-left ${selectedContext === 'explanation'
-                                    ? 'border-violet-500 ring-2 ring-violet-100 hover:border-violet-600'
-                                    : 'border-gray-200 hover:border-violet-400'
+                                    ? 'border-primary-500 ring-2 ring-primary-100 hover:border-primary-600'
+                                    : 'border-gray-200 hover:border-primary-400'
                                   }`}
                                 >
                                   <div className="flex items-start space-x-4">
-                                    <div className={`p-3 rounded-lg ${selectedContext === 'explanation' ? 'bg-violet-100' : 'bg-gray-100'}`}>
-                                      <svg className={`w-6 h-6 ${selectedContext === 'explanation' ? 'text-violet-600' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className={`p-3 rounded-lg ${selectedContext === 'explanation' ? 'bg-primary-100' : 'bg-gray-100'}`}>
+                                      <svg className={`w-6 h-6 ${selectedContext === 'explanation' ? 'text-primary-600' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                       </svg>
                                     </div>
@@ -3062,13 +3105,13 @@ const AttendanceManagement: React.FC = () => {
                                 type="button"
                                 onClick={() => handleContextSelect('registration')}
                                 className={`group relative p-5 bg-white border-2 rounded-xl shadow-sm transition-all duration-200 text-left ${selectedContext === 'registration'
-                                  ? 'border-violet-500 ring-2 ring-violet-100 hover:border-violet-600'
-                                  : 'border-gray-200 hover:border-violet-400'
+                                  ? 'border-primary-500 ring-2 ring-primary-100 hover:border-primary-600'
+                                  : 'border-gray-200 hover:border-primary-400'
                                 }`}
                               >
                                 <div className="flex items-start space-x-4">
-                                  <div className={`p-3 rounded-lg ${selectedContext === 'registration' ? 'bg-violet-100' : 'bg-primary-50'}`}>
-                                    <svg className={`w-6 h-6 ${selectedContext === 'registration' ? 'text-violet-600' : 'text-primary-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <div className={`p-3 rounded-lg ${selectedContext === 'registration' ? 'bg-primary-100' : 'bg-primary-50'}`}>
+                                    <svg className={`w-6 h-6 ${selectedContext === 'registration' ? 'text-primary-600' : 'text-primary-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                     </svg>
                                   </div>
@@ -3090,17 +3133,17 @@ const AttendanceManagement: React.FC = () => {
                                     type="button"
                                     disabled={isQuotaExhausted}
                                     onClick={() => !isQuotaExhausted && handleContextSelect('monthly_leave')}
-                                    className={`group relative p-5 bg-white border-2 rounded-xl shadow-sm transition-all duration-200 text-left 
-                                      ${isQuotaExhausted 
-                                        ? 'opacity-60 grayscale-[0.5] cursor-not-allowed bg-gray-50/50 border-gray-100' 
+                                    className={`group relative p-5 bg-white border-2 rounded-xl shadow-sm transition-all duration-200 text-left sm:col-span-2
+                                      ${isQuotaExhausted
+                                        ? 'opacity-60 grayscale-[0.5] cursor-not-allowed bg-gray-50/50 border-gray-100'
                                         : selectedContext === 'monthly_leave' 
-                                          ? 'border-violet-500 ring-2 ring-violet-100' 
-                                          : 'border-gray-200 hover:border-violet-400'
+                                          ? 'border-primary-500 ring-2 ring-primary-100' 
+                                          : 'border-gray-200 hover:border-primary-400'
                                       }`}
                                   >
                                     <div className="flex items-start space-x-4">
-                                      <div className={`p-3 rounded-lg ${selectedContext === 'monthly_leave' ? 'bg-violet-100' : 'bg-primary-50'}`}>
-                                        <svg className={`w-6 h-6 ${selectedContext === 'monthly_leave' ? 'text-violet-600' : 'text-primary-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <div className={`p-3 rounded-lg ${selectedContext === 'monthly_leave' ? 'bg-primary-100' : 'bg-primary-50'}`}>
+                                        <svg className={`w-6 h-6 ${selectedContext === 'monthly_leave' ? 'text-primary-600' : 'text-primary-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
                                       </div>
@@ -3126,8 +3169,8 @@ const AttendanceManagement: React.FC = () => {
                                 );
                               })()}
 
-                              {/* Card 4: Làm việc online */}
-                              {showOnlineWorkCard && (() => {
+                              {/* Card 4: Làm việc online — tạm ẩn */}
+                              {/* {showOnlineWorkCard && (() => {
                                 const maxOnline = attendanceStats?.max_online_work_per_month || 3;
                                 const remainingOnline = attendanceStats?.remaining_online_work || 0;
                                 const isOnlineQuotaExhausted = remainingOnline <= 0;
@@ -3136,25 +3179,25 @@ const AttendanceManagement: React.FC = () => {
                                     type="button"
                                     disabled={isOnlineQuotaExhausted}
                                     onClick={() => !isOnlineQuotaExhausted && handleContextSelect('online_work')}
-                                    className={`group relative p-5 bg-white border-2 rounded-xl shadow-sm transition-all duration-200 text-left 
-                                      ${isOnlineQuotaExhausted 
-                                        ? 'opacity-60 grayscale-[0.5] cursor-not-allowed bg-gray-50/50 border-gray-100' 
-                                        : selectedContext === 'online_work' 
-                                          ? 'border-violet-500 ring-2 ring-violet-100 hover:border-violet-600' 
-                                          : 'border-gray-200 hover:border-violet-400'
+                                    className={`group relative p-5 bg-white border-2 rounded-xl shadow-sm transition-all duration-200 text-left
+                                      ${isOnlineQuotaExhausted
+                                        ? 'opacity-60 grayscale-[0.5] cursor-not-allowed bg-gray-50/50 border-gray-100'
+                                        : selectedContext === 'online_work'
+                                          ? 'border-primary-500 ring-2 ring-primary-100 hover:border-primary-600'
+                                          : 'border-gray-200 hover:border-primary-400'
                                       }`}
                                   >
                                     <div className="flex items-start space-x-4">
-                                      <div className={`p-3 rounded-lg ${selectedContext === 'online_work' ? 'bg-violet-100' : 'bg-emerald-50'}`}>
-                                        <svg className={`w-6 h-6 ${selectedContext === 'online_work' ? 'text-violet-600' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <div className={`p-3 rounded-lg ${selectedContext === 'online_work' ? 'bg-primary-100' : 'bg-emerald-50'}`}>
+                                        <svg className={`w-6 h-6 ${selectedContext === 'online_work' ? 'text-primary-600' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                         </svg>
                                       </div>
                                       <div className="flex-1">
                                         <h4 className={`text-base font-semibold ${isOnlineQuotaExhausted ? 'text-gray-500' : 'text-gray-900'}`}>Làm việc online</h4>
                                         <p className="mt-1 text-sm text-gray-500">
-                                          {isOnlineQuotaExhausted 
-                                            ? 'Đã hết lượt làm online tháng này' 
+                                          {isOnlineQuotaExhausted
+                                            ? 'Đã hết lượt làm online tháng này'
                                             : `Làm việc từ xa (Còn ${remainingOnline}/${maxOnline} ngày)`}
                                         </p>
                                       </div>
@@ -3170,7 +3213,7 @@ const AttendanceManagement: React.FC = () => {
                                     )}
                                   </button>
                                 );
-                              })()}
+                              })()} */}
                             </>
                           );
                         })()}
@@ -3199,13 +3242,11 @@ const AttendanceManagement: React.FC = () => {
                                     ? monthlyLeaveReasons
                                     : onlineWorkReasons;
 
-                              // Lọc lý do cho Đơn giải trình dựa trên thực tế chấm công
+                              // Hiện toàn bộ lý do giải trình, chỉ ẩn nếu đã có đơn cùng loại được PHÊ DUYỆT
                               if (selectedContext === 'explanation') {
-                                const detail = attendanceDetails[0];
                                 const registrations = selectedDayData?.registrations || [];
 
                                 return reasons.filter(reason => {
-                                  // 1. Ngăn chặn nếu đã có đơn cùng loại được PHÊ DUYỆT
                                   const isAlreadyApproved = registrations.some((r: any) => {
                                     if (r.status?.toUpperCase() !== 'APPROVED' || r.event_type?.toUpperCase() !== 'EXPLANATION') return false;
                                     const rData = r.data || r;
@@ -3219,25 +3260,7 @@ const AttendanceManagement: React.FC = () => {
                                     } as Record<string, string>)[reason.id]);
                                     return rData?.explanation_type?.toUpperCase() === targetType;
                                   });
-                                  if (isAlreadyApproved) return false;
-
-                                  // 2. Dùng selectedDayData.day_status làm nguồn chính xác
-                                  // (detail.status từ attendance API = 'ABSENT' cho ngày Lavian-sync)
-                                  const calDayStatus = selectedDayData?.day_status || '';
-                                  const isIncomplete = calDayStatus === 'FORGOT_CC'
-                                    || selectedDayData?.engine_context?.is_incomplete === true
-                                    || detail?.status === 'INCOMPLETE_ATTENDANCE';
-                                  const isInsufficientHours = calDayStatus === 'INSUFFICIENT_HOURS'
-                                    || selectedDayData?.engine_context?.is_insufficient_hours === true;
-                                  if (reason.id === 'insufficient_hours') return isInsufficientHours;
-                                  if (reason.id === 'late_minutes') return !isIncomplete && !isInsufficientHours && (detail?.late_minutes || 0) > 0;
-                                  if (reason.id === 'early_leave_minutes') return !isIncomplete && !isInsufficientHours && (detail?.early_leave_minutes || 0) > 0;
-                                  if (reason.id === 'incomplete_attendance') return isIncomplete;
-                                  if (reason.id === 'first_day') return !detail || detail.status === 'ABSENT';
-                                  if (reason.id === 'business_trip') {
-                                    return !detail || detail.status === 'ABSENT' || (detail?.late_minutes || 0) > 0 || (detail?.early_leave_minutes || 0) > 0 || detail?.status === 'INCOMPLETE_ATTENDANCE';
-                                  }
-                                  return true;
+                                  return !isAlreadyApproved;
                                 });
                               }
 
@@ -3325,7 +3348,7 @@ const AttendanceManagement: React.FC = () => {
                                     type="button"
                                     onClick={() => handleReasonSelect(reason.id)}
                                     className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium border-2 transition-all duration-150 ${isSelected
-                                      ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
+                                      ? 'border-primary-500 bg-primary-50 text-primary-700 shadow-sm'
                                       : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'
                                       } ${isNonQuota && !isSelected ? 'border-dashed border-primary-200' : ''}`}
                                   >
@@ -3333,7 +3356,7 @@ const AttendanceManagement: React.FC = () => {
                                     {reason.label}
                                     {isSelected && (
                                       <svg
-                                        className="w-4 h-4 ml-2 text-violet-500"
+                                        className="w-4 h-4 ml-2 text-primary-500"
                                         fill="currentColor"
                                         viewBox="0 0 20 20"
                                       >
@@ -3377,14 +3400,14 @@ const AttendanceManagement: React.FC = () => {
                                 type="button"
                                 onClick={() => setBusinessTripShift(shift.id)}
                                 className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium border-2 transition-all duration-150 ${isSelected
-                                  ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
+                                  ? 'border-primary-500 bg-primary-50 text-primary-700 shadow-sm'
                                   : 'border-dashed border-primary-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'
                                 }`}
                               >
                                 {renderIcon('briefcase', isSelected)}
                                 {shift.label}
                                 {isSelected && (
-                                  <svg className="w-4 h-4 ml-2 text-violet-500" fill="currentColor" viewBox="0 0 20 20">
+                                  <svg className="w-4 h-4 ml-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                   </svg>
                                 )}
@@ -3414,14 +3437,14 @@ const AttendanceManagement: React.FC = () => {
                                 type="button"
                                 onClick={() => setFirstDayShift(shift.id)}
                                 className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium border-2 transition-all duration-150 ${isSelected
-                                  ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
+                                  ? 'border-primary-500 bg-primary-50 text-primary-700 shadow-sm'
                                   : 'border-dashed border-primary-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'
                                 }`}
                               >
                                 {renderIcon('calendar', isSelected)}
                                 {shift.label}
                                 {isSelected && (
-                                  <svg className="w-4 h-4 ml-2 text-violet-500" fill="currentColor" viewBox="0 0 20 20">
+                                  <svg className="w-4 h-4 ml-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                   </svg>
                                 )}
@@ -3643,7 +3666,7 @@ const AttendanceManagement: React.FC = () => {
                             value={formNote}
                             onChange={(e) => setFormNote(e.target.value)}
                             placeholder="Nhập lý do đi muộn/về sớm cụ thể..."
-                            className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
+                            className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-500"
                           />
                         </div>
                       )}
@@ -3673,7 +3696,7 @@ const AttendanceManagement: React.FC = () => {
                                   onChange={(e) =>
                                     setOvertimeStartTime(e.target.value)
                                   }
-                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200"
+                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200"
                                 />
                               </div>
 
@@ -3692,7 +3715,7 @@ const AttendanceManagement: React.FC = () => {
                                   onChange={(e) =>
                                     setOvertimeEndTime(e.target.value)
                                   }
-                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200"
+                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200"
                                 />
                               </div>
                             </div>
@@ -3713,7 +3736,7 @@ const AttendanceManagement: React.FC = () => {
                                     className={`text-lg font-bold ${overtimeDuration <= 0 ||
                                       overtimeDuration < 2
                                       ? 'text-red-600'
-                                      : 'text-violet-700'
+                                      : 'text-primary-700'
                                       }`}
                                   >
                                     {overtimeDuration.toFixed(1)} giờ
@@ -3762,7 +3785,7 @@ const AttendanceManagement: React.FC = () => {
                                 value={formNote}
                                 onChange={(e) => setFormNote(e.target.value)}
                                 placeholder="Nhập ghi chú, lý do tăng ca chi tiết..."
-                                className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
+                                className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
                               />
                             </div>
                           </div>
@@ -3823,7 +3846,7 @@ const AttendanceManagement: React.FC = () => {
                                   onChange={(e) =>
                                     setExtraHoursStartTime(e.target.value)
                                   }
-                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200"
+                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200"
                                 />
                               </div>
 
@@ -3842,7 +3865,7 @@ const AttendanceManagement: React.FC = () => {
                                   onChange={(e) =>
                                     setExtraHoursEndTime(e.target.value)
                                   }
-                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200"
+                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200"
                                 />
                               </div>
                             </div>
@@ -3864,7 +3887,7 @@ const AttendanceManagement: React.FC = () => {
                                     className={`text-lg font-bold ${extraHoursDuration <= 0 ||
                                       extraHoursDuration < 2
                                       ? 'text-red-600'
-                                      : 'text-violet-700'
+                                      : 'text-primary-700'
                                       }`}
                                   >
                                     {extraHoursDuration.toFixed(1)} giờ
@@ -3912,7 +3935,7 @@ const AttendanceManagement: React.FC = () => {
                                 value={formNote}
                                 onChange={(e) => setFormNote(e.target.value)}
                                 placeholder="Nhập ghi chú, lý do làm thêm giờ..."
-                                className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
+                                className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
                               />
                             </div>
                           </div>
@@ -4013,10 +4036,10 @@ const AttendanceManagement: React.FC = () => {
                                   },
                                   purple: {
                                     card: isSelected
-                                      ? 'bg-violet-600 border-violet-600 text-white shadow-md'
-                                      : 'bg-white border-violet-200 text-gray-700 hover:border-violet-400 hover:bg-violet-50',
-                                    badge: isSelected ? 'bg-violet-500 text-white' : 'bg-violet-50 text-violet-700',
-                                    dot: 'bg-violet-400',
+                                      ? 'bg-primary-600 border-primary-600 text-white shadow-md'
+                                      : 'bg-white border-primary-200 text-gray-700 hover:border-primary-400 hover:bg-primary-50',
+                                    badge: isSelected ? 'bg-primary-500 text-white' : 'bg-primary-50 text-primary-700',
+                                    dot: 'bg-primary-400',
                                   },
                                 };
                                 const c = colorMap[preset.color];
@@ -4057,7 +4080,7 @@ const AttendanceManagement: React.FC = () => {
                           {nightShiftStartTime && nightShiftEndTime && (
                             <div className={`flex items-center justify-between bg-white rounded-xl border px-4 py-3 ${nightShiftDuration <= 0 || nightShiftDuration < 2 ? 'border-red-300' : 'border-gray-200'}`}>
                               <span className="text-sm text-gray-600">Tổng thời gian trực:</span>
-                              <span className={`text-lg font-bold ${nightShiftDuration <= 0 || nightShiftDuration < 2 ? 'text-red-600' : 'text-violet-700'}`}>
+                              <span className={`text-lg font-bold ${nightShiftDuration <= 0 || nightShiftDuration < 2 ? 'text-red-600' : 'text-primary-700'}`}>
                                 {nightShiftDuration.toFixed(1)} giờ
                               </span>
                             </div>
@@ -4077,7 +4100,7 @@ const AttendanceManagement: React.FC = () => {
                               value={formNote}
                               onChange={(e) => setFormNote(e.target.value)}
                               placeholder="Nhập ghi chú, ca trực cụ thể..."
-                              className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
+                              className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
                             />
                           </div>
 
@@ -4151,7 +4174,7 @@ const AttendanceManagement: React.FC = () => {
                                   onChange={(e) =>
                                     setLiveStartTime(e.target.value)
                                   }
-                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200"
+                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200"
                                 />
                               </div>
 
@@ -4168,7 +4191,7 @@ const AttendanceManagement: React.FC = () => {
                                   id="live-end"
                                   value={liveEndTime}
                                   onChange={(e) => setLiveEndTime(e.target.value)}
-                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200"
+                                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200"
                                 />
                               </div>
                             </div>
@@ -4188,7 +4211,7 @@ const AttendanceManagement: React.FC = () => {
                                   <span
                                     className={`text-lg font-bold ${liveDuration <= 0 || liveDuration < 2
                                       ? 'text-red-600'
-                                      : 'text-violet-700'
+                                      : 'text-primary-700'
                                       }`}
                                   >
                                     {liveDuration.toFixed(1)} giờ
@@ -4211,7 +4234,7 @@ const AttendanceManagement: React.FC = () => {
                                 value={formNote}
                                 onChange={(e) => setFormNote(e.target.value)}
                                 placeholder="Nhập ghi chú, phiên live cụ thể..."
-                                className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
+                                className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-300"
                               />
                             </div>
 
@@ -4243,7 +4266,7 @@ const AttendanceManagement: React.FC = () => {
                                   )}
 
                                 {/* Night live session indicator */}
-                                <div className="mt-3 bg-gradient-to-r from-pink-50 to-violet-50 rounded-lg p-3 border border-pink-200">
+                                <div className="mt-3 bg-gradient-to-r from-pink-50 to-primary-50 rounded-lg p-3 border border-pink-200">
                                   <div className="flex items-center space-x-2">
                                     <svg
                                       className="w-5 h-5 text-pink-600"
@@ -4288,7 +4311,7 @@ const AttendanceManagement: React.FC = () => {
                             value={formNote}
                             onChange={(e) => setFormNote(e.target.value)}
                             placeholder="Nhập ghi chú về ngày đầu đi làm..."
-                            className="block w-full rounded-xl border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none"
+                            className="block w-full rounded-xl border-2 border-gray-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200 resize-none"
                           />
                           <p className="text-xs text-gray-500">
                             Vui lòng mô tả chi tiết về ngày đầu đi làm (ví dụ:
@@ -4313,7 +4336,7 @@ const AttendanceManagement: React.FC = () => {
                             value={formNote}
                             onChange={(e) => setFormNote(e.target.value)}
                             placeholder="Nhập ghi chú về chuyến công tác..."
-                            className="block w-full rounded-xl border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none"
+                            className="block w-full rounded-xl border-2 border-gray-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200 resize-none"
                           />
                           <p className="text-xs text-gray-500">
                             Vui lòng mô tả chi tiết về chuyến công tác (ví dụ: địa
@@ -4338,7 +4361,7 @@ const AttendanceManagement: React.FC = () => {
                             value={formNote}
                             onChange={(e) => setFormNote(e.target.value)}
                             placeholder="Nhập ghi chú về ca làm việc online (VD: nội dung công việc, kết quả dự kiến...)"
-                            className="block w-full rounded-xl border-2 border-gray-200 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm p-3 transition-colors duration-200 resize-none"
+                            className="block w-full rounded-xl border-2 border-gray-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200 resize-none"
                           />
                           <p className="text-xs text-gray-500">
                             Mô tả chi tiết để quản lý xem xét phê duyệt đơn làm
@@ -4354,9 +4377,37 @@ const AttendanceManagement: React.FC = () => {
                       selectedReason === 'incomplete_attendance' && (
                         <div className="space-y-4 mb-6 animate-fadeIn">
 
+                          {/* Hiển thị giờ CI/CO hiện có */}
+                          {(() => {
+                            const detail = attendanceDetails[0];
+                            const rawLogs = selectedDayData?.raw_checkin_checkout || [];
+                            const firstLog = rawLogs[0];
+                            const ci = detail?.check_in || firstLog?.check_in || null;
+                            const co = detail?.check_out || firstLog?.check_out || null;
+                            if (!ci && !co) return null;
+                            return (
+                              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-3">
+                                <svg className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div className="text-xs text-blue-800 space-y-0.5">
+                                  <p className="font-semibold mb-1">Dữ liệu chấm công hiện có:</p>
+                                  {ci && (
+                                    <p>Check-in: <span className="font-bold text-blue-700">{ci.substring(0, 5)}</span></p>
+                                  )}
+                                  {co && (
+                                    <p>Check-out: <span className="font-bold text-blue-700">{co.substring(0, 5)}</span></p>
+                                  )}
+                                  {!ci && <p className="text-amber-700 font-semibold">Chưa có giờ check-in</p>}
+                                  {!co && <p className="text-amber-700 font-semibold">Chưa có giờ check-out</p>}
+                                </div>
+                              </div>
+                            );
+                          })()}
+
                           {/* Tiêu đề */}
                           <div className="flex items-center gap-2 mb-1">
-                            <div className="w-1 h-5 bg-violet-500 rounded-full"></div>
+                            <div className="w-1 h-5 bg-primary-500 rounded-full"></div>
                             <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
                               Bạn quên chấm công lúc nào?
                             </h3>
@@ -4369,9 +4420,9 @@ const AttendanceManagement: React.FC = () => {
                                 id: 'checkin',
                                 label: 'Quên\nCheck-in',
                                 icon: <ArrowLeftOnRectangleIcon className="w-6 h-6" />,
-                                activeColor: 'bg-violet-600 border-violet-600 text-white shadow-lg',
-                                inactiveColor: 'bg-white border-gray-200 text-gray-600 hover:border-violet-300 hover:bg-violet-50',
-                                dotColor: 'bg-violet-500',
+                                activeColor: 'bg-primary-600 border-primary-600 text-white shadow-lg',
+                                inactiveColor: 'bg-white border-gray-200 text-gray-600 hover:border-primary-300 hover:bg-primary-50',
+                                dotColor: 'bg-primary-500',
                               },
                               {
                                 id: 'checkout',
@@ -4385,9 +4436,9 @@ const AttendanceManagement: React.FC = () => {
                                 id: 'both',
                                 label: 'Cả\nhai',
                                 icon: <ArrowsRightLeftIcon className="w-6 h-6" />,
-                                activeColor: 'bg-gradient-to-br from-violet-600 to-amber-500 border-transparent text-white shadow-lg',
-                                inactiveColor: 'bg-white border-gray-200 text-gray-600 hover:border-violet-300 hover:bg-violet-50',
-                                dotColor: 'bg-violet-500',
+                                activeColor: 'bg-gradient-to-br from-primary-600 to-amber-500 border-transparent text-white shadow-lg',
+                                inactiveColor: 'bg-white border-gray-200 text-gray-600 hover:border-primary-300 hover:bg-primary-50',
+                                dotColor: 'bg-primary-500',
                               },
                             ].map((type) => {
                               const isActive = forgotPunchType === type.id;
@@ -4418,14 +4469,14 @@ const AttendanceManagement: React.FC = () => {
 
                           {/* Bước 2a: Chọn giờ check-in */}
                           {(forgotPunchType === 'checkin' || forgotPunchType === 'both') && (
-                            <div className="rounded-2xl border border-violet-100 overflow-hidden">
-                              <div className="bg-violet-600 px-4 py-2.5 flex items-center gap-2">
+                            <div className="rounded-2xl border border-primary-100 overflow-hidden">
+                              <div className="bg-primary-600 px-4 py-2.5 flex items-center gap-2">
                                 <svg className="w-4 h-4 text-white opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5-4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                                 </svg>
                                 <span className="text-xs font-bold text-white tracking-wide uppercase">Giờ check-in bị quên</span>
                               </div>
-                              <div className="bg-violet-50 p-3 flex gap-2">
+                              <div className="bg-primary-50 p-3 flex gap-2">
                                 {[
                                   { value: '07:30', label: '7h30', desc: 'Sáng' },
                                   { value: '08:00', label: '8h00', desc: 'Sáng' },
@@ -4440,10 +4491,10 @@ const AttendanceManagement: React.FC = () => {
                                       key={opt.value}
                                       type="button"
                                       onClick={() => setForgotCheckinTime(sel ? null : opt.value)}
-                                      className={`flex-1 flex flex-col items-center py-2.5 rounded-xl border-2 transition-all duration-150 ${sel ? 'bg-violet-600 border-violet-600 shadow-md scale-[1.04]' : 'bg-white border-violet-200 hover:border-violet-400 hover:bg-violet-50'}`}
+                                      className={`flex-1 flex flex-col items-center py-2.5 rounded-xl border-2 transition-all duration-150 ${sel ? 'bg-primary-600 border-primary-600 shadow-md scale-[1.04]' : 'bg-white border-primary-200 hover:border-primary-400 hover:bg-primary-50'}`}
                                     >
-                                      <span className={`text-sm font-extrabold ${sel ? 'text-white' : 'text-violet-700'}`}>{opt.label}</span>
-                                      <span className={`text-[10px] mt-0.5 font-medium ${sel ? 'text-violet-200' : 'text-gray-400'}`}>{opt.desc}</span>
+                                      <span className={`text-sm font-extrabold ${sel ? 'text-white' : 'text-primary-700'}`}>{opt.label}</span>
+                                      <span className={`text-[10px] mt-0.5 font-medium ${sel ? 'text-primary-200' : 'text-gray-400'}`}>{opt.desc}</span>
                                     </button>
                                   );
                                 })}
@@ -4485,6 +4536,24 @@ const AttendanceManagement: React.FC = () => {
                             </div>
                           )}
 
+                          {/* Ghi chú bắt buộc */}
+                          <div className="space-y-3">
+                            <label
+                              htmlFor="incomplete-note"
+                              className="block text-sm font-semibold text-gray-700 uppercase tracking-wide"
+                            >
+                              Ghi chú giải trình (bắt buộc)
+                            </label>
+                            <textarea
+                              id="incomplete-note"
+                              rows={3}
+                              value={formNote}
+                              onChange={(e) => setFormNote(e.target.value)}
+                              placeholder="Nhập lý do quên chấm công cụ thể..."
+                              className="block w-full rounded-xl border-2 border-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-3 transition-colors duration-200 resize-none placeholder:text-gray-500"
+                            />
+                          </div>
+
                         </div>
                       )}
 
@@ -4494,7 +4563,7 @@ const AttendanceManagement: React.FC = () => {
                     {selectedContext === 'explanation' && selectedReason === 'insufficient_hours' && (
                       <div className="space-y-4 mb-6 animate-fadeIn">
                         <div className="flex items-center gap-2 mb-1">
-                          <div className="w-1 h-5 bg-violet-500 rounded-full"></div>
+                          <div className="w-1 h-5 bg-primary-500 rounded-full"></div>
                           <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
                             Lý do không đủ giờ công
                           </h3>
@@ -4506,7 +4575,7 @@ const AttendanceManagement: React.FC = () => {
                           </p>
                         </div>
                         <textarea
-                          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 resize-none"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
                           rows={3}
                           placeholder="Nhập lý do (vd: Có lịch hẹn khách hàng buổi chiều, về sớm để xử lý...)"
                           value={formNote}
@@ -4553,15 +4622,15 @@ const AttendanceManagement: React.FC = () => {
                         selectedContext === 'online_work') &&
                         !selectedReason) ||
                       !isRegistrationTimeValid() ||
-                      (!formNote?.trim() && selectedReason !== 'incomplete_attendance' && selectedReason !== 'insufficient_hours' && selectedContext !== 'monthly_leave' && selectedReason !== 'off_duty')
+                      (!formNote?.trim() && selectedReason !== 'insufficient_hours' && selectedContext !== 'monthly_leave' && selectedReason !== 'off_duty')
                     }
                     className={`w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-xl border border-transparent shadow-lg text-base font-semibold transition-all duration-200 ${isSubmitting
-                      ? 'bg-violet-400 text-white cursor-wait'
+                      ? 'bg-primary-400 text-white cursor-wait'
                       : (selectedContext &&
                         selectedReason) &&
                         isRegistrationTimeValid() &&
-                        (formNote?.trim() || selectedReason === 'incomplete_attendance' || selectedReason === 'insufficient_hours' || selectedContext === 'monthly_leave' || selectedReason === 'off_duty')
-                        ? 'text-white bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transform hover:scale-[1.02]'
+                        (formNote?.trim() || selectedReason === 'insufficient_hours' || selectedContext === 'monthly_leave' || selectedReason === 'off_duty')
+                        ? 'text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transform hover:scale-[1.02]'
                         : 'text-gray-400 bg-gray-200 cursor-not-allowed'
                       }`}
                   >
@@ -4949,7 +5018,7 @@ const AttendanceManagement: React.FC = () => {
       }
       {/* ===== DRAWER: Lịch sử đơn tháng ===== */}
       {
-        showRequestHistoryDrawer && (
+        showRequestHistoryDrawer && createPortal(
           <div className="fixed inset-0 z-[80] overflow-hidden">
             {/* Backdrop */}
             <div
@@ -4958,7 +5027,7 @@ const AttendanceManagement: React.FC = () => {
             />
             {/* Drawer panel */}
             <div className="absolute inset-y-0 right-0 flex max-w-full">
-              <div className="relative w-screen max-w-md transform transition-transform duration-300 ease-in-out">
+              <div className="relative w-screen max-w-xl transform transition-transform duration-300 ease-in-out">
                 <div className="flex h-full flex-col bg-white shadow-2xl">
                   {/* Header */}
                   <div className="bg-gradient-to-r from-violet-600 to-violet-700 px-5 py-4">
@@ -4988,7 +5057,7 @@ const AttendanceManagement: React.FC = () => {
                         { label: 'Giải trình', count: monthlyRequestHistory.explanations.length, color: 'bg-primary-400' },
                         { label: 'Nghỉ phép', count: monthlyRequestHistory.leaveRequests.length, color: 'bg-primary-400' },
                         { label: 'Đăng ký', count: monthlyRequestHistory.registrations.length, color: 'bg-amber-400' },
-                        { label: 'Làm việc online', count: monthlyRequestHistory.onlineWorks.length, color: 'bg-teal-400' },
+                        // { label: 'Làm việc online', count: monthlyRequestHistory.onlineWorks.length, color: 'bg-teal-400' },
                       ].map((item) => (
                         <div key={item.label} className="flex items-center gap-1.5 bg-white bg-opacity-15 rounded-lg px-2.5 py-1">
                           <span className={`w-2 h-2 rounded-full ${item.color}`} />
@@ -5006,13 +5075,12 @@ const AttendanceManagement: React.FC = () => {
                         {
                           key: 'all',
                           label: 'Tất cả',
-                          count: monthlyRequestHistory.explanations.length + monthlyRequestHistory.leaveRequests.length + monthlyRequestHistory.registrations.length
-                            + monthlyRequestHistory.onlineWorks.length,
+                          count: monthlyRequestHistory.explanations.length + monthlyRequestHistory.leaveRequests.length + monthlyRequestHistory.registrations.length,
                         },
                         { key: 'explanation', label: 'Giải trình', count: monthlyRequestHistory.explanations.length },
                         { key: 'leave', label: 'Nghỉ phép', count: monthlyRequestHistory.leaveRequests.length },
                         { key: 'registration', label: 'Đăng ký', count: monthlyRequestHistory.registrations.length },
-                        { key: 'online_work', label: 'Làm việc online', count: monthlyRequestHistory.onlineWorks.length },
+                        // { key: 'online_work', label: 'Làm việc online', count: monthlyRequestHistory.onlineWorks.length },
                       ].map((tab) => (
                         <button
                           key={tab.key}
@@ -5094,20 +5162,20 @@ const AttendanceManagement: React.FC = () => {
                               } as Record<string, { label: string; bg: string }>)[item._type] || { label: getExplanationTypeLabel(item._type), bg: 'bg-gray-50 text-gray-700 ring-1 ring-gray-600/20' };
                             })();
 
-                            const dateStr = item.attendance_date || item.work_date || item.created_at;
+                            const dateStr = item.attendance_date || item.work_date || item.event_date || item.created_at;
                             const displayDate = dateStr
                               ? new Date(dateStr).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
                               : '—';
 
                             let requestName = '';
-                            if (item._type === 'explanation') {
+                            if (item._type === 'explanation' && item.explanation_type === 'LEAVE') {
+                              requestName = 'Đơn nghỉ phép tháng';
+                            } else if (item._type === 'explanation') {
                               requestName = item.explanation_type ? (EXPLANATION_TYPE_MAP[item.explanation_type] || item.explanation_type) : 'Đơn giải trình';
                             } else if (item._type === 'registration') {
                               requestName = item.registration_type ? (EXPLANATION_TYPE_MAP[item.registration_type] || item.registration_type) : 'Đơn đăng ký';
                             } else if (item._type === 'online_work') {
                               requestName = 'Đơn làm việc online';
-                            } else if (item._type === 'explanation' && item.explanation_type === 'LEAVE') {
-                              requestName = 'Đơn nghỉ phép tháng';
                             }
 
                             return (
@@ -5184,11 +5252,11 @@ const AttendanceManagement: React.FC = () => {
                                       <CalendarIcon className="h-4 w-4" />
                                       <span className="text-xs font-semibold">{displayDate}</span>
                                     </div>
-                                    {item.registration_type !== 'OFF_DUTY' && (item.start_time || item.end_time || item.check_in || item.check_out) && (
-                                      <div className="flex items-center gap-1.5 text-violet-600 bg-violet-50 px-2 py-0.5 rounded-md">
+                                    {item.registration_type !== 'OFF_DUTY' && (item.check_in || item.check_out) && (
+                                      <div className="flex items-center gap-1.5 text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md">
                                         <ClockIcon className="h-3.5 w-3.5" />
                                         <span className="text-[11px] font-bold">
-                                          {item.start_time || item.check_in || '--'} — {item.end_time || item.check_out || '--'}
+                                          {item.check_in || '--'} — {item.check_out || '--'}
                                         </span>
                                       </div>
                                     )}
@@ -5219,7 +5287,8 @@ const AttendanceManagement: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )
       }
 
