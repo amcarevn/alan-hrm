@@ -337,9 +337,20 @@ const EmployeeEdit: React.FC = () => {
         bank_account_holder: e.bank_account_holder || '',
         bank_branch: e.bank_branch || '',
 
-        basic_salary: e.basic_salary ?? '',
-        allowance: e.allowance ?? '',
-        contract_type: e.contract_type || '',
+        basic_salary: e.basic_salary != null ? Number(e.basic_salary).toLocaleString('de-DE') : '',
+        allowance: e.allowance != null ? Number(e.allowance).toLocaleString('de-DE') : '',
+        contract_type: (() => {
+          const endDate = toDisplayDate(e.probation_end_date);
+          const isProtected = ['INACTIVE', 'PAUSED', 'DEACTIVATED'].includes(e.employment_status);
+          if (e.contract_type === 'PROBATION' && endDate && !isProtected) {
+            const parts = endDate.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+            if (parts) {
+              const end = new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, parseInt(parts[1]));
+              if (end < new Date(new Date().toDateString())) return 'ONE_YEAR';
+            }
+          }
+          return e.contract_type || '';
+        })(),
         probation_months: e.probation_months ?? '',
         probation_end_date: toDisplayDate(e.probation_end_date),
         probation_rate: e.probation_rate || '',
@@ -425,15 +436,68 @@ const EmployeeEdit: React.FC = () => {
     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
   };
 
+  // Format số tiền: 1000000 → 1.000.000
+  const formatCurrency = (value: string | number): string => {
+    const raw = String(value).replace(/\./g, '').replace(/\D/g, '');
+    if (!raw) return '';
+    return Number(raw).toLocaleString('de-DE'); // de-DE dùng dấu . phân cách nghìn
+  };
+
+  const handleCurrencyInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name } = e.target;
+    const formatted = formatCurrency(e.target.value);
+    setFormData((prev: any) => ({ ...prev, [name]: formatted }));
+  };
+
+  // Tính ngày chính thức = probation_end_date + 1 ngày (định dạng DD/MM/YYYY)
+  const calcOfficialStartDate = (probationEndDate: string): string => {
+    const parts = probationEndDate?.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (!parts) return '';
+    const d = new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, parseInt(parts[1]));
+    d.setDate(d.getDate() + 1);
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  };
+
+  // Kiểm tra probation_end_date đã qua chưa (DD/MM/YYYY)
+  const isProbationEnded = (probationEndDate: string): boolean => {
+    const parts = probationEndDate?.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (!parts) return false;
+    const end = new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, parseInt(parts[1]));
+    return end < new Date(new Date().toDateString()); // so sánh theo ngày, bỏ giờ
+  };
+
+  // Sync contract_type và employment_status theo probation_end_date
+  const syncContractAfterProbation = (next: any) => {
+    if (!next.probation_end_date) return;
+    if (['INACTIVE', 'PAUSED', 'DEACTIVATED'].includes(next.employment_status)) return;
+    if (isProbationEnded(next.probation_end_date)) {
+      next.contract_type = 'ONE_YEAR';
+      next.employment_status = 'ACTIVE';
+    } else {
+      next.contract_type = next.contract_type || 'PROBATION';
+      next.employment_status = 'PROBATION';
+    }
+  };
+
   const handleInput = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev: any) => {
       const next = { ...prev, [name]: value };
+
+      // Auto-tính probation_end_date và official_start_date
       if (name === 'probation_months' && prev.start_date) {
         next.probation_end_date = calcProbationEndDate(prev.start_date, value);
+        if (next.probation_end_date) {
+          next.official_start_date = calcOfficialStartDate(next.probation_end_date);
+          syncContractAfterProbation(next);
+        }
       }
       if (name === 'start_date' && prev.probation_months) {
         next.probation_end_date = calcProbationEndDate(value, prev.probation_months);
+        if (next.probation_end_date) {
+          next.official_start_date = calcOfficialStartDate(next.probation_end_date);
+          syncContractAfterProbation(next);
+        }
       }
       return next;
     });
@@ -554,8 +618,8 @@ const EmployeeEdit: React.FC = () => {
       add('bank_account_holder', formData.bank_account_holder?.trim());
       add('bank_branch', formData.bank_branch?.trim());
 
-      if (formData.basic_salary !== '') payload['basic_salary'] = Number(formData.basic_salary);
-      if (formData.allowance !== '') payload['allowance'] = Number(formData.allowance);
+      if (formData.basic_salary !== '') payload['basic_salary'] = Number(String(formData.basic_salary).replace(/\./g, ''));
+      if (formData.allowance !== '') payload['allowance'] = Number(String(formData.allowance).replace(/\./g, ''));
       add('contract_type', formData.contract_type);
       if (formData.probation_months !== '') payload['probation_months'] = Number(formData.probation_months);
       add('probation_end_date', toApiDate(formData.probation_end_date));
@@ -1004,13 +1068,13 @@ const EmployeeEdit: React.FC = () => {
           <SectionTitle icon={<DocumentTextIcon className="h-5 w-5" />} iconBg="bg-emerald-100 text-emerald-600" title="Lương & Hợp đồng" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Field label="Lương cơ bản (VNĐ)">
-              <input type="number" name="basic_salary" value={formData.basic_salary}
-                onChange={handleInput} placeholder="10000000" className={inputClass} />
+              <input type="text" inputMode="numeric" name="basic_salary" value={formData.basic_salary}
+                onChange={handleCurrencyInput} placeholder="10.000.000" className={inputClass} />
             </Field>
 
             <Field label="Phụ cấp (VNĐ)">
-              <input type="number" name="allowance" value={formData.allowance}
-                onChange={handleInput} placeholder="2000000" className={inputClass} />
+              <input type="text" inputMode="numeric" name="allowance" value={formData.allowance}
+                onChange={handleCurrencyInput} placeholder="2.000.000" className={inputClass} />
             </Field>
 
             <SelectBox
