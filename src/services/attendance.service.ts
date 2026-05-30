@@ -977,12 +977,13 @@ class AttendanceService {
    * Dùng fetch thay vì axios vì axios không hỗ trợ streaming.
    * Token lấy từ cùng nguồn với managementApi interceptor.
    */
-  async syncFromLavianStream(year: number, month: number): Promise<ReadableStreamDefaultReader<Uint8Array>> {
+  async syncFromLavianStream(year: number, month: number, employeeCodes?: string[]): Promise<ReadableStreamDefaultReader<Uint8Array>> {
     const token = localStorage.getItem('accessToken');
-    const resp = await fetch(
-      `${API_BASE_URL}/api/v1/hrm/attendance/sync-from-lavian/stream/?year=${year}&month=${month}`,
-      { headers: { Authorization: `Bearer ${token ?? ''}` } }
-    );
+    let url = `${API_BASE_URL}/api/v1/hrm/attendance/sync-from-lavian/stream/?year=${year}&month=${month}`;
+    if (employeeCodes && employeeCodes.length > 0) {
+      url += '&' + employeeCodes.map(c => `codes[]=${encodeURIComponent(c)}`).join('&');
+    }
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token ?? ''}` } });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     return resp.body!.getReader();
   }

@@ -80,6 +80,10 @@ const AttendanceManagement: React.FC = () => {
   // === Đồng bộ chấm công ===
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncScopeAll, setSyncScopeAll] = useState(true); // true = tất cả, false = chọn NV
+  const [syncEmployeeOptions, setSyncEmployeeOptions] = useState<Array<{id: number; employee_id: string; full_name: string}>>([]);
+  const [syncSelectedCodes, setSyncSelectedCodes] = useState<string[]>([]);
+  const [syncEmployeeSearch, setSyncEmployeeSearch] = useState('');
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncTotal, setSyncTotal] = useState(0);
   const [syncEmployeeList, setSyncEmployeeList] = useState<Array<{
@@ -529,6 +533,8 @@ const AttendanceManagement: React.FC = () => {
   // Check if user has permission to upload attendance files
   // For now, only ADMIN role can upload
   const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+  const isHR = currentEmployee?.is_hr === true;
+  const canSync = isAdmin || isHR;
   const canUploadAttendance = isAdmin;
 
   // Effect 1: Fetch employee only on mount
@@ -1411,7 +1417,9 @@ const AttendanceManagement: React.FC = () => {
     const month = currentDate.getMonth() + 1;
 
     try {
-      const reader = await attendanceService.syncFromLavianStream(year, month);
+      if (!syncScopeAll && syncSelectedCodes.length === 0) return;
+      const codes = syncScopeAll ? undefined : syncSelectedCodes;
+      const reader = await attendanceService.syncFromLavianStream(year, month, codes);
       const decoder = new TextDecoder();
       let buffer = '';
 
@@ -1543,10 +1551,17 @@ const AttendanceManagement: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Nút Đồng bộ chấm công — chỉ ADMIN */}
-          {isAdmin && (
+          {/* Nút Đồng bộ chấm công — ADMIN hoặc HR */}
+          {canSync && (
             <button
-              onClick={() => { setSyncResult(null); setShowSyncModal(true); }}
+              onClick={() => {
+                setSyncResult(null);
+                setSyncScopeAll(true);
+                setSyncSelectedCodes([]);
+                setSyncEmployeeSearch('');
+                setSyncEmployeeOptions([]);
+                setShowSyncModal(true);
+              }}
               disabled={isSyncing}
               className="flex items-center gap-2 px-4 py-2.5 bg-white border border-emerald-200 text-emerald-700 rounded-xl shadow-sm hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-md transition-all duration-200 font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed"
             >
@@ -1659,13 +1674,84 @@ const AttendanceManagement: React.FC = () => {
                   </div>
                   <h3 className="text-lg font-bold text-gray-900">Đồng bộ chấm công</h3>
                   <p className="text-sm text-gray-500">
-                    Hệ thống sẽ lấy dữ liệu chấm công tháng{' '}
+                    Lấy dữ liệu chấm công tháng{' '}
                     <span className="font-semibold text-gray-700">
                       {currentDate.getMonth() + 1}/{currentDate.getFullYear()}
                     </span>{' '}
                     từ APP ALAN và cập nhật vào ALAN HRM.
                   </p>
                 </div>
+
+                {/* Toggle scope */}
+                <div className="flex rounded-xl border border-gray-200 overflow-hidden mb-4 text-sm font-medium">
+                  <button
+                    onClick={() => setSyncScopeAll(true)}
+                    className={`flex-1 py-2 transition-colors ${syncScopeAll ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    Tất cả nhân viên
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setSyncScopeAll(false);
+                      if (syncEmployeeOptions.length === 0) {
+                        try {
+                          const res = await employeesAPI.list({ page_size: 500, is_active: true });
+                          setSyncEmployeeOptions(res.results.map((e: any) => ({
+                            id: e.id,
+                            employee_id: e.employee_id,
+                            full_name: e.full_name,
+                          })));
+                        } catch {}
+                      }
+                    }}
+                    className={`flex-1 py-2 transition-colors ${!syncScopeAll ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    Chọn nhân viên
+                  </button>
+                </div>
+
+                {/* Employee selector khi chọn scope theo NV */}
+                {!syncScopeAll && (
+                  <div className="mb-4 space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Tìm mã NV hoặc tên..."
+                      value={syncEmployeeSearch}
+                      onChange={e => setSyncEmployeeSearch(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+                    />
+                    <div className="max-h-40 overflow-y-auto rounded-xl border border-gray-100 divide-y divide-gray-50">
+                      {syncEmployeeOptions
+                        .filter(e =>
+                          !syncEmployeeSearch ||
+                          e.employee_id.toLowerCase().includes(syncEmployeeSearch.toLowerCase()) ||
+                          e.full_name.toLowerCase().includes(syncEmployeeSearch.toLowerCase())
+                        )
+                        .slice(0, 50)
+                        .map(e => (
+                          <label key={e.employee_id} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={syncSelectedCodes.includes(e.employee_id)}
+                              onChange={ev => {
+                                setSyncSelectedCodes(prev =>
+                                  ev.target.checked ? [...prev, e.employee_id] : prev.filter(c => c !== e.employee_id)
+                                );
+                              }}
+                              className="rounded text-primary-600"
+                            />
+                            <span className="text-xs text-gray-400 w-16 shrink-0">{e.employee_id}</span>
+                            <span className="text-sm text-gray-700 truncate">{e.full_name}</span>
+                          </label>
+                        ))}
+                    </div>
+                    {syncSelectedCodes.length > 0 && (
+                      <p className="text-xs text-primary-600 font-medium">
+                        Đã chọn {syncSelectedCodes.length} nhân viên
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Progress + danh sách đang sync */}
                 {isSyncing && (
@@ -1715,8 +1801,8 @@ const AttendanceManagement: React.FC = () => {
                   </button>
                   <button
                     onClick={handleSyncAttendance}
-                    disabled={isSyncing}
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                    disabled={isSyncing || (!syncScopeAll && syncSelectedCodes.length === 0)}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isSyncing ? (
                       <>
@@ -2208,6 +2294,7 @@ const AttendanceManagement: React.FC = () => {
                               const _earlyMins = _hasEngineData ? (_ec.early_leave_minutes || 0) : record.early_leave_minutes;
                               return (
                               <tr key={record.id || index}>
+                                {(() => { const _attEv = (record.events || []).find((e: any) => e.event_type === 'attendance' && e.data?.is_anomaly); (record as any)._isAnomaly = !!_attEv; (record as any)._anomalyReason = _attEv?.data?.anomaly_reason; return null; })()}
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                   {record.shift_type_display || 'Cả ngày'}
                                 </td>
@@ -2310,7 +2397,15 @@ const AttendanceManagement: React.FC = () => {
                                         {_earlyMins > 0 && <div>Về sớm: {_earlyMins} phút</div>}
                                       </div>
                                     )}
-                                    {!record.notes && _lateMins === 0 && _earlyMins === 0 && (
+                                    {(record as any)._isAnomaly && (
+                                      <div className="flex items-center gap-1">
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200">
+                                          ⚠ Bất thường
+                                        </span>
+                                        <span className="text-xs text-orange-600">{(record as any)._anomalyReason}</span>
+                                      </div>
+                                    )}
+                                    {!record.notes && _lateMins === 0 && _earlyMins === 0 && !(record as any)._isAnomaly && (
                                       <div>{_isInsuffHours ? 'Không đủ giờ công' : '-'}</div>
                                     )}
                                   </div>
@@ -2568,9 +2663,11 @@ const AttendanceManagement: React.FC = () => {
                     const filteredEvents = sortedEvents.filter((ev) => {
                       if (ev.event_type === 'attendance') {
                         if (!hasAnyPunch) return false;
-                        // Bỏ các bản ghi chấm công (event_type === 'attendance') không có thông tin status hoặc import_source, đó là các log rác/thừa
+                        // Bỏ các bản ghi chấm công không có thông tin status hoặc import_source
                         if (!ev.data?.status && !ev.data?.import_source) return false;
                       }
+                      // Bỏ OVERTIME event do sync từ Lavian tạo tự động (không phải đơn người dùng tạo)
+                      if (ev.event_type === 'overtime' && ev.data?.source === 'lavian_spa') return false;
                       return true;
                     });
 
@@ -2719,18 +2816,53 @@ const AttendanceManagement: React.FC = () => {
                                     </time>
                                   </div>
                                   {ev.event_type === 'attendance' && (ev.data?.status || ev.data?.import_source) && (
-                                    <p className="text-xs text-gray-600">
-                                      {ev.data?.status ? (
-                                        <span>
-                                          Trạng thái: Có mặt
-                                        </span>
-                                      ) : null}
+                                    <div className="text-xs text-gray-600 space-y-1">
+                                      {/* Lịch sử từng lần chấm (từ Lavian) */}
+                                      {(() => {
+                                        const punchRecords: Array<{check_in: string|null; check_out: string|null; shift_name?: string; checkin_address?: string}> =
+                                          ev.data?.checkin_checkout_records || [];
+                                        if (punchRecords.length > 0) {
+                                          return (
+                                            <div className="space-y-1">
+                                              {punchRecords.map((r, i) => (
+                                                <div key={i} className="flex items-center gap-2 bg-gray-50 rounded px-2 py-1 border border-gray-100">
+                                                  <ArrowLeftOnRectangleIcon className="h-3 w-3 text-green-600 shrink-0" />
+                                                  <span className="font-mono font-semibold text-green-700">{r.check_in || '--:--'}</span>
+                                                  <span className="text-gray-400">→</span>
+                                                  <ArrowRightOnRectangleIcon className="h-3 w-3 text-red-500 shrink-0" />
+                                                  <span className="font-mono font-semibold text-red-600">{r.check_out || '--:--'}</span>
+                                                  {r.shift_name && <span className="text-gray-700 font-semibold ml-1">· {r.shift_name}</span>}
+                                                  {r.checkin_address && <span className="text-gray-700 font-semibold ml-1">· {r.checkin_address}</span>}
+                                                  {ev.data?.is_anomaly && (
+                                                    <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200" title={ev.data?.anomaly_reason}>
+                                                      ⚠ Bất thường
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          );
+                                        }
+                                        // Fallback: hiện check_in/check_out từ model field
+                                        if (ev.check_in || ev.check_out) {
+                                          return (
+                                            <div className="flex items-center gap-2 bg-gray-50 rounded px-2 py-1 border border-gray-100">
+                                              <ArrowLeftOnRectangleIcon className="h-3 w-3 text-green-600 shrink-0" />
+                                              <span className="font-mono font-semibold text-green-700">{ev.check_in || '--:--'}</span>
+                                              <span className="text-gray-400">→</span>
+                                              <ArrowRightOnRectangleIcon className="h-3 w-3 text-red-500 shrink-0" />
+                                              <span className="font-mono font-semibold text-red-600">{ev.check_out || '--:--'}</span>
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
                                       {ev.data?.import_source && (
-                                        <span className={ev.data?.status ? "ml-2 text-gray-400" : "text-gray-400"}>
+                                        <span className="text-gray-400">
                                           ({IMPORT_SOURCE_MAP[ev.data.import_source] || ev.data.import_source})
                                         </span>
                                       )}
-                                    </p>
+                                    </div>
                                   )}
                                   {ev.event_type === 'explanation' && (
                                     <div className="text-xs text-gray-600 space-y-0.5">
