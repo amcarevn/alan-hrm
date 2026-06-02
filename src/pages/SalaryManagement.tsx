@@ -4233,10 +4233,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           Lương CB
                         </th>
                         <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Phụ cấp
+                          Tổng phụ cấp
                         </th>
                         <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          PC ăn trưa
+                          Phụ cấp ăn trưa
                         </th>
                         <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Tổng công
