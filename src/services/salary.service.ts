@@ -186,6 +186,22 @@ export interface BulkImportOtherAllowanceResponse {
   errors:  { employee_code: string; error: string }[];
 }
 
+export interface SalaryDataMonthlySummary {
+  year: number;
+  month: number;
+  department_id: number | null;
+  legal_entity?: string | null;
+  commission_total: number;
+  penalty_total: number;
+  advance_total: number;
+  other_allowance_total: number;
+  net_adjustment: number;
+  commission_count: number;
+  penalty_count: number;
+  advance_count: number;
+  other_allowance_count: number;
+}
+
 export interface OvertimeRateConfig {
   id: number;
   department_ids:    number[];
@@ -415,6 +431,11 @@ class SalaryService {
     return response.data;
   }
 
+  async createPenalty(data: { employee: number; year: number; month: number; amount: number; reason?: string; notes?: string }): Promise<PenaltyRecord> {
+    const response = await managementApi.post('/api/v1/salary/penalties/', data);
+    return response.data;
+  }
+
   async deletePenalty(id: number): Promise<void> {
     await managementApi.delete(`/api/v1/salary/penalties/${id}/`);
   }
@@ -435,6 +456,11 @@ class SalaryService {
 
   async updateCommission(id: number, data: { amount: number; notes?: string }): Promise<CommissionRecord> {
     const response = await managementApi.patch(`/api/v1/salary/commissions/${id}/`, data);
+    return response.data;
+  }
+
+  async createCommission(data: { employee: number; year: number; month: number; amount: number; notes?: string }): Promise<CommissionRecord> {
+    const response = await managementApi.post('/api/v1/salary/commissions/', data);
     return response.data;
   }
 
@@ -483,6 +509,11 @@ class SalaryService {
     return response.data;
   }
 
+  async createAdvance(data: { employee: number; year: number; month: number; amount: number; notes?: string }): Promise<AdvanceRecord> {
+    const response = await managementApi.post('/api/v1/salary/advances/', data);
+    return response.data;
+  }
+
   async deleteAdvance(id: number): Promise<void> {
     await managementApi.delete(`/api/v1/salary/advances/${id}/`);
   }
@@ -503,6 +534,11 @@ class SalaryService {
 
   async updateOtherAllowance(id: number, data: { amount: number; description?: string; notes?: string }): Promise<OtherAllowanceRecord> {
     const response = await managementApi.patch(`/api/v1/salary/other-allowances/${id}/`, data);
+    return response.data;
+  }
+
+  async createOtherAllowance(data: { employee: number; year: number; month: number; amount: number; description?: string; notes?: string }): Promise<OtherAllowanceRecord> {
+    const response = await managementApi.post('/api/v1/salary/other-allowances/', data);
     return response.data;
   }
 
@@ -604,6 +640,16 @@ class SalaryService {
     employee_count: number;
   }> {
     const response = await managementApi.get('/api/v1/salary/records/total-summary/', { params });
+    return response.data;
+  }
+
+  async getSalaryDataMonthlySummary(params: {
+    year: number;
+    month: number;
+    department?: number;
+    legal_entity?: string;
+  }): Promise<SalaryDataMonthlySummary> {
+    const response = await managementApi.get('/api/v1/salary/records/salary-data-monthly-summary/', { params });
     return response.data;
   }
 }

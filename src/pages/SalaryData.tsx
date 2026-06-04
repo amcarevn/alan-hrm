@@ -3,6 +3,7 @@ import {
   ArrowUpTrayIcon,
   ArrowDownTrayIcon,
   ArrowPathIcon,
+  PlusIcon,
   MagnifyingGlassIcon,
   CheckIcon,
   XMarkIcon,
@@ -22,6 +23,7 @@ import {
   type BulkImportAdvanceRecord,
   type OtherAllowanceRecord,
   type BulkImportOtherAllowanceRecord,
+  type SalaryDataMonthlySummary,
 } from '../services/salary.service';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
 
@@ -55,6 +57,12 @@ interface ParsedOtherAllowanceRow {
   description: string;
   rowIndex: number;
   parseError?: string;
+}
+
+interface EmployeeOption {
+  id: number;
+  employee_code: string;
+  employee_name: string;
 }
 
 type TabKey = 'commission' | 'penalty' | 'advance' | 'other_allowance';
@@ -103,6 +111,20 @@ function extractCellString(raw: unknown): string {
 const fmtMoney = (v: number | string) => {
   const n = Number(v);
   return n ? n.toLocaleString('vi-VN') + ' ₫' : '—';
+};
+
+const parseAmountInput = (value: string): number => parseFloat(value.replace(/,/g, '')) || 0;
+
+const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  const payload = (error as { response?: { data?: unknown } })?.response?.data;
+  if (!payload) return fallback;
+  if (typeof payload === 'string') return payload;
+  if (typeof payload === 'object' && payload !== null) {
+    const firstValue = Object.values(payload as Record<string, unknown>)[0];
+    if (Array.isArray(firstValue) && firstValue.length > 0) return String(firstValue[0]);
+    if (typeof firstValue === 'string') return firstValue;
+  }
+  return fallback;
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -191,6 +213,32 @@ const SalaryData: React.FC = () => {
   // ── Shared toasts ──
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg,   setErrorMsg]   = useState<string | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportSummary, setReportSummary] = useState<SalaryDataMonthlySummary | null>(null);
+
+  // ── Employee options (for manual add) ──
+  const [employeeOptions, setEmployeeOptions] = useState<EmployeeOption[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+
+  // ── Commission add state ──
+  const [cAdding, setCAdding] = useState(false);
+  const [cCreating, setCCreating] = useState(false);
+  const [cCreateValues, setCCreateValues] = useState({ employeeId: 0, amount: '' });
+
+  // ── Penalty add state ──
+  const [pAdding, setPAdding] = useState(false);
+  const [pCreating, setPCreating] = useState(false);
+  const [pCreateValues, setPCreateValues] = useState({ employeeId: 0, amount: '', reason: '' });
+
+  // ── Advance add state ──
+  const [aAdding, setAAdding] = useState(false);
+  const [aCreating, setACreating] = useState(false);
+  const [aCreateValues, setACreateValues] = useState({ employeeId: 0, amount: '' });
+
+  // ── OtherAllowance add state ──
+  const [oAdding, setOAdding] = useState(false);
+  const [oCreating, setOCreating] = useState(false);
+  const [oCreateValues, setOCreateValues] = useState({ employeeId: 0, amount: '', description: '' });
 
   // ─── Load functions ────────────────────────────────────────────────────────
 
@@ -250,6 +298,42 @@ const SalaryData: React.FC = () => {
     }
   }, [selectedMonth, selectedYear]);
 
+  const loadEmployeeOptions = useCallback(async () => {
+    setLoadingEmployees(true);
+    try {
+      const res = await salaryService.listEmployeeSalaries({ page: 1, page_size: 1000, ordering: 'employee_id' });
+      const options = res.results
+        .filter((employee) => !!employee.id && !!employee.employee_id)
+        .map((employee) => ({
+          id: employee.id,
+          employee_code: employee.employee_id,
+          employee_name: employee.full_name || employee.employee_id,
+        }));
+      setEmployeeOptions(options);
+    } catch {
+      setErrorMsg('Không thể tải danh sách nhân viên để thêm dữ liệu.');
+    } finally {
+      setLoadingEmployees(false);
+    }
+  }, []);
+
+  const handleLoadReport = useCallback(async () => {
+    setReportLoading(true);
+    setErrorMsg(null);
+    try {
+      const summary = await salaryService.getSalaryDataMonthlySummary({
+        year: selectedYear,
+        month: selectedMonth,
+      });
+      setReportSummary(summary);
+      setSuccessMsg(`Đã tải báo cáo tháng ${selectedMonth}/${selectedYear}.`);
+    } catch (error) {
+      setErrorMsg(getApiErrorMessage(error, 'Không thể tải báo cáo tổng hợp theo tháng.'));
+    } finally {
+      setReportLoading(false);
+    }
+  }, [selectedMonth, selectedYear]);
+
   // Auto-load khi đổi tab / tháng / năm
   useEffect(() => {
     if (activeTab === 'commission') loadCommissions(selectedMonth, selectedYear);
@@ -257,6 +341,10 @@ const SalaryData: React.FC = () => {
     else if (activeTab === 'advance') loadAdvances(selectedMonth, selectedYear);
     else loadOtherAllowances(selectedMonth, selectedYear);
   }, [activeTab, selectedMonth, selectedYear]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    loadEmployeeOptions();
+  }, [loadEmployeeOptions]);
 
   // ─── Month/Year handlers ───────────────────────────────────────────────────
 
@@ -267,8 +355,8 @@ const SalaryData: React.FC = () => {
     setOParsedRows(null); setOFile(null); setOImportErr(null); if (oFileRef.current) oFileRef.current.value = '';
   };
 
-  const handleMonthChange = (v: number) => { setSelectedMonth(v); clearImportState(); };
-  const handleYearChange  = (v: number) => { setSelectedYear(v);  clearImportState(); };
+  const handleMonthChange = (v: number) => { setSelectedMonth(v); clearImportState(); setReportSummary(null); };
+  const handleYearChange  = (v: number) => { setSelectedYear(v);  clearImportState(); setReportSummary(null); };
 
   // ─── Commission: template ──────────────────────────────────────────────────
 
@@ -368,6 +456,36 @@ const SalaryData: React.FC = () => {
       setCDeletingId(null); setSuccessMsg('Đã xoá hoa hồng.');
     } catch { setErrorMsg('Không thể xoá.'); }
     finally { setCDeleting(false); }
+  };
+
+  const handleCAdd = async () => {
+    const amount = parseAmountInput(cCreateValues.amount);
+    if (!cCreateValues.employeeId) {
+      setErrorMsg('Vui lòng chọn mã nhân viên.');
+      return;
+    }
+    if (amount <= 0) {
+      setErrorMsg('Vui lòng nhập số tiền lớn hơn 0.');
+      return;
+    }
+
+    setCCreating(true);
+    try {
+      await salaryService.createCommission({
+        employee: cCreateValues.employeeId,
+        year: selectedYear,
+        month: selectedMonth,
+        amount,
+      });
+      setSuccessMsg('Đã thêm hoa hồng.');
+      setCAdding(false);
+      setCCreateValues({ employeeId: 0, amount: '' });
+      await loadCommissions();
+    } catch (error) {
+      setErrorMsg(getApiErrorMessage(error, 'Không thể thêm hoa hồng.'));
+    } finally {
+      setCCreating(false);
+    }
   };
 
   // ─── Penalty: template ─────────────────────────────────────────────────────
@@ -472,6 +590,37 @@ const SalaryData: React.FC = () => {
     finally { setPDeleting(false); }
   };
 
+  const handlePAdd = async () => {
+    const amount = parseAmountInput(pCreateValues.amount);
+    if (!pCreateValues.employeeId) {
+      setErrorMsg('Vui lòng chọn mã nhân viên.');
+      return;
+    }
+    if (amount <= 0) {
+      setErrorMsg('Vui lòng nhập số tiền lớn hơn 0.');
+      return;
+    }
+
+    setPCreating(true);
+    try {
+      await salaryService.createPenalty({
+        employee: pCreateValues.employeeId,
+        year: selectedYear,
+        month: selectedMonth,
+        amount,
+        reason: pCreateValues.reason.trim(),
+      });
+      setSuccessMsg('Đã thêm phạt biên bản.');
+      setPAdding(false);
+      setPCreateValues({ employeeId: 0, amount: '', reason: '' });
+      await loadPenalties();
+    } catch (error) {
+      setErrorMsg(getApiErrorMessage(error, 'Không thể thêm phạt biên bản.'));
+    } finally {
+      setPCreating(false);
+    }
+  };
+
   // ─── Advance: template ─────────────────────────────────────────────────────
 
   const handleDownloadAdvanceTemplate = async () => {
@@ -570,6 +719,36 @@ const SalaryData: React.FC = () => {
       setADeletingId(null); setSuccessMsg('Đã xoá tạm ứng.');
     } catch { setErrorMsg('Không thể xoá.'); }
     finally { setADeleting(false); }
+  };
+
+  const handleAAdd = async () => {
+    const amount = parseAmountInput(aCreateValues.amount);
+    if (!aCreateValues.employeeId) {
+      setErrorMsg('Vui lòng chọn mã nhân viên.');
+      return;
+    }
+    if (amount <= 0) {
+      setErrorMsg('Vui lòng nhập số tiền lớn hơn 0.');
+      return;
+    }
+
+    setACreating(true);
+    try {
+      await salaryService.createAdvance({
+        employee: aCreateValues.employeeId,
+        year: selectedYear,
+        month: selectedMonth,
+        amount,
+      });
+      setSuccessMsg('Đã thêm tạm ứng.');
+      setAAdding(false);
+      setACreateValues({ employeeId: 0, amount: '' });
+      await loadAdvances();
+    } catch (error) {
+      setErrorMsg(getApiErrorMessage(error, 'Không thể thêm tạm ứng.'));
+    } finally {
+      setACreating(false);
+    }
   };
 
   // ─── OtherAllowance: template ──────────────────────────────────────────────
@@ -672,6 +851,37 @@ const SalaryData: React.FC = () => {
       setODeletingId(null); setSuccessMsg('Đã xoá phụ cấp.');
     } catch { setErrorMsg('Không thể xoá.'); }
     finally { setODeleting(false); }
+  };
+
+  const handleOAdd = async () => {
+    const amount = parseAmountInput(oCreateValues.amount);
+    if (!oCreateValues.employeeId) {
+      setErrorMsg('Vui lòng chọn mã nhân viên.');
+      return;
+    }
+    if (amount <= 0) {
+      setErrorMsg('Vui lòng nhập số tiền lớn hơn 0.');
+      return;
+    }
+
+    setOCreating(true);
+    try {
+      await salaryService.createOtherAllowance({
+        employee: oCreateValues.employeeId,
+        year: selectedYear,
+        month: selectedMonth,
+        amount,
+        description: oCreateValues.description.trim(),
+      });
+      setSuccessMsg('Đã thêm phụ cấp khác.');
+      setOAdding(false);
+      setOCreateValues({ employeeId: 0, amount: '', description: '' });
+      await loadOtherAllowances();
+    } catch (error) {
+      setErrorMsg(getApiErrorMessage(error, 'Không thể thêm phụ cấp khác.'));
+    } finally {
+      setOCreating(false);
+    }
   };
 
   // ─── Export error helpers ─────────────────────────────────────────────────
@@ -801,6 +1011,11 @@ const SalaryData: React.FC = () => {
     !oSearch || r.employee_code.toLowerCase().includes(oSearch.toLowerCase()) || r.employee_name.toLowerCase().includes(oSearch.toLowerCase())
   );
 
+  const employeeSelectOptions = employeeOptions.map((employee) => ({
+    value: employee.id,
+    label: `${employee.employee_code} - ${employee.employee_name}`,
+  }));
+
   // ─── Render helpers ────────────────────────────────────────────────────────
 
   const renderLoading = (color = 'primary') => (
@@ -912,8 +1127,47 @@ const SalaryData: React.FC = () => {
             <ArrowPathIcon className={`h-4 w-4 ${(loadingCommission || loadingPenalty || loadingAdvance || loadingO) ? 'animate-spin' : ''}`} />
             Tải dữ liệu
           </button>
+          <button
+            onClick={handleLoadReport}
+            disabled={reportLoading}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-800 rounded-xl hover:bg-gray-900 disabled:opacity-60 transition-colors"
+          >
+            {reportLoading ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
+            Báo cáo
+          </button>
         </div>
       </div>
+
+      {reportSummary && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-gray-800">Báo cáo tổng hợp tháng {reportSummary.month}/{reportSummary.year}</p>
+            <span className="text-xs text-gray-500">Net điều chỉnh: {fmtMoney(reportSummary.net_adjustment)}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="rounded-xl border border-primary-100 bg-primary-50 p-3">
+              <p className="text-xs text-gray-500">Hoa hồng</p>
+              <p className="text-sm font-semibold text-primary-700">{fmtMoney(reportSummary.commission_total)}</p>
+              <p className="text-xs text-gray-500">{reportSummary.commission_count} bản ghi</p>
+            </div>
+            <div className="rounded-xl border border-red-100 bg-red-50 p-3">
+              <p className="text-xs text-gray-500">Phạt biên bản</p>
+              <p className="text-sm font-semibold text-red-600">{fmtMoney(reportSummary.penalty_total)}</p>
+              <p className="text-xs text-gray-500">{reportSummary.penalty_count} bản ghi</p>
+            </div>
+            <div className="rounded-xl border border-cyan-100 bg-cyan-50 p-3">
+              <p className="text-xs text-gray-500">Tạm ứng lương</p>
+              <p className="text-sm font-semibold text-cyan-700">{fmtMoney(reportSummary.advance_total)}</p>
+              <p className="text-xs text-gray-500">{reportSummary.advance_count} bản ghi</p>
+            </div>
+            <div className="rounded-xl border border-violet-100 bg-violet-50 p-3">
+              <p className="text-xs text-gray-500">Phụ cấp khác</p>
+              <p className="text-sm font-semibold text-violet-700">{fmtMoney(reportSummary.other_allowance_total)}</p>
+              <p className="text-xs text-gray-500">{reportSummary.other_allowance_count} bản ghi</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tab bar */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -950,6 +1204,17 @@ const SalaryData: React.FC = () => {
                 <button onClick={handleDownloadCommissionTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
                   <ArrowDownTrayIcon className="h-4 w-4" />Tải file mẫu
                 </button>
+                <button
+                  onClick={() => {
+                    setCAdding((prev) => !prev);
+                    setErrorMsg(null);
+                    setSuccessMsg(null);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-primary-300 text-primary-700 bg-primary-50 rounded-xl hover:bg-primary-100 transition-colors"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  {cAdding ? 'Đóng thêm mới' : 'Thêm'}
+                </button>
                 <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-primary-300 text-primary-700 bg-primary-50 rounded-xl hover:bg-primary-100 cursor-pointer transition-colors">
                   <ArrowUpTrayIcon className="h-4 w-4" />
                   {cFile ? cFile.name : 'Chọn file Excel'}
@@ -969,6 +1234,52 @@ const SalaryData: React.FC = () => {
                   </div>
                 )}
               </div>
+              {cAdding && (
+                <div className="bg-primary-50 border border-primary-100 rounded-2xl p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    <div className="md:col-span-7">
+                      <SelectBox<number>
+                        label="Mã nhân viên"
+                        value={cCreateValues.employeeId}
+                        options={employeeSelectOptions}
+                        onChange={(value) => setCCreateValues((prev) => ({ ...prev, employeeId: value }))}
+                        placeholder={loadingEmployees ? 'Đang tải nhân viên...' : 'Tìm mã nhân viên...'}
+                        searchable
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Số tiền</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={cCreateValues.amount}
+                        onChange={(e) => setCCreateValues((prev) => ({ ...prev, amount: e.target.value }))}
+                        placeholder="Nhập số tiền"
+                        className="input-field w-full"
+                      />
+                    </div>
+                    <div className="md:col-span-2 flex gap-2">
+                      <button
+                        onClick={handleCAdd}
+                        disabled={cCreating || loadingEmployees}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-60 w-full"
+                      >
+                        {cCreating ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
+                        Lưu
+                      </button>
+                      <button
+                        onClick={() => {
+                          setCAdding(false);
+                          setCCreateValues({ employeeId: 0, amount: '' });
+                        }}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50"
+                      >
+                        <XMarkIcon className="h-4 w-4" />Huỷ
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {cParseError && <p className="flex items-center gap-1 text-sm text-red-600"><ExclamationCircleIcon className="h-4 w-4" />{cParseError}</p>}
               {renderImportErrors(cImportErr, handleExportCommissionErrors, () => setCImportErr(null))}
 
@@ -1101,6 +1412,17 @@ const SalaryData: React.FC = () => {
                 <button onClick={handleDownloadOtherAllowanceTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
                   <ArrowDownTrayIcon className="h-4 w-4" />Tải file mẫu
                 </button>
+                <button
+                  onClick={() => {
+                    setOAdding((prev) => !prev);
+                    setErrorMsg(null);
+                    setSuccessMsg(null);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-violet-300 text-violet-700 bg-violet-50 rounded-xl hover:bg-violet-100 transition-colors"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  {oAdding ? 'Đóng thêm mới' : 'Thêm'}
+                </button>
                 <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-violet-300 text-violet-700 bg-violet-50 rounded-xl hover:bg-violet-100 cursor-pointer transition-colors">
                   <ArrowUpTrayIcon className="h-4 w-4" />
                   {oFile ? oFile.name : 'Chọn file Excel'}
@@ -1120,6 +1442,62 @@ const SalaryData: React.FC = () => {
                   </div>
                 )}
               </div>
+              {oAdding && (
+                <div className="bg-violet-50 border border-violet-100 rounded-2xl p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    <div className="md:col-span-5">
+                      <SelectBox<number>
+                        label="Mã nhân viên"
+                        value={oCreateValues.employeeId}
+                        options={employeeSelectOptions}
+                        onChange={(value) => setOCreateValues((prev) => ({ ...prev, employeeId: value }))}
+                        placeholder={loadingEmployees ? 'Đang tải nhân viên...' : 'Tìm mã nhân viên...'}
+                        searchable
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Số tiền</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={oCreateValues.amount}
+                        onChange={(e) => setOCreateValues((prev) => ({ ...prev, amount: e.target.value }))}
+                        placeholder="Nhập số tiền"
+                        className="input-field w-full"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Mô tả</label>
+                      <input
+                        type="text"
+                        value={oCreateValues.description}
+                        onChange={(e) => setOCreateValues((prev) => ({ ...prev, description: e.target.value }))}
+                        placeholder="Mô tả phụ cấp"
+                        className="input-field w-full"
+                      />
+                    </div>
+                    <div className="md:col-span-2 flex gap-2">
+                      <button
+                        onClick={handleOAdd}
+                        disabled={oCreating || loadingEmployees}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-white bg-violet-600 rounded-xl hover:bg-violet-700 disabled:opacity-60 w-full"
+                      >
+                        {oCreating ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
+                        Lưu
+                      </button>
+                      <button
+                        onClick={() => {
+                          setOAdding(false);
+                          setOCreateValues({ employeeId: 0, amount: '', description: '' });
+                        }}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50"
+                      >
+                        <XMarkIcon className="h-4 w-4" />Huỷ
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {oParseError && <p className="flex items-center gap-1 text-sm text-red-600"><ExclamationCircleIcon className="h-4 w-4" />{oParseError}</p>}
               {renderImportErrors(oImportErr, handleExportOtherAllowanceErrors, () => setOImportErr(null))}
 
@@ -1263,6 +1641,17 @@ const SalaryData: React.FC = () => {
                 <button onClick={handleDownloadAdvanceTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
                   <ArrowDownTrayIcon className="h-4 w-4" />Tải file mẫu
                 </button>
+                <button
+                  onClick={() => {
+                    setAAdding((prev) => !prev);
+                    setErrorMsg(null);
+                    setSuccessMsg(null);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-primary-300 text-primary-700 bg-primary-50 rounded-xl hover:bg-primary-100 transition-colors"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  {aAdding ? 'Đóng thêm mới' : 'Thêm'}
+                </button>
                 <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-primary-300 text-primary-700 bg-primary-50 rounded-xl hover:bg-primary-100 cursor-pointer transition-colors">
                   <ArrowUpTrayIcon className="h-4 w-4" />
                   {aFile ? aFile.name : 'Chọn file Excel'}
@@ -1282,6 +1671,52 @@ const SalaryData: React.FC = () => {
                   </div>
                 )}
               </div>
+              {aAdding && (
+                <div className="bg-primary-50 border border-primary-100 rounded-2xl p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    <div className="md:col-span-7">
+                      <SelectBox<number>
+                        label="Mã nhân viên"
+                        value={aCreateValues.employeeId}
+                        options={employeeSelectOptions}
+                        onChange={(value) => setACreateValues((prev) => ({ ...prev, employeeId: value }))}
+                        placeholder={loadingEmployees ? 'Đang tải nhân viên...' : 'Tìm mã nhân viên...'}
+                        searchable
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Số tiền tạm ứng</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={aCreateValues.amount}
+                        onChange={(e) => setACreateValues((prev) => ({ ...prev, amount: e.target.value }))}
+                        placeholder="Nhập số tiền"
+                        className="input-field w-full"
+                      />
+                    </div>
+                    <div className="md:col-span-2 flex gap-2">
+                      <button
+                        onClick={handleAAdd}
+                        disabled={aCreating || loadingEmployees}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-60 w-full"
+                      >
+                        {aCreating ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
+                        Lưu
+                      </button>
+                      <button
+                        onClick={() => {
+                          setAAdding(false);
+                          setACreateValues({ employeeId: 0, amount: '' });
+                        }}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50"
+                      >
+                        <XMarkIcon className="h-4 w-4" />Huỷ
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {aParseError && <p className="flex items-center gap-1 text-sm text-red-600"><ExclamationCircleIcon className="h-4 w-4" />{aParseError}</p>}
               {renderImportErrors(aImportErr, handleExportAdvanceErrors, () => setAImportErr(null))}
 
@@ -1414,6 +1849,17 @@ const SalaryData: React.FC = () => {
                 <button onClick={handleDownloadPenaltyTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
                   <ArrowDownTrayIcon className="h-4 w-4" />Tải file mẫu
                 </button>
+                <button
+                  onClick={() => {
+                    setPAdding((prev) => !prev);
+                    setErrorMsg(null);
+                    setSuccessMsg(null);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-red-300 text-red-700 bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  {pAdding ? 'Đóng thêm mới' : 'Thêm'}
+                </button>
                 <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-red-300 text-red-700 bg-red-50 rounded-xl hover:bg-red-100 cursor-pointer transition-colors">
                   <ArrowUpTrayIcon className="h-4 w-4" />
                   {pFile ? pFile.name : 'Chọn file Excel'}
@@ -1433,6 +1879,62 @@ const SalaryData: React.FC = () => {
                   </div>
                 )}
               </div>
+              {pAdding && (
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    <div className="md:col-span-5">
+                      <SelectBox<number>
+                        label="Mã nhân viên"
+                        value={pCreateValues.employeeId}
+                        options={employeeSelectOptions}
+                        onChange={(value) => setPCreateValues((prev) => ({ ...prev, employeeId: value }))}
+                        placeholder={loadingEmployees ? 'Đang tải nhân viên...' : 'Tìm mã nhân viên...'}
+                        searchable
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Số tiền phạt</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={pCreateValues.amount}
+                        onChange={(e) => setPCreateValues((prev) => ({ ...prev, amount: e.target.value }))}
+                        placeholder="Nhập số tiền"
+                        className="input-field w-full"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Lý do</label>
+                      <input
+                        type="text"
+                        value={pCreateValues.reason}
+                        onChange={(e) => setPCreateValues((prev) => ({ ...prev, reason: e.target.value }))}
+                        placeholder="Lý do vi phạm"
+                        className="input-field w-full"
+                      />
+                    </div>
+                    <div className="md:col-span-2 flex gap-2">
+                      <button
+                        onClick={handlePAdd}
+                        disabled={pCreating || loadingEmployees}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-60 w-full"
+                      >
+                        {pCreating ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
+                        Lưu
+                      </button>
+                      <button
+                        onClick={() => {
+                          setPAdding(false);
+                          setPCreateValues({ employeeId: 0, amount: '', reason: '' });
+                        }}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50"
+                      >
+                        <XMarkIcon className="h-4 w-4" />Huỷ
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {pParseError && <p className="flex items-center gap-1 text-sm text-red-600"><ExclamationCircleIcon className="h-4 w-4" />{pParseError}</p>}
               {renderImportErrors(pImportErr, handleExportPenaltyErrors, () => setPImportErr(null))}
 
