@@ -405,6 +405,7 @@ export interface Employee {
   contract_type?: string;
   contract_type_display?: string;
   contract_end_date?: string;
+  insurance_end_date?: string;
   probation_end_date?: string;
   official_start_date?: string;
   probation_months?: number;
@@ -562,6 +563,7 @@ export interface EmployeeCreateData {
   employment_status?: 'ACTIVE' | 'PAUSED' | 'INACTIVE' | 'PROBATION';
   start_date?: string;
   end_date?: string;
+  insurance_end_date?: string;
   username: string;
   password: string;
   email?: string;
@@ -593,6 +595,7 @@ export interface EmployeeUpdateData {
   employment_status?: 'ACTIVE' | 'PROBATION' | 'PAUSED' | 'INACTIVE' | 'DEACTIVATED';
   start_date?: string;
   end_date?: string;
+  insurance_end_date?: string;
   user_id?: number;
   position_id?: number;
   department_id?: number;

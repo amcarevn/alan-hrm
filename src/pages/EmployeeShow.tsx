@@ -378,6 +378,7 @@ const EmployeeShow: React.FC = () => {
             <InfoField label="Loại hợp đồng" value={emp.contract_type ? (emp.contract_type_display || CONTRACT_TYPE_LABELS[emp.contract_type] || emp.contract_type) : null} full />
             <InfoField label="Ngày bắt đầu hợp đồng" value={emp.contract_start_date ? formatDate(emp.contract_start_date) : null} />
             <InfoField label="Ngày kết thúc hợp đồng" value={emp.contract_end_date ? formatDate(emp.contract_end_date) : null} />
+            <InfoField label="Ngày kết thúc đóng bảo hiểm" value={emp.insurance_end_date ? formatDate(emp.insurance_end_date) : null} />
             <InfoField label="Thời gian thử việc" value={emp.probation_months != null ? `${emp.probation_months} tháng` : null} />
             <InfoField label="Tỉ lệ thử việc" value={emp.probation_rate ? (PROBATION_RATE_LABELS[emp.probation_rate] || emp.probation_rate) : null} />
             <InfoField label="Ngày kết thúc thử việc" value={emp.probation_end_date ? formatDate(emp.probation_end_date) : null} />

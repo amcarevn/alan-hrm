@@ -240,6 +240,7 @@ const EmployeeEdit: React.FC = () => {
     probation_rate: '',
     contract_start_date: '',
     contract_end_date: '',
+    insurance_end_date: '',
     revenue_percentage: '',
     profit_percentage: '',
 
@@ -357,6 +358,7 @@ const EmployeeEdit: React.FC = () => {
         probation_rate: e.probation_rate || '',
         contract_start_date: toDisplayDate(e.contract_start_date),
         contract_end_date: toDisplayDate(e.contract_end_date),
+        insurance_end_date: toDisplayDate(e.insurance_end_date),
         revenue_percentage: e.revenue_percentage || '',
         profit_percentage: e.profit_percentage || '',
 
@@ -627,6 +629,7 @@ const EmployeeEdit: React.FC = () => {
       add('probation_rate', formData.probation_rate);
       add('contract_start_date', toApiDate(formData.contract_start_date));
       add('contract_end_date', toApiDate(formData.contract_end_date));
+      add('insurance_end_date', toApiDate(formData.insurance_end_date));
       add('revenue_percentage', formData.revenue_percentage);
       add('profit_percentage', formData.profit_percentage);
 
@@ -1109,6 +1112,10 @@ const EmployeeEdit: React.FC = () => {
 
             <Field label="Ngày kết thúc hợp đồng">
               <DateInput name="contract_end_date" value={formData.contract_end_date} onChange={handleInput} className={inputClass} />
+            </Field>
+
+            <Field label="Ngày kết thúc đóng bảo hiểm">
+              <DateInput name="insurance_end_date" value={formData.insurance_end_date} onChange={handleInput} className={inputClass} />
             </Field>
 
             <Field label="Tỷ lệ % doanh số hưởng">
