@@ -5222,6 +5222,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           <p className="text-sm text-indigo-600 font-medium mb-2">TỔNG PHẢI CHUYỂN CHO NHÂN VIÊN</p>
                           <p className="text-4xl font-bold text-indigo-900">{formatCurrency(totalTransferToEmployees)}</p>
                           <p className="text-sm text-indigo-500 mt-2">= Tổng số tiền công ty chuyển vào tài khoản nhân viên</p>
+                          <p className="text-xs text-indigo-700 mt-2">Công thức: Tổng phải chuyển = Σ(Còn phải thanh toán XII)</p>
+                          <p className="text-xs text-indigo-700 mt-1">Trong đó: Còn phải thanh toán XII = Thực lĩnh IX - Tạm ứng XI - Thuế TNCN X</p>
                         </div>
 
                         <div className="rounded-lg bg-amber-50 border border-amber-200 p-6 text-center">
@@ -5234,6 +5236,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           <p className="text-sm text-emerald-700 font-medium mb-2">TỔNG PHẢI CHI TRẢ (NHÂN VIÊN + CƠ QUAN THUẾ)</p>
                           <p className="text-4xl font-bold text-emerald-900">{formatCurrency(totalMustPay)}</p>
                           <p className="text-sm text-emerald-600 mt-2">= Tổng chuyển nhân viên + tổng thuế TNCN phải nộp</p>
+                          <p className="text-xs text-emerald-700 mt-2">Công thức: Tổng phải chi trả = Tổng phải chuyển cho nhân viên + Tổng thuế TNCN phải nộp</p>
                         </div>
                       </>
                     );
@@ -5241,6 +5244,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
                   <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 text-sm text-gray-600">
                     <p>Số lượng nhân viên: <span className="font-semibold text-gray-900">{totalSalaryData.employee_count}</span></p>
+                    <p className="mt-1">Thực lĩnh IX = Tổng thu nhập VI - Tổng giảm trừ VII + Điều chỉnh VIII</p>
                   </div>
                 </>
               ) : null}
