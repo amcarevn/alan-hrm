@@ -1431,8 +1431,9 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
   ]);
 
   const forceProgressiveForMaternityLeave = employmentStatus === 'MATERNITY_LEAVE' && insuranceForTax <= 0;
+  const forceProgressiveForInactiveWithInsuranceEndDate = employmentStatus === 'INACTIVE' && !!(employee as any)?.insurance_end_date;
 
-  if (flatTaxMethods.has(taxMethod) && !forceProgressiveForMaternityLeave) {
+  if (flatTaxMethods.has(taxMethod) && !forceProgressiveForMaternityLeave && !forceProgressiveForInactiveWithInsuranceEndDate) {
     const flatTaxAmount = record.thue_tncn != null
       ? Math.max(toNumber(record.thue_tncn), 0)
       : Math.round(Math.max(grossIncomeForTax, 0) * 0.1);
