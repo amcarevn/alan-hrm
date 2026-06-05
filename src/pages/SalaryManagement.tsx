@@ -1422,11 +1422,14 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
   const grossIncomeForTax = toNumber(record.tong_thu_nhap_chiu_thue, getGrossIncomeForTaxFromRecord(record, employee));
   const taxMethod = String((record as unknown as Record<string, unknown>)['tax_method'] ?? '').toUpperCase();
 
-  // Nếu đã đóng bảo hiểm bắt buộc thì dùng thuế luỹ tiến thay vì 10%
-  // (không được vừa trừ bảo hiểm vừa trích 10% trên thu nhập chưa giảm BH)
-  const hasMandatoryInsurance = insuranceForTax > 0;
+  const flatTaxMethods = new Set([
+    'FLAT_10_PROBATION',
+    'FLAT_10_NON_OFFICIAL',
+    'FLAT_10_MIXED_LT14',
+    'FLAT_10_OFFICIAL_NO_INSURANCE_BASE',
+  ]);
 
-  if ((taxMethod === 'FLAT_10_PROBATION' || taxMethod === 'FLAT_10_NON_OFFICIAL') && !hasMandatoryInsurance) {
+  if (flatTaxMethods.has(taxMethod)) {
     const flatTaxAmount = record.thue_tncn != null
       ? Math.max(toNumber(record.thue_tncn), 0)
       : Math.round(Math.max(grossIncomeForTax, 0) * 0.1);

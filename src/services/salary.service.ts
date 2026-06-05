@@ -44,7 +44,7 @@ export interface SalaryRecord {
   phu_cap_an_trua?: number;
   tong_thu_nhap_chiu_thue?: number;
   thue_tncn?: number;
-  tax_method?: 'PROGRESSIVE' | 'FLAT_10_PROBATION' | 'FLAT_10_NON_OFFICIAL' | 'FLAT_10_MIXED_LT14';
+  tax_method?: 'PROGRESSIVE' | 'FLAT_10_PROBATION' | 'FLAT_10_NON_OFFICIAL' | 'FLAT_10_MIXED_LT14' | 'FLAT_10_OFFICIAL_NO_INSURANCE_BASE';
   so_nguoi_phu_thuoc?: number;
   thu_nhap_tinh_thue?: number;
   giam_tru_ban_than?: number;
