@@ -24,6 +24,7 @@ const EmployeeList: React.FC = () => {
     active: 0,
     probation: 0,
     paused: 0,
+    maternity_leave: 0,
     inactive: 0,
     deactivated: 0,
     male: 0,
@@ -87,7 +88,7 @@ const EmployeeList: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const statsData = await employeesAPI.stats();
+      const statsData: any = await employeesAPI.stats();
       
       // Fetch active employees to calculate gender stats
       const activeEmployees = await employeesAPI.list({ 
@@ -105,6 +106,7 @@ const EmployeeList: React.FC = () => {
         active: statsData.active,
         probation: statsData.probation,
         paused: statsData.paused ?? 0,
+        maternity_leave: statsData.maternity_leave ?? 0,
         inactive: statsData.inactive,
         deactivated: statsData.deactivated ?? 0,
         male,
@@ -340,6 +342,7 @@ const EmployeeList: React.FC = () => {
           case 'INACTIVE': return 'Đã nghỉ';
           case 'PROBATION': return 'Thử việc';
           case 'PAUSED': return 'Tạm dừng';
+          case 'MATERNITY_LEAVE': return 'Nghỉ thai sản';
           default: return status;
         }
       };
@@ -1040,6 +1043,8 @@ const EmployeeList: React.FC = () => {
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-600">Đang làm việc</span>;
       case 'PAUSED':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Tạm dừng</span>;
+      case 'MATERNITY_LEAVE':
+        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-pink-100 text-pink-700">Nghỉ thai sản</span>;
       case 'INACTIVE':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-600">Đã nghỉ</span>;
       case 'PROBATION':
@@ -1107,6 +1112,10 @@ const EmployeeList: React.FC = () => {
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Tạm dừng</p>
               <p className="text-2xl font-extrabold text-yellow-600 mt-1">{stats.paused}</p>
             </div>
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-pink-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('MATERNITY_LEAVE'); setCurrentPage(1); }}>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Nghỉ thai sản</p>
+              <p className="text-2xl font-extrabold text-pink-600 mt-1">{stats.maternity_leave}</p>
+            </div>
             <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-red-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('INACTIVE'); setCurrentPage(1); }}>
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Đã nghỉ</p>
               <p className="text-2xl font-extrabold text-red-600 mt-1">{stats.inactive}</p>
@@ -1171,6 +1180,7 @@ const EmployeeList: React.FC = () => {
                 { value: 'ACTIVE', label: 'Đang làm việc' },
                 { value: 'PROBATION', label: 'Thử việc' },
                 { value: 'PAUSED', label: 'Tạm dừng' },
+                { value: 'MATERNITY_LEAVE', label: 'Nghỉ thai sản' },
                 { value: 'INACTIVE', label: 'Đã nghỉ' },
                 { value: 'DEACTIVATED', label: 'Vô hiệu hoá' },
               ]}

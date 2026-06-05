@@ -119,6 +119,7 @@ export const employeesAPI = {
     active: number;
     probation: number;
     paused: number;
+    maternity_leave: number;
     inactive: number;
     deactivated: number;
     department_stats: Array<{
@@ -137,6 +138,7 @@ export const employeesAPI = {
       active: number;
       probation: number;
       paused: number;
+      maternity_leave: number;
       inactive: number;
       deactivated: number;
       department_stats: Array<{
