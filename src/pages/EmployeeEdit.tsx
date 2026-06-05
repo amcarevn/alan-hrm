@@ -38,6 +38,7 @@ const EMPLOYMENT_STATUS_OPTIONS = [
   { label: 'Đang làm việc', value: 'ACTIVE' },
   { label: 'Thử việc', value: 'PROBATION' },
   { label: 'Tạm dừng', value: 'PAUSED' },
+  { label: 'Nghỉ thai sản', value: 'MATERNITY_LEAVE' },
   { label: 'Đã nghỉ', value: 'INACTIVE' },
   { label: 'Vô hiệu hoá', value: 'DEACTIVATED' },
 ];
@@ -341,7 +342,7 @@ const EmployeeEdit: React.FC = () => {
         allowance: e.allowance != null ? Number(e.allowance).toLocaleString('de-DE') : '',
         contract_type: (() => {
           const endDate = toDisplayDate(e.probation_end_date);
-          const isProtected = ['INACTIVE', 'PAUSED', 'DEACTIVATED'].includes(e.employment_status);
+          const isProtected = ['INACTIVE', 'PAUSED', 'MATERNITY_LEAVE', 'DEACTIVATED'].includes(e.employment_status);
           if (e.contract_type === 'PROBATION' && endDate && !isProtected) {
             const parts = endDate.match(/(\d{2})\/(\d{2})\/(\d{4})/);
             if (parts) {
@@ -469,7 +470,7 @@ const EmployeeEdit: React.FC = () => {
   // Sync contract_type và employment_status theo probation_end_date
   const syncContractAfterProbation = (next: any) => {
     if (!next.probation_end_date) return;
-    if (['INACTIVE', 'PAUSED', 'DEACTIVATED'].includes(next.employment_status)) return;
+    if (['INACTIVE', 'PAUSED', 'MATERNITY_LEAVE', 'DEACTIVATED'].includes(next.employment_status)) return;
     if (isProbationEnded(next.probation_end_date)) {
       next.contract_type = 'ONE_YEAR';
       next.employment_status = 'ACTIVE';
@@ -523,14 +524,14 @@ const EmployeeEdit: React.FC = () => {
       // Sync employment_status theo contract_type
       if (name === 'contract_type' && value) {
         const mapped = CONTRACT_TO_STATUS[value];
-        if (mapped && !['INACTIVE', 'PAUSED', 'DEACTIVATED'].includes(prev.employment_status)) {
+        if (mapped && !['INACTIVE', 'PAUSED', 'MATERNITY_LEAVE', 'DEACTIVATED'].includes(prev.employment_status)) {
           next.employment_status = mapped;
-          next.is_active = mapped !== 'INACTIVE' && mapped !== 'PAUSED';
+          next.is_active = mapped !== 'INACTIVE' && mapped !== 'PAUSED' && mapped !== 'MATERNITY_LEAVE';
         }
       }
 
       if (name === 'employment_status') {
-        if (value === 'INACTIVE' || value === 'PAUSED') next.is_active = false;
+        if (value === 'INACTIVE' || value === 'PAUSED' || value === 'MATERNITY_LEAVE') next.is_active = false;
         else if (value === 'ACTIVE' || value === 'PROBATION') next.is_active = true;
       }
       return next;
