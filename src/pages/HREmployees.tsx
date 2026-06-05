@@ -141,6 +141,8 @@ const HREmployees: React.FC = () => {
     switch (status) {
       case 'ACTIVE':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Đang làm việc</span>;
+      case 'MATERNITY_LEAVE':
+        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-pink-100 text-pink-800">Nghỉ thai sản</span>;
       case 'INACTIVE':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Đã nghỉ</span>;
       case 'PROBATION':
@@ -209,6 +211,12 @@ const HREmployees: React.FC = () => {
                 {employees.filter(e => e.employment_status === 'INACTIVE').length}
               </p>
             </div>
+            <div className="bg-pink-50 p-4 rounded-lg">
+              <h3 className="font-medium text-pink-900 text-sm">Nghỉ thai sản</h3>
+              <p className="text-2xl font-bold text-pink-700 mt-1">
+                {employees.filter(e => e.employment_status === 'MATERNITY_LEAVE').length}
+              </p>
+            </div>
             <div className="bg-indigo-50 p-4 rounded-lg">
               <h3 className="font-medium text-indigo-900 text-sm">Nam</h3>
               <p className="text-2xl font-bold text-indigo-700 mt-1">
@@ -268,6 +276,7 @@ const HREmployees: React.FC = () => {
                   <option value="all">Tất cả trạng thái</option>
                   <option value="ACTIVE">Đang làm việc</option>
                   <option value="PROBATION">Thử việc</option>
+                  <option value="MATERNITY_LEAVE">Nghỉ thai sản</option>
                   <option value="INACTIVE">Đã nghỉ</option>
                 </select>
               </div>

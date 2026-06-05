@@ -517,6 +517,8 @@ const Profile: React.FC = () => {
               ? 'bg-emerald-100 text-emerald-600'
               : employee.employment_status === 'PROBATION'
                 ? 'bg-amber-100 text-amber-600'
+                : employee.employment_status === 'MATERNITY_LEAVE'
+                  ? 'bg-pink-100 text-pink-600'
                 : 'bg-gray-100 text-gray-500'
           }`}>
             <UserIcon className="h-4 w-4 mr-1" />
@@ -524,6 +526,8 @@ const Profile: React.FC = () => {
               ? 'Đang làm việc'
               : employee.employment_status === 'PROBATION'
                 ? 'Đang thử việc'
+                : employee.employment_status === 'MATERNITY_LEAVE'
+                  ? 'Nghỉ thai sản'
                 : 'Đã nghỉ việc'}
           </span>
           <div className="flex items-center gap-2">

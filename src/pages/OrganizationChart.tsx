@@ -28,6 +28,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const styles: Record<string, string> = {
     active: 'bg-emerald-50 text-emerald-600 border-emerald-100/50 shadow-[0_2px_10px_rgba(16,185,129,0.05)]',
     onboarding: 'bg-blue-50 text-blue-600 border-blue-100/50 shadow-[0_2px_10px_rgba(37,99,235,0.05)]',
+    maternity_leave: 'bg-pink-50 text-pink-600 border-pink-100/50 shadow-[0_2px_10px_rgba(236,72,153,0.05)]',
     leave: 'bg-amber-50 text-amber-600 border-amber-100/50 shadow-[0_2px_10px_rgba(245,158,11,0.05)]',
     department: 'bg-indigo-50 text-indigo-600 border-indigo-100/50 shadow-[0_2px_10px_rgba(79,70,229,0.05)]',
   };
@@ -35,6 +36,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const labels: Record<string, string> = {
     active: 'Trực thuộc',
     onboarding: 'Thử việc',
+    maternity_leave: 'Nghỉ thai sản',
     leave: 'Nghỉ phép',
     department: 'Phòng ban',
   };
@@ -415,6 +417,7 @@ const OrganizationChart: React.FC = () => {
               <StatusBadge status={
                 empData.employment_status === 'ACTIVE' ? 'active' :
                   empData.employment_status === 'PROBATION' ? 'onboarding' :
+                    empData.employment_status === 'MATERNITY_LEAVE' ? 'maternity_leave' :
                     empData.employment_status === 'INACTIVE' ? 'leave' : 'active'
               } />
             </div>
@@ -468,6 +471,7 @@ const OrganizationChart: React.FC = () => {
                 <StatusBadge status={
                   empData.employment_status === 'ACTIVE' ? 'active' :
                     empData.employment_status === 'PROBATION' ? 'onboarding' :
+                      empData.employment_status === 'MATERNITY_LEAVE' ? 'maternity_leave' :
                       empData.employment_status === 'INACTIVE' ? 'leave' : 'active'
                 } />
               </div>
