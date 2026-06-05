@@ -1421,6 +1421,7 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
   const insuranceForTax = toNumber(record.bao_hiem_bat_buoc, insuranceTotal);
   const grossIncomeForTax = toNumber(record.tong_thu_nhap_chiu_thue, getGrossIncomeForTaxFromRecord(record, employee));
   const taxMethod = String((record as unknown as Record<string, unknown>)['tax_method'] ?? '').toUpperCase();
+  const employmentStatus = String(employee?.employment_status ?? '').toUpperCase();
 
   const flatTaxMethods = new Set([
     'FLAT_10_PROBATION',
@@ -1429,7 +1430,9 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
     'FLAT_10_OFFICIAL_NO_INSURANCE_BASE',
   ]);
 
-  if (flatTaxMethods.has(taxMethod)) {
+  const forceProgressiveForMaternityLeave = employmentStatus === 'MATERNITY_LEAVE' && insuranceForTax <= 0;
+
+  if (flatTaxMethods.has(taxMethod) && !forceProgressiveForMaternityLeave) {
     const flatTaxAmount = record.thue_tncn != null
       ? Math.max(toNumber(record.thue_tncn), 0)
       : Math.round(Math.max(grossIncomeForTax, 0) * 0.1);
