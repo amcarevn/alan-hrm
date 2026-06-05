@@ -4254,7 +4254,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           Thuế TNCN
                         </th>
                         <th className="px-3 py-3 text-right text-xs font-medium text-gray-900 uppercase tracking-wider bg-indigo-50">
-                          Thực lĩnh
+                          Phải thanh toán
                         </th>
                         <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Trạng thái email
