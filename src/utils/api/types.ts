@@ -402,6 +402,7 @@ export interface Employee {
   // Onboarding và HR
   basic_salary?: number;
   allowance?: number;
+  standard_work_days_mode?: 'DEFAULT' | 'FULL_MONTH';
   contract_type?: string;
   contract_type_display?: string;
   contract_end_date?: string;
@@ -588,6 +589,7 @@ export interface EmployeeUpdateData {
   bank_name?: string;
   bank_account?: string;
   cccd_number?: string;
+  standard_work_days_mode?: 'DEFAULT' | 'FULL_MONTH';
   cccd_issue_date?: string;
   cccd_issue_place?: string;
   permanent_residence?: string;

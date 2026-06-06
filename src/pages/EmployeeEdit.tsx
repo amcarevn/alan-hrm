@@ -85,6 +85,11 @@ const PROBATION_RATE_OPTIONS = [
   { label: 'Tháng đầu 100%, tháng sau 100%', value: 'OPTION_3' },
 ];
 
+const STANDARD_WORK_DAYS_MODE_OPTIONS = [
+  { label: 'Mặc định', value: 'DEFAULT' },
+  { label: 'Full số ngày trong tháng', value: 'FULL_MONTH' },
+];
+
 
 const CCCD_ISSUE_PLACE_OPTIONS = [
   { label: 'Cục cảnh sát Quản lý hành chính về Trật tự xã hội', value: 'POLICE_ADMIN' },
@@ -241,6 +246,7 @@ const EmployeeEdit: React.FC = () => {
     contract_start_date: '',
     contract_end_date: '',
     insurance_end_date: '',
+    standard_work_days_mode: 'DEFAULT',
     revenue_percentage: '',
     profit_percentage: '',
 
@@ -359,6 +365,7 @@ const EmployeeEdit: React.FC = () => {
         contract_start_date: toDisplayDate(e.contract_start_date),
         contract_end_date: toDisplayDate(e.contract_end_date),
         insurance_end_date: toDisplayDate(e.insurance_end_date),
+        standard_work_days_mode: e.standard_work_days_mode || 'DEFAULT',
         revenue_percentage: e.revenue_percentage || '',
         profit_percentage: e.profit_percentage || '',
 
@@ -630,6 +637,7 @@ const EmployeeEdit: React.FC = () => {
       add('contract_start_date', toApiDate(formData.contract_start_date));
       add('contract_end_date', toApiDate(formData.contract_end_date));
       add('insurance_end_date', toApiDate(formData.insurance_end_date));
+      add('standard_work_days_mode', formData.standard_work_days_mode);
       add('revenue_percentage', formData.revenue_percentage);
       add('profit_percentage', formData.profit_percentage);
 
@@ -1117,6 +1125,14 @@ const EmployeeEdit: React.FC = () => {
             <Field label="Ngày kết thúc đóng bảo hiểm">
               <DateInput name="insurance_end_date" value={formData.insurance_end_date} onChange={handleInput} className={inputClass} />
             </Field>
+
+            <SelectBox
+              label="Công chuẩn mặc định"
+              value={formData.standard_work_days_mode}
+              placeholder="Chọn công chuẩn"
+              options={STANDARD_WORK_DAYS_MODE_OPTIONS}
+              onChange={(v) => handleSelect('standard_work_days_mode', v)}
+            />
 
             <Field label="Tỷ lệ % doanh số hưởng">
               <input type="text" name="revenue_percentage" value={formData.revenue_percentage}

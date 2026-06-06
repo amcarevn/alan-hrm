@@ -39,6 +39,16 @@ function getStandardWorkDays(year: number, month: number): number {
   return daysInMonth - sundays;
 }
 
+function getResolvedStandardWorkDays(record: Pick<SalaryRecord, 'year' | 'month'> & {
+  standard_work_days_mode?: 'DEFAULT' | 'FULL_MONTH';
+  standard_work_days_value?: number | null;
+}, employee?: any): number {
+  const daysInMonth = new Date(record.year, record.month, 0).getDate();
+  const mode = employee?.standard_work_days_mode ?? record.standard_work_days_mode ?? 'DEFAULT';
+  if (mode === 'FULL_MONTH') return daysInMonth;
+  return getStandardWorkDays(record.year, record.month);
+}
+
 type SalaryTabKey = 'config' | 'view';
 
 // ─── Tax Tooltip Component ───────────────────────────────────────────────────
@@ -211,6 +221,7 @@ interface PayslipDetailModalProps {
   penalties?: PenaltyRecord[];
   commissions?: CommissionRecord[];
   onEmailQueued?: (employeeId: number) => void;
+  onRecordUpdated?: (record: SalaryRecord) => void;
 }
 
 const getSalesCommissionAmount = (record: SalaryRecord, commissions?: CommissionRecord[]) => {
@@ -221,7 +232,7 @@ const getSalesCommissionAmount = (record: SalaryRecord, commissions?: Commission
   return (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
 };
 
-const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose, employee, penalties, commissions, onEmailQueued }) => {
+const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose, employee, penalties, commissions, onEmailQueued, onRecordUpdated }) => {
   useLockBodyScroll(true);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailAddr, setEmailAddr] = useState(employee?.personal_email ?? '');
@@ -229,7 +240,11 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const [emailBody, setEmailBody] = useState('');
   const [emailSending, setEmailSending] = useState(false);
   const [emailResult, setEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const stdDays = getStandardWorkDays(record.year, record.month);
+  const [editingStandardWorkDays, setEditingStandardWorkDays] = useState(false);
+  const [standardWorkDaysMode, setStandardWorkDaysMode] = useState<'DEFAULT' | 'FULL_MONTH'>(record.standard_work_days_mode ?? 'DEFAULT');
+  const [savingStandardWorkDays, setSavingStandardWorkDays] = useState(false);
+  const [standardWorkDaysError, setStandardWorkDaysError] = useState<string | null>(null);
+  const stdDays = getResolvedStandardWorkDays(record, employee ?? null);
   const payslipComputation = calculatePayslipNetPayable(record, employee, commissions);
   const payrollTax = payslipComputation.payrollTax;
   const nptCount = payrollTax.dependentCount;
@@ -319,6 +334,12 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const fmt = (v: number) => v ? Math.round(v).toLocaleString('vi-VN') : '—';
 
   const monthLabel = `Tháng ${String(record.month).padStart(2, '0')}.${record.year}`;
+
+  useEffect(() => {
+    setStandardWorkDaysMode((employee as { standard_work_days_mode?: 'DEFAULT' | 'FULL_MONTH' } | undefined)?.standard_work_days_mode ?? record.standard_work_days_mode ?? 'DEFAULT');
+    setEditingStandardWorkDays(false);
+    setStandardWorkDaysError(null);
+  }, [record, employee]);
 
   const handlePrint = () => {
     window.print();
@@ -499,6 +520,28 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
     }
   };
 
+  const resolvedStandardWorkDays = getResolvedStandardWorkDays(record, employee ?? null);
+
+  const handleSaveStandardWorkDays = async () => {
+    setSavingStandardWorkDays(true);
+    setStandardWorkDaysError(null);
+    try {
+      const updatedRecord = await salaryService.updateSalaryRecordStandardWorkDays({
+        employee_id: record.employee_id,
+        year: record.year,
+        month: record.month,
+        standard_work_days_mode: standardWorkDaysMode,
+      });
+      onRecordUpdated?.(updatedRecord);
+      setEditingStandardWorkDays(false);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Cập nhật công chuẩn thất bại.';
+      setStandardWorkDaysError(msg);
+    } finally {
+      setSavingStandardWorkDays(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
@@ -515,6 +558,13 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
             <p className="text-xs text-indigo-500 mt-0.5">Trạng thái hợp đồng: {contractStatusText}</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setEditingStandardWorkDays((prev) => !prev)}
+              className="p-2 rounded-lg text-gray-500 hover:bg-amber-100 hover:text-amber-700 transition-colors"
+              title="Sửa công chuẩn tính lương"
+            >
+              <PencilIcon className="h-5 w-5" />
+            </button>
             <button
               onClick={handleOpenEmailModal}
               className="p-2 rounded-lg text-gray-500 hover:bg-blue-100 hover:text-blue-700 transition-colors"
@@ -537,6 +587,72 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
             </button>
           </div>
         </div>
+
+        {editingStandardWorkDays && (
+          <div className="flex-shrink-0 border-b border-amber-100 bg-amber-50 px-6 py-4 print:hidden">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-amber-800">Chỉnh sửa công chuẩn</p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Công chuẩn hiện tại: {formatNumber(resolvedStandardWorkDays)} công
+                </p>
+                <p className="text-xs text-amber-600 mt-1">
+                  Chọn <span className="font-medium">Full số ngày trong tháng</span> hoặc <span className="font-medium">Mặc định</span>.
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingStandardWorkDays(false)}
+                className="text-amber-700 hover:text-amber-900"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <label className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${standardWorkDaysMode === 'FULL_MONTH' ? 'border-amber-400 bg-white' : 'border-amber-200 bg-white/70'}`}>
+                <input
+                  type="radio"
+                  name="standard-work-days-mode"
+                  checked={standardWorkDaysMode === 'FULL_MONTH'}
+                  onChange={() => setStandardWorkDaysMode('FULL_MONTH')}
+                />
+                <span>Full số ngày trong tháng</span>
+              </label>
+              <label className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${standardWorkDaysMode === 'DEFAULT' ? 'border-amber-400 bg-white' : 'border-amber-200 bg-white/70'}`}>
+                <input
+                  type="radio"
+                  name="standard-work-days-mode"
+                  checked={standardWorkDaysMode === 'DEFAULT'}
+                  onChange={() => setStandardWorkDaysMode('DEFAULT')}
+                />
+                <span>Mặc định</span>
+              </label>
+            </div>
+
+            {standardWorkDaysError && (
+              <p className="mt-3 text-sm text-red-600">{standardWorkDaysError}</p>
+            )}
+
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSaveStandardWorkDays}
+                disabled={savingStandardWorkDays}
+                className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-60"
+              >
+                <CheckIcon className="h-4 w-4" />
+                {savingStandardWorkDays ? 'Đang lưu...' : 'Lưu công chuẩn'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingStandardWorkDays(false)}
+                className="rounded-lg border border-amber-300 px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100"
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Payslip body */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -1333,7 +1449,7 @@ interface WorkdaySalaryBreakdown {
 }
 
 const getWorkdaySalaryBreakdown = (record: SalaryRecord, employee?: Employee): WorkdaySalaryBreakdown => {
-  const stdDays = getStandardWorkDays(record.year, record.month);
+  const stdDays = getResolvedStandardWorkDays(record, employee ?? null);
   const luongCoBan = record.luong_co_ban ?? 0;
   const daySalary = stdDays > 0 ? (luongCoBan / stdDays) : 0;
 
@@ -1495,7 +1611,7 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
 };
 
 const calculatePayslipNetPayable = (record: SalaryRecord, employee?: Employee, commissions?: CommissionRecord[]) => {
-  const stdDays = getStandardWorkDays(record.year, record.month);
+  const stdDays = getResolvedStandardWorkDays(record, employee ?? null);
   const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
   const luongNgayCongThucTe = workdayBreakdown.tongLuongNgayCong;
   const luongTangCa = record.luong_tang_ca ?? 0;
@@ -1932,10 +2048,12 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
   useLockBodyScroll(true);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [config, setConfig] = useState<SalaryConfigurationValues>(() => parseEmployeeSalaryConfig(employee));
+  const [standardWorkDaysMode, setStandardWorkDaysMode] = useState<'DEFAULT' | 'FULL_MONTH'>(employee.standard_work_days_mode ?? 'DEFAULT');
 
   useEffect(() => {
     setValidationError(null);
     setConfig(parseEmployeeSalaryConfig(employee));
+    setStandardWorkDaysMode(employee.standard_work_days_mode ?? 'DEFAULT');
   }, [employee]);
 
   const payrollOutput = useMemo(() => calculatePayrollOutput(config), [config]);
@@ -2017,6 +2135,7 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
     const data: SalaryFormulaUpdateData = {
       basic_salary: config.baseSalary.amount,
       allowance: persistedAllowance,
+      standard_work_days_mode: standardWorkDaysMode,
       salary_notes: `Hiệu lực từ ${config.effectiveDate}`,
       allowance_notes:
         config.lunchAllowancePolicy.mode === 'actual_working_day'
@@ -2086,6 +2205,15 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
 
           <SectionCard title="1. Thông tin nền tảng (Base Profile)">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <SelectBox
+                label="Công chuẩn mặc định"
+                value={standardWorkDaysMode}
+                options={[
+                  { value: 'DEFAULT', label: 'Mặc định' },
+                  { value: 'FULL_MONTH', label: 'Full số ngày trong tháng' },
+                ]}
+                onChange={(value) => setStandardWorkDaysMode(value as 'DEFAULT' | 'FULL_MONTH')}
+              />
               <TextField
                 label="Vị trí công việc"
                 value={config.baseProfile.jobTitle}
@@ -3144,7 +3272,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       const payslipComputation = calculatePayslipNetPayable(record, employee, recordCommissions);
       const payrollTax = payslipComputation.payrollTax;
 
-      const stdDays = getStandardWorkDays(record.year, record.month);
+      const stdDays = getResolvedStandardWorkDays(record, employee ?? null);
       const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
       const luongCoBan = record.luong_co_ban ?? 0;
       const luongNgayCongThucTe = workdayBreakdown.tongLuongNgayCong;
@@ -3340,7 +3468,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         const payslipComputation = calculatePayslipNetPayable(record, employee, recordCommissions);
         const payrollTax = payslipComputation.payrollTax;
 
-        const stdDays = getStandardWorkDays(record.year, record.month);
+        const stdDays = getResolvedStandardWorkDays(record, employee ?? null);
         const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
         const luongCoBan = record.luong_co_ban ?? 0;
         const luongNgayCongThucTe = workdayBreakdown.tongLuongNgayCong;
@@ -4520,6 +4648,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           employee={payslipEmployee ?? undefined}
           penalties={payslipPenalties}
           commissions={payslipCommissions}
+          onRecordUpdated={(updatedRecord) => {
+            setPayslipRecord(updatedRecord);
+            void loadSalary();
+          }}
           onEmailQueued={(employeeId) => {
             setEmailStatusFromQueueMap((prev) => ({
               ...prev,

@@ -39,6 +39,10 @@ export interface SalaryRecord {
   bh_deduction: number;
   so_gio_tang_ca: number;
   luong_tang_ca: number;
+  cong_chuan?: number;
+  standard_work_days?: number;
+  standard_work_days_mode?: 'DEFAULT' | 'FULL_MONTH';
+  standard_work_days_value?: number | null;
   contract_type?: string;
   contract_status?: 'CHINH_THUC' | 'THU_VIEC';
   phu_cap_an_trua?: number;
@@ -69,9 +73,14 @@ export interface SalaryListResponse {
 export interface SalaryFormulaUpdateData {
   basic_salary?: number;
   allowance?: number;
+  standard_work_days_mode?: 'DEFAULT' | 'FULL_MONTH';
   salary_notes?: string;
   allowance_notes?: string;
   salary_adjustments?: Record<string, unknown>;
+}
+
+export interface UpdateSalaryStandardWorkDaysPayload {
+  standard_work_days_mode: 'DEFAULT' | 'FULL_MONTH';
 }
 
 export interface KPIRecord {
@@ -382,6 +391,13 @@ class SalaryService {
     data: SalaryFormulaUpdateData
   ): Promise<Employee> {
     const response = await managementApi.patch(`/api-hrm/employees/${employeeId}/`, data);
+    return response.data;
+  }
+
+  async updateSalaryRecordStandardWorkDays(
+    payload: UpdateSalaryStandardWorkDaysPayload & { employee_id: number; year: number; month: number },
+  ): Promise<SalaryRecord> {
+    const response = await managementApi.patch('/api/v1/salary/records/standard-work-days/', payload);
     return response.data;
   }
 
