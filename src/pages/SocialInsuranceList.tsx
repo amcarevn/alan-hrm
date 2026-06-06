@@ -600,6 +600,8 @@ const SocialInsuranceList: React.FC = () => {
   const [error, setError]           = useState<string | null>(null);
   const [search, setSearch]         = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [legalFilter, setLegalFilter]   = useState('');
+  const [legalFilterOptions, setLegalFilterOptions] = useState<SelectOption<string>[]>([]);
   const [viewItem, setViewItem]     = useState<SocialInsurance | null>(null);
   const [editItem, setEditItem]     = useState<SocialInsurance | null | undefined>(undefined);
   const [deleteItem, setDeleteItem] = useState<SocialInsurance | null>(null);
@@ -609,6 +611,15 @@ const SocialInsuranceList: React.FC = () => {
   const [exporting, setExporting]   = useState(false);
 
   const searchRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    managementApi.get<{ value: string; label: string }[]>('/api/v1/salary/records/legal-entities/')
+      .then(res => setLegalFilterOptions([
+        { value: '', label: 'Tất cả' },
+        ...res.data.map(e => ({ value: e.value, label: e.label })),
+      ]))
+      .catch(() => {});
+  }, []);
 
   const fetchStats = async () => {
     try {
@@ -623,6 +634,7 @@ const SocialInsuranceList: React.FC = () => {
       const blob = await socialInsuranceAPI.exportExcel({
         search: search || undefined,
         status: statusFilter || undefined,
+        legal_entity: legalFilter || undefined,
       });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -637,12 +649,13 @@ const SocialInsuranceList: React.FC = () => {
     }
   };
 
-  const fetchItems = async (opts?: { search?: string; status?: string; page?: number }) => {
+  const fetchItems = async (opts?: { search?: string; status?: string; legal_entity?: string; page?: number }) => {
     try {
       setLoading(true);
       const res = await socialInsuranceAPI.list({
         search: opts?.search ?? search,
         status: (opts?.status ?? statusFilter) || undefined,
+        legal_entity: (opts?.legal_entity ?? legalFilter) || undefined,
         page: opts?.page ?? page,
         page_size: PAGE_SIZE,
       });
@@ -660,9 +673,9 @@ const SocialInsuranceList: React.FC = () => {
 
   useEffect(() => {
     if (searchRef.current) clearTimeout(searchRef.current);
-    searchRef.current = setTimeout(() => { setPage(1); fetchItems({ search, status: statusFilter, page: 1 }); }, 300);
+    searchRef.current = setTimeout(() => { setPage(1); fetchItems({ search, status: statusFilter, legal_entity: legalFilter, page: 1 }); }, 300);
     return () => { if (searchRef.current) clearTimeout(searchRef.current); };
-  }, [search, statusFilter]);
+  }, [search, statusFilter, legalFilter]);
 
   const handleDelete = async () => {
     if (!deleteItem) return;
@@ -743,17 +756,24 @@ const SocialInsuranceList: React.FC = () => {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Tìm kiếm nhân viên / mã số BHXH</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Tìm kiếm</label>
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="input-field"
-                placeholder="Mã NV, tên, mã số BHXH, số sổ..."
+                placeholder="Mã NV, tên, mã số BHXH..."
               />
             </div>
+            <SelectBox
+              label="Pháp nhân"
+              value={legalFilter}
+              options={legalFilterOptions}
+              onChange={v => setLegalFilter(v)}
+              placeholder="Tất cả"
+            />
             <SelectBox
               label="Trạng thái"
               value={statusFilter}

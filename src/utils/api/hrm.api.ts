@@ -518,6 +518,7 @@ export const socialInsuranceAPI = {
   list: async (params?: {
     search?: string;
     status?: string;
+    legal_entity?: string;
     page?: number;
     page_size?: number;
   }): Promise<{ count: number; next: string | null; previous: string | null; results: SocialInsurance[] }> => {
@@ -554,7 +555,7 @@ export const socialInsuranceAPI = {
     return response.data;
   },
 
-  exportExcel: async (params?: { search?: string; status?: string }): Promise<Blob> => {
+  exportExcel: async (params?: { search?: string; status?: string; legal_entity?: string }): Promise<Blob> => {
     const response = await managementApi.get('/api-hrm/social-insurance/export_excel/', {
       params,
       responseType: 'blob',
