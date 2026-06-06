@@ -65,6 +65,10 @@ const TaxTooltip: React.FC<TaxTooltipProps> = ({ taxDetail }) => {
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
   const btnRef = React.useRef<HTMLButtonElement>(null);
   const popupRef = React.useRef<HTMLDivElement>(null);
+  const isFlatTaxExempt =
+    taxDetail.taxMode === 'flat_10'
+    && taxDetail.taxableIncome < FLAT_TAX_EXEMPT_THRESHOLD
+    && taxDetail.totalTax <= 0;
 
   const close = React.useCallback(() => {
     setShowDetail(false);
@@ -141,7 +145,9 @@ const TaxTooltip: React.FC<TaxTooltipProps> = ({ taxDetail }) => {
               <div className="space-y-2 text-sm">
                 <p className="text-xs text-indigo-700 bg-indigo-50 rounded px-2 py-1">
                   {taxDetail.taxMode === 'flat_10'
-                    ? 'Công thức: Thuế TNCN = 10% × Tổng thu nhập chịu thuế trong tháng'
+                    ? (isFlatTaxExempt
+                        ? 'Thu nhập chịu thuế dưới 2.000.000đ/tháng nên không khấu trừ thuế TNCN 10%'
+                        : 'Công thức: Thuế TNCN = 10% × Tổng thu nhập chịu thuế trong tháng')
                     : 'Công thức: Thuế TNCN = Σ(Thu nhập trong từng bậc × Thuế suất bậc đó)'}
                 </p>
                 <div className="flex justify-between">
@@ -172,10 +178,17 @@ const TaxTooltip: React.FC<TaxTooltipProps> = ({ taxDetail }) => {
                   {taxDetail.taxMode === 'flat_10' ? 'Chi tiết tính thuế 10%:' : 'Áp dụng bảng thuế lũy tiến:'}
                 </p>
                 {taxDetail.taxMode === 'flat_10' ? (
-                  <div className="text-xs rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-gray-700 flex items-center justify-between">
-                    <span>10% × {formatCurrency(taxDetail.taxableIncome)}</span>
-                    <span className="font-bold text-indigo-600">{formatCurrency(taxDetail.totalTax)}</span>
-                  </div>
+                  isFlatTaxExempt ? (
+                    <div className="text-xs rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-emerald-700 flex items-center justify-between">
+                      <span>Thu nhập chịu thuế dưới ngưỡng 2.000.000đ</span>
+                      <span className="font-bold">{formatCurrency(0)}</span>
+                    </div>
+                  ) : (
+                    <div className="text-xs rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-gray-700 flex items-center justify-between">
+                      <span>10% × {formatCurrency(taxDetail.taxableIncome)}</span>
+                      <span className="font-bold text-indigo-600">{formatCurrency(taxDetail.totalTax)}</span>
+                    </div>
+                  )
                 ) : taxDetail.breakdown.length > 0 ? (
                   <div className="space-y-2 text-xs">
                     {taxDetail.breakdown.map((item) => (
@@ -888,7 +901,11 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">
                   THUẾ TNCN{' '}
                   <span className="text-xs text-gray-500">
-                    {taxDetail.taxMode === 'flat_10' ? '(10% trên thu nhập tháng)' : `(NPT: ${nptCount} người)`}
+                    {taxDetail.taxMode === 'flat_10'
+                      ? (taxDetail.taxableIncome < FLAT_TAX_EXEMPT_THRESHOLD && taxDetail.totalTax <= 0
+                          ? '(Miễn khấu trừ dưới 2 triệu)'
+                          : '(10% trên thu nhập tháng)')
+                      : `(NPT: ${nptCount} người)`}
                   </span>
                 </td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-500 flex items-center justify-end gap-2">
@@ -1137,6 +1154,7 @@ const PERSONAL_DEDUCTION_2026 = 15500000;
 const PERSONAL_DEDUCTION_LEGACY = 11000000;
 const DEPENDENT_DEDUCTION_2026 = 6200000;
 const DEPENDENT_DEDUCTION_LEGACY = 4400000;
+const FLAT_TAX_EXEMPT_THRESHOLD = 2000000;
 
 const REGIONAL_MINIMUM_2026: Record<'I' | 'II' | 'III' | 'IV', number> = {
   I: 5310000,
@@ -1550,16 +1568,19 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
   const forceProgressiveForInactiveWithInsuranceEndDate = employmentStatus === 'INACTIVE' && !!(employee as any)?.insurance_end_date;
 
   if (flatTaxMethods.has(taxMethod) && !forceProgressiveForMaternityLeave && !forceProgressiveForInactiveWithInsuranceEndDate) {
-    const flatTaxAmount = record.thue_tncn != null
-      ? Math.max(toNumber(record.thue_tncn), 0)
-      : Math.round(Math.max(grossIncomeForTax, 0) * 0.1);
+    const flatTaxableIncome = Math.max(grossIncomeForTax, 0);
+    const flatTaxAmount = flatTaxableIncome < FLAT_TAX_EXEMPT_THRESHOLD
+      ? 0
+      : record.thue_tncn != null
+        ? Math.max(toNumber(record.thue_tncn), 0)
+        : Math.round(flatTaxableIncome * 0.1);
     const flatTaxDetail: TaxCalculationDetail = {
       taxMode: 'flat_10',
       grossIncome: Math.round(grossIncomeForTax),
       insuranceDeduction: Math.round(insuranceForTax),
       personalDeduction: 0,
       dependentDeduction: 0,
-      taxableIncome: Math.round(Math.max(grossIncomeForTax, 0)),
+      taxableIncome: Math.round(flatTaxableIncome),
       totalTax: Math.round(flatTaxAmount),
       breakdown: [],
     };
