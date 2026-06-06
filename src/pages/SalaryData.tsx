@@ -488,6 +488,67 @@ const SalaryData: React.FC = () => {
     }
   };
 
+  // ─── Commission: download data ────────────────────────────────────────────
+
+  const handleDownloadCommissionData = async () => {
+    if (!commissionRecords.length) {
+      setErrorMsg('Không có dữ liệu hoa hồng để tải xuống.');
+      return;
+    }
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('Hoa Hồng');
+      ws.columns = [
+        { header: 'Mã nhân viên',   key: 'employee_code', width: 20 },
+        { header: 'Tên nhân viên',  key: 'employee_name', width: 30 },
+        { header: 'Lương hoa hồng', key: 'amount',        width: 20 },
+      ];
+      
+      // Style header
+      ws.getRow(1).eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 12 };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      ws.getRow(1).height = 28;
+      
+      // Add data
+      commissionRecords.forEach((rec) => {
+        ws.addRow({
+          employee_code: rec.employee_code,
+          employee_name: rec.employee_name,
+          amount: rec.amount,
+        });
+      });
+      
+      // Format data rows
+      ws.eachRow((row, idx) => {
+        if (idx === 1) return;
+        row.eachCell((cell) => {
+          cell.alignment = { vertical: 'middle' };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            right: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          };
+        });
+      });
+      
+      const buf = await wb.xlsx.writeBuffer();
+      const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hoa_hong_T${selectedMonth}_${selectedYear}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setSuccessMsg('Tải xuống dữ liệu hoa hồng thành công.');
+    } catch (error) {
+      setErrorMsg(getApiErrorMessage(error, 'Không thể tải xuống dữ liệu hoa hồng.'));
+    }
+  };
+
   // ─── Penalty: template ─────────────────────────────────────────────────────
 
   const handleDownloadPenaltyTemplate = async () => {
@@ -618,6 +679,69 @@ const SalaryData: React.FC = () => {
       setErrorMsg(getApiErrorMessage(error, 'Không thể thêm phạt biên bản.'));
     } finally {
       setPCreating(false);
+    }
+  };
+
+  // ─── Penalty: download data ────────────────────────────────────────────────
+
+  const handleDownloadPenaltyData = async () => {
+    if (!penaltyRecords.length) {
+      setErrorMsg('Không có dữ liệu phạt biên bản để tải xuống.');
+      return;
+    }
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('Phạt Biên Bản');
+      ws.columns = [
+        { header: 'Mã nhân viên',  key: 'employee_code', width: 20 },
+        { header: 'Tên nhân viên', key: 'employee_name', width: 30 },
+        { header: 'Số tiền phạt',  key: 'amount',        width: 20 },
+        { header: 'Lý do vi phạm', key: 'reason',        width: 40 },
+      ];
+      
+      // Style header
+      ws.getRow(1).eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD93D1A' } };
+        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 12 };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      ws.getRow(1).height = 28;
+      
+      // Add data
+      penaltyRecords.forEach((rec) => {
+        ws.addRow({
+          employee_code: rec.employee_code,
+          employee_name: rec.employee_name,
+          amount: rec.amount,
+          reason: rec.reason,
+        });
+      });
+      
+      // Format data rows
+      ws.eachRow((row, idx) => {
+        if (idx === 1) return;
+        row.eachCell((cell) => {
+          cell.alignment = { vertical: 'middle' };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            right: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          };
+        });
+      });
+      
+      const buf = await wb.xlsx.writeBuffer();
+      const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `phat_bien_ban_T${selectedMonth}_${selectedYear}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setSuccessMsg('Tải xuống dữ liệu phạt biên bản thành công.');
+    } catch (error) {
+      setErrorMsg(getApiErrorMessage(error, 'Không thể tải xuống dữ liệu phạt biên bản.'));
     }
   };
 
@@ -1323,11 +1447,19 @@ const SalaryData: React.FC = () => {
 
               {/* Commission list */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                   <p className="text-sm font-medium text-gray-700">
                     Danh sách hoa hồng — Tháng {selectedMonth}/{selectedYear}
                     <span className="ml-2 font-normal text-gray-500">{filteredCommissions.length} nhân viên</span>
                   </p>
+                  <button 
+                    onClick={handleDownloadCommissionData}
+                    disabled={!commissionRecords.length}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ArrowDownTrayIcon className="h-4 w-4" />
+                    Tải Excel
+                  </button>
                 </div>
                 {loadingCommission ? renderLoading('primary') :
                  filteredCommissions.length === 0 ? renderEmpty(commissionRecords.length === 0 ? 'Chưa có dữ liệu hoa hồng tháng này.' : 'Không tìm thấy nhân viên.') : (
@@ -1980,11 +2112,19 @@ const SalaryData: React.FC = () => {
 
               {/* Penalty list */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                   <p className="text-sm font-medium text-gray-700">
                     Danh sách phạt biên bản — Tháng {selectedMonth}/{selectedYear}
                     <span className="ml-2 font-normal text-gray-500">{filteredPenalties.length} bản ghi</span>
                   </p>
+                  <button 
+                    onClick={handleDownloadPenaltyData}
+                    disabled={!penaltyRecords.length}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-xl hover:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ArrowDownTrayIcon className="h-4 w-4" />
+                    Tải Excel
+                  </button>
                 </div>
                 {loadingPenalty ? renderLoading('red') :
                  filteredPenalties.length === 0 ? renderEmpty(penaltyRecords.length === 0 ? 'Chưa có bản ghi phạt nào tháng này.' : 'Không tìm thấy nhân viên.') : (
