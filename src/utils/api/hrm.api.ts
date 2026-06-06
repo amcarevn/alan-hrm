@@ -9,6 +9,8 @@ import type {
   Position,
   BirthdayWish,
   CompanyUnit,
+  SocialInsurance,
+  SocialInsuranceCreateData,
 } from './types';
 
 let mePromise: Promise<Employee> | null = null;
@@ -508,5 +510,64 @@ export const companyUnitsAPI = {
 
   delete: async (id: number): Promise<void> => {
     await managementApi.delete(`/api-hrm/company-units/${id}/`);
+  },
+};
+
+// Social Insurance (BHXH) API
+export const socialInsuranceAPI = {
+  list: async (params?: {
+    search?: string;
+    status?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<{ count: number; next: string | null; previous: string | null; results: SocialInsurance[] }> => {
+    const response = await managementApi.get('/api-hrm/social-insurance/', { params });
+    return response.data;
+  },
+
+  getById: async (id: number): Promise<SocialInsurance> => {
+    const response = await managementApi.get(`/api-hrm/social-insurance/${id}/`);
+    return response.data;
+  },
+
+  create: async (data: SocialInsuranceCreateData): Promise<SocialInsurance> => {
+    const response = await managementApi.post('/api-hrm/social-insurance/', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: SocialInsuranceCreateData): Promise<SocialInsurance> => {
+    const response = await managementApi.put(`/api-hrm/social-insurance/${id}/`, data);
+    return response.data;
+  },
+
+  partialUpdate: async (id: number, data: Partial<SocialInsuranceCreateData>): Promise<SocialInsurance> => {
+    const response = await managementApi.patch(`/api-hrm/social-insurance/${id}/`, data);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await managementApi.delete(`/api-hrm/social-insurance/${id}/`);
+  },
+
+  stats: async (): Promise<{ total: number; ACTIVE: number; RESIGNED: number; SUSPENDED: number }> => {
+    const response = await managementApi.get('/api-hrm/social-insurance/stats/');
+    return response.data;
+  },
+
+  exportExcel: async (params?: { search?: string; status?: string }): Promise<Blob> => {
+    const response = await managementApi.get('/api-hrm/social-insurance/export_excel/', {
+      params,
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  importExcel: async (file: File): Promise<{ created: number; updated: number; errors: any[] }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await managementApi.post('/api-hrm/social-insurance/import_excel/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
   },
 };
