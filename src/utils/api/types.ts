@@ -1041,3 +1041,40 @@ export interface CTVFilterEmployee {
   full_name: string;
   doctor_team?: string | null;
 }
+
+// ======================
+// BHXH
+// ======================
+export type SocialInsuranceStatus = 'ACTIVE' | 'RESIGNED' | 'SUSPENDED';
+
+export interface SocialInsurance {
+  id: number;
+  employee: string;         // employee_id (mã nhân viên) — used for write
+  employee_code: string;    // read-only
+  employee_name: string;    // read-only
+  insurance_book_number: string | null;
+  insurance_number: string | null;
+  legal_entity: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  salary_base: string | null;
+  contribution_rate: string | null;
+  status: SocialInsuranceStatus;
+  status_display: string;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SocialInsuranceCreateData {
+  employee: string;
+  insurance_book_number?: string;
+  insurance_number?: string;
+  legal_entity?: string;
+  start_date?: string;
+  end_date?: string;
+  salary_base?: string;
+  contribution_rate?: string;
+  status: SocialInsuranceStatus;
+  note?: string;
+}

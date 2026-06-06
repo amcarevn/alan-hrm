@@ -40,6 +40,7 @@ import BotPermissionEdit from './pages/BotPermissionEdit';
 import RoleEdit from './pages/RoleEdit';
 import EmployeeList from './pages/EmployeeList';
 import CTVList from './pages/CTVList';
+import SocialInsuranceList from './pages/SocialInsuranceList';
 import EmployeeCreate from './pages/EmployeeCreate';
 import EmployeeShow from './pages/EmployeeShow';
 import EmployeeEdit from './pages/EmployeeEdit';
@@ -423,6 +424,18 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <CTVList />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Social Insurance Routes */}
+          <Route
+            path="/dashboard/social-insurance"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <SocialInsuranceList />
                 </Layout>
               </ProtectedRoute>
             }
