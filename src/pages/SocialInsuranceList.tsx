@@ -14,6 +14,7 @@ import {
   CloudArrowUpIcon,
 } from '@heroicons/react/24/outline';
 import { socialInsuranceAPI } from '../utils/api/hrm.api';
+import { managementApi } from '../utils/api/client';
 import type { SocialInsurance, SocialInsuranceCreateData, SocialInsuranceStatus } from '../utils/api/types';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Pagination from '../components/Pagination';
@@ -32,6 +33,7 @@ const STATUS_FORM_OPTIONS: SelectOption<SocialInsuranceStatus>[] = [
   { value: 'RESIGNED', label: 'Nghỉ việc' },
   { value: 'SUSPENDED', label: 'Tạm dừng' },
 ];
+
 
 // ── Status badge ──────────────────────────────────────────────
 const StatusBadge: React.FC<{ status: SocialInsuranceStatus; label: string }> = ({ status, label }) => {
@@ -81,7 +83,10 @@ const DetailModal: React.FC<{
               <ShieldCheckIcon className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-gray-900">{item.employee_name}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-gray-900">{item.employee_name}</h2>
+                <StatusBadge status={item.status} label={item.status_display} />
+              </div>
               <p className="text-xs text-gray-400">{item.employee_code}</p>
             </div>
           </div>
@@ -100,10 +105,6 @@ const DetailModal: React.FC<{
           <Row label="Lương đóng BHXH"  value={formatCurrency(item.salary_base)} />
           <Row label="Tỷ lệ đóng (%)"   value={item.contribution_rate ? `${item.contribution_rate}%` : null} />
           <Row label="Ghi chú"          value={item.note} />
-          <div className="flex items-baseline justify-between py-2.5">
-            <span className="text-xs text-gray-400">Trạng thái</span>
-            <StatusBadge status={item.status} label={item.status_display} />
-          </div>
         </div>
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
           <button onClick={onClose} className="btn-secondary">Đóng</button>
@@ -117,6 +118,15 @@ const DetailModal: React.FC<{
     document.body
   );
 };
+
+// ── Field wrapper (must be outside FormModal to avoid remount on rerender) ──
+const Field: React.FC<{ label: React.ReactNode; error?: string; children: React.ReactNode }> = ({ label, error, children }) => (
+  <div>
+    <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
+    {children}
+    {error && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><ExclamationCircleIcon className="w-3.5 h-3.5 shrink-0" />{error}</p>}
+  </div>
+);
 
 // ── Create / Edit modal ───────────────────────────────────────
 const EMPTY_FORM: SocialInsuranceCreateData = {
@@ -162,12 +172,60 @@ const FormModal: React.FC<{
         }
       : EMPTY_FORM,
   );
-  // Display value for salary (formatted with dots)
   const [salaryDisplay, setSalaryDisplay] = useState(
     initSalaryRaw ? toVND(initSalaryRaw.replace(/\./g, '')) : ''
   );
+  const [legalEntityOptions, setLegalEntityOptions] = useState<SelectOption<string>[]>([]);
+  const [empSearch, setEmpSearch] = useState(
+    initial ? `${initial.employee_code} — ${initial.employee_name}` : ''
+  );
+  const [empOptions, setEmpOptions] = useState<{ employee_id: string; full_name: string }[]>([]);
+  const [showEmpDrop, setShowEmpDrop] = useState(false);
+  const empRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    managementApi.get<{ value: string; label: string }[]>('/api/v1/salary/records/legal-entities/')
+      .then(res => {
+        setLegalEntityOptions(res.data.map(e => ({ value: e.value, label: e.label })));
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const trimmed = empSearch.trim();
+    if (!trimmed || !!initial) { setEmpOptions([]); return; }
+    const timer = setTimeout(() => {
+      managementApi.get<{ results: { employee_id: string; full_name: string }[] }>(
+        '/api-hrm/employees/', { params: { search: trimmed, page_size: 20 } }
+      ).then(res => setEmpOptions(res.data.results)).catch(() => {});
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [empSearch, initial]);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (empRef.current && !empRef.current.contains(e.target as Node)) setShowEmpDrop(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});
+
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    if (!form.employee.trim())          errs.employee        = 'Vui lòng chọn nhân viên';
+    if (!form.insurance_number?.trim()) errs.insurance_number = 'Vui lòng nhập mã số BHXH';
+    if (!form.legal_entity?.trim())     errs.legal_entity    = 'Vui lòng chọn pháp nhân';
+    if (!form.start_date)               errs.start_date      = 'Vui lòng chọn ngày bắt đầu';
+    if (!form.salary_base)              errs.salary_base     = 'Vui lòng nhập lương đóng BHXH';
+    return errs;
+  };
+
+  const clearFieldError = (field: string) =>
+    setFieldErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
 
   const set = (field: keyof SocialInsuranceCreateData, value: string) =>
     setForm(prev => ({ ...prev, [field]: value }));
@@ -180,7 +238,9 @@ const FormModal: React.FC<{
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.employee.trim()) { setError('Vui lòng nhập mã nhân viên'); return; }
+    const errs = validate();
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
+    setFieldErrors({});
     try {
       setSaving(true);
       setError(null);
@@ -214,13 +274,6 @@ const FormModal: React.FC<{
     }
   };
 
-  const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-    <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
-      {children}
-    </div>
-  );
-
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col" onClick={e => e.stopPropagation()}>
@@ -243,33 +296,81 @@ const FormModal: React.FC<{
             <div className="text-xs text-red-600 bg-red-50 rounded-xl px-3 py-2 border border-red-100">{error}</div>
           )}
 
-          <Field label="Mã nhân viên *">
+          <Field label={<>Mã nhân viên <span className="text-red-500">*</span></>} error={fieldErrors.employee}>
+            {initial ? (
+              <input type="text" value={empSearch} className="input-field bg-gray-50" disabled />
+            ) : (
+              <div ref={empRef} className="relative">
+                <input
+                  type="text"
+                  value={empSearch}
+                  onChange={e => { setEmpSearch(e.target.value); setShowEmpDrop(true); set('employee', ''); clearFieldError('employee'); }}
+                  onFocus={() => setShowEmpDrop(true)}
+                  className={`input-field w-full ${fieldErrors.employee ? 'border-red-400 focus:ring-red-300' : ''}`}
+                  placeholder="Tìm mã hoặc tên nhân viên..."
+                  autoComplete="off"
+                />
+                {showEmpDrop && empOptions.length > 0 && (
+                  <ul className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    {empOptions.map(emp => (
+                      <li
+                        key={emp.employee_id}
+                        className="px-3 py-2 cursor-pointer hover:bg-primary-50 text-sm flex items-center gap-2"
+                        onMouseDown={() => {
+                          set('employee', emp.employee_id);
+                          setEmpSearch(`${emp.employee_id} — ${emp.full_name}`);
+                          setShowEmpDrop(false);
+                          setEmpOptions([]);
+                          clearFieldError('employee');
+                        }}
+                      >
+                        <span className="font-medium text-primary-700">{emp.employee_id}</span>
+                        <span className="text-gray-500">{emp.full_name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </Field>
+
+          <Field label={<>Mã số BHXH <span className="text-red-500">*</span></>} error={fieldErrors.insurance_number}>
             <input
               type="text"
-              value={form.employee}
-              onChange={e => set('employee', e.target.value)}
-              className="input-field"
-              placeholder="Ví dụ: NV001"
-              disabled={!!initial}
+              value={form.insurance_number}
+              onChange={e => { set('insurance_number', e.target.value); clearFieldError('insurance_number'); }}
+              className={`input-field ${fieldErrors.insurance_number ? 'border-red-400 focus:ring-red-300' : ''}`}
+              placeholder="Mã số..."
             />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Số sổ BHXH">
-              <input type="text" value={form.insurance_book_number} onChange={e => set('insurance_book_number', e.target.value)} className="input-field" placeholder="Số sổ..." />
-            </Field>
-            <Field label="Mã số BHXH">
-              <input type="text" value={form.insurance_number} onChange={e => set('insurance_number', e.target.value)} className="input-field" placeholder="Mã số..." />
-            </Field>
+            <div>
+              <SelectBox
+                label="Pháp nhân đóng BHXH *"
+                value={form.legal_entity ?? ''}
+                options={legalEntityOptions}
+                placeholder="Chọn pháp nhân..."
+                onChange={v => { set('legal_entity', v); clearFieldError('legal_entity'); }}
+              />
+              {fieldErrors.legal_entity && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><ExclamationCircleIcon className="w-3.5 h-3.5 shrink-0" />{fieldErrors.legal_entity}</p>}
+            </div>
+            <SelectBox
+              label="Trạng thái"
+              value={form.status}
+              options={STATUS_FORM_OPTIONS}
+              onChange={v => set('status', v)}
+            />
           </div>
 
-          <Field label="Pháp nhân đóng BHXH">
-            <input type="text" value={form.legal_entity} onChange={e => set('legal_entity', e.target.value)} className="input-field" placeholder="Tên pháp nhân..." />
-          </Field>
-
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Ngày bắt đầu">
-              <input type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} className="input-field" />
+            <Field label={<>Ngày bắt đầu <span className="text-red-500">*</span></>} error={fieldErrors.start_date}>
+              <input
+                type="date"
+                value={form.start_date}
+                onChange={e => { set('start_date', e.target.value); clearFieldError('start_date'); }}
+                className={`input-field ${fieldErrors.start_date ? 'border-red-400 focus:ring-red-300' : ''}`}
+              />
             </Field>
             <Field label="Ngày dừng">
               <input type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} className="input-field" />
@@ -277,13 +378,13 @@ const FormModal: React.FC<{
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Lương đóng BHXH (₫)">
+            <Field label={<>Lương đóng BHXH (₫) <span className="text-red-500">*</span></>} error={fieldErrors.salary_base}>
               <input
                 type="text"
                 inputMode="numeric"
                 value={salaryDisplay}
-                onChange={handleSalaryChange}
-                className="input-field"
+                onChange={e => { handleSalaryChange(e); clearFieldError('salary_base'); }}
+                className={`input-field ${fieldErrors.salary_base ? 'border-red-400 focus:ring-red-300' : ''}`}
                 placeholder="4.000.000"
               />
             </Field>
@@ -291,13 +392,6 @@ const FormModal: React.FC<{
               <input type="number" value={form.contribution_rate} onChange={e => set('contribution_rate', e.target.value)} className="input-field" placeholder="0.00" step="0.01" min="0" max="100" />
             </Field>
           </div>
-
-          <SelectBox
-            label="Trạng thái"
-            value={form.status}
-            options={STATUS_FORM_OPTIONS}
-            onChange={v => set('status', v)}
-          />
 
           <Field label="Ghi chú">
             <textarea value={form.note} onChange={e => set('note', e.target.value)} className="input-field" rows={2} placeholder="Ghi chú..." />
@@ -593,7 +687,7 @@ const SocialInsuranceList: React.FC = () => {
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  const tableHeaders = ['Mã NV', 'Tên nhân viên', 'Số sổ BHXH', 'Mã số BHXH', 'Pháp nhân', 'Ngày bắt đầu', 'Lương đóng', 'Tỷ lệ %', 'Trạng thái', 'Thao tác'];
+  const tableHeaders = ['Mã NV', 'Tên nhân viên', 'Mã số BHXH', 'Pháp nhân', 'Ngày bắt đầu', 'Ngày dừng', 'Lương đóng', 'Tỷ lệ đóng %', 'Trạng thái', 'Ghi chú', 'Thao tác'];
 
   return (
     <div className="space-y-6">
@@ -744,15 +838,16 @@ const SocialInsuranceList: React.FC = () => {
                       <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                         <td className="table-cell font-medium text-primary-700">{item.employee_code}</td>
                         <td className="table-cell font-medium">{item.employee_name}</td>
-                        <td className="table-cell">{item.insurance_book_number || '—'}</td>
                         <td className="table-cell">{item.insurance_number || '—'}</td>
                         <td className="table-cell max-w-[160px] truncate">{item.legal_entity || '—'}</td>
                         <td className="table-cell whitespace-nowrap">{formatDate(item.start_date)}</td>
+                        <td className="table-cell whitespace-nowrap">{formatDate(item.end_date)}</td>
                         <td className="table-cell whitespace-nowrap">{formatCurrency(item.salary_base)}</td>
                         <td className="table-cell">{item.contribution_rate ? `${item.contribution_rate}%` : '—'}</td>
                         <td className="table-cell">
                           <StatusBadge status={item.status} label={item.status_display} />
                         </td>
+                        <td className="table-cell max-w-[160px] truncate">{item.note || '—'}</td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center gap-1.5">
                             <button
