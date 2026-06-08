@@ -1039,6 +1039,7 @@ export interface CTVCreateData {
   email?: string;
   bank_account?: string;
   bank_name?: string;
+  payment_date?: string | null;
 }
 
 export interface CTVStats {

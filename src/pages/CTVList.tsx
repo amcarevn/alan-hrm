@@ -127,6 +127,7 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
     email: initialData?.email ?? '',
     bank_account: initialData?.bank_account ?? '',
     bank_name: initialData?.bank_name ?? '',
+    payment_date: initialData?.payment_date ?? '',
   });
 
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -151,11 +152,6 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
   const buildErrors = (): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = 'Vui lòng nhập tên cộng tác viên';
-    if (!form.phone.trim()) {
-      errs.phone = 'Vui lòng nhập số điện thoại';
-    } else if (!/^(0[3|5|7|8|9])[0-9]{8}$/.test(form.phone.replace(/\s/g, ''))) {
-      errs.phone = 'Số điện thoại không hợp lệ (10 số, bắt đầu bằng 03/05/07/08/09)';
-    }
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       errs.email = 'Địa chỉ email không hợp lệ';
     if (form.cccd_number && !/^\d{9}(\d{3})?$/.test(form.cccd_number))
@@ -409,7 +405,7 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Số điện thoại <span className="text-primary-500">*</span>
+                  Số điện thoại
                 </label>
                 <input type="text" className={inputCls('phone')} placeholder="0900 000 000"
                   value={form.phone} onChange={(e) => set('phone', e.target.value)} onBlur={() => blurField('phone')} />
@@ -468,24 +464,10 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian thanh toán</label>
-                {previewPaymentDate ? (
-                  <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 font-medium flex items-center gap-2">
-                    <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    {toDisplayDate(previewPaymentDate)}
-                    <span className="text-gray-400 font-normal text-xs ml-auto">(hàng tháng)</span>
-                  </div>
-                ) : form.work_type === 'FREE_3_MONTHS' ? (
-                  <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-500">
-                    Không áp dụng — Free 3 tháng đầu
-                  </div>
-                ) : (
-                  <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-400 italic">
-                    Chọn hình thức làm việc để tính...
-                  </div>
-                )}
-                <p className="text-xs text-gray-400 mt-1">Tự động tính từ ngày đăng bài đầu tiên</p>
+                <input type="text" className={inputCls('payment_date')}
+                  placeholder="VD: 4 hàng tháng, 23 hàng tháng..."
+                  value={form.payment_date ?? ''}
+                  onChange={(e) => set('payment_date', e.target.value || null)} />
               </div>
             </div>
           </div>
@@ -950,7 +932,7 @@ const CTVList: React.FC = () => {
   const fetchCTVs = async () => {
     try {
       setLoading(true);
-      const params: CTVListParams = { page: currentPage, page_size: itemsPerPage };
+      const params: CTVListParams = { page: currentPage, page_size: itemsPerPage, ordering: 'status,id' };
       if (searchTerm) params.search = searchTerm;
       if (statusFilter) params.status = statusFilter;
       if (workTypeFilter) params.work_type = workTypeFilter;
@@ -1349,7 +1331,7 @@ const CTVList: React.FC = () => {
                             <span className="text-sm text-gray-700">{emptyVal(toDisplayDate(ctv.first_post_time))}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-900">{emptyVal(toDisplayDate(ctv.next_payment_date))}</span>
+                            <span className="text-sm text-gray-900">{emptyVal(ctv.payment_date)}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-sm text-gray-700">{emptyVal(ctv.doctor_name)}</span>
@@ -1498,11 +1480,8 @@ const CTVList: React.FC = () => {
                   <div>
                     <dt className="text-xs text-gray-400 mb-0.5">Thời gian thanh toán</dt>
                     <dd>
-                      {viewingCTV.next_payment_date ? (
-                        <span className="inline-flex items-center gap-1 text-sm font-medium text-primary-700 bg-primary-50 border border-primary-200 rounded-lg px-2 py-0.5">
-                          {toDisplayDate(viewingCTV.next_payment_date)}
-                          <span className="text-primary-400 font-normal text-xs">(hàng tháng)</span>
-                        </span>
+                      {viewingCTV.payment_date ? (
+                        <span className="text-sm text-gray-900">{viewingCTV.payment_date}</span>
                       ) : (
                         <span className="text-sm text-gray-400 italic">Chưa có dữ liệu</span>
                       )}

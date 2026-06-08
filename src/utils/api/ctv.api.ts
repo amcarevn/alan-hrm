@@ -18,6 +18,7 @@ export interface CTVListParams {
   leader_id?: number;
   staff_id?: number;
   doctor?: number;
+  ordering?: string;
 }
 
 export const ctvAPI = {
