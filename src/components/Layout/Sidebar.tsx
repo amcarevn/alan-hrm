@@ -32,6 +32,7 @@ import {
   MagnifyingGlassIcon,
   MegaphoneIcon,
   UsersIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
 // Define interface for navigation items
@@ -126,7 +127,22 @@ const navigationItems: NavigationItem[] = [
     href: '/dashboard/ctv',
     icon: UsersIcon,
     roles: ['ADMIN'],
-    employeePermission: 'can_manage_ctv',
+    children: [
+      {
+        name: 'Danh sách CTV',
+        href: '/dashboard/ctv',
+        icon: UsersIcon,
+        roles: ['ADMIN'],
+        employeePermission: 'can_manage_ctv',
+      },
+      {
+        name: 'Quản lý Bác sĩ',
+        href: '/dashboard/doctors',
+        icon: UserGroupIcon,
+        roles: ['ADMIN'],
+        employeePermission: 'can_manage_doctor',
+      },
+    ],
   },
 
   // --- Cơ cấu tổ chức ---
@@ -428,6 +444,9 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
     if (item.employeePermission === 'can_manage_ctv' && user?.hrm_user?.can_manage_ctv) {
       return true;
     }
+    if (item.employeePermission === 'can_manage_doctor' && user?.hrm_user?.can_manage_doctor) {
+      return true;
+    }
     // Special case: CTV leaders can always access CTV management
     if (item.href === '/dashboard/ctv' && (user?.is_ctv_leader || user?.hrm_user?.is_ctv_leader)) {
       return true;
@@ -442,7 +461,11 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
     if (isManager && item.name === 'Onboard nhân sự') {
       return true;
     }
-    // 4. Check role access
+    // 4. If item has children, show parent when any child is accessible
+    if (item.children && item.children.some(child => canAccessItem(child))) {
+      return true;
+    }
+    // 5. Check role access
     return item.roles.some(role => role.toUpperCase() === userRole);
   };
 

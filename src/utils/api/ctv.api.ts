@@ -1,6 +1,6 @@
 import type { AxiosResponse } from 'axios';
 import { managementApi } from './client';
-import type { CTV, CTVCreateData, CTVStats, CTVFilterEmployee } from './types';
+import type { CTV, CTVCreateData, CTVStats, CTVFilterEmployee, Doctor } from './types';
 
 interface PaginatedResponse<T> {
   count: number;
@@ -17,6 +17,7 @@ export interface CTVListParams {
   work_type?: string;
   leader_id?: number;
   staff_id?: number;
+  doctor?: number;
 }
 
 export const ctvAPI = {
@@ -106,5 +107,26 @@ export const ctvAPI = {
       fd.append('cccd_image', imageFile);
     }
     return fd;
+  },
+};
+
+export const doctorAPI = {
+  list: async (params?: { is_active?: boolean; search?: string; leader_id?: number }): Promise<Doctor[]> => {
+    const response: AxiosResponse<Doctor[]> = await managementApi.get('/api-hrm/doctors/', { params });
+    return response.data;
+  },
+
+  create: async (data: Partial<Doctor>): Promise<Doctor> => {
+    const response: AxiosResponse<Doctor> = await managementApi.post('/api-hrm/doctors/', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: Partial<Doctor>): Promise<Doctor> => {
+    const response: AxiosResponse<Doctor> = await managementApi.patch(`/api-hrm/doctors/${id}/`, data);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await managementApi.delete(`/api-hrm/doctors/${id}/`);
   },
 };

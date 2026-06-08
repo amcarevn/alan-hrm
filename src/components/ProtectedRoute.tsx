@@ -64,6 +64,7 @@ export default function ProtectedRoute({ children, allowedRoles, requireBod = fa
         (employeePermission?.can_manage_positions && (currentPath === '/dashboard/positions' || currentPath.startsWith('/dashboard/positions/'))) ||
         (isCtvManager && currentPath === '/dashboard/ctv') ||
         (isCtvLeader && currentPath === '/dashboard/ctv') ||
+        (isCtvManager && currentPath === '/dashboard/doctors') ||
         currentPath === '/dashboard/assigned-assets' ||
         currentPath === '/dashboard/ai' ||
         currentPath === '/dashboard/announcements';

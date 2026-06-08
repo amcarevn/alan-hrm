@@ -16,8 +16,8 @@ import {
   DocumentArrowDownIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
-import { ctvAPI } from '../utils/api/ctv.api';
-import type { CTV, CTVStats, CTVFilterEmployee, CTVCreateData } from '../utils/api/types';
+import { ctvAPI, doctorAPI } from '../utils/api/ctv.api';
+import type { CTV, CTVStats, CTVFilterEmployee, CTVCreateData, Doctor } from '../utils/api/types';
 import type { CTVListParams } from '../utils/api/ctv.api';
 import Pagination from '../components/Pagination';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -37,7 +37,7 @@ const WORK_TYPE_OPTIONS: { value: string; label: string }[] = [
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'ACTIVE', label: 'Đang hoạt động' },
   { value: 'DISCUSSING', label: 'Đang trao đổi' },
-  { value: 'INACTIVE', label: 'Không Hoạt Động' },
+  { value: 'INACTIVE', label: 'Không hoạt động' },
 ];
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -115,6 +115,7 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
     status: initialData?.status ?? 'ACTIVE',
     note_marketing: initialData?.note_marketing ?? '',
     previous_doctor: initialData?.previous_doctor ?? '',
+    doctor: initialData?.doctor ?? null,
     cccd_number: initialData?.cccd_number ?? '',
     email: initialData?.email ?? '',
     bank_account: initialData?.bank_account ?? '',
@@ -125,6 +126,7 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
   const [imagePreview, setImagePreview] = useState<string | null>(
     initialData?.cccd_image_url ?? initialData?.cccd_image ?? null
   );
+  const [doctorOptions, setDoctorOptions] = useState<Doctor[]>([]);
   const [employeeOptions, setEmployeeOptions] = useState<CTVFilterEmployee[]>([]);
   const [selectedLeaderId, setSelectedLeaderId] = useState<string>(
     initialData?.leader
@@ -198,6 +200,10 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
       }
     };
     fetchEmployees();
+  }, []);
+
+  useEffect(() => {
+    doctorAPI.list({ is_active: true }).then(setDoctorOptions).catch(console.error);
   }, []);
 
   const validate = (): boolean => {
@@ -309,10 +315,10 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
               <h2 className="text-base font-bold text-gray-900">
                 {mode === 'create' ? 'Thêm cộng tác viên mới' : 'Chỉnh sửa cộng tác viên'}
               </h2>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-xs text-gray-600 font-medium mt-0.5">
                 {mode === 'create'
                   ? 'Điền thông tin để tạo hồ sơ cộng tác viên'
-                  : `Đang chỉnh sửa: ${initialData?.name ?? ''}`}
+                  : <span>Đang chỉnh sửa: <span className="font-bold text-gray-900">{initialData?.name ?? ''}</span></span>}
               </p>
             </div>
           </div>
@@ -497,10 +503,22 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
+                <SelectBox<string>
+                  label="Bác sĩ theo dõi"
+                  value={form.doctor ? String(form.doctor) : ''}
+                  options={[
+                    { value: '', label: '— Chọn bác sĩ —' },
+                    ...doctorOptions.map((d) => ({ value: String(d.id), label: d.name })),
+                  ]}
+                  onChange={(val) => set('doctor', val ? Number(val) : null)}
+                  searchable
+                />
+              </div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bác sĩ trước đây làm CTV</label>
                 <input type="text" className={inputCls('previous_doctor')} placeholder="Tên bác sĩ"
                   value={form.previous_doctor ?? ''} onChange={(e) => set('previous_doctor', e.target.value)} />
-              </div>
+              </div> */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Số căn cước công dân</label>
                 <input type="text" className={inputCls('cccd_number')} placeholder="012345678901"
@@ -856,15 +874,24 @@ const CTVImportDialog: React.FC<CTVImportDialogProps> = ({ onClose, onSuccess })
 const CTVList: React.FC = () => {
   const { user } = useAuth();
   const isSuperAdmin = user?.is_super_admin || user?.is_superuser;
-  const isAdminLike =
+
+  // isRealAdminOrHR: ADMIN/HR thật sự — thấy tất cả CTV, không lock
+  const isRealAdminOrHR =
     isSuperAdmin ||
     user?.hrm_user?.is_hr ||
     user?.employee_profile?.is_hr ||
     user?.role?.toUpperCase() === 'ADMIN' ||
-    user?.role?.toUpperCase() === 'HR' ||
+    user?.role?.toUpperCase() === 'HR';
+
+  // isAdminLike: dùng để hiển thị cột Leader, nút xóa/sửa, v.v.
+  const isAdminLike =
+    isRealAdminOrHR ||
     user?.hrm_user?.can_manage_ctv ||
     user?.employee_permission?.can_manage_ctv;
-  const isCtvLeaderOnly = !isAdminLike && !!(user?.is_ctv_leader || user?.hrm_user?.is_ctv_leader);
+
+  // isCtvLeaderOnly: STAFF có is_ctv_leader nhưng không phải ADMIN/HR thật sự
+  // → tự động lock về CTV của leader đó, dù có can_manage_ctv hay không
+  const isCtvLeaderOnly = !isRealAdminOrHR && !!(user?.is_ctv_leader || user?.hrm_user?.is_ctv_leader);
   const currentEmployeeId = user?.hrm_user?.employee_id || user?.employee_profile?.employee_id;
 
   const [ctvList, setCtvList] = useState<CTV[]>([]);
@@ -880,6 +907,8 @@ const CTVList: React.FC = () => {
   const [workTypeFilter, setWorkTypeFilter] = useState('');
   const [leaderFilter, setLeaderFilter] = useState<number | ''>('');
   const [staffFilter, setStaffFilter] = useState<number | ''>('');
+  const [doctorFilter, setDoctorFilter] = useState<number | ''>('');
+  const [filterDoctors, setFilterDoctors] = useState<Doctor[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
@@ -891,7 +920,6 @@ const CTVList: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<CTV | null>(null);
   const [viewingCTV, setViewingCTV] = useState<CTV | null>(null);
 
-  const [loadingFilters, setLoadingFilters] = useState(true);
 
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const leaderLockedRef = useRef(false);
@@ -937,6 +965,7 @@ const CTVList: React.FC = () => {
       if (workTypeFilter) params.work_type = workTypeFilter;
       if (leaderFilter !== '') params.leader_id = leaderFilter as number;
       if (staffFilter !== '') params.staff_id = staffFilter as number;
+      if (doctorFilter !== '') params.doctor = doctorFilter as number;
 
       const response = await ctvAPI.list(params);
       setCtvList(response.results);
@@ -958,7 +987,6 @@ const CTVList: React.FC = () => {
   };
 
   const fetchFilters = async (leaderId?: number) => {
-    setLoadingFilters(true);
     try {
       const [leaderData, staffData] = await Promise.all([
         ctvAPI.myLeaders(),
@@ -968,14 +996,19 @@ const CTVList: React.FC = () => {
       setStaffList(staffData);
     } catch (err) {
       console.error('Error fetching filters:', err);
-    } finally {
-      setLoadingFilters(false);
     }
+  };
+
+  const fetchFilterDoctors = (leaderId?: number) => {
+    const params: { is_active: boolean; leader_id?: number } = { is_active: true };
+    if (leaderId) params.leader_id = leaderId;
+    doctorAPI.list(params).then(setFilterDoctors).catch(console.error);
   };
 
   useEffect(() => {
     fetchStats();
     fetchFilters();
+    fetchFilterDoctors();
   }, []);
 
   useEffect(() => {
@@ -988,7 +1021,9 @@ const CTVList: React.FC = () => {
   }, [leaders]);
 
   useEffect(() => {
-    fetchFilters(leaderFilter !== '' ? (leaderFilter as number) : undefined);
+    const lid = leaderFilter !== '' ? (leaderFilter as number) : undefined;
+    fetchFilters(lid);
+    fetchFilterDoctors(isCtvLeaderOnly ? lid : undefined);
     setStaffFilter('');
   }, [leaderFilter]);
 
@@ -996,7 +1031,7 @@ const CTVList: React.FC = () => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     searchDebounceRef.current = setTimeout(() => { fetchCTVs(); }, 400);
     return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
-  }, [searchTerm, statusFilter, workTypeFilter, leaderFilter, staffFilter, currentPage, itemsPerPage]);
+  }, [searchTerm, statusFilter, workTypeFilter, leaderFilter, staffFilter, doctorFilter, currentPage, itemsPerPage]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -1021,6 +1056,7 @@ const CTVList: React.FC = () => {
       if (workTypeFilter) params.work_type = workTypeFilter;
       if (leaderFilter !== '') params.leader_id = leaderFilter as number;
       if (staffFilter !== '') params.staff_id = staffFilter as number;
+      if (doctorFilter !== '') params.doctor = doctorFilter as number;
 
       const blob = await ctvAPI.exportAll(params);
       const url = URL.createObjectURL(blob);
@@ -1055,7 +1091,7 @@ const CTVList: React.FC = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'ACTIVE':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">Đang hoạt động</span>;
+        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">Đang làm việc</span>;
       case 'DISCUSSING':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Đang trao đổi</span>;
       case 'INACTIVE':
@@ -1064,6 +1100,11 @@ const CTVList: React.FC = () => {
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">{status}</span>;
     }
   };
+
+  const STATUS_PRIORITY: Record<string, number> = { ACTIVE: 0, DISCUSSING: 1, INACTIVE: 2 };
+  const sortedCtvList = [...ctvList].sort(
+    (a, b) => (STATUS_PRIORITY[a.status] ?? 9) - (STATUS_PRIORITY[b.status] ?? 9)
+  );
 
   const getWorkTypeLabel = (workType?: string) => {
     switch (workType) {
@@ -1092,7 +1133,7 @@ const CTVList: React.FC = () => {
               <h2 className="text-sm font-bold text-gray-900 mb-4">Thống kê cộng tác viên</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-emerald-500 shadow-sm p-4">
-                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Đang hoạt động</p>
+                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Đang làm việc</p>
                   <p className="text-2xl font-extrabold text-emerald-600 mt-1">{stats.active}</p>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-amber-500 shadow-sm p-4">
@@ -1131,7 +1172,7 @@ const CTVList: React.FC = () => {
                   value={statusFilter}
                   options={[
                     { value: '', label: 'Tất cả trạng thái' },
-                    { value: 'ACTIVE', label: 'Đang hoạt động' },
+                    { value: 'ACTIVE', label: 'Đang làm việc' },
                     { value: 'DISCUSSING', label: 'Đang trao đổi' },
                     { value: 'INACTIVE', label: 'Đã off' },
                   ]}
@@ -1153,17 +1194,29 @@ const CTVList: React.FC = () => {
                 />
               </div>
 
+              <div className="min-w-[160px]">
+                <SelectBox<string>
+                  label="Bác sĩ theo dõi"
+                  value={doctorFilter === '' ? '' : String(doctorFilter)}
+                  options={[
+                    { value: '', label: 'Tất cả bác sĩ' },
+                    ...filterDoctors.map((d) => ({ value: String(d.id), label: d.name })),
+                  ]}
+                  onChange={(val) => { setDoctorFilter(val === '' ? '' : Number(val)); setCurrentPage(1); }}
+                  searchable
+                />
+              </div>
+
               {!isCtvLeaderOnly && (
                 <div className="min-w-[180px]">
                   <SelectBox<string>
                     label="Leader"
                     value={leaderFilter === '' ? '' : String(leaderFilter)}
                     options={[
-                      { value: '', label: '' },
+                      { value: '', label: 'Tất cả leader' },
                       ...leaders.map((l) => ({ value: String(l.id), label: formatEmployee(l) })),
                     ]}
                     onChange={(val) => { setLeaderFilter(val === '' ? '' : Number(val)); setCurrentPage(1); }}
-                    placeholder={loadingFilters ? 'Đang tải...' : 'Tất cả leader'}
                     searchable
                   />
                 </div>
@@ -1174,11 +1227,10 @@ const CTVList: React.FC = () => {
                   label="Nhân viên đảm nhận"
                   value={staffFilter === '' ? '' : String(staffFilter)}
                   options={[
-                    { value: '', label: '' },
+                    { value: '', label: 'Tất cả nhân viên' },
                     ...staffList.map((s) => ({ value: String(s.id), label: formatEmployee(s) })),
                   ]}
                   onChange={(val) => { setStaffFilter(val === '' ? '' : Number(val)); setCurrentPage(1); }}
-                  placeholder={loadingFilters ? 'Đang tải...' : 'Tất cả nhân viên'}
                   searchable
                 />
               </div>
@@ -1228,7 +1280,7 @@ const CTVList: React.FC = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {['Mã CTV','Nhân viên đảm nhận','Tên cộng tác viên','Số điện thoại','Dịch vụ','Ngày tiếp nhận','Hình thức làm việc','Thời gian đăng bài đầu tiên','Thời gian thanh toán','Bác sĩ trước đây làm','Trạng thái','Thao tác'].map((col) => (
+                    {['Nhân viên đảm nhận','Tên cộng tác viên','Số điện thoại','Dịch vụ','Ngày tiếp nhận','Thời gian kết thúc','Hình thức làm việc','Thời gian đăng bài đầu tiên','Thời gian thanh toán',/* 'Bác sĩ trước đây làm', */'Trạng thái','Thao tác'].map((col) => (
                       <th key={col} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{col}</th>
                     ))}
                   </tr>
@@ -1257,17 +1309,26 @@ const CTVList: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        {['Mã CTV','Nhân viên đảm nhận','Tên cộng tác viên','Số điện thoại','Dịch vụ','Ngày tiếp nhận','Hình thức làm việc','TG đăng bài đầu tiên','Thời gian thanh toán','Bác sĩ trước đây làm','Ghi chú Marketing','Trạng thái','Thao tác'].map((col) => (
+                        {isAdminLike && (
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Leader</th>
+                        )}
+                        {['Nhân viên đảm nhận','Tên cộng tác viên','Số điện thoại','Dịch vụ','Ngày tiếp nhận','Thời gian kết thúc','Hình thức làm việc','TG đăng bài đầu tiên','Thời gian thanh toán','Bác sĩ theo dõi',/* 'Bác sĩ trước đây làm', */'Ghi chú Marketing','Trạng thái','Thao tác'].map((col) => (
                           <th key={col} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{col}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {ctvList.map((ctv) => (
+                      {sortedCtvList.map((ctv) => (
                         <tr key={ctv.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-medium text-gray-900">{ctv.ctv_id}</span>
-                          </td>
+                          {isAdminLike && (
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {ctv.leader_name ? (
+                                <span className="text-sm text-gray-900">{ctv.leader_code} – {ctv.leader_name}</span>
+                              ) : (
+                                <span className="text-sm text-gray-400 italic">—</span>
+                              )}
+                            </td>
+                          )}
                           <td className="px-6 py-4 whitespace-nowrap">
                             {ctv.assigned_employee_code && ctv.assigned_employee_name ? (
                               <span className="text-sm text-gray-900">{ctv.assigned_employee_code} – {ctv.assigned_employee_name}</span>
@@ -1281,11 +1342,14 @@ const CTVList: React.FC = () => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-sm text-gray-700">{ctv.phone || '—'}</span>
                           </td>
-                          <td className="px-6 py-4 max-w-[200px]">
-                            <span className="text-sm text-gray-700 whitespace-normal break-words">{ctv.service || '—'}</span>
+                          <td className="px-6 py-4 max-w-[160px]">
+                            <span className="text-sm text-gray-700 block truncate" title={ctv.service || ''}>{ctv.service || '—'}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-sm text-gray-700">{toDisplayDate(ctv.date_received) || '—'}</span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-gray-700">{toDisplayDate(ctv.end_time) || '—'}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-sm text-gray-700">{ctv.work_type_display || getWorkTypeLabel(ctv.work_type) || '—'}</span>
@@ -1301,10 +1365,13 @@ const CTVList: React.FC = () => {
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-700">{ctv.previous_doctor || '—'}</span>
+                            <span className="text-sm text-gray-700">{ctv.doctor_name || '—'}</span>
                           </td>
-                          <td className="px-6 py-4 max-w-[220px]">
-                            <span className="text-sm text-gray-700 whitespace-normal break-words">{ctv.note_marketing || '—'}</span>
+                          {/* <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-gray-700">{ctv.previous_doctor || '—'}</span>
+                          </td> */}
+                          <td className="px-6 py-4 max-w-[180px]">
+                            <span className="text-sm text-gray-700 block truncate" title={ctv.note_marketing || ''}>{ctv.note_marketing || '—'}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(ctv.status)}</td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -1413,7 +1480,8 @@ const CTVList: React.FC = () => {
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
                   <DetailRow label="Leader" value={viewingCTV.leader_name ? `${viewingCTV.leader_code} – ${viewingCTV.leader_name}` : undefined} />
                   <DetailRow label="Nhân viên đảm nhận" value={viewingCTV.assigned_employee_name ? `${viewingCTV.assigned_employee_code} – ${viewingCTV.assigned_employee_name}` : undefined} />
-                  <DetailRow label="Bác sĩ trước đây làm CTV" value={viewingCTV.previous_doctor} />
+                  <DetailRow label="Bác sĩ theo dõi" value={viewingCTV.doctor_name} />
+                  {/* <DetailRow label="Bác sĩ trước đây làm CTV" value={viewingCTV.previous_doctor} /> */}
                 </dl>
               </div>
 

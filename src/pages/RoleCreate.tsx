@@ -174,6 +174,7 @@ const RoleCreate: React.FC = () => {
       can_manage_leave_policies: false,
       can_view_reports: false,
       can_export_reports: false,
+      can_manage_ctv: false,
     }));
   };
 

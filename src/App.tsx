@@ -40,6 +40,7 @@ import BotPermissionEdit from './pages/BotPermissionEdit';
 import RoleEdit from './pages/RoleEdit';
 import EmployeeList from './pages/EmployeeList';
 import CTVList from './pages/CTVList';
+import DoctorList from './pages/DoctorList';
 import SocialInsuranceList from './pages/SocialInsuranceList';
 import EmployeeCreate from './pages/EmployeeCreate';
 import EmployeeShow from './pages/EmployeeShow';
@@ -424,6 +425,18 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <CTVList />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Doctor Routes */}
+          <Route
+            path="/dashboard/doctors"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <DoctorList />
                 </Layout>
               </ProtectedRoute>
             }
