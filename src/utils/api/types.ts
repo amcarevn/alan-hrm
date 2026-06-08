@@ -501,6 +501,7 @@ export interface EmployeePermissions {
   can_view_reports: boolean;
   can_export_reports: boolean;
   can_manage_ctv: boolean;
+  can_manage_doctor: boolean;
   has_any_permission: boolean;
   permission_summary: string;
 }
