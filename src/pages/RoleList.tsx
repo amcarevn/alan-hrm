@@ -338,7 +338,7 @@ const RoleList: React.FC = () => {
               <tbody className="bg-white divide-y divide-gray-100">
                 {permissions.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-6 py-12 text-center">
+                    <td colSpan={11} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="h-12 w-12 bg-primary-100 text-primary-400 rounded-2xl flex items-center justify-center">
                           <ShieldCheckIcon className="h-6 w-6" />

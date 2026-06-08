@@ -501,6 +501,7 @@ export interface EmployeePermissions {
   can_view_reports: boolean;
   can_export_reports: boolean;
   can_manage_ctv: boolean;
+  can_manage_doctor: boolean;
   has_any_permission: boolean;
   permission_summary: string;
 }
@@ -975,6 +976,15 @@ export interface CompanyUnit {
 export type CTVStatus = 'ACTIVE' | 'DISCUSSING' | 'INACTIVE';
 export type CTVWorkType = 'HIRE_IMAGE_MEDIA' | 'HIRE_PER_POST' | 'FREE_3_MONTHS';
 
+export interface Doctor {
+  id: number;
+  name: string;
+  note?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CTV {
   id: number;
   ctv_id: string;
@@ -999,6 +1009,8 @@ export interface CTV {
   next_payment_date?: string | null;
   note_marketing?: string;
   previous_doctor?: string;
+  doctor?: number | null;
+  doctor_name?: string;
   cccd_number?: string;
   email?: string;
   bank_account?: string;
@@ -1022,10 +1034,12 @@ export interface CTVCreateData {
   status?: string;
   note_marketing?: string;
   previous_doctor?: string;
+  doctor?: number | null;
   cccd_number?: string;
   email?: string;
   bank_account?: string;
   bank_name?: string;
+  payment_date?: string | null;
 }
 
 export interface CTVStats {

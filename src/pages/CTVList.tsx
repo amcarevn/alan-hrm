@@ -16,8 +16,8 @@ import {
   DocumentArrowDownIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
-import { ctvAPI } from '../utils/api/ctv.api';
-import type { CTV, CTVStats, CTVFilterEmployee, CTVCreateData } from '../utils/api/types';
+import { ctvAPI, doctorAPI } from '../utils/api/ctv.api';
+import type { CTV, CTVStats, CTVFilterEmployee, CTVCreateData, Doctor } from '../utils/api/types';
 import type { CTVListParams } from '../utils/api/ctv.api';
 import Pagination from '../components/Pagination';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -37,7 +37,7 @@ const WORK_TYPE_OPTIONS: { value: string; label: string }[] = [
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'ACTIVE', label: 'Đang hoạt động' },
   { value: 'DISCUSSING', label: 'Đang trao đổi' },
-  { value: 'INACTIVE', label: 'Không Hoạt Động' },
+  { value: 'INACTIVE', label: 'Không hoạt động' },
 ];
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -69,10 +69,17 @@ function toDatetimeLocal(value?: string | null): string {
 // SMALL SHARED COMPONENTS
 // ============================================================
 
+const emptyVal = (value: string | null | undefined) =>
+  value
+    ? <span>{value}</span>
+    : <span className="text-gray-400 italic">Chưa có dữ liệu</span>;
+
 const DetailRow: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => (
   <div>
     <dt className="text-xs text-gray-400 mb-0.5">{label}</dt>
-    <dd className="text-sm text-gray-900">{value || '—'}</dd>
+    <dd className={`text-sm ${value ? 'text-gray-900' : 'text-gray-400 italic'}`}>
+      {value || 'Chưa có dữ liệu'}
+    </dd>
   </div>
 );
 
@@ -115,16 +122,19 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
     status: initialData?.status ?? 'ACTIVE',
     note_marketing: initialData?.note_marketing ?? '',
     previous_doctor: initialData?.previous_doctor ?? '',
+    doctor: initialData?.doctor ?? null,
     cccd_number: initialData?.cccd_number ?? '',
     email: initialData?.email ?? '',
     bank_account: initialData?.bank_account ?? '',
     bank_name: initialData?.bank_name ?? '',
+    payment_date: initialData?.payment_date ?? '',
   });
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(
     initialData?.cccd_image_url ?? initialData?.cccd_image ?? null
   );
+  const [doctorOptions, setDoctorOptions] = useState<Doctor[]>([]);
   const [employeeOptions, setEmployeeOptions] = useState<CTVFilterEmployee[]>([]);
   const [selectedLeaderId, setSelectedLeaderId] = useState<string>(
     initialData?.leader
@@ -134,7 +144,6 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
       : ''
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [touched, setTouched] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [loadingEmployees, setLoadingEmployees] = useState(true);
 
@@ -143,11 +152,6 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
   const buildErrors = (): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = 'Vui lòng nhập tên cộng tác viên';
-    if (!form.phone.trim()) {
-      errs.phone = 'Vui lòng nhập số điện thoại';
-    } else if (!/^(0[3|5|7|8|9])[0-9]{8}$/.test(form.phone.replace(/\s/g, ''))) {
-      errs.phone = 'Số điện thoại không hợp lệ (10 số, bắt đầu bằng 03/05/07/08/09)';
-    }
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       errs.email = 'Địa chỉ email không hợp lệ';
     if (form.cccd_number && !/^\d{9}(\d{3})?$/.test(form.cccd_number))
@@ -165,16 +169,6 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
     return errs;
   };
 
-  const isFormValid = useMemo(() => {
-    const errs = buildErrors();
-    if (mode === 'create') return Object.keys(errs).length === 0;
-    if (errs.name || errs.phone) return false;
-    return !Object.keys(errs).some((f) => touched.has(f));
-  }, [
-    form.name, form.phone, form.email,
-    form.cccd_number, form.date_received, form.first_post_time,
-    form.end_time, form.bank_account, form.bank_name, mode, touched,
-  ]);
 
   const previewPaymentDate = useMemo(() => {
     if (!PAID_WORK_TYPES.has(form.work_type ?? '')) return null;
@@ -200,6 +194,10 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
     fetchEmployees();
   }, []);
 
+  useEffect(() => {
+    doctorAPI.list({ is_active: true }).then(setDoctorOptions).catch(console.error);
+  }, []);
+
   const validate = (): boolean => {
     const errs = buildErrors();
     setErrors(errs);
@@ -207,7 +205,6 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
   };
 
   const blurField = (field: keyof CTVCreateData) => {
-    setTouched((prev) => new Set(prev).add(field));
     const errs = buildErrors();
     setErrors((prev) => {
       const next = { ...prev };
@@ -309,10 +306,10 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
               <h2 className="text-base font-bold text-gray-900">
                 {mode === 'create' ? 'Thêm cộng tác viên mới' : 'Chỉnh sửa cộng tác viên'}
               </h2>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-xs text-gray-600 font-medium mt-0.5">
                 {mode === 'create'
                   ? 'Điền thông tin để tạo hồ sơ cộng tác viên'
-                  : `Đang chỉnh sửa: ${initialData?.name ?? ''}`}
+                  : <span>Đang chỉnh sửa: <span className="font-bold text-gray-900">{initialData?.name ?? ''}</span></span>}
               </p>
             </div>
           </div>
@@ -408,7 +405,7 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Số điện thoại <span className="text-primary-500">*</span>
+                  Số điện thoại
                 </label>
                 <input type="text" className={inputCls('phone')} placeholder="0900 000 000"
                   value={form.phone} onChange={(e) => set('phone', e.target.value)} onBlur={() => blurField('phone')} />
@@ -451,7 +448,7 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
                 <SelectBox<string>
                   label="Hình thức làm việc"
                   value={form.work_type ?? ''}
-                  options={[{ value: '', label: '' }, ...WORK_TYPE_OPTIONS]}
+                  options={WORK_TYPE_OPTIONS}
                   onChange={(val) => set('work_type', val)}
                   placeholder="Chọn hình thức làm việc..."
                 />
@@ -467,24 +464,10 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian thanh toán</label>
-                {previewPaymentDate ? (
-                  <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 font-medium flex items-center gap-2">
-                    <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    {toDisplayDate(previewPaymentDate)}
-                    <span className="text-gray-400 font-normal text-xs ml-auto">(hàng tháng)</span>
-                  </div>
-                ) : form.work_type === 'FREE_3_MONTHS' ? (
-                  <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-500">
-                    Không áp dụng — Free 3 tháng đầu
-                  </div>
-                ) : (
-                  <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-400 italic">
-                    Chọn hình thức làm việc để tính...
-                  </div>
-                )}
-                <p className="text-xs text-gray-400 mt-1">Tự động tính từ ngày đăng bài đầu tiên</p>
+                <input type="text" className={inputCls('payment_date')}
+                  placeholder="VD: 4 hàng tháng, 23 hàng tháng..."
+                  value={form.payment_date ?? ''}
+                  onChange={(e) => set('payment_date', e.target.value || null)} />
               </div>
             </div>
           </div>
@@ -497,10 +480,22 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
+                <SelectBox<string>
+                  label="Bác sĩ theo dõi"
+                  value={form.doctor ? String(form.doctor) : ''}
+                  options={[
+                    { value: '', label: '— Chọn bác sĩ —' },
+                    ...doctorOptions.map((d) => ({ value: String(d.id), label: d.name })),
+                  ]}
+                  onChange={(val) => set('doctor', val ? Number(val) : null)}
+                  searchable
+                />
+              </div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bác sĩ trước đây làm CTV</label>
                 <input type="text" className={inputCls('previous_doctor')} placeholder="Tên bác sĩ"
                   value={form.previous_doctor ?? ''} onChange={(e) => set('previous_doctor', e.target.value)} />
-              </div>
+              </div> */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Số căn cước công dân</label>
                 <input type="text" className={inputCls('cccd_number')} placeholder="012345678901"
@@ -567,12 +562,8 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
             className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-50 transition-colors">
             Hủy
           </button>
-          <button type="button" onClick={handleSubmit} disabled={loading || !isFormValid}
-            className={`min-w-[130px] px-5 py-2 text-sm rounded-lg flex items-center justify-center gap-2 font-medium transition-colors ${
-              isFormValid && !loading
-                ? 'bg-primary-600 hover:bg-primary-700 text-white shadow-sm'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}>
+          <button type="button" onClick={handleSubmit} disabled={loading}
+            className="min-w-[130px] px-5 py-2 text-sm rounded-lg flex items-center justify-center gap-2 font-medium transition-colors bg-primary-600 hover:bg-primary-700 text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
             {loading && <ArrowPathIcon className="w-4 h-4 animate-spin" />}
             {loading ? 'Đang lưu...' : mode === 'create' ? 'Tạo mới' : 'Lưu thay đổi'}
           </button>
@@ -856,15 +847,24 @@ const CTVImportDialog: React.FC<CTVImportDialogProps> = ({ onClose, onSuccess })
 const CTVList: React.FC = () => {
   const { user } = useAuth();
   const isSuperAdmin = user?.is_super_admin || user?.is_superuser;
-  const isAdminLike =
+
+  // isRealAdminOrHR: ADMIN/HR thật sự — thấy tất cả CTV, không lock
+  const isRealAdminOrHR =
     isSuperAdmin ||
     user?.hrm_user?.is_hr ||
     user?.employee_profile?.is_hr ||
     user?.role?.toUpperCase() === 'ADMIN' ||
-    user?.role?.toUpperCase() === 'HR' ||
+    user?.role?.toUpperCase() === 'HR';
+
+  // isAdminLike: dùng để hiển thị cột Leader, nút xóa/sửa, v.v.
+  const isAdminLike =
+    isRealAdminOrHR ||
     user?.hrm_user?.can_manage_ctv ||
     user?.employee_permission?.can_manage_ctv;
-  const isCtvLeaderOnly = !isAdminLike && !!(user?.is_ctv_leader || user?.hrm_user?.is_ctv_leader);
+
+  // isCtvLeaderOnly: STAFF có is_ctv_leader nhưng không phải ADMIN/HR thật sự
+  // → tự động lock về CTV của leader đó, dù có can_manage_ctv hay không
+  const isCtvLeaderOnly = !isRealAdminOrHR && !!(user?.is_ctv_leader || user?.hrm_user?.is_ctv_leader);
   const currentEmployeeId = user?.hrm_user?.employee_id || user?.employee_profile?.employee_id;
 
   const [ctvList, setCtvList] = useState<CTV[]>([]);
@@ -880,6 +880,8 @@ const CTVList: React.FC = () => {
   const [workTypeFilter, setWorkTypeFilter] = useState('');
   const [leaderFilter, setLeaderFilter] = useState<number | ''>('');
   const [staffFilter, setStaffFilter] = useState<number | ''>('');
+  const [doctorFilter, setDoctorFilter] = useState<number | ''>('');
+  const [filterDoctors, setFilterDoctors] = useState<Doctor[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
@@ -891,7 +893,6 @@ const CTVList: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<CTV | null>(null);
   const [viewingCTV, setViewingCTV] = useState<CTV | null>(null);
 
-  const [loadingFilters, setLoadingFilters] = useState(true);
 
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const leaderLockedRef = useRef(false);
@@ -931,12 +932,13 @@ const CTVList: React.FC = () => {
   const fetchCTVs = async () => {
     try {
       setLoading(true);
-      const params: CTVListParams = { page: currentPage, page_size: itemsPerPage };
+      const params: CTVListParams = { page: currentPage, page_size: itemsPerPage, ordering: 'status,id' };
       if (searchTerm) params.search = searchTerm;
       if (statusFilter) params.status = statusFilter;
       if (workTypeFilter) params.work_type = workTypeFilter;
       if (leaderFilter !== '') params.leader_id = leaderFilter as number;
       if (staffFilter !== '') params.staff_id = staffFilter as number;
+      if (doctorFilter !== '') params.doctor = doctorFilter as number;
 
       const response = await ctvAPI.list(params);
       setCtvList(response.results);
@@ -958,7 +960,6 @@ const CTVList: React.FC = () => {
   };
 
   const fetchFilters = async (leaderId?: number) => {
-    setLoadingFilters(true);
     try {
       const [leaderData, staffData] = await Promise.all([
         ctvAPI.myLeaders(),
@@ -968,14 +969,19 @@ const CTVList: React.FC = () => {
       setStaffList(staffData);
     } catch (err) {
       console.error('Error fetching filters:', err);
-    } finally {
-      setLoadingFilters(false);
     }
+  };
+
+  const fetchFilterDoctors = (leaderId?: number) => {
+    const params: { is_active: boolean; leader_id?: number } = { is_active: true };
+    if (leaderId) params.leader_id = leaderId;
+    doctorAPI.list(params).then(setFilterDoctors).catch(console.error);
   };
 
   useEffect(() => {
     fetchStats();
     fetchFilters();
+    fetchFilterDoctors();
   }, []);
 
   useEffect(() => {
@@ -988,7 +994,9 @@ const CTVList: React.FC = () => {
   }, [leaders]);
 
   useEffect(() => {
-    fetchFilters(leaderFilter !== '' ? (leaderFilter as number) : undefined);
+    const lid = leaderFilter !== '' ? (leaderFilter as number) : undefined;
+    fetchFilters(lid);
+    fetchFilterDoctors(isCtvLeaderOnly ? lid : undefined);
     setStaffFilter('');
   }, [leaderFilter]);
 
@@ -996,7 +1004,7 @@ const CTVList: React.FC = () => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     searchDebounceRef.current = setTimeout(() => { fetchCTVs(); }, 400);
     return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
-  }, [searchTerm, statusFilter, workTypeFilter, leaderFilter, staffFilter, currentPage, itemsPerPage]);
+  }, [searchTerm, statusFilter, workTypeFilter, leaderFilter, staffFilter, doctorFilter, currentPage, itemsPerPage]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -1021,6 +1029,7 @@ const CTVList: React.FC = () => {
       if (workTypeFilter) params.work_type = workTypeFilter;
       if (leaderFilter !== '') params.leader_id = leaderFilter as number;
       if (staffFilter !== '') params.staff_id = staffFilter as number;
+      if (doctorFilter !== '') params.doctor = doctorFilter as number;
 
       const blob = await ctvAPI.exportAll(params);
       const url = URL.createObjectURL(blob);
@@ -1059,18 +1068,23 @@ const CTVList: React.FC = () => {
       case 'DISCUSSING':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Đang trao đổi</span>;
       case 'INACTIVE':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Đã off</span>;
+        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-600">Không hoạt động</span>;
       default:
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">{status}</span>;
     }
   };
+
+  const STATUS_PRIORITY: Record<string, number> = { ACTIVE: 0, DISCUSSING: 1, INACTIVE: 2 };
+  const sortedCtvList = [...ctvList].sort(
+    (a, b) => (STATUS_PRIORITY[a.status] ?? 9) - (STATUS_PRIORITY[b.status] ?? 9)
+  );
 
   const getWorkTypeLabel = (workType?: string) => {
     switch (workType) {
       case 'HIRE_IMAGE_MEDIA': return 'Thuê ảnh media';
       case 'HIRE_PER_POST': return 'Thuê theo bài';
       case 'FREE_3_MONTHS': return 'Miễn phí 3 tháng';
-      default: return workType || '—';
+      default: return workType || null;
     }
   };
 
@@ -1104,7 +1118,7 @@ const CTVList: React.FC = () => {
                   <p className="text-2xl font-extrabold text-blue-600 mt-1">{stats.total}</p>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-red-400 shadow-sm p-4">
-                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Đã off</p>
+                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Không hoạt động</p>
                   <p className="text-2xl font-extrabold text-red-500 mt-1">{stats.inactive}</p>
                 </div>
               </div>
@@ -1133,7 +1147,7 @@ const CTVList: React.FC = () => {
                     { value: '', label: 'Tất cả trạng thái' },
                     { value: 'ACTIVE', label: 'Đang hoạt động' },
                     { value: 'DISCUSSING', label: 'Đang trao đổi' },
-                    { value: 'INACTIVE', label: 'Đã off' },
+                    { value: 'INACTIVE', label: 'Không hoạt động' },
                   ]}
                   onChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
                 />
@@ -1153,17 +1167,29 @@ const CTVList: React.FC = () => {
                 />
               </div>
 
+              <div className="min-w-[160px]">
+                <SelectBox<string>
+                  label="Bác sĩ theo dõi"
+                  value={doctorFilter === '' ? '' : String(doctorFilter)}
+                  options={[
+                    { value: '', label: 'Tất cả bác sĩ' },
+                    ...filterDoctors.map((d) => ({ value: String(d.id), label: d.name })),
+                  ]}
+                  onChange={(val) => { setDoctorFilter(val === '' ? '' : Number(val)); setCurrentPage(1); }}
+                  searchable
+                />
+              </div>
+
               {!isCtvLeaderOnly && (
                 <div className="min-w-[180px]">
                   <SelectBox<string>
                     label="Leader"
                     value={leaderFilter === '' ? '' : String(leaderFilter)}
                     options={[
-                      { value: '', label: '' },
+                      { value: '', label: 'Tất cả leader' },
                       ...leaders.map((l) => ({ value: String(l.id), label: formatEmployee(l) })),
                     ]}
                     onChange={(val) => { setLeaderFilter(val === '' ? '' : Number(val)); setCurrentPage(1); }}
-                    placeholder={loadingFilters ? 'Đang tải...' : 'Tất cả leader'}
                     searchable
                   />
                 </div>
@@ -1174,11 +1200,10 @@ const CTVList: React.FC = () => {
                   label="Nhân viên đảm nhận"
                   value={staffFilter === '' ? '' : String(staffFilter)}
                   options={[
-                    { value: '', label: '' },
+                    { value: '', label: 'Tất cả nhân viên' },
                     ...staffList.map((s) => ({ value: String(s.id), label: formatEmployee(s) })),
                   ]}
                   onChange={(val) => { setStaffFilter(val === '' ? '' : Number(val)); setCurrentPage(1); }}
-                  placeholder={loadingFilters ? 'Đang tải...' : 'Tất cả nhân viên'}
                   searchable
                 />
               </div>
@@ -1228,7 +1253,7 @@ const CTVList: React.FC = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {['Mã CTV','Nhân viên đảm nhận','Tên cộng tác viên','Số điện thoại','Dịch vụ','Ngày tiếp nhận','Hình thức làm việc','Thời gian đăng bài đầu tiên','Thời gian thanh toán','Bác sĩ trước đây làm','Trạng thái','Thao tác'].map((col) => (
+                    {['Nhân viên đảm nhận','Tên cộng tác viên','Số điện thoại','Dịch vụ','Ngày tiếp nhận','Thời gian kết thúc','Hình thức làm việc','Thời gian đăng bài đầu tiên','Thời gian thanh toán',/* 'Bác sĩ trước đây làm', */'Trạng thái','Thao tác'].map((col) => (
                       <th key={col} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{col}</th>
                     ))}
                   </tr>
@@ -1257,17 +1282,26 @@ const CTVList: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        {['Mã CTV','Nhân viên đảm nhận','Tên cộng tác viên','Số điện thoại','Dịch vụ','Ngày tiếp nhận','Hình thức làm việc','TG đăng bài đầu tiên','Thời gian thanh toán','Bác sĩ trước đây làm','Ghi chú Marketing','Trạng thái','Thao tác'].map((col) => (
+                        {isAdminLike && (
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Leader</th>
+                        )}
+                        {['Nhân viên đảm nhận','Tên cộng tác viên','Số điện thoại','Dịch vụ','Ngày tiếp nhận','Thời gian kết thúc','Hình thức làm việc','TG đăng bài đầu tiên','Thời gian thanh toán','Bác sĩ theo dõi',/* 'Bác sĩ trước đây làm', */'Ghi chú Marketing','Trạng thái','Thao tác'].map((col) => (
                           <th key={col} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{col}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {ctvList.map((ctv) => (
+                      {sortedCtvList.map((ctv) => (
                         <tr key={ctv.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-medium text-gray-900">{ctv.ctv_id}</span>
-                          </td>
+                          {isAdminLike && (
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {ctv.leader_name ? (
+                                <span className="text-sm text-gray-900">{ctv.leader_code} – {ctv.leader_name}</span>
+                              ) : (
+                                <span className="text-sm text-gray-400 italic">—</span>
+                              )}
+                            </td>
+                          )}
                           <td className="px-6 py-4 whitespace-nowrap">
                             {ctv.assigned_employee_code && ctv.assigned_employee_name ? (
                               <span className="text-sm text-gray-900">{ctv.assigned_employee_code} – {ctv.assigned_employee_name}</span>
@@ -1279,32 +1313,34 @@ const CTVList: React.FC = () => {
                             <span className="text-sm font-medium text-gray-900">{ctv.name}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-700">{ctv.phone || '—'}</span>
+                            <span className="text-sm text-gray-700">{emptyVal(ctv.phone)}</span>
                           </td>
-                          <td className="px-6 py-4 max-w-[200px]">
-                            <span className="text-sm text-gray-700 whitespace-normal break-words">{ctv.service || '—'}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-700">{toDisplayDate(ctv.date_received) || '—'}</span>
+                          <td className="px-6 py-4 max-w-[160px]">
+                            <span className="text-sm text-gray-700 block truncate" title={ctv.service || ''}>{emptyVal(ctv.service)}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-700">{ctv.work_type_display || getWorkTypeLabel(ctv.work_type) || '—'}</span>
+                            <span className="text-sm text-gray-700">{emptyVal(toDisplayDate(ctv.date_received))}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-700">{toDisplayDate(ctv.first_post_time) || '—'}</span>
+                            <span className="text-sm text-gray-700">{emptyVal(toDisplayDate(ctv.end_time))}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            {ctv.next_payment_date ? (
-                              <span className="text-sm text-gray-900">{toDisplayDate(ctv.next_payment_date) || '—'}</span>
-                            ) : (
-                              <span className="text-sm text-gray-300">—</span>
-                            )}
+                            <span className="text-sm text-gray-700">{emptyVal(ctv.work_type_display || getWorkTypeLabel(ctv.work_type))}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-gray-700">{emptyVal(toDisplayDate(ctv.first_post_time))}</span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-gray-900">{emptyVal(ctv.payment_date)}</span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-gray-700">{emptyVal(ctv.doctor_name)}</span>
+                          </td>
+                          {/* <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-sm text-gray-700">{ctv.previous_doctor || '—'}</span>
-                          </td>
-                          <td className="px-6 py-4 max-w-[220px]">
-                            <span className="text-sm text-gray-700 whitespace-normal break-words">{ctv.note_marketing || '—'}</span>
+                          </td> */}
+                          <td className="px-6 py-4 max-w-[180px]">
+                            <span className="text-sm text-gray-700 block truncate" title={ctv.note_marketing || ''}>{emptyVal(ctv.note_marketing)}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(ctv.status)}</td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -1413,7 +1449,8 @@ const CTVList: React.FC = () => {
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
                   <DetailRow label="Leader" value={viewingCTV.leader_name ? `${viewingCTV.leader_code} – ${viewingCTV.leader_name}` : undefined} />
                   <DetailRow label="Nhân viên đảm nhận" value={viewingCTV.assigned_employee_name ? `${viewingCTV.assigned_employee_code} – ${viewingCTV.assigned_employee_name}` : undefined} />
-                  <DetailRow label="Bác sĩ trước đây làm CTV" value={viewingCTV.previous_doctor} />
+                  <DetailRow label="Bác sĩ theo dõi" value={viewingCTV.doctor_name} />
+                  {/* <DetailRow label="Bác sĩ trước đây làm CTV" value={viewingCTV.previous_doctor} /> */}
                 </dl>
               </div>
 
@@ -1443,13 +1480,10 @@ const CTVList: React.FC = () => {
                   <div>
                     <dt className="text-xs text-gray-400 mb-0.5">Thời gian thanh toán</dt>
                     <dd>
-                      {viewingCTV.next_payment_date ? (
-                        <span className="inline-flex items-center gap-1 text-sm font-medium text-primary-700 bg-primary-50 border border-primary-200 rounded-lg px-2 py-0.5">
-                          {toDisplayDate(viewingCTV.next_payment_date)}
-                          <span className="text-primary-400 font-normal text-xs">(hàng tháng)</span>
-                        </span>
+                      {viewingCTV.payment_date ? (
+                        <span className="text-sm text-gray-900">{viewingCTV.payment_date}</span>
                       ) : (
-                        <span className="text-sm text-gray-400">—</span>
+                        <span className="text-sm text-gray-400 italic">Chưa có dữ liệu</span>
                       )}
                     </dd>
                   </div>
