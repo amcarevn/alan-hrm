@@ -58,6 +58,10 @@ const formatDate = (val: string | null) => {
   if (!val) return '—';
   return new Date(val).toLocaleDateString('vi-VN');
 };
+const formatRate = (val: string | null) => {
+  if (!val) return '—';
+  return `${parseFloat(val)}%`;
+};
 
 // ── Detail modal ──────────────────────────────────────────────
 const DetailModal: React.FC<{
@@ -97,13 +101,12 @@ const DetailModal: React.FC<{
         <div className="px-6 py-4 overflow-y-auto max-h-[60vh]">
           <Row label="Mã nhân viên"     value={item.employee_code} />
           <Row label="Tên nhân viên"    value={item.employee_name} />
-          <Row label="Số sổ BHXH"       value={item.insurance_book_number} />
           <Row label="Mã số BHXH"       value={item.insurance_number} />
           <Row label="Pháp nhân đóng BHXH" value={item.legal_entity} />
           <Row label="Ngày bắt đầu"     value={formatDate(item.start_date)} />
           <Row label="Ngày dừng"        value={formatDate(item.end_date)} />
           <Row label="Lương đóng BHXH"  value={formatCurrency(item.salary_base)} />
-          <Row label="Tỷ lệ đóng (%)"   value={item.contribution_rate ? `${item.contribution_rate}%` : null} />
+          <Row label="Tỷ lệ đóng (%)"   value={formatRate(item.contribution_rate)} />
           <Row label="Ghi chú"          value={item.note} />
         </div>
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
@@ -166,7 +169,7 @@ const FormModal: React.FC<{
           start_date: initial.start_date ?? '',
           end_date: initial.end_date ?? '',
           salary_base: initSalaryRaw,
-          contribution_rate: initial.contribution_rate ?? '',
+          contribution_rate: initial.contribution_rate ? String(parseFloat(initial.contribution_rate)) : '',
           status: initial.status,
           note: initial.note ?? '',
         }
@@ -863,7 +866,7 @@ const SocialInsuranceList: React.FC = () => {
                         <td className="table-cell whitespace-nowrap">{formatDate(item.start_date)}</td>
                         <td className="table-cell whitespace-nowrap">{formatDate(item.end_date)}</td>
                         <td className="table-cell whitespace-nowrap">{formatCurrency(item.salary_base)}</td>
-                        <td className="table-cell">{item.contribution_rate ? `${item.contribution_rate}%` : '—'}</td>
+                        <td className="table-cell">{formatRate(item.contribution_rate)}</td>
                         <td className="table-cell">
                           <StatusBadge status={item.status} label={item.status_display} />
                         </td>
