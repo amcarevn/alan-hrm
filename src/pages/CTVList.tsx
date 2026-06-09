@@ -183,7 +183,9 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
     const fetchEmployees = async () => {
       setLoadingEmployees(true);
       try {
-        const data = await ctvAPI.allEmployees();
+        // is_ctv_leader: chỉ lấy nhân viên thuộc team của leader (manager=myEmployeeId)
+        const params = isCtvLeader && myEmployeeId ? { leader_id: myEmployeeId } : {};
+        const data = await ctvAPI.allEmployees(params);
         setEmployeeOptions(data);
       } catch (err) {
         console.error('Error loading employees:', err);
@@ -195,7 +197,10 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
   }, []);
 
   useEffect(() => {
-    doctorAPI.list({ is_active: true }).then(setDoctorOptions).catch(console.error);
+    // is_ctv_leader: chỉ lấy bác sĩ đang gắn với CTV của leader đó
+    const params: { is_active: boolean; leader_id?: number } = { is_active: true };
+    if (isCtvLeader && myEmployeeId) params.leader_id = myEmployeeId;
+    doctorAPI.list(params).then(setDoctorOptions).catch(console.error);
   }, []);
 
   const validate = (): boolean => {
@@ -881,9 +886,10 @@ const CTVList: React.FC = () => {
     user?.hrm_user?.can_manage_ctv ||
     user?.employee_permission?.can_manage_ctv;
 
-  // isCtvLeaderOnly: STAFF có is_ctv_leader nhưng không phải ADMIN/HR thật sự
-  // → tự động lock về CTV của leader đó, dù có can_manage_ctv hay không
+  // isCtvLeaderOnly: leader CTV nhưng không phải ADMIN/HR → lock về CTV của leader đó
   const isCtvLeaderOnly = !isRealAdminOrHR && !!(user?.is_ctv_leader || user?.hrm_user?.is_ctv_leader);
+  // isCtvAssignedOnly: nhân sự được gán CTV, không phải admin/HR/leader → chỉ thấy CTV mình đảm nhận
+  const isCtvAssignedOnly = !isRealAdminOrHR && !isCtvLeaderOnly && !!(user?.hrm_user?.is_ctv_assigned);
   const currentEmployeeId = user?.hrm_user?.employee_id || user?.employee_profile?.employee_id;
 
   const [ctvList, setCtvList] = useState<CTV[]>([]);
@@ -946,6 +952,7 @@ const CTVList: React.FC = () => {
 
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const leaderLockedRef = useRef(false);
+  const staffLockedRef = useRef(false);
 
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({ isDown: false, startX: 0, scrollLeft: 0, wasDragging: false });
@@ -1044,6 +1051,15 @@ const CTVList: React.FC = () => {
       setLeaderFilter(myRecord.id);
     }
   }, [leaders]);
+
+  useEffect(() => {
+    if (!isCtvAssignedOnly || staffLockedRef.current || !staffList.length || !currentEmployeeId) return;
+    const myRecord = staffList.find((s) => s.employee_id === currentEmployeeId);
+    if (myRecord) {
+      staffLockedRef.current = true;
+      setStaffFilter(myRecord.id);
+    }
+  }, [staffList]);
 
   useEffect(() => {
     const lid = leaderFilter !== '' ? (leaderFilter as number) : undefined;
@@ -1270,7 +1286,7 @@ const CTVList: React.FC = () => {
                 />
               </div>
 
-              {!isCtvLeaderOnly && (
+              {!isCtvLeaderOnly && !isCtvAssignedOnly && (
                 <div className="min-w-[180px]">
                   <SelectBox<string>
                     label="Leader"
@@ -1285,18 +1301,20 @@ const CTVList: React.FC = () => {
                 </div>
               )}
 
-              <div className="min-w-[180px]">
-                <SelectBox<string>
-                  label="Nhân viên đảm nhận"
-                  value={staffFilter === '' ? '' : String(staffFilter)}
-                  options={[
-                    { value: '', label: 'Tất cả nhân viên' },
-                    ...staffList.map((s) => ({ value: String(s.id), label: formatEmployee(s) })),
-                  ]}
-                  onChange={(val) => { setStaffFilter(val === '' ? '' : Number(val)); setCurrentPage(1); }}
-                  searchable
-                />
-              </div>
+              {!isCtvAssignedOnly && (
+                <div className="min-w-[180px]">
+                  <SelectBox<string>
+                    label="Nhân viên đảm nhận"
+                    value={staffFilter === '' ? '' : String(staffFilter)}
+                    options={[
+                      { value: '', label: 'Tất cả nhân viên' },
+                      ...staffList.map((s) => ({ value: String(s.id), label: formatEmployee(s) })),
+                    ]}
+                    onChange={(val) => { setStaffFilter(val === '' ? '' : Number(val)); setCurrentPage(1); }}
+                    searchable
+                  />
+                </div>
+              )}
 
               {loading && (
                 <div className="flex items-center gap-1.5 text-xs text-gray-500 pb-2">
@@ -1415,7 +1433,7 @@ const CTVList: React.FC = () => {
                         <th className="sticky left-0 z-20 bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">Tên cộng tác viên</th>
                         {visibleColumns.has('doctor') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Bác sĩ theo dõi</th>}
                         {visibleColumns.has('leader') && isAdminLike && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Leader</th>}
-                        {visibleColumns.has('assigned') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Nhân viên đảm nhận</th>}
+                        {visibleColumns.has('assigned') && !isCtvAssignedOnly && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Nhân viên đảm nhận</th>}
                         {visibleColumns.has('phone') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Số điện thoại</th>}
                         {visibleColumns.has('service') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Dịch vụ</th>}
                         {visibleColumns.has('date_received') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Ngày tiếp nhận</th>}
@@ -1466,7 +1484,7 @@ const CTVList: React.FC = () => {
                               )}
                             </td>
                           )}
-                          {visibleColumns.has('assigned') && (
+                          {visibleColumns.has('assigned') && !isCtvAssignedOnly && (
                             <td className="px-6 py-4 whitespace-nowrap">
                               {ctv.assigned_employee_code && ctv.assigned_employee_name ? (
                                 <span className="text-sm text-gray-900">{ctv.assigned_employee_code} – {ctv.assigned_employee_name}</span>
