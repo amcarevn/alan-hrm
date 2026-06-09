@@ -63,37 +63,6 @@ interface HRMDashboardStats {
   trends: { employee_growth: number; asset_growth: number };
 }
 
-interface WorkforceAnalytics {
-  salary_reference_period: { year: number | null; month: number | null; label: string | null };
-  summary: {
-    total_employees: number;
-    estimated_monthly_payroll: number;
-    estimated_cost_from_year_start: number;
-    estimated_cost_to_year_end: number;
-    estimated_full_year_cost: number;
-  };
-  tenure_analysis: {
-    average_tenure_years: number;
-    distribution: Array<{ bucket: string; count: number }>;
-  };
-  charts: {
-    cost_split: Array<{ name: string; value: number }>;
-    monthly_projection: Array<{ month: string; estimated_cost: number }>;
-  };
-  department_analysis: Array<{
-    department_name: string;
-    employee_count: number;
-    average_tenure_years: number;
-    estimated_monthly_payroll: number;
-  }>;
-  employee_analysis: Array<{
-    employee_id: string;
-    full_name: string;
-    tenure_years: number;
-    estimated_monthly_salary: number;
-  }>;
-}
-
 const CHART_COLORS = [
   '#1B65B8', '#10b981', '#f59e0b', '#8b5cf6',
   '#ec4899', '#06b6d4', '#f97316', '#84cc16',
@@ -102,7 +71,18 @@ const CHART_COLORS = [
 const formatNumber = (n: number) =>
   n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
-const formatCurrency = (n: number) => `${formatNumber(n)} VNĐ`;
+const formatCurrency = (n: number) => {
+  const value = Number(n || 0);
+  if (Math.abs(value) >= 1_000_000_000) {
+    return `${(value / 1_000_000_000).toFixed(2)} tỷ`;
+  }
+  if (Math.abs(value) >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1)} triệu`;
+  }
+  return `${formatNumber(Math.round(value))} VNĐ`;
+};
+
+const formatCurrencyFull = (n: number) => `${formatNumber(Math.round(Number(n || 0)))} VNĐ`;
 
 const formatDate = (d: Date | string) => {
   const date = typeof d === 'string' ? new Date(d) : d;
@@ -254,7 +234,7 @@ const StatCard = ({
       <p className="text-2xl font-extrabold text-gray-900 tracking-tight mt-0.5 truncate">
         {formatter(rawValue)}
       </p>
-      <p className="text-xs text-gray-600 mt-1">{subtext}</p>
+      <p className="text-xs text-gray-600 mt-1 truncate">{subtext}</p>
     </div>
   );
 };
@@ -419,7 +399,7 @@ const SalaryDeptAnalytics: React.FC<SalaryDeptAnalyticsProps> = ({
                   <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                   <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-35} textAnchor="end" interval={0} />
                   <YAxis tickFormatter={(v) => `${Math.round((v || 0) / 1000000)}tr`} tick={{ fontSize: 9 }} />
-                  <Tooltip formatter={(value: any) => formatCurrency(Number(value || 0))} />
+                  <Tooltip formatter={(value: any) => formatCurrencyFull(Number(value || 0))} />
                   <Bar dataKey="Phải thanh toán" fill="#10b981" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="Thuế TNCN" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -445,7 +425,7 @@ const SalaryDeptAnalytics: React.FC<SalaryDeptAnalyticsProps> = ({
                       <Cell key={i} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: any) => formatCurrency(Number(value || 0))} />
+                  <Tooltip formatter={(value: any) => formatCurrencyFull(Number(value || 0))} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -468,18 +448,18 @@ const SalaryDeptAnalytics: React.FC<SalaryDeptAnalyticsProps> = ({
                   <tr key={dept.name} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}>
                     <td className="px-4 py-2.5 font-medium text-gray-800">{dept.name}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">{dept.count}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-primary-700">{formatCurrency(dept.totalNet)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-amber-700">{formatCurrency(dept.totalTax)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-emerald-700">{formatCurrency(dept.totalPayable)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-primary-700">{formatCurrencyFull(dept.totalNet)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-amber-700">{formatCurrencyFull(dept.totalTax)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-emerald-700">{formatCurrencyFull(dept.totalPayable)}</td>
                   </tr>
                 ))}
                 {/* Totals row */}
                 <tr className="bg-emerald-50 border-t-2 border-emerald-200">
                   <td className="px-4 py-2.5 font-bold text-gray-900">Tổng cộng</td>
                   <td className="px-4 py-2.5 text-right tabular-nums font-bold text-gray-900">{totals.employees}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums font-bold text-primary-800">{formatCurrency(totals.net)}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums font-bold text-amber-800">{formatCurrency(totals.tax)}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums font-bold text-emerald-800">{formatCurrency(totals.payable)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-bold text-primary-800">{formatCurrencyFull(totals.net)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-bold text-amber-800">{formatCurrencyFull(totals.tax)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-bold text-emerald-800">{formatCurrencyFull(totals.payable)}</td>
                 </tr>
               </tbody>
             </table>
@@ -505,11 +485,8 @@ const Dashboard = () => {
   );
 
   const [stats, setStats] = useState<HRMDashboardStats | null>(null);
-  const [analytics, setAnalytics] = useState<WorkforceAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [employeeCodeInput, setEmployeeCodeInput] = useState('');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | ''>('');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
@@ -521,14 +498,21 @@ const Dashboard = () => {
   const [salaryYear, setSalaryYear] = useState(new Date().getFullYear());
   const [salaryMonth, setSalaryMonth] = useState(new Date().getMonth() + 1);
 
-  const fetchSalaryAnalytics = useCallback(async (year?: number, month?: number) => {
+  const fetchSalaryAnalytics = useCallback(async (options?: {
+    year?: number;
+    month?: number;
+    department_id?: number;
+    employee_code?: string;
+  }) => {
     if (!isBod) return;
     setSalaryLoading(true);
     setSalaryError(null);
     try {
       const data = await salaryService.getSalaryByDepartment({
-        year: year ?? salaryYear,
-        month: month ?? salaryMonth,
+        year: options?.year ?? salaryYear,
+        month: options?.month ?? salaryMonth,
+        department_id: options?.department_id,
+        employee_code: options?.employee_code,
       });
       setSalaryData(data);
     } catch (err: any) {
@@ -538,26 +522,11 @@ const Dashboard = () => {
     }
   }, [isBod, salaryYear, salaryMonth]);
 
-  const fetchWorkforceAnalytics = async (params?: { employee_code?: string; department_id?: number }) => {
-    setAnalyticsLoading(true);
-    setAnalyticsError(null);
-    try {
-      const data = await dashboardAPI.getWorkforceAnalytics(params);
-      setAnalytics(data);
-    } catch (err: any) {
-      setAnalyticsError(err?.response?.data?.detail || err.message || 'Lỗi khi tải phân tích nhân sự');
-    } finally {
-      setAnalyticsLoading(false);
-    }
-  };
-
   useEffect(() => {
     dashboardAPI.getHRMStats()
       .then(setStats)
       .catch((err: any) => setError(err.message || 'Lỗi khi tải dashboard'))
       .finally(() => setLoading(false));
-
-    fetchWorkforceAnalytics();
   }, []);
 
   // Auto-fetch salary analytics when BOD user views employee tab
@@ -628,17 +597,67 @@ const Dashboard = () => {
     .slice(0, 6)
     .map((t, i) => ({ name: t.display_name, value: t.count, color: CHART_COLORS[i % CHART_COLORS.length] }));
 
-  const tenureChartData = (analytics?.tenure_analysis.distribution || []).map((item, i) => ({
-    name: item.bucket,
-    value: item.count,
+  const salaryResults = salaryData?.results || [];
+  const monthlyPayroll = salaryResults.reduce((sum, row) => sum + Number(row.con_phai_thanh_toan || 0), 0);
+  const selectedMonth = salaryData?.month || salaryMonth;
+  const selectedYear = salaryData?.year || salaryYear;
+  const currentYear = new Date().getFullYear();
+  const elapsedMonths = selectedYear < currentYear ? 12 : selectedYear > currentYear ? 0 : selectedMonth;
+  const remainingMonths = selectedYear < currentYear ? 0 : selectedYear > currentYear ? 12 : Math.max(12 - selectedMonth, 0);
+  const estimatedCostFromYearStart = monthlyPayroll * elapsedMonths;
+  const estimatedCostToYearEnd = monthlyPayroll * remainingMonths;
+  const estimatedFullYearCost = monthlyPayroll * 12;
+
+  const tenureMap = salaryResults.reduce((acc: Record<string, number>, row: any) => {
+    const tenureYears = Number(row.tenure_years);
+    if (!Number.isNaN(tenureYears) && tenureYears >= 0) {
+      const bucket = tenureYears < 1 ? '< 1 năm'
+        : tenureYears < 3 ? '1-3 năm'
+        : tenureYears < 5 ? '3-5 năm'
+        : '>= 5 năm';
+      acc[bucket] = (acc[bucket] || 0) + 1;
+      return acc;
+    }
+
+    const contractStatus = (row.contract_status || '').toUpperCase();
+    const fallbackBucket = contractStatus === 'THU_VIEC'
+      ? 'Thử việc'
+      : contractStatus === 'CHINH_THUC'
+      ? 'Chính thức'
+      : 'Khác';
+    acc[fallbackBucket] = (acc[fallbackBucket] || 0) + 1;
+    return acc;
+  }, {});
+
+  const tenureChartData = Object.entries(tenureMap).map(([name, value], i) => ({
+    name,
+    value,
     color: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
-  const costSplitData = (analytics?.charts.cost_split || []).map((item, i) => ({
-    name: item.name,
-    value: item.value,
-    color: i === 0 ? '#1B65B8' : '#10b981',
+  const costSplitData = [
+    { name: 'Đầu năm đến hiện tại', value: estimatedCostFromYearStart, color: '#1B65B8' },
+    { name: 'Hiện tại đến cuối năm', value: estimatedCostToYearEnd, color: '#10b981' },
+  ];
+
+  const monthlyProjectionData = MONTH_NAMES.map((label, index) => ({
+    month: label,
+    estimated_cost: monthlyPayroll,
+    month_index: index + 1,
   }));
+
+  const departmentPayrollData = Object.values(
+    salaryResults.reduce((acc: Record<string, { department_name: string; estimated_monthly_payroll: number }>, row) => {
+      const deptName = row.phong_ban || 'Chưa phân phòng ban';
+      if (!acc[deptName]) {
+        acc[deptName] = { department_name: deptName, estimated_monthly_payroll: 0 };
+      }
+      acc[deptName].estimated_monthly_payroll += Number(row.con_phai_thanh_toan || 0);
+      return acc;
+    }, {})
+  )
+    .sort((a, b) => b.estimated_monthly_payroll - a.estimated_monthly_payroll)
+    .slice(0, 6);
 
   const handleAnalyze = () => {
     const params: { employee_code?: string; department_id?: number } = {};
@@ -648,13 +667,18 @@ const Dashboard = () => {
     if (selectedDepartmentId !== '') {
       params.department_id = selectedDepartmentId;
     }
-    fetchWorkforceAnalytics(params);
+    fetchSalaryAnalytics({
+      year: salaryYear,
+      month: salaryMonth,
+      employee_code: params.employee_code,
+      department_id: params.department_id,
+    });
   };
 
   const handleResetAnalysis = () => {
     setEmployeeCodeInput('');
     setSelectedDepartmentId('');
-    fetchWorkforceAnalytics();
+    fetchSalaryAnalytics({ year: salaryYear, month: salaryMonth });
   };
 
   return (
@@ -745,141 +769,149 @@ const Dashboard = () => {
               centerValue={totalActivities} centerLabel="Hoạt động" />
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-5 space-y-4">
-            <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-bold text-gray-900">Phân tích thâm niên & dự báo chi phí lương</h3>
-              <p className="text-xs text-gray-600">
-                Dữ liệu lương tham chiếu: {analytics?.salary_reference_period?.label || 'Chưa có dữ liệu bảng lương'}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <input
-                value={employeeCodeInput}
-                onChange={(e) => setEmployeeCodeInput(e.target.value)}
-                placeholder="Nhập mã nhân viên"
-                className="h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-              />
-              <select
-                value={selectedDepartmentId}
-                onChange={(e) => setSelectedDepartmentId(e.target.value ? Number(e.target.value) : '')}
-                className="h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-              >
-                <option value="">Tất cả phòng ban</option>
-                {stats.department_stats.map((dept) => (
-                  <option key={dept.id} value={dept.id}>{dept.name}</option>
-                ))}
-              </select>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleAnalyze}
-                  disabled={analyticsLoading}
-                  className="flex-1 h-10 rounded-lg bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 disabled:opacity-60"
-                >
-                  {analyticsLoading ? 'Đang phân tích...' : 'Phân tích'}
-                </button>
-                <button
-                  onClick={handleResetAnalysis}
-                  disabled={analyticsLoading}
-                  className="h-10 px-4 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 disabled:opacity-60"
-                >
-                  Reset
-                </button>
+          {isBod ? (
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-5 space-y-4">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-bold text-gray-900">Phân tích thâm niên & dự báo chi phí lương</h3>
+                <p className="text-xs text-gray-600">
+                  Dữ liệu lương tham chiếu: {salaryData ? `${MONTH_NAMES[(salaryData.month || 1) - 1]}/${salaryData.year}` : 'Chưa có dữ liệu bảng lương'}
+                </p>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input
+                  value={employeeCodeInput}
+                  onChange={(e) => setEmployeeCodeInput(e.target.value)}
+                  placeholder="Nhập mã nhân viên"
+                  className="h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                />
+                <select
+                  value={selectedDepartmentId}
+                  onChange={(e) => setSelectedDepartmentId(e.target.value ? Number(e.target.value) : '')}
+                  className="h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                >
+                  <option value="">Tất cả phòng ban</option>
+                  {stats.department_stats.map((dept) => (
+                    <option key={dept.id} value={dept.id}>{dept.name}</option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAnalyze}
+                    disabled={salaryLoading}
+                    className="flex-1 h-10 rounded-lg bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 disabled:opacity-60"
+                  >
+                    {salaryLoading ? 'Đang phân tích...' : 'Phân tích'}
+                  </button>
+                  <button
+                    onClick={handleResetAnalysis}
+                    disabled={salaryLoading}
+                    className="h-10 px-4 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 disabled:opacity-60"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              {salaryError && (
+                <p className="text-xs font-semibold text-red-500">{salaryError}</p>
+              )}
+
+              {salaryData && (
+                <>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatCard
+                      name="Nhân sự phân tích"
+                      rawValue={salaryData.total || salaryResults.length}
+                      formatter={formatNumber}
+                      subtext="Theo bộ lọc hiện tại"
+                      icon={UsersIcon}
+                      iconBg="bg-primary-100 text-primary-600"
+                      trend={null}
+                    />
+                    <StatCard
+                      name="Ước lương tháng"
+                      rawValue={monthlyPayroll}
+                      formatter={formatCurrency}
+                      subtext="Theo kỳ lương gần nhất"
+                      icon={CurrencyDollarIcon}
+                      iconBg="bg-emerald-100 text-emerald-600"
+                      trend={null}
+                    />
+                    <StatCard
+                      name="Từ đầu năm đến nay"
+                      rawValue={estimatedCostFromYearStart}
+                      formatter={formatCurrency}
+                      subtext="Chi phí đã ước tính"
+                      icon={ChartPieIcon}
+                      iconBg="bg-amber-100 text-amber-600"
+                      trend={null}
+                    />
+                    <StatCard
+                      name="Từ nay đến cuối năm"
+                      rawValue={estimatedCostToYearEnd}
+                      formatter={formatCurrency}
+                      subtext="Chi phí dự kiến"
+                      icon={ChartPieIcon}
+                      iconBg="bg-violet-100 text-violet-600"
+                      trend={null}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <DonutCard
+                      title="Phân bố thâm niên"
+                      sub="Dữ liệu phân nhóm theo API lương phòng ban"
+                      data={tenureChartData.length ? tenureChartData : [{ name: 'Chưa có dữ liệu', value: 1, color: '#e5e7eb' }]}
+                      centerValue={salaryData.total || salaryResults.length}
+                      centerLabel="Nhân sự"
+                    />
+                    <DonutCard
+                      title="So sánh chi phí năm"
+                      sub={`Cả năm ước tính: ${formatCurrency(estimatedFullYearCost)}`}
+                      data={costSplitData.length ? costSplitData : [{ name: 'Chưa có dữ liệu', value: 1, color: '#e5e7eb' }]}
+                      centerValue={estimatedFullYearCost}
+                      centerLabel="VNĐ"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+                      <p className="text-xs font-bold text-gray-800 mb-3">Biểu đồ dự báo chi phí theo tháng</p>
+                      <ResponsiveContainer width="100%" height={240}>
+                        <LineChart data={monthlyProjectionData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                          <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                          <YAxis tickFormatter={(v) => `${Math.round((v || 0) / 1000000)}tr`} tick={{ fontSize: 10 }} />
+                          <Tooltip formatter={(value: any) => formatCurrencyFull(Number(value || 0))} />
+                          <Line type="monotone" dataKey="estimated_cost" stroke="#1B65B8" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+                      <p className="text-xs font-bold text-gray-800 mb-3">Chi phí lương theo phòng ban</p>
+                      <ResponsiveContainer width="100%" height={240}>
+                        <BarChart data={departmentPayrollData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                          <XAxis dataKey="department_name" tick={{ fontSize: 10 }} />
+                          <YAxis tickFormatter={(v) => `${Math.round((v || 0) / 1000000)}tr`} tick={{ fontSize: 10 }} />
+                          <Tooltip formatter={(value: any) => formatCurrencyFull(Number(value || 0))} />
+                          <Bar dataKey="estimated_monthly_payroll" fill="#10b981" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-
-            {analyticsError && (
-              <p className="text-xs font-semibold text-red-500">{analyticsError}</p>
-            )}
-
-            {analytics && (
-              <>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatCard
-                    name="Nhân sự phân tích"
-                    rawValue={analytics.summary.total_employees}
-                    formatter={formatNumber}
-                    subtext="Theo bộ lọc hiện tại"
-                    icon={UsersIcon}
-                    iconBg="bg-primary-100 text-primary-600"
-                    trend={null}
-                  />
-                  <StatCard
-                    name="Ước lương tháng"
-                    rawValue={analytics.summary.estimated_monthly_payroll}
-                    formatter={formatCurrency}
-                    subtext="Theo kỳ lương gần nhất"
-                    icon={CurrencyDollarIcon}
-                    iconBg="bg-emerald-100 text-emerald-600"
-                    trend={null}
-                  />
-                  <StatCard
-                    name="Từ đầu năm đến nay"
-                    rawValue={analytics.summary.estimated_cost_from_year_start}
-                    formatter={formatCurrency}
-                    subtext="Chi phí đã ước tính"
-                    icon={ChartPieIcon}
-                    iconBg="bg-amber-100 text-amber-600"
-                    trend={null}
-                  />
-                  <StatCard
-                    name="Từ nay đến cuối năm"
-                    rawValue={analytics.summary.estimated_cost_to_year_end}
-                    formatter={formatCurrency}
-                    subtext="Chi phí dự kiến"
-                    icon={ChartPieIcon}
-                    iconBg="bg-violet-100 text-violet-600"
-                    trend={null}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <DonutCard
-                    title="Phân bố thâm niên"
-                    sub={`Thâm niên trung bình: ${analytics.tenure_analysis.average_tenure_years} năm`}
-                    data={tenureChartData.length ? tenureChartData : [{ name: 'Chưa có dữ liệu', value: 1, color: '#e5e7eb' }]}
-                    centerValue={analytics.summary.total_employees}
-                    centerLabel="Nhân sự"
-                  />
-                  <DonutCard
-                    title="So sánh chi phí năm"
-                    sub={`Cả năm ước tính: ${formatCurrency(analytics.summary.estimated_full_year_cost)}`}
-                    data={costSplitData.length ? costSplitData : [{ name: 'Chưa có dữ liệu', value: 1, color: '#e5e7eb' }]}
-                    centerValue={analytics.summary.estimated_full_year_cost}
-                    centerLabel="VNĐ"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
-                    <p className="text-xs font-bold text-gray-800 mb-3">Biểu đồ dự báo chi phí theo tháng</p>
-                    <ResponsiveContainer width="100%" height={240}>
-                      <LineChart data={analytics.charts.monthly_projection}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                        <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                        <YAxis tickFormatter={(v) => `${Math.round((v || 0) / 1000000)}tr`} tick={{ fontSize: 10 }} />
-                        <Tooltip formatter={(value: any) => formatCurrency(Number(value || 0))} />
-                        <Line type="monotone" dataKey="estimated_cost" stroke="#1B65B8" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
-                    <p className="text-xs font-bold text-gray-800 mb-3">Chi phí lương theo phòng ban</p>
-                    <ResponsiveContainer width="100%" height={240}>
-                      <BarChart data={(analytics.department_analysis || []).slice(0, 6)}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                        <XAxis dataKey="department_name" tick={{ fontSize: 10 }} />
-                        <YAxis tickFormatter={(v) => `${Math.round((v || 0) / 1000000)}tr`} tick={{ fontSize: 10 }} />
-                        <Tooltip formatter={(value: any) => formatCurrency(Number(value || 0))} />
-                        <Bar dataKey="estimated_monthly_payroll" fill="#10b981" radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+          ) : (
+            <div className="bg-gray-50 rounded-2xl border border-gray-200 border-dashed p-6 flex flex-col items-center justify-center gap-2 text-center">
+              <LockClosedIcon className="h-8 w-8 text-gray-400" />
+              <p className="text-sm font-semibold text-gray-500">Phân tích thâm niên & dự báo chi phí lương</p>
+              <p className="text-xs text-gray-400">Tính năng này chỉ dành cho thành viên BOD</p>
+            </div>
+          )}
 
           {/* ── Phân tích lương theo phòng ban (BOD only) ── */}
           {isBod ? (
@@ -891,7 +923,7 @@ const Dashboard = () => {
               salaryMonth={salaryMonth}
               onYearChange={setSalaryYear}
               onMonthChange={setSalaryMonth}
-              onFetch={() => fetchSalaryAnalytics(salaryYear, salaryMonth)}
+              onFetch={() => fetchSalaryAnalytics({ year: salaryYear, month: salaryMonth })}
             />
           ) : (
             <div className="bg-gray-50 rounded-2xl border border-gray-200 border-dashed p-6 flex flex-col items-center justify-center gap-2 text-center">
