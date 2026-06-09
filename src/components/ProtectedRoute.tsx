@@ -47,6 +47,7 @@ export default function ProtectedRoute({ children, allowedRoles, requireBod = fa
       const isManager = user?.is_manager || false
       const employeePermission = user?.employee_permission;
       const isCtvLeader = user?.is_ctv_leader || user?.hrm_user?.is_ctv_leader || false;
+      const isCtvAssigned = user?.hrm_user?.is_ctv_assigned || false;
       const isCtvManager = user?.hrm_user?.can_manage_ctv || employeePermission?.can_manage_ctv || false;
 
       const isAllowedForStaff =
@@ -64,6 +65,7 @@ export default function ProtectedRoute({ children, allowedRoles, requireBod = fa
         (employeePermission?.can_manage_positions && (currentPath === '/dashboard/positions' || currentPath.startsWith('/dashboard/positions/'))) ||
         (isCtvManager && currentPath === '/dashboard/ctv') ||
         (isCtvLeader && currentPath === '/dashboard/ctv') ||
+        (isCtvAssigned && currentPath === '/dashboard/ctv') ||
         (isCtvManager && currentPath === '/dashboard/doctors') ||
         currentPath === '/dashboard/assigned-assets' ||
         currentPath === '/dashboard/ai' ||

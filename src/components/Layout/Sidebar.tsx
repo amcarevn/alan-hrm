@@ -447,8 +447,11 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
     if (item.employeePermission === 'can_manage_doctor' && user?.hrm_user?.can_manage_doctor) {
       return true;
     }
-    // Special case: CTV leaders can always access CTV management
-    if (item.href === '/dashboard/ctv' && (user?.is_ctv_leader || user?.hrm_user?.is_ctv_leader)) {
+    // CTV leader hoặc nhân sự đảm nhận CTV → luôn thấy menu Quản lý CTV
+    if (item.href === '/dashboard/ctv' && (
+      user?.is_ctv_leader || user?.hrm_user?.is_ctv_leader ||
+      user?.hrm_user?.is_ctv_assigned
+    )) {
       return true;
     }
     // 2. Check department access

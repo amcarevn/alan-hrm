@@ -73,9 +73,10 @@ export const ctvAPI = {
     return response.data;
   },
 
-  allEmployees: async (): Promise<CTVFilterEmployee[]> => {
+  allEmployees: async (params?: { leader_id?: number; search?: string }): Promise<CTVFilterEmployee[]> => {
     const response: AxiosResponse<CTVFilterEmployee[]> = await managementApi.get(
-      '/api-hrm/ctv/all_employees/'
+      '/api-hrm/ctv/all_employees/',
+      { params }
     );
     return response.data;
   },

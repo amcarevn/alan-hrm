@@ -40,6 +40,10 @@ export interface User {
     department_code?: string;
     avatar_url?: string | null;
     is_bod?: boolean;
+    is_ctv_leader?: boolean;
+    is_ctv_assigned?: boolean;
+    can_manage_ctv?: boolean;
+    can_manage_doctor?: boolean;
     [key: string]: any;
   };
   employee_permission?: EmployeePermissions;
