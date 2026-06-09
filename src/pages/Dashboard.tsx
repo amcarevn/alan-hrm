@@ -897,7 +897,6 @@ const Dashboard = () => {
             <div className="bg-gray-50 rounded-2xl border border-gray-200 border-dashed p-6 flex flex-col items-center justify-center gap-2 text-center">
               <LockClosedIcon className="h-8 w-8 text-gray-400" />
               <p className="text-sm font-semibold text-gray-500">Phân tích lương theo phòng ban</p>
-              <p className="text-xs text-gray-400">Tính năng này chỉ dành cho thành viên BOD</p>
             </div>
           )}
         </div>
