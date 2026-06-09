@@ -76,8 +76,8 @@ const emptyVal = (value: string | null | undefined) =>
 
 const DetailRow: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => (
   <div>
-    <dt className="text-xs text-gray-400 mb-0.5">{label}</dt>
-    <dd className={`text-sm ${value ? 'text-gray-900' : 'text-gray-400 italic'}`}>
+    <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{label}</dt>
+    <dd className={`text-sm font-medium ${value ? 'text-gray-900' : 'text-gray-400 italic font-normal'}`}>
       {value || 'Chưa có dữ liệu'}
     </dd>
   </div>
@@ -333,6 +333,19 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
             </p>
 
             <div>
+              <SelectBox<string>
+                label="Bác sĩ theo dõi"
+                value={form.doctor ? String(form.doctor) : ''}
+                options={[
+                  { value: '', label: '— Chọn bác sĩ —' },
+                  ...doctorOptions.map((d) => ({ value: String(d.id), label: d.name })),
+                ]}
+                onChange={(val) => set('doctor', val ? Number(val) : null)}
+                searchable
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Leader</label>
               {isLeaderMode ? (
                 <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white text-gray-700 select-none">
@@ -441,7 +454,18 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian kết thúc</label>
                 <input type="date" className={inputCls('end_time')}
-                  value={(form.end_time ?? '').slice(0, 10)} onChange={(e) => set('end_time', e.target.value)} onBlur={() => blurField('end_time')} />
+                  value={(form.end_time ?? '').slice(0, 10)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm(prev => ({ ...prev, end_time: val, ...(val ? { status: 'INACTIVE' } : {}) }));
+                    setErrors(prev => { const next = { ...prev }; delete next['end_time']; return next; });
+                  }}
+                  onBlur={() => blurField('end_time')} />
+                {form.end_time && form.status === 'INACTIVE' && (
+                  <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                    <span>⚠</span> Trạng thái sẽ chuyển sang Không hoạt động
+                  </p>
+                )}
                 {errMsg('end_time')}
               </div>
               <div>
@@ -458,7 +482,14 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
                   label="Trạng thái"
                   value={form.status ?? ''}
                   options={[{ value: '', label: '' }, ...STATUS_OPTIONS]}
-                  onChange={(val) => set('status', val)}
+                  onChange={(val) => {
+                    const today = new Date().toISOString().slice(0, 10);
+                    setForm(prev => ({
+                      ...prev,
+                      status: val,
+                      ...(val === 'INACTIVE' && !prev.end_time ? { end_time: today } : {}),
+                    }));
+                  }}
                   placeholder="Chọn trạng thái..."
                 />
               </div>
@@ -479,18 +510,6 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
               Cá nhân & Tài chính
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <SelectBox<string>
-                  label="Bác sĩ theo dõi"
-                  value={form.doctor ? String(form.doctor) : ''}
-                  options={[
-                    { value: '', label: '— Chọn bác sĩ —' },
-                    ...doctorOptions.map((d) => ({ value: String(d.id), label: d.name })),
-                  ]}
-                  onChange={(val) => set('doctor', val ? Number(val) : null)}
-                  searchable
-                />
-              </div>
               {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bác sĩ trước đây làm CTV</label>
                 <input type="text" className={inputCls('previous_doctor')} placeholder="Tên bác sĩ"
@@ -892,18 +911,49 @@ const CTVList: React.FC = () => {
   const [editingCTV, setEditingCTV] = useState<CTV | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CTV | null>(null);
   const [viewingCTV, setViewingCTV] = useState<CTV | null>(null);
+  const [confirmExpiredId, setConfirmExpiredId] = useState<number | null>(null);
+  const [confirmExpiredPos, setConfirmExpiredPos] = useState<{ top: number; left: number } | null>(null);
+  const [updatingExpired, setUpdatingExpired] = useState(false);
+  const [showColumnToggle, setShowColumnToggle] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
+    'doctor', 'leader', 'assigned', 'name', 'phone', 'service',
+    'date_received', 'status', 'note_marketing',
+  ]));
+  const columnToggleRef = useRef<HTMLDivElement>(null);
+
+  const OPTIONAL_COLUMNS = [
+    { key: 'doctor',        label: 'Bác sĩ theo dõi' },
+    { key: 'leader',        label: 'Leader' },
+    { key: 'assigned',      label: 'Nhân viên đảm nhận' },
+    { key: 'phone',         label: 'Số điện thoại' },
+    { key: 'service',       label: 'Dịch vụ' },
+    { key: 'date_received', label: 'Ngày tiếp nhận' },
+    { key: 'end_time',      label: 'Thời gian kết thúc' },
+    { key: 'work_type',     label: 'Hình thức làm việc' },
+    { key: 'first_post',    label: 'TG đăng bài đầu tiên' },
+    { key: 'payment_date',  label: 'Thời gian thanh toán' },
+    { key: 'note_marketing',label: 'Ghi chú Marketing' },
+  ];
+
+  const toggleColumn = (key: string) => {
+    setVisibleColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
 
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const leaderLockedRef = useRef(false);
 
   const tableScrollRef = useRef<HTMLDivElement>(null);
-  const dragState = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
+  const dragState = useRef({ isDown: false, startX: 0, scrollLeft: 0, wasDragging: false });
 
   const onTableMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = tableScrollRef.current;
     if (!el) return;
-    dragState.current = { isDown: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
+    dragState.current = { isDown: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft, wasDragging: false };
     el.style.cursor = 'grabbing';
     el.style.userSelect = 'none';
   };
@@ -926,6 +976,8 @@ const CTVList: React.FC = () => {
     if (!dragState.current.isDown || !el) return;
     e.preventDefault();
     const x = e.pageX - el.offsetLeft;
+    const moved = Math.abs(x - dragState.current.startX);
+    if (moved > 5) dragState.current.wasDragging = true;
     el.scrollLeft = dragState.current.scrollLeft - (x - dragState.current.startX);
   };
 
@@ -1006,6 +1058,27 @@ const CTVList: React.FC = () => {
     return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
   }, [searchTerm, statusFilter, workTypeFilter, leaderFilter, staffFilter, doctorFilter, currentPage, itemsPerPage]);
 
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (columnToggleRef.current && !columnToggleRef.current.contains(e.target as Node)) {
+        setShowColumnToggle(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  useEffect(() => {
+    if (confirmExpiredId === null) return;
+    const close = () => { setConfirmExpiredId(null); setConfirmExpiredPos(null); };
+    window.addEventListener('scroll', close, true);
+    tableScrollRef.current?.addEventListener('scroll', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      tableScrollRef.current?.removeEventListener('scroll', close);
+    };
+  }, [confirmExpiredId]);
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleteLoading(true);
@@ -1018,6 +1091,22 @@ const CTVList: React.FC = () => {
       alert('Xóa thất bại: ' + (err.message || 'Lỗi không xác định'));
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const handleConfirmExpired = async (ctvId: number) => {
+    setUpdatingExpired(true);
+    try {
+      const fd = new FormData();
+      fd.append('status', 'INACTIVE');
+      await ctvAPI.update(ctvId, fd);
+      setConfirmExpiredId(null);
+      fetchCTVs();
+      fetchStats();
+    } catch (err: any) {
+      alert('Cập nhật thất bại: ' + (err.message || 'Lỗi không xác định'));
+    } finally {
+      setUpdatingExpired(false);
     }
   };
 
@@ -1074,6 +1163,7 @@ const CTVList: React.FC = () => {
     }
   };
 
+  const todayStr = new Date().toISOString().slice(0, 10);
   const STATUS_PRIORITY: Record<string, number> = { ACTIVE: 0, DISCUSSING: 1, INACTIVE: 2 };
   const sortedCtvList = [...ctvList].sort(
     (a, b) => (STATUS_PRIORITY[a.status] ?? 9) - (STATUS_PRIORITY[b.status] ?? 9)
@@ -1115,7 +1205,7 @@ const CTVList: React.FC = () => {
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-blue-500 shadow-sm p-4">
                   <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Tổng đã tiếp nhận</p>
-                  <p className="text-2xl font-extrabold text-blue-600 mt-1">{stats.total}</p>
+                  <p className="text-2xl font-extrabold text-blue-600 mt-1">{stats.active + stats.discussing}</p>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-red-400 shadow-sm p-4">
                   <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Không hoạt động</p>
@@ -1221,9 +1311,48 @@ const CTVList: React.FC = () => {
           <div className="flex justify-between items-center mb-6">
             <div>
               <h2 className="text-sm font-bold text-gray-900">Danh sách cộng tác viên</h2>
-              <p className="text-gray-500 text-sm">Tổng số: {totalCount} CTV</p>
+              <p className="text-gray-500 text-sm">Tổng số: {stats ? stats.active + stats.discussing : totalCount} CTV</p>
             </div>
             <div className="flex items-center space-x-2">
+              {/* Column toggle */}
+              <div className="relative" ref={columnToggleRef}>
+                <button onClick={() => setShowColumnToggle(v => !v)}
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 4v16M15 4v16M4 9h16M4 15h16" />
+                  </svg>
+                  Cột hiển thị
+                  <span className="text-xs bg-primary-100 text-primary-700 rounded-full px-1.5 py-0.5 font-semibold">
+                    {visibleColumns.size}
+                  </span>
+                </button>
+                {showColumnToggle && (
+                  <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100 z-50 p-2">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-2 py-1 mb-1">Tùy chỉnh cột</p>
+                    <label className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer border-b border-gray-100 mb-1">
+                      <input type="checkbox"
+                        checked={OPTIONAL_COLUMNS.every(c => visibleColumns.has(c.key))}
+                        onChange={() => {
+                          const allVisible = OPTIONAL_COLUMNS.every(c => visibleColumns.has(c.key));
+                          setVisibleColumns(allVisible
+                            ? new Set(['name', 'status'])
+                            : new Set(OPTIONAL_COLUMNS.map(c => c.key))
+                          );
+                        }}
+                        className="w-3.5 h-3.5 accent-primary-600 rounded" />
+                      <span className="text-sm font-semibold text-gray-700">Hiện tất cả</span>
+                    </label>
+                    {OPTIONAL_COLUMNS.map(col => (
+                      <label key={col.key} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <input type="checkbox" checked={visibleColumns.has(col.key)}
+                          onChange={() => toggleColumn(col.key)}
+                          className="w-3.5 h-3.5 accent-primary-600 rounded" />
+                        <span className="text-sm text-gray-700">{col.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button onClick={handleExport}
                 className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
                 <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
@@ -1282,68 +1411,142 @@ const CTVList: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        {isAdminLike && (
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Leader</th>
-                        )}
-                        {['Nhân viên đảm nhận','Tên cộng tác viên','Số điện thoại','Dịch vụ','Ngày tiếp nhận','Thời gian kết thúc','Hình thức làm việc','TG đăng bài đầu tiên','Thời gian thanh toán','Bác sĩ theo dõi',/* 'Bác sĩ trước đây làm', */'Ghi chú Marketing','Trạng thái','Thao tác'].map((col) => (
-                          <th key={col} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{col}</th>
-                        ))}
+                        {/* Sticky left — Tên CTV */}
+                        <th className="sticky left-0 z-20 bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">Tên cộng tác viên</th>
+                        {visibleColumns.has('doctor') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Bác sĩ theo dõi</th>}
+                        {visibleColumns.has('leader') && isAdminLike && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Leader</th>}
+                        {visibleColumns.has('assigned') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Nhân viên đảm nhận</th>}
+                        {visibleColumns.has('phone') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Số điện thoại</th>}
+                        {visibleColumns.has('service') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Dịch vụ</th>}
+                        {visibleColumns.has('date_received') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Ngày tiếp nhận</th>}
+                        {visibleColumns.has('end_time') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Thời gian kết thúc</th>}
+                        {visibleColumns.has('work_type') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Hình thức làm việc</th>}
+                        {visibleColumns.has('first_post') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">TG đăng bài đầu tiên</th>}
+                        {visibleColumns.has('payment_date') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Thời gian thanh toán</th>}
+                        {visibleColumns.has('note_marketing') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Ghi chú Marketing</th>}
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Trạng thái</th>
+                        {/* Sticky right — Thao tác */}
+                        <th className="sticky right-0 z-20 bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {sortedCtvList.map((ctv) => (
-                        <tr key={ctv.id} className="hover:bg-gray-50 transition-colors">
-                          {isAdminLike && (
+                      {sortedCtvList.map((ctv, idx) => {
+                        const prevStatus = idx > 0 ? sortedCtvList[idx - 1].status : null;
+                        const showDivider = idx > 0 && prevStatus !== ctv.status;
+                        const statusLabel = ctv.status === 'ACTIVE' ? 'Đang hoạt động' : ctv.status === 'DISCUSSING' ? 'Đang trao đổi' : 'Không hoạt động';
+                        return (
+                        <React.Fragment key={ctv.id}>
+                        {showDivider && (
+                          <tr className="bg-gray-50">
+                            <td colSpan={99} className="px-6 py-1.5">
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 h-px bg-gray-200" />
+                                <span className="text-xs font-medium text-gray-400 whitespace-nowrap">{statusLabel}</span>
+                                <div className="flex-1 h-px bg-gray-200" />
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        <tr className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => { if (!dragState.current.wasDragging) setViewingCTV(ctv); }}>
+                          {/* Sticky left */}
+                          <td className="sticky left-0 z-10 bg-white px-6 py-4 whitespace-nowrap shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">
+                            <span className="text-sm font-medium text-gray-900">{ctv.name}</span>
+                          </td>
+                          {visibleColumns.has('doctor') && (
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm font-medium text-gray-900">{emptyVal(ctv.doctor_name)}</span>
+                            </td>
+                          )}
+                          {visibleColumns.has('leader') && isAdminLike && (
                             <td className="px-6 py-4 whitespace-nowrap">
                               {ctv.leader_name ? (
                                 <span className="text-sm text-gray-900">{ctv.leader_code} – {ctv.leader_name}</span>
                               ) : (
-                                <span className="text-sm text-gray-400 italic">—</span>
+                                <span className="text-sm text-gray-400 italic">Chưa có dữ liệu</span>
                               )}
                             </td>
                           )}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {ctv.assigned_employee_code && ctv.assigned_employee_name ? (
-                              <span className="text-sm text-gray-900">{ctv.assigned_employee_code} – {ctv.assigned_employee_name}</span>
-                            ) : (
-                              <span className="text-sm text-gray-400 italic">Chưa phân công</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-medium text-gray-900">{ctv.name}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-700">{emptyVal(ctv.phone)}</span>
-                          </td>
-                          <td className="px-6 py-4 max-w-[160px]">
-                            <span className="text-sm text-gray-700 block truncate" title={ctv.service || ''}>{emptyVal(ctv.service)}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-700">{emptyVal(toDisplayDate(ctv.date_received))}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-700">{emptyVal(toDisplayDate(ctv.end_time))}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-700">{emptyVal(ctv.work_type_display || getWorkTypeLabel(ctv.work_type))}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-700">{emptyVal(toDisplayDate(ctv.first_post_time))}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-900">{emptyVal(ctv.payment_date)}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-700">{emptyVal(ctv.doctor_name)}</span>
-                          </td>
-                          {/* <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-700">{ctv.previous_doctor || '—'}</span>
-                          </td> */}
-                          <td className="px-6 py-4 max-w-[180px]">
-                            <span className="text-sm text-gray-700 block truncate" title={ctv.note_marketing || ''}>{emptyVal(ctv.note_marketing)}</span>
-                          </td>
+                          {visibleColumns.has('assigned') && (
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {ctv.assigned_employee_code && ctv.assigned_employee_name ? (
+                                <span className="text-sm text-gray-900">{ctv.assigned_employee_code} – {ctv.assigned_employee_name}</span>
+                              ) : (
+                                <span className="text-sm text-gray-400 italic">Chưa phân công</span>
+                              )}
+                            </td>
+                          )}
+                          {visibleColumns.has('phone') && (
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-900">{emptyVal(ctv.phone)}</span>
+                            </td>
+                          )}
+                          {visibleColumns.has('service') && (
+                            <td className="px-6 py-4 max-w-[160px]">
+                              <span className="text-sm text-gray-900 block truncate" title={ctv.service || ''}>{emptyVal(ctv.service)}</span>
+                            </td>
+                          )}
+                          {visibleColumns.has('date_received') && (
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-900">{emptyVal(toDisplayDate(ctv.date_received))}</span>
+                            </td>
+                          )}
+                          {visibleColumns.has('end_time') && (
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {(() => {
+                                const isExpired = ctv.end_time && ctv.end_time.slice(0, 10) <= todayStr && ctv.status !== 'INACTIVE';
+                                if (!ctv.end_time) return <span className="text-sm text-gray-400 italic">Chưa có dữ liệu</span>;
+                                return (
+                                  <div className="flex flex-col gap-1">
+                                    <span className={`text-sm font-medium ${isExpired ? 'text-orange-600' : 'text-gray-900'}`}>
+                                      {isExpired && <span className="mr-1">⚠</span>}
+                                      {toDisplayDate(ctv.end_time)}
+                                    </span>
+                                    {isExpired && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (confirmExpiredId === ctv.id) {
+                                            setConfirmExpiredId(null);
+                                            setConfirmExpiredPos(null);
+                                          } else {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            setConfirmExpiredPos({ top: rect.top, left: rect.left });
+                                            setConfirmExpiredId(ctv.id);
+                                          }
+                                        }}
+                                        className="text-xs font-medium text-orange-600 underline underline-offset-2 hover:text-orange-700 transition-colors"
+                                      >
+                                        Chuyển Không hoạt động?
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </td>
+                          )}
+                          {visibleColumns.has('work_type') && (
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-900">{emptyVal(ctv.work_type_display || getWorkTypeLabel(ctv.work_type))}</span>
+                            </td>
+                          )}
+                          {visibleColumns.has('first_post') && (
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-900">{emptyVal(toDisplayDate(ctv.first_post_time))}</span>
+                            </td>
+                          )}
+                          {visibleColumns.has('payment_date') && (
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-900">{emptyVal(ctv.payment_date)}</span>
+                            </td>
+                          )}
+                          {visibleColumns.has('note_marketing') && (
+                            <td className="px-6 py-4 max-w-[180px]">
+                              <span className="text-sm text-gray-900 block truncate" title={ctv.note_marketing || ''}>{emptyVal(ctv.note_marketing)}</span>
+                            </td>
+                          )}
                           <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(ctv.status)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          {/* Sticky right */}
+                          <td className="sticky right-0 z-10 bg-white px-6 py-4 whitespace-nowrap shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center gap-1.5">
                               <button onClick={() => setViewingCTV(ctv)}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
@@ -1363,7 +1566,9 @@ const CTVList: React.FC = () => {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                        </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1447,9 +1652,14 @@ const CTVList: React.FC = () => {
                   Phân công
                 </p>
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  <div className="col-span-2 flex items-center gap-3 bg-primary-50 border border-primary-100 rounded-lg px-3 py-2">
+                    <span className="text-xs font-medium text-primary-500 shrink-0">Bác sĩ theo dõi</span>
+                    <span className="text-sm font-semibold text-primary-700">
+                      {viewingCTV.doctor_name || <span className="text-gray-400 italic font-normal">Chưa có dữ liệu</span>}
+                    </span>
+                  </div>
                   <DetailRow label="Leader" value={viewingCTV.leader_name ? `${viewingCTV.leader_code} – ${viewingCTV.leader_name}` : undefined} />
                   <DetailRow label="Nhân viên đảm nhận" value={viewingCTV.assigned_employee_name ? `${viewingCTV.assigned_employee_code} – ${viewingCTV.assigned_employee_name}` : undefined} />
-                  <DetailRow label="Bác sĩ theo dõi" value={viewingCTV.doctor_name} />
                   {/* <DetailRow label="Bác sĩ trước đây làm CTV" value={viewingCTV.previous_doctor} /> */}
                 </dl>
               </div>
@@ -1537,6 +1747,38 @@ const CTVList: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Tooltip xác nhận chuyển INACTIVE — fixed để thoát overflow table */}
+      {confirmExpiredId !== null && confirmExpiredPos && (() => {
+        const ctv = sortedCtvList.find(c => c.id === confirmExpiredId);
+        if (!ctv) return null;
+        return (
+          <div
+            style={{ position: 'fixed', top: confirmExpiredPos.top - 8, left: confirmExpiredPos.left, transform: 'translateY(-100%)', zIndex: 9999 }}
+            className="bg-white border border-gray-200 rounded-lg shadow-xl p-3 w-52"
+            onClick={e => e.stopPropagation()}
+          >
+            <p className="text-xs text-gray-700 mb-2 leading-relaxed">
+              Chuyển <span className="font-semibold">{ctv.name}</span> sang Không hoạt động?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleConfirmExpired(ctv.id); }}
+                disabled={updatingExpired}
+                className="flex-1 px-2 py-1 text-xs font-medium rounded-md bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+              >
+                {updatingExpired ? '...' : 'Xác nhận'}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirmExpiredId(null); setConfirmExpiredPos(null); }}
+                className="flex-1 px-2 py-1 text-xs font-medium rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </>
   );
 };
