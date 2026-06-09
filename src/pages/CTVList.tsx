@@ -92,9 +92,11 @@ interface CTVFormProps {
   initialData?: CTV | null;
   onClose: () => void;
   onSuccess: () => void;
+  defaultLeaderId?: number;
+  defaultLeaderLabel?: string;
 }
 
-const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess }) => {
+const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess, defaultLeaderId, defaultLeaderLabel }) => {
   const { user } = useAuth();
   const isAdminLike = !!(
     user?.is_super_admin ||
@@ -103,6 +105,7 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
     user?.employee_profile?.is_hr
   );
   const isCtvLeader = !!(user?.is_ctv_leader || user?.hrm_user?.is_ctv_leader);
+  const isCtvAssigned = !isAdminLike && !isCtvLeader && !!(user?.hrm_user?.is_ctv_assigned);
   const isLeaderMode = !isAdminLike && (!!user?.is_manager || isCtvLeader);
 
   const myEmployeeId = user?.employee_profile?.id ?? null;
@@ -110,8 +113,8 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
   const myEmployeeCode = user?.employee_profile?.employee_id ?? '';
 
   const [form, setForm] = useState<CTVCreateData>({
-    leader: initialData?.leader ?? (isLeaderMode && myEmployeeId ? myEmployeeId : null),
-    assigned_employee: initialData?.assigned_employee ?? null,
+    leader: initialData?.leader ?? (isLeaderMode && myEmployeeId ? myEmployeeId : null) ?? (defaultLeaderId ?? null),
+    assigned_employee: initialData?.assigned_employee ?? (isCtvAssigned && myEmployeeId ? myEmployeeId : null),
     name: initialData?.name ?? '',
     phone: initialData?.phone ?? '',
     service: initialData?.service ?? '',
@@ -141,6 +144,8 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
       ? String(initialData.leader)
       : isLeaderMode && myEmployeeId
       ? String(myEmployeeId)
+      : defaultLeaderId
+      ? String(defaultLeaderId)
       : ''
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -183,9 +188,7 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
     const fetchEmployees = async () => {
       setLoadingEmployees(true);
       try {
-        // is_ctv_leader: chỉ lấy nhân viên thuộc team của leader (manager=myEmployeeId)
-        const params = isCtvLeader && myEmployeeId ? { leader_id: myEmployeeId } : {};
-        const data = await ctvAPI.allEmployees(params);
+        const data = await ctvAPI.allEmployees();
         setEmployeeOptions(data);
       } catch (err) {
         console.error('Error loading employees:', err);
@@ -358,6 +361,10 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
                     ? `${myEmployeeName}${myEmployeeCode ? ` (${myEmployeeCode})` : ''}`
                     : 'Đang tải...'}
                 </div>
+              ) : isCtvAssigned ? (
+                <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white text-gray-700 select-none">
+                  {defaultLeaderLabel || 'Đang tải...'}
+                </div>
               ) : (
                 <SelectBox<string>
                   label=""
@@ -380,30 +387,32 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
               )}
             </div>
 
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${!selectedLeaderId && !isLeaderMode ? 'text-gray-400' : 'text-gray-700'}`}>
-                Nhân viên đảm nhận
-                {!selectedLeaderId && !isLeaderMode && (
-                  <span className="ml-2 text-xs font-normal text-gray-400">(chọn leader trước)</span>
-                )}
-              </label>
-              <div className={!selectedLeaderId && !isLeaderMode ? 'pointer-events-none opacity-40' : ''}>
-                <SelectBox<string>
-                  label=""
-                  value={form.assigned_employee ? String(form.assigned_employee) : ''}
-                  options={[
-                    { value: '', label: '' },
-                    ...employeeOptions.map((s) => ({
-                      value: String(s.id),
-                      label: `${s.full_name} (${s.employee_id})${s.doctor_team ? ` — ${s.doctor_team}` : ''}`,
-                    })),
-                  ]}
-                  onChange={(val) => set('assigned_employee', val ? Number(val) : null)}
-                  placeholder={loadingEmployees ? 'Đang tải...' : 'Tìm và chọn nhân viên...'}
-                  searchable
-                />
+            {!isCtvAssigned && (
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${!selectedLeaderId && !isLeaderMode ? 'text-gray-400' : 'text-gray-700'}`}>
+                  Nhân viên đảm nhận
+                  {!selectedLeaderId && !isLeaderMode && (
+                    <span className="ml-2 text-xs font-normal text-gray-400">(chọn leader trước)</span>
+                  )}
+                </label>
+                <div className={!selectedLeaderId && !isLeaderMode ? 'pointer-events-none opacity-40' : ''}>
+                  <SelectBox<string>
+                    label=""
+                    value={form.assigned_employee ? String(form.assigned_employee) : ''}
+                    options={[
+                      { value: '', label: '' },
+                      ...employeeOptions.map((s) => ({
+                        value: String(s.id),
+                        label: `${s.full_name} (${s.employee_id})${s.doctor_team ? ` — ${s.doctor_team}` : ''}`,
+                      })),
+                    ]}
+                    onChange={(val) => set('assigned_employee', val ? Number(val) : null)}
+                    placeholder={loadingEmployees ? 'Đang tải...' : 'Tìm và chọn nhân viên...'}
+                    searchable
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Section 2: Thông tin cơ bản */}
@@ -1627,6 +1636,8 @@ const CTVList: React.FC = () => {
           initialData={editingCTV}
           onSuccess={handleFormSuccess}
           onClose={() => { setShowForm(false); setEditingCTV(null); }}
+          defaultLeaderId={isCtvAssignedOnly && !editingCTV ? leaders[0]?.id : undefined}
+          defaultLeaderLabel={isCtvAssignedOnly && !editingCTV ? `${leaders[0]?.full_name ?? ''}${leaders[0]?.employee_id ? ` (${leaders[0].employee_id})` : ''}` : undefined}
         />
       )}
 
