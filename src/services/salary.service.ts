@@ -56,6 +56,7 @@ export interface SalaryRecord {
   bao_hiem_bat_buoc?: number;
   tam_ung: number;
   luong_thuc_linh: number;
+  con_phai_thanh_toan?: number;
   year: number;
   month: number;
 }

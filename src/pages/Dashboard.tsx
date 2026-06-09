@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { usePieAnimation } from '@/hooks/usePieAnimation';
 import {
   CurrencyDollarIcon,
@@ -7,12 +7,13 @@ import {
   UserPlusIcon,
   UsersIcon,
   ComputerDesktopIcon,
-
   WrenchScrewdriverIcon,
   ArchiveBoxIcon,
   Squares2X2Icon,
   UserGroupIcon,
   ChartPieIcon,
+  BuildingOfficeIcon,
+  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 import {
   PieChart,
@@ -30,6 +31,8 @@ import {
   Line,
 } from 'recharts';
 import { dashboardAPI } from '@/utils/api';
+import { useAuth } from '../contexts/AuthContext';
+import { salaryService, type SalaryListResponse } from '../services/salary.service';
 import HRStats from '../components/HRStats';
 import { AnimatedNum } from '../components/AnimatedNum';
 import { DonutCenter } from '../components/DonutCenter';
@@ -264,7 +267,243 @@ const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: 'asset', label: 'Tài sản', icon: ChartPieIcon },
 ];
 
+// ─── Salary Department Analytics (BOD only) ─────────────────────────────────
+interface SalaryDeptAnalyticsProps {
+  salaryData: SalaryListResponse | null;
+  salaryLoading: boolean;
+  salaryError: string | null;
+  salaryYear: number;
+  salaryMonth: number;
+  onYearChange: (y: number) => void;
+  onMonthChange: (m: number) => void;
+  onFetch: () => void;
+}
+
+const MONTH_NAMES = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+
+const SalaryDeptAnalytics: React.FC<SalaryDeptAnalyticsProps> = ({
+  salaryData,
+  salaryLoading,
+  salaryError,
+  salaryYear,
+  salaryMonth,
+  onYearChange,
+  onMonthChange,
+  onFetch,
+}) => {
+  // Aggregate per-department summary from results
+  const deptSummary = useMemo(() => {
+    if (!salaryData?.results?.length) return [];
+    const map: Record<string, { name: string; count: number; totalNet: number; totalTax: number; totalPayable: number }> = {};
+    for (const r of salaryData.results) {
+      const key = r.phong_ban || 'Chưa phân phòng ban';
+      if (!map[key]) map[key] = { name: key, count: 0, totalNet: 0, totalTax: 0, totalPayable: 0 };
+      map[key].count += 1;
+      map[key].totalNet += r.luong_thuc_linh ?? 0;
+      map[key].totalTax += r.thue_tncn ?? 0;
+      map[key].totalPayable += r.con_phai_thanh_toan ?? 0;
+    }
+    return Object.values(map).sort((a, b) => b.totalPayable - a.totalPayable);
+  }, [salaryData]);
+
+  const totals = useMemo(() => {
+    if (!salaryData?.results?.length) return null;
+    return salaryData.results.reduce((acc, r) => ({
+      employees: acc.employees + 1,
+      net: acc.net + (r.luong_thuc_linh ?? 0),
+      tax: acc.tax + (r.thue_tncn ?? 0),
+      payable: acc.payable + (r.con_phai_thanh_toan ?? 0),
+    }), { employees: 0, net: 0, tax: 0, payable: 0 });
+  }, [salaryData]);
+
+  const barData = deptSummary.slice(0, 8).map((d, i) => ({
+    name: d.name.length > 12 ? d.name.slice(0, 12) + '…' : d.name,
+    'Thực lĩnh': d.totalNet,
+    'Thuế TNCN': d.totalTax,
+    'Phải thanh toán': d.totalPayable,
+    color: CHART_COLORS[i % CHART_COLORS.length],
+  }));
+
+  const pieData = deptSummary.slice(0, 6).map((d, i) => ({
+    name: d.name,
+    value: d.totalPayable,
+    color: CHART_COLORS[i % CHART_COLORS.length],
+  }));
+
+  const currentYear = new Date().getFullYear();
+  const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-emerald-500 shadow-sm p-5 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+            <BuildingOfficeIcon className="h-4 w-4 text-emerald-600" />
+            Phân tích lương theo phòng ban
+          </h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Dữ liệu từ API bảng lương tổng hợp – chỉ BOD mới xem được
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={salaryYear}
+            onChange={(e) => onYearChange(Number(e.target.value))}
+            className="h-9 px-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          >
+            {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <select
+            value={salaryMonth}
+            onChange={(e) => onMonthChange(Number(e.target.value))}
+            className="h-9 px-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          >
+            {MONTH_NAMES.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+          </select>
+          <button
+            onClick={onFetch}
+            disabled={salaryLoading}
+            className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 disabled:opacity-60 flex items-center gap-1.5"
+          >
+            {salaryLoading ? (
+              <><span className="animate-spin h-3 w-3 rounded-full border-b border-white" />Đang tải...</>
+            ) : 'Tải dữ liệu'}
+          </button>
+        </div>
+      </div>
+
+      {salaryError && (
+        <p className="text-xs font-semibold text-red-500 bg-red-50 rounded-lg px-3 py-2">{salaryError}</p>
+      )}
+
+      {salaryLoading && (
+        <div className="flex items-center justify-center py-10">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
+        </div>
+      )}
+
+      {!salaryLoading && salaryData && totals && (
+        <>
+          {/* Summary stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-emerald-50 rounded-xl p-3">
+              <p className="text-[10px] font-medium text-emerald-700 uppercase tracking-wide">Nhân sự</p>
+              <p className="text-xl font-extrabold text-emerald-900 mt-0.5">
+                <AnimatedNum value={totals.employees} />
+              </p>
+              <p className="text-[10px] text-emerald-600">{MONTH_NAMES[salaryMonth - 1]} {salaryYear}</p>
+            </div>
+            <div className="bg-primary-50 rounded-xl p-3">
+              <p className="text-[10px] font-medium text-primary-700 uppercase tracking-wide">Tổng lương thực lĩnh</p>
+              <p className="text-sm font-extrabold text-primary-900 mt-0.5 truncate">{formatCurrency(totals.net)}</p>
+              <p className="text-[10px] text-primary-600">Chưa trừ thuế</p>
+            </div>
+            <div className="bg-amber-50 rounded-xl p-3">
+              <p className="text-[10px] font-medium text-amber-700 uppercase tracking-wide">Tổng thuế TNCN</p>
+              <p className="text-sm font-extrabold text-amber-900 mt-0.5 truncate">{formatCurrency(totals.tax)}</p>
+              <p className="text-[10px] text-amber-600">Tất cả nhân viên</p>
+            </div>
+            <div className="bg-violet-50 rounded-xl p-3">
+              <p className="text-[10px] font-medium text-violet-700 uppercase tracking-wide">Tổng phải thanh toán</p>
+              <p className="text-sm font-extrabold text-violet-900 mt-0.5 truncate">{formatCurrency(totals.payable)}</p>
+              <p className="text-[10px] text-violet-600">Sau thuế TNCN</p>
+            </div>
+          </div>
+
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+              <p className="text-xs font-bold text-gray-800 mb-3">Chi phí thanh toán theo phòng ban</p>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={barData} margin={{ top: 4, right: 4, left: 4, bottom: 40 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-35} textAnchor="end" interval={0} />
+                  <YAxis tickFormatter={(v) => `${Math.round((v || 0) / 1000000)}tr`} tick={{ fontSize: 9 }} />
+                  <Tooltip formatter={(value: any) => formatCurrency(Number(value || 0))} />
+                  <Bar dataKey="Phải thanh toán" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Thuế TNCN" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+              <p className="text-xs font-bold text-gray-800 mb-3">Tỷ trọng lương phải thanh toán theo phòng ban</p>
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={95}
+                    innerRadius={50}
+                    paddingAngle={3}
+                    dataKey="value"
+                    nameKey="name"
+                    strokeWidth={0}
+                  >
+                    {pieData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: any) => formatCurrency(Number(value || 0))} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Department table */}
+          <div className="overflow-x-auto rounded-xl border border-gray-100">
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-gray-600">Phòng ban</th>
+                  <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-gray-600">Nhân sự</th>
+                  <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-gray-600">Tổng thực lĩnh</th>
+                  <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-gray-600">Thuế TNCN</th>
+                  <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-gray-600">Phải thanh toán</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {deptSummary.map((dept, i) => (
+                  <tr key={dept.name} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}>
+                    <td className="px-4 py-2.5 font-medium text-gray-800">{dept.name}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">{dept.count}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-primary-700">{formatCurrency(dept.totalNet)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-amber-700">{formatCurrency(dept.totalTax)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-emerald-700">{formatCurrency(dept.totalPayable)}</td>
+                  </tr>
+                ))}
+                {/* Totals row */}
+                <tr className="bg-emerald-50 border-t-2 border-emerald-200">
+                  <td className="px-4 py-2.5 font-bold text-gray-900">Tổng cộng</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-bold text-gray-900">{totals.employees}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-bold text-primary-800">{formatCurrency(totals.net)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-bold text-amber-800">{formatCurrency(totals.tax)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-bold text-emerald-800">{formatCurrency(totals.payable)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {!salaryLoading && !salaryData && !salaryError && (
+        <div className="text-center py-8 text-gray-400 text-xs">
+          Chọn tháng/năm và nhấn "Tải dữ liệu" để xem phân tích lương theo phòng ban.
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Dashboard = () => {
+  const { user } = useAuth();
+  const isBod = Boolean(
+    user?.employee_profile?.is_bod ||
+    (user as any)?.hrm_user?.is_bod ||
+    (user as any)?.is_bod
+  );
+
   const [stats, setStats] = useState<HRMDashboardStats | null>(null);
   const [analytics, setAnalytics] = useState<WorkforceAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -274,6 +513,30 @@ const Dashboard = () => {
   const [employeeCodeInput, setEmployeeCodeInput] = useState('');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | ''>('');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+
+  // Salary department analytics (BOD only)
+  const [salaryData, setSalaryData] = useState<SalaryListResponse | null>(null);
+  const [salaryLoading, setSalaryLoading] = useState(false);
+  const [salaryError, setSalaryError] = useState<string | null>(null);
+  const [salaryYear, setSalaryYear] = useState(new Date().getFullYear());
+  const [salaryMonth, setSalaryMonth] = useState(new Date().getMonth() + 1);
+
+  const fetchSalaryAnalytics = useCallback(async (year?: number, month?: number) => {
+    if (!isBod) return;
+    setSalaryLoading(true);
+    setSalaryError(null);
+    try {
+      const data = await salaryService.getSalaryByDepartment({
+        year: year ?? salaryYear,
+        month: month ?? salaryMonth,
+      });
+      setSalaryData(data);
+    } catch (err: any) {
+      setSalaryError(err?.response?.data?.detail || err.message || 'Lỗi khi tải dữ liệu lương phòng ban');
+    } finally {
+      setSalaryLoading(false);
+    }
+  }, [isBod, salaryYear, salaryMonth]);
 
   const fetchWorkforceAnalytics = async (params?: { employee_code?: string; department_id?: number }) => {
     setAnalyticsLoading(true);
@@ -296,6 +559,13 @@ const Dashboard = () => {
 
     fetchWorkforceAnalytics();
   }, []);
+
+  // Auto-fetch salary analytics when BOD user views employee tab
+  useEffect(() => {
+    if (isBod && activeTab === 'employee' && !salaryData && !salaryLoading) {
+      fetchSalaryAnalytics();
+    }
+  }, [isBod, activeTab]);
 
   if (loading) {
     return (
@@ -610,6 +880,26 @@ const Dashboard = () => {
               </>
             )}
           </div>
+
+          {/* ── Phân tích lương theo phòng ban (BOD only) ── */}
+          {isBod ? (
+            <SalaryDeptAnalytics
+              salaryData={salaryData}
+              salaryLoading={salaryLoading}
+              salaryError={salaryError}
+              salaryYear={salaryYear}
+              salaryMonth={salaryMonth}
+              onYearChange={setSalaryYear}
+              onMonthChange={setSalaryMonth}
+              onFetch={() => fetchSalaryAnalytics(salaryYear, salaryMonth)}
+            />
+          ) : (
+            <div className="bg-gray-50 rounded-2xl border border-gray-200 border-dashed p-6 flex flex-col items-center justify-center gap-2 text-center">
+              <LockClosedIcon className="h-8 w-8 text-gray-400" />
+              <p className="text-sm font-semibold text-gray-500">Phân tích lương theo phòng ban</p>
+              <p className="text-xs text-gray-400">Tính năng này chỉ dành cho thành viên BOD</p>
+            </div>
+          )}
         </div>
       )}
 
