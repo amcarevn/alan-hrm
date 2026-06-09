@@ -65,6 +65,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Store tokens
       localStorage.setItem('accessToken', response.tokens.accessToken);
       localStorage.setItem('refreshToken', response.tokens.refreshToken);
+
+      // Fetch full profile so hrm_user (can_manage_ctv, is_ctv_leader, etc.) is available
+      // immediately for sidebar rendering — same data getProfile returns on page refresh
+      const profileData = await authAPI.getProfile();
+      if (profileData?.user) setUser(profileData.user);
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
