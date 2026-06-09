@@ -21,6 +21,13 @@ import {
   Tooltip,
   ResponsiveContainer,
   Label,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  LineChart,
+  Line,
 } from 'recharts';
 import { dashboardAPI } from '@/utils/api';
 import HRStats from '../components/HRStats';
@@ -51,6 +58,37 @@ interface HRMDashboardStats {
   };
   recent_activities: { asset_assignments: number; asset_returns: number; maintenance: number };
   trends: { employee_growth: number; asset_growth: number };
+}
+
+interface WorkforceAnalytics {
+  salary_reference_period: { year: number | null; month: number | null; label: string | null };
+  summary: {
+    total_employees: number;
+    estimated_monthly_payroll: number;
+    estimated_cost_from_year_start: number;
+    estimated_cost_to_year_end: number;
+    estimated_full_year_cost: number;
+  };
+  tenure_analysis: {
+    average_tenure_years: number;
+    distribution: Array<{ bucket: string; count: number }>;
+  };
+  charts: {
+    cost_split: Array<{ name: string; value: number }>;
+    monthly_projection: Array<{ month: string; estimated_cost: number }>;
+  };
+  department_analysis: Array<{
+    department_name: string;
+    employee_count: number;
+    average_tenure_years: number;
+    estimated_monthly_payroll: number;
+  }>;
+  employee_analysis: Array<{
+    employee_id: string;
+    full_name: string;
+    tenure_years: number;
+    estimated_monthly_salary: number;
+  }>;
 }
 
 const CHART_COLORS = [
@@ -228,15 +266,35 @@ const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
 
 const Dashboard = () => {
   const [stats, setStats] = useState<HRMDashboardStats | null>(null);
+  const [analytics, setAnalytics] = useState<WorkforceAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [employeeCodeInput, setEmployeeCodeInput] = useState('');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | ''>('');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+
+  const fetchWorkforceAnalytics = async (params?: { employee_code?: string; department_id?: number }) => {
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    try {
+      const data = await dashboardAPI.getWorkforceAnalytics(params);
+      setAnalytics(data);
+    } catch (err: any) {
+      setAnalyticsError(err?.response?.data?.detail || err.message || 'Lỗi khi tải phân tích nhân sự');
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
 
   useEffect(() => {
     dashboardAPI.getHRMStats()
       .then(setStats)
       .catch((err: any) => setError(err.message || 'Lỗi khi tải dashboard'))
       .finally(() => setLoading(false));
+
+    fetchWorkforceAnalytics();
   }, []);
 
   if (loading) {
@@ -299,6 +357,35 @@ const Dashboard = () => {
     .sort((a, b) => b.count - a.count)
     .slice(0, 6)
     .map((t, i) => ({ name: t.display_name, value: t.count, color: CHART_COLORS[i % CHART_COLORS.length] }));
+
+  const tenureChartData = (analytics?.tenure_analysis.distribution || []).map((item, i) => ({
+    name: item.bucket,
+    value: item.count,
+    color: CHART_COLORS[i % CHART_COLORS.length],
+  }));
+
+  const costSplitData = (analytics?.charts.cost_split || []).map((item, i) => ({
+    name: item.name,
+    value: item.value,
+    color: i === 0 ? '#1B65B8' : '#10b981',
+  }));
+
+  const handleAnalyze = () => {
+    const params: { employee_code?: string; department_id?: number } = {};
+    if (employeeCodeInput.trim()) {
+      params.employee_code = employeeCodeInput.trim();
+    }
+    if (selectedDepartmentId !== '') {
+      params.department_id = selectedDepartmentId;
+    }
+    fetchWorkforceAnalytics(params);
+  };
+
+  const handleResetAnalysis = () => {
+    setEmployeeCodeInput('');
+    setSelectedDepartmentId('');
+    fetchWorkforceAnalytics();
+  };
 
   return (
     <div className="flex flex-col gap-5 min-h-[calc(100vh-7rem)]">
@@ -386,6 +473,142 @@ const Dashboard = () => {
               centerValue={stats.employee_stats.active + stats.employee_stats.probation} centerLabel="Tổng NV" />
             <DonutCard title="Hoạt động gần đây" sub="7 ngày qua" data={safeActivityData}
               centerValue={totalActivities} centerLabel="Hoạt động" />
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-5 space-y-4">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-sm font-bold text-gray-900">Phân tích thâm niên & dự báo chi phí lương</h3>
+              <p className="text-xs text-gray-600">
+                Dữ liệu lương tham chiếu: {analytics?.salary_reference_period?.label || 'Chưa có dữ liệu bảng lương'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input
+                value={employeeCodeInput}
+                onChange={(e) => setEmployeeCodeInput(e.target.value)}
+                placeholder="Nhập mã nhân viên"
+                className="h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              />
+              <select
+                value={selectedDepartmentId}
+                onChange={(e) => setSelectedDepartmentId(e.target.value ? Number(e.target.value) : '')}
+                className="h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              >
+                <option value="">Tất cả phòng ban</option>
+                {stats.department_stats.map((dept) => (
+                  <option key={dept.id} value={dept.id}>{dept.name}</option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleAnalyze}
+                  disabled={analyticsLoading}
+                  className="flex-1 h-10 rounded-lg bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 disabled:opacity-60"
+                >
+                  {analyticsLoading ? 'Đang phân tích...' : 'Phân tích'}
+                </button>
+                <button
+                  onClick={handleResetAnalysis}
+                  disabled={analyticsLoading}
+                  className="h-10 px-4 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 disabled:opacity-60"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            {analyticsError && (
+              <p className="text-xs font-semibold text-red-500">{analyticsError}</p>
+            )}
+
+            {analytics && (
+              <>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <StatCard
+                    name="Nhân sự phân tích"
+                    rawValue={analytics.summary.total_employees}
+                    formatter={formatNumber}
+                    subtext="Theo bộ lọc hiện tại"
+                    icon={UsersIcon}
+                    iconBg="bg-primary-100 text-primary-600"
+                    trend={null}
+                  />
+                  <StatCard
+                    name="Ước lương tháng"
+                    rawValue={analytics.summary.estimated_monthly_payroll}
+                    formatter={formatCurrency}
+                    subtext="Theo kỳ lương gần nhất"
+                    icon={CurrencyDollarIcon}
+                    iconBg="bg-emerald-100 text-emerald-600"
+                    trend={null}
+                  />
+                  <StatCard
+                    name="Từ đầu năm đến nay"
+                    rawValue={analytics.summary.estimated_cost_from_year_start}
+                    formatter={formatCurrency}
+                    subtext="Chi phí đã ước tính"
+                    icon={ChartPieIcon}
+                    iconBg="bg-amber-100 text-amber-600"
+                    trend={null}
+                  />
+                  <StatCard
+                    name="Từ nay đến cuối năm"
+                    rawValue={analytics.summary.estimated_cost_to_year_end}
+                    formatter={formatCurrency}
+                    subtext="Chi phí dự kiến"
+                    icon={ChartPieIcon}
+                    iconBg="bg-violet-100 text-violet-600"
+                    trend={null}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <DonutCard
+                    title="Phân bố thâm niên"
+                    sub={`Thâm niên trung bình: ${analytics.tenure_analysis.average_tenure_years} năm`}
+                    data={tenureChartData.length ? tenureChartData : [{ name: 'Chưa có dữ liệu', value: 1, color: '#e5e7eb' }]}
+                    centerValue={analytics.summary.total_employees}
+                    centerLabel="Nhân sự"
+                  />
+                  <DonutCard
+                    title="So sánh chi phí năm"
+                    sub={`Cả năm ước tính: ${formatCurrency(analytics.summary.estimated_full_year_cost)}`}
+                    data={costSplitData.length ? costSplitData : [{ name: 'Chưa có dữ liệu', value: 1, color: '#e5e7eb' }]}
+                    centerValue={analytics.summary.estimated_full_year_cost}
+                    centerLabel="VNĐ"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+                    <p className="text-xs font-bold text-gray-800 mb-3">Biểu đồ dự báo chi phí theo tháng</p>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <LineChart data={analytics.charts.monthly_projection}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                        <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                        <YAxis tickFormatter={(v) => `${Math.round((v || 0) / 1000000)}tr`} tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(value: any) => formatCurrency(Number(value || 0))} />
+                        <Line type="monotone" dataKey="estimated_cost" stroke="#1B65B8" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+                    <p className="text-xs font-bold text-gray-800 mb-3">Chi phí lương theo phòng ban</p>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <BarChart data={(analytics.department_analysis || []).slice(0, 6)}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                        <XAxis dataKey="department_name" tick={{ fontSize: 10 }} />
+                        <YAxis tickFormatter={(v) => `${Math.round((v || 0) / 1000000)}tr`} tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(value: any) => formatCurrency(Number(value || 0))} />
+                        <Bar dataKey="estimated_monthly_payroll" fill="#10b981" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -152,6 +152,17 @@ export const dashboardAPI = {
     return response.data;
   },
 
+  getWorkforceAnalytics: async (params?: {
+    employee_code?: string;
+    department_id?: number | null;
+  }): Promise<any> => {
+    const response: AxiosResponse<any> = await managementApi.get(
+      '/api-hrm/dashboard/workforce-analytics/',
+      { params }
+    );
+    return response.data;
+  },
+
   clearCache: async (): Promise<void> => {
     await managementApi.post('/dashboard/cache/clear');
   },
