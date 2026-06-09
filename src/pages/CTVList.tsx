@@ -1018,9 +1018,9 @@ const CTVList: React.FC = () => {
     }
   };
 
-  const fetchStats = async () => {
+  const fetchStats = async (doctorId?: number) => {
     try {
-      const data = await ctvAPI.stats();
+      const data = await ctvAPI.stats(doctorId ? { doctor_id: doctorId } : undefined);
       setStats(data);
     } catch (err) {
       console.error('Error fetching CTV stats:', err);
@@ -1069,6 +1069,10 @@ const CTVList: React.FC = () => {
       setStaffFilter(myRecord.id);
     }
   }, [staffList]);
+
+  useEffect(() => {
+    fetchStats(doctorFilter !== '' ? doctorFilter as number : undefined);
+  }, [doctorFilter]);
 
   useEffect(() => {
     const lid = leaderFilter !== '' ? (leaderFilter as number) : undefined;
@@ -1218,7 +1222,14 @@ const CTVList: React.FC = () => {
           {/* Stats cards */}
           {stats && (
             <div className="mb-8">
-              <h2 className="text-sm font-bold text-gray-900 mb-4">Thống kê cộng tác viên</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-gray-900">Thống kê cộng tác viên</h2>
+                {doctorFilter !== '' && (
+                  <span className="text-xs text-primary-600 font-medium">
+                    {filterDoctors.find(d => d.id === doctorFilter)?.name ?? 'Bác sĩ đã chọn'}
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-emerald-500 shadow-sm p-4">
                   <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Đang hoạt động</p>
