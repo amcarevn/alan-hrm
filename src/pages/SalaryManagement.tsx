@@ -18,16 +18,19 @@ import {
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   QuestionMarkCircleIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { employeesAPI } from '../utils/api';
 import type { Department, Employee } from '../utils/api';
 import { salaryService, SalaryFormulaUpdateData, SalaryRecord, PenaltyRecord, CommissionRecord, type BulkSalaryConfigRecord, type PayslipEmailBatchStatus, type DepartmentPayslipRecipientsResponse, type CompanyPayslipRecipientsResponse } from '../services/salary.service';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
 import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
+import BonusPredictionTab from './BonusPredictionTab';
 
 const TABS = [
   { key: 'config', label: 'Cấu hình tính lương', icon: CurrencyDollarIcon },
   { key: 'view', label: 'Bảng lương', icon: TableCellsIcon },
+  { key: 'bonus', label: 'Dự đoán thưởng', icon: SparklesIcon },
 ];
 
 function getStandardWorkDays(year: number, month: number): number {
@@ -49,7 +52,7 @@ function getResolvedStandardWorkDays(record: Pick<SalaryRecord, 'year' | 'month'
   return getStandardWorkDays(record.year, record.month);
 }
 
-type SalaryTabKey = 'config' | 'view';
+type SalaryTabKey = 'config' | 'view' | 'bonus';
 
 // ─── Tax Tooltip Component ───────────────────────────────────────────────────
 
@@ -4033,10 +4036,12 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const yearOptions = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  const title = activeTab === 'view' ? 'Bảng lương' : 'Cấu hình tính lương cho từng người';
+  const title = activeTab === 'view' ? 'Bảng lương' : activeTab === 'bonus' ? 'Dự đoán Chi Phí Thưởng' : 'Cấu hình tính lương cho từng người';
   const description =
     activeTab === 'view'
       ? 'Theo dõi bảng lương theo tháng/năm và phòng ban.'
+      : activeTab === 'bonus'
+      ? 'Dự đoán chi phí thưởng cho toàn công ty hoặc phòng ban với các phương án thưởng khác nhau.'
       : 'Thiết kế theo cơ chế event có ngày hiệu lực và nhóm cấu hình đầy đủ cho từng nhân viên.';
 
   return (
@@ -4650,6 +4655,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               )}
             </div>
           </div>
+        )}
+
+        {activeTab === 'bonus' && (
+          <BonusPredictionTab departments={departments} />
         )}
       </div>
 
