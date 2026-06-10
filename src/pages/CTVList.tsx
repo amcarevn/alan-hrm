@@ -21,7 +21,7 @@ import type { CTV, CTVStats, CTVFilterEmployee, CTVCreateData, Doctor } from '..
 import type { CTVListParams } from '../utils/api/ctv.api';
 import Pagination from '../components/Pagination';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { SelectBox } from '../components/LandingLayout/SelectBox';
+import { SelectBox, MultiSelectBox } from '../components/LandingLayout/SelectBox';
 import { toDisplayDate } from '../utils/dateUtils';
 
 // ============================================================
@@ -910,11 +910,11 @@ const CTVList: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [workTypeFilter, setWorkTypeFilter] = useState('');
-  const [leaderFilter, setLeaderFilter] = useState<number | ''>('');
-  const [staffFilter, setStaffFilter] = useState<number | ''>('');
-  const [doctorFilter, setDoctorFilter] = useState<number | ''>('');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [workTypeFilter, setWorkTypeFilter] = useState<string[]>([]);
+  const [leaderFilter, setLeaderFilter] = useState<string[]>([]);
+  const [staffFilter, setStaffFilter] = useState<string[]>([]);
+  const [doctorFilter, setDoctorFilter] = useState<string[]>([]);
   const [filterDoctors, setFilterDoctors] = useState<Doctor[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -1002,11 +1002,11 @@ const CTVList: React.FC = () => {
       setLoading(true);
       const params: CTVListParams = { page: currentPage, page_size: itemsPerPage, ordering: 'status,id' };
       if (searchTerm) params.search = searchTerm;
-      if (statusFilter) params.status = statusFilter;
-      if (workTypeFilter) params.work_type = workTypeFilter;
-      if (leaderFilter !== '') params.leader_id = leaderFilter as number;
-      if (staffFilter !== '') params.staff_id = staffFilter as number;
-      if (doctorFilter !== '') params.doctor = doctorFilter as number;
+      if (statusFilter.length) params.status = statusFilter.join(',');
+      if (workTypeFilter.length) params.work_type = workTypeFilter.join(',');
+      if (leaderFilter.length) params.leader_id = leaderFilter.join(',') as any;
+      if (staffFilter.length) params.staff_id = staffFilter.join(',') as any;
+      if (doctorFilter.length) params.doctor = doctorFilter.join(',') as any;
 
       const response = await ctvAPI.list(params);
       setCtvList(response.results);
@@ -1057,7 +1057,7 @@ const CTVList: React.FC = () => {
     const myRecord = leaders.find((l) => l.employee_id === currentEmployeeId);
     if (myRecord) {
       leaderLockedRef.current = true;
-      setLeaderFilter(myRecord.id);
+      setLeaderFilter([String(myRecord.id)]);
     }
   }, [leaders]);
 
@@ -1066,19 +1066,19 @@ const CTVList: React.FC = () => {
     const myRecord = staffList.find((s) => s.employee_id === currentEmployeeId);
     if (myRecord) {
       staffLockedRef.current = true;
-      setStaffFilter(myRecord.id);
+      setStaffFilter([String(myRecord.id)]);
     }
   }, [staffList]);
 
   useEffect(() => {
-    fetchStats(doctorFilter !== '' ? doctorFilter as number : undefined);
+    fetchStats(doctorFilter.length === 1 ? Number(doctorFilter[0]) : undefined);
   }, [doctorFilter]);
 
   useEffect(() => {
-    const lid = leaderFilter !== '' ? (leaderFilter as number) : undefined;
+    const lid = leaderFilter.length === 1 ? Number(leaderFilter[0]) : undefined;
     fetchFilters(lid);
     fetchFilterDoctors(isCtvLeaderOnly ? lid : undefined);
-    setStaffFilter('');
+    setStaffFilter([]);
   }, [leaderFilter]);
 
   useEffect(() => {
@@ -1143,11 +1143,11 @@ const CTVList: React.FC = () => {
     try {
       const params: CTVListParams = {};
       if (searchTerm) params.search = searchTerm;
-      if (statusFilter) params.status = statusFilter;
-      if (workTypeFilter) params.work_type = workTypeFilter;
-      if (leaderFilter !== '') params.leader_id = leaderFilter as number;
-      if (staffFilter !== '') params.staff_id = staffFilter as number;
-      if (doctorFilter !== '') params.doctor = doctorFilter as number;
+      if (statusFilter.length) params.status = statusFilter.join(',');
+      if (workTypeFilter.length) params.work_type = workTypeFilter.join(',');
+      if (leaderFilter.length) params.leader_id = leaderFilter.join(',') as any;
+      if (staffFilter.length) params.staff_id = staffFilter.join(',') as any;
+      if (doctorFilter.length) params.doctor = doctorFilter.join(',') as any;
 
       const blob = await ctvAPI.exportAll(params);
       const url = URL.createObjectURL(blob);
@@ -1166,7 +1166,7 @@ const CTVList: React.FC = () => {
     setEditingCTV(null);
     fetchCTVs();
     fetchStats();
-    fetchFilters(leaderFilter !== '' ? (leaderFilter as number) : undefined);
+    fetchFilters(leaderFilter.length === 1 ? Number(leaderFilter[0]) : undefined);
   };
 
   const handleImportSuccess = () => {
@@ -1224,9 +1224,9 @@ const CTVList: React.FC = () => {
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold text-gray-900">Thống kê cộng tác viên</h2>
-                {doctorFilter !== '' && (
+                {doctorFilter.length === 1 && (
                   <span className="text-xs text-primary-600 font-medium">
-                    {filterDoctors.find(d => d.id === doctorFilter)?.name ?? 'Bác sĩ đã chọn'}
+                    {filterDoctors.find(d => String(d.id) === doctorFilter[0])?.name ?? 'Bác sĩ đã chọn'}
                   </span>
                 )}
               </div>
@@ -1253,93 +1253,84 @@ const CTVList: React.FC = () => {
 
           {/* Filter bar */}
           <div className="mb-6 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex-1 min-w-[180px]">
+            <div className="flex items-end gap-3">
+              <div className="flex-1 min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tìm kiếm</label>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                  className="input-field w-full"
-                  placeholder="Tên, SĐT, mã CTV..."
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                    className="input-field w-full pr-8"
+                    placeholder="Tên, SĐT, mã CTV..."
+                  />
+                  {loading && (
+                    <div className="absolute inset-y-0 right-2 flex items-center">
+                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-primary-600" />
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="min-w-[160px]">
-                <SelectBox<string>
+              <div className="flex-1 min-w-0">
+                <MultiSelectBox<string>
                   label="Trạng thái"
                   value={statusFilter}
                   options={[
-                    { value: '', label: 'Tất cả trạng thái' },
                     { value: 'ACTIVE', label: 'Đang hoạt động' },
                     { value: 'DISCUSSING', label: 'Đang trao đổi' },
                     { value: 'INACTIVE', label: 'Không hoạt động' },
                   ]}
+                  allLabel="Tất cả trạng thái"
                   onChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
                 />
               </div>
 
-              <div className="min-w-[180px]">
-                <SelectBox<string>
+              <div className="flex-1 min-w-0">
+                <MultiSelectBox<string>
                   label="Hình thức làm việc"
                   value={workTypeFilter}
                   options={[
-                    { value: '', label: 'Tất cả hình thức' },
                     { value: 'HIRE_IMAGE_MEDIA', label: 'Thuê hình ảnh + kênh truyền thông' },
                     { value: 'HIRE_PER_POST', label: 'Thuê Theo Bài Đăng' },
                     { value: 'FREE_3_MONTHS', label: 'Free 3 tháng đầu' },
                   ]}
+                  allLabel="Tất cả hình thức"
                   onChange={(val) => { setWorkTypeFilter(val); setCurrentPage(1); }}
                 />
               </div>
 
-              <div className="min-w-[160px]">
-                <SelectBox<string>
+              <div className="flex-1 min-w-0">
+                <MultiSelectBox<string>
                   label="Bác sĩ theo dõi"
-                  value={doctorFilter === '' ? '' : String(doctorFilter)}
-                  options={[
-                    { value: '', label: 'Tất cả bác sĩ' },
-                    ...filterDoctors.map((d) => ({ value: String(d.id), label: d.name })),
-                  ]}
-                  onChange={(val) => { setDoctorFilter(val === '' ? '' : Number(val)); setCurrentPage(1); }}
-                  searchable
+                  value={doctorFilter}
+                  options={filterDoctors.map((d) => ({ value: String(d.id), label: d.name }))}
+                  allLabel="Tất cả bác sĩ"
+                  onChange={(val) => { setDoctorFilter(val); setCurrentPage(1); }}
                 />
               </div>
 
               {!isCtvLeaderOnly && !isCtvAssignedOnly && (
-                <div className="min-w-[180px]">
-                  <SelectBox<string>
+                <div className="flex-1 min-w-0">
+                  <MultiSelectBox<string>
                     label="Leader"
-                    value={leaderFilter === '' ? '' : String(leaderFilter)}
-                    options={[
-                      { value: '', label: 'Tất cả leader' },
-                      ...leaders.map((l) => ({ value: String(l.id), label: formatEmployee(l) })),
-                    ]}
-                    onChange={(val) => { setLeaderFilter(val === '' ? '' : Number(val)); setCurrentPage(1); }}
-                    searchable
+                    value={leaderFilter}
+                    options={leaders.map((l) => ({ value: String(l.id), label: formatEmployee(l) }))}
+                    allLabel="Tất cả leader"
+                    onChange={(val) => { setLeaderFilter(val); setCurrentPage(1); }}
                   />
                 </div>
               )}
 
               {!isCtvAssignedOnly && (
-                <div className="min-w-[180px]">
-                  <SelectBox<string>
+                <div className="flex-1 min-w-0">
+                  <MultiSelectBox<string>
                     label="Nhân viên đảm nhận"
-                    value={staffFilter === '' ? '' : String(staffFilter)}
-                    options={[
-                      { value: '', label: 'Tất cả nhân viên' },
-                      ...staffList.map((s) => ({ value: String(s.id), label: formatEmployee(s) })),
-                    ]}
-                    onChange={(val) => { setStaffFilter(val === '' ? '' : Number(val)); setCurrentPage(1); }}
-                    searchable
+                    value={staffFilter}
+                    options={staffList.map((s) => ({ value: String(s.id), label: formatEmployee(s) }))}
+                    allLabel="Tất cả nhân viên"
+                    onChange={(val) => { setStaffFilter(val); setCurrentPage(1); }}
                   />
-                </div>
-              )}
-
-              {loading && (
-                <div className="flex items-center gap-1.5 text-xs text-gray-500 pb-2">
-                  <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-primary-600" />
-                  Đang tải...
                 </div>
               )}
             </div>
