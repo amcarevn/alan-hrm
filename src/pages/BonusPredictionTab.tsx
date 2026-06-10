@@ -12,7 +12,7 @@ import type { Department } from '../utils/api';
 
 const BONUS_SCHEMES = [
   { value: 'fixed_3m_basic', label: 'PA1: < 1 năm = 3M, ≥ 1 năm = 1 tháng lương' },
-  { value: 'prorated', label: 'PA2: < 1 năm = tính theo tháng, ≥ 1 năm = 1 tháng lương' },
+  { value: 'prorated', label: 'PA2: < 1 năm = (lương/12)×số tháng đến cuối năm tài chính, ≥ 1 năm = 1 tháng lương' },
   { value: 'custom', label: 'PA3: Tuỳ chỉnh - nhập số tiền thưởng' },
 ];
 
@@ -86,7 +86,7 @@ export const BonusPredictionTab: React.FC<BonusPredictionTabProps> = ({ departme
           />
           <p className="mt-2 text-xs text-gray-500">
             {scheme === 'fixed_3m_basic' && 'Nhân sự dưới 1 năm được thưởng 3 triệu đồng, từ 1 năm trở lên được thưởng lương cơ bản.'}
-            {scheme === 'prorated' && 'Nhân sự dưới 1 năm được thưởng (lương cơ bản/12/12) × số tháng làm việc, từ 1 năm trở lên được thưởng lương cơ bản.'}
+            {scheme === 'prorated' && 'Nhân sự dưới 1 năm được thưởng (lương cơ bản/12) × số tháng làm việc dự phóng đến cuối năm tài chính, từ 1 năm trở lên được thưởng lương cơ bản.'}
             {scheme === 'custom' && 'Nhập số tiền thưởng cố định mà bạn muốn'}
           </p>
         </div>
