@@ -16,6 +16,13 @@ const BONUS_SCHEMES = [
   { value: 'custom', label: 'PA3: Tuỳ chỉnh - nhập số tiền thưởng' },
 ];
 
+const formatStartDate = (value: string | null | undefined): string => {
+  if (!value) return '—';
+  const [year, month, day] = value.split('-');
+  if (!year || !month || !day) return value;
+  return `${day}/${month}/${year}`;
+};
+
 interface BonusPredictionTabProps {
   departments: Department[];
 }
@@ -259,6 +266,9 @@ export const BonusPredictionTab: React.FC<BonusPredictionTabProps> = ({ departme
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Phòng Ban
                   </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Ngày bắt đầu làm việc
+                  </th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Lương CB
                   </th>
@@ -279,6 +289,9 @@ export const BonusPredictionTab: React.FC<BonusPredictionTabProps> = ({ departme
                     <td className="px-4 py-3 text-gray-700 font-mono">{emp.employee_code}</td>
                     <td className="px-4 py-3 text-gray-900 font-medium">{emp.employee_name}</td>
                     <td className="px-4 py-3 text-gray-700">{emp.department}</td>
+                    <td className="px-4 py-3 text-center text-gray-700 whitespace-nowrap">
+                      {formatStartDate(emp.start_date)}
+                    </td>
                     <td className="px-4 py-3 text-right text-gray-700">
                       {new Intl.NumberFormat('vi-VN').format(Math.round(emp.basic_salary))} VND
                     </td>
