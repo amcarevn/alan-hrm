@@ -53,8 +53,8 @@ export const ctvAPI = {
     await managementApi.delete(`/api-hrm/ctv/${id}/`);
   },
 
-  stats: async (): Promise<CTVStats> => {
-    const response: AxiosResponse<CTVStats> = await managementApi.get('/api-hrm/ctv/stats/');
+  stats: async (params?: { doctor_id?: number }): Promise<CTVStats> => {
+    const response: AxiosResponse<CTVStats> = await managementApi.get('/api-hrm/ctv/stats/', { params });
     return response.data;
   },
 
