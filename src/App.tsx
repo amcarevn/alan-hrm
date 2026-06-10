@@ -93,6 +93,7 @@ import SalaryPayroll from './pages/SalaryPayroll';
 import SalaryEmployeeConfig from './pages/SalaryEmployeeConfig';
 import SalaryData from './pages/SalaryData';
 import OvertimeRatePage from './pages/OvertimeRateConfig';
+import SalaryBonusPrediction from './pages/SalaryBonusPrediction';
 import AttendanceRanking from './pages/AttendanceRanking';
 import RecruitmentNeeds from './pages/recruitment/RecruitmentNeeds';
 import RecruitmentJobs from './pages/recruitment/RecruitmentJobs';
@@ -1032,6 +1033,16 @@ function App() {
               <ProtectedRoute requireBod>
                 <Layout>
                   <OvertimeRatePage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/salary-management/bonus"
+            element={
+              <ProtectedRoute requireBod>
+                <Layout>
+                  <SalaryBonusPrediction />
                 </Layout>
               </ProtectedRoute>
             }
