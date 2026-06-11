@@ -528,7 +528,7 @@ const EmployeeCreate: React.FC = () => {
                   </div>
                 </label>
               </div>
-
+{/* 
               <div className="col-span-1 md:col-span-2 border rounded-lg p-4 bg-gray-50">
                 <label className="flex gap-3">
                   <input
@@ -549,7 +549,7 @@ const EmployeeCreate: React.FC = () => {
                     </p>
                   </div>
                 </label>
-              </div>
+              </div> */}
             </div>
           </div>
 

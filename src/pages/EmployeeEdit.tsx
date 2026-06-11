@@ -941,7 +941,7 @@ const EmployeeEdit: React.FC = () => {
                 </div>
               </label>
             </div>
-
+{/* 
             <div className="md:col-span-2">
               <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border cursor-pointer">
                 <input
@@ -955,7 +955,7 @@ const EmployeeEdit: React.FC = () => {
                   <p className="text-xs text-gray-500 mt-0.5">Có quyền truy cập tính năng quản lý tính lương</p>
                 </div>
               </label>
-            </div>
+            </div> */}
 
             <div className="md:col-span-2">
               <Field label="Lý do nghỉ việc">
