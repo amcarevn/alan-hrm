@@ -192,9 +192,9 @@ function MultiSelectBoxInner<T extends string>({
 
   const displayText = allSelected
     ? allLabel
-    : selectedLabels.length <= 2
-      ? selectedLabels.join(', ')
-      : `${selectedLabels.length} loại đã chọn`;
+    : selectedLabels.length === 1
+      ? selectedLabels[0]
+      : `${selectedLabels.length} đã chọn`;
 
   const toggle = (v: T) => {
     if (value.includes(v)) {
@@ -209,41 +209,47 @@ function MultiSelectBoxInner<T extends string>({
       {label && <label className="block text-sm font-medium mb-1 text-gray-700">{label}</label>}
       <Listbox value={value} onChange={() => {}} multiple>
         <div className="relative">
-          <Listbox.Button className="relative w-full cursor-pointer rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-10 text-left focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-500 sm:text-sm shadow-sm">
+          <Listbox.Button title={displayText} className={`relative w-full cursor-pointer rounded-lg border bg-white py-2 pl-3 pr-7 text-left focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-500 sm:text-sm shadow-sm transition-colors ${!allSelected ? 'border-primary-400 text-primary-700 font-medium' : 'border-gray-200 text-gray-700'}`}>
             <span className="block truncate">{displayText}</span>
-            <span className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer">
-              <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+            <span className="absolute inset-y-0 right-0 flex items-center pr-2">
+              <ChevronUpDownIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />
             </span>
           </Listbox.Button>
-          <Listbox.Options className="absolute z-50 mt-1 min-w-full w-max max-w-[min(32rem,90vw)] rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+
+          <Listbox.Options className="absolute z-50 mt-1 min-w-full w-max max-w-[min(32rem,90vw)] rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm overflow-hidden">
             {/* "Tất cả" option */}
             <div
               onClick={() => onChange([])}
-              className={`relative cursor-pointer select-none py-2 pl-10 pr-4 hover:bg-blue-50 ${allSelected ? 'bg-blue-50 text-blue-900 font-medium' : 'text-gray-900'}`}
+              className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${allSelected ? 'bg-primary-50' : ''}`}
             >
-              <span className="block truncate">{allLabel}</span>
-              {allSelected && (
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600">
-                  <CheckIcon className="h-5 w-5" aria-hidden="true" />
-                </span>
-              )}
+              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${allSelected ? 'bg-primary-500 border-primary-500' : 'border-gray-300 bg-white'}`}>
+                {allSelected && (
+                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
+                    <path d="M1 4l2.5 2.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+              <span className={`text-sm whitespace-nowrap ${allSelected ? 'font-semibold text-primary-700' : 'text-gray-600'}`}>{allLabel}</span>
             </div>
+
             {options.map((option) => {
               const isSelected = value.includes(option.value);
               return (
                 <div
                   key={String(option.value)}
                   onClick={() => toggle(option.value)}
-                  className={`relative cursor-pointer select-none py-2 pl-10 pr-4 hover:bg-blue-50 ${isSelected ? 'bg-blue-50 text-blue-900' : 'text-gray-900'}`}
+                  className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors ${isSelected ? 'bg-primary-50' : ''}`}
                 >
-                  <span className={`block truncate ${isSelected ? 'font-medium' : 'font-normal'}`}>
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? 'bg-primary-500 border-primary-500' : 'border-gray-300 bg-white'}`}>
+                    {isSelected && (
+                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
+                        <path d="M1 4l2.5 2.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  <span className={`text-sm whitespace-nowrap ${isSelected ? 'font-medium text-primary-700' : 'text-gray-700'}`}>
                     {option.label}
                   </span>
-                  {isSelected && (
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600">
-                      <CheckIcon className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                  )}
                 </div>
               );
             })}
