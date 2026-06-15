@@ -19,6 +19,7 @@ import ApiKeyCreate from './pages/ApiKeyCreate';
 import FacebookPages from './pages/FacebookPages';
 import FacebookCallback from './pages/FacebookCallback';
 import Login from './pages/Login';
+import LavianCallback from './pages/LavianCallback';
 import Publish from './pages/Publish';
 import Settings from './pages/Settings';
 import UserList from './pages/UserList';
@@ -126,6 +127,7 @@ function App() {
             }
           />
           <Route path="/login" element={<Login />} />
+          <Route path="/sso" element={<LavianCallback />} />
           <Route path="/publish" element={<Publish />} />
           <Route path="/facebook-callback" element={<FacebookCallback />} />
           <Route

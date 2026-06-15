@@ -4,9 +4,11 @@ import {
   MagnifyingGlassIcon,
   UserCircleIcon,
   ArrowRightOnRectangleIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/contexts/AuthContext';
 import { hrmAPI } from '@/utils/api';
+import { ssoSwitchToLavian } from '@/utils/api/auth.api';
 import { useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
 
 const PRIORITY_BORDER: Record<string, string> = {
@@ -35,6 +37,8 @@ const TYPE_BADGE: Record<string, string> = {
 export default function Header() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
+  const [lavianLoading, setLavianLoading] = useState(false);
+  const [lavianDialog, setLavianDialog] = useState<{ message: string; canRetry: boolean } | null>(null);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -102,8 +106,53 @@ export default function Header() {
     setUserMenuOpen(false);
   };
 
+  const handleGoToLavian = async () => {
+    if (lavianLoading) return;
+    setLavianLoading(true);
+    try {
+      const { redirect_url } = await ssoSwitchToLavian();
+      window.location.href = redirect_url;
+    } catch (err: any) {
+      const message = err?.response?.data?.error || 'Không thể kết nối. Vui lòng thử lại.';
+      const canRetry = err?.response?.status === 503;
+      setLavianDialog({ message, canRetry });
+      setLavianLoading(false);
+    }
+  };
+
   return (
     <>
+      {lavianDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-80 text-center">
+            <div className="mb-3 flex justify-center">
+              <span className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100">
+                <svg className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z" />
+                </svg>
+              </span>
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">Không thể chuyển hệ thống</h3>
+            <p className="text-sm text-gray-500 mb-4">{lavianDialog.message}</p>
+            <div className="flex gap-2">
+              {lavianDialog.canRetry && (
+                <button
+                  onClick={() => { setLavianDialog(null); handleGoToLavian(); }}
+                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Thử lại
+                </button>
+              )}
+              <button
+                onClick={() => setLavianDialog(null)}
+                className="flex-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
+              >
+                Đã hiểu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6">
         <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
 
@@ -205,6 +254,28 @@ export default function Header() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Nút chuyển sang Lavian Spa (System B) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={handleGoToLavian}
+                disabled={lavianLoading}
+                title="Qua Lavian Spa"
+                className="inline-flex items-center gap-1.5 rounded-full border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 shadow-sm transition-all duration-200 hover:bg-primary-100 hover:border-primary-400 hover:shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {lavianLoading ? (
+                  <svg className="h-3.5 w-3.5 animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                ) : (
+                  <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+                <span className="hidden sm:inline">App Alan</span>
+              </button>
+
             </div>
 
             {/* Separator */}

@@ -181,4 +181,12 @@ export const authAPI = {
   },
 };
 
+// SSO API
+
+// A → B: Alan BE gọi Lavian BE để lấy redirect_url có UUID code
+export const ssoSwitchToLavian = async (): Promise<{ redirect_url: string }> => {
+  const response = await managementApi.post('/api/users/sso/switch-to-lavian/');
+  return response.data;
+};
+
 
