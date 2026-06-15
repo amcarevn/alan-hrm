@@ -94,8 +94,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
-
-    // Redirect to login page
+    localStorage.removeItem('login_response');
+    localStorage.removeItem('myrequests_seen_approved_ids');
     navigate('/login');
   };
 
