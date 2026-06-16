@@ -37,13 +37,16 @@ const PROBATION_RATE_LABELS: Record<string, string> = {
 };
 
 const CONTRACT_TYPE_LABELS: Record<string, string> = {
-  PROBATION: 'Hợp đồng thử việc',
-  INTERN: 'Hợp đồng thực tập sinh',
-  COLLABORATOR: 'Hợp đồng cộng tác viên',
   ONE_YEAR: 'Hợp đồng lao động 12 tháng',
   TWO_YEAR: 'Hợp đồng lao động 24 tháng',
-  INDEFINITE: 'Hợp đồng vô thời hạn',
+  THREE_YEAR: 'Hợp đồng lao động 36 tháng',
+  INDEFINITE: 'Không xác định thời hạn',
+  PROBATION_1M: 'Thử việc 1 tháng',
+  PROBATION_2M: 'Thử việc 2 tháng',
+  COLLABORATOR: 'Cộng tác viên',
+  INTERN: 'Thực tập sinh',
   SERVICE: 'Hợp đồng dịch vụ',
+  PROBATION: 'Hợp đồng thử việc',
 };
 
 const MARITAL_STATUS_LABELS: Record<string, string> = {
@@ -97,12 +100,12 @@ const CCCD_ISSUE_PLACE_LABELS: Record<string, string> = {
 const getStatusBadge = (status: string) => {
   const config: Record<string, { label: string; color: string }> = {
     ACTIVE: { label: 'Đang làm việc', color: 'bg-emerald-100 text-emerald-600' },
-    PROBATION: { label: 'Thử việc', color: 'bg-amber-100 text-amber-600' },
+    PROBATION: { label: 'Đang làm việc', color: 'bg-emerald-100 text-emerald-600' },
     PAUSED: { label: 'Tạm dừng', color: 'bg-amber-100 text-amber-700' },
+    MATERNITY_LEAVE: { label: 'Nghỉ thai sản', color: 'bg-pink-100 text-pink-700' },
     INACTIVE: { label: 'Đã nghỉ', color: 'bg-red-100 text-red-600' },
-    DEACTIVATED: { label: 'Vô hiệu hoá', color: 'bg-gray-100 text-gray-600' },
   };
-  const c = config[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
+  const c = config[status] || { label: 'Đang làm việc', color: 'bg-emerald-100 text-emerald-600' };
   return (
     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${c.color}`}>
       {c.label}
@@ -300,6 +303,7 @@ const EmployeeShow: React.FC = () => {
             <InfoField label="Đơn vị" value={emp.company_unit?.name} />
             <InfoField label="Trạng thái" value={
               emp.employment_status === 'PAUSED' ? 'Tạm dừng' :
+              emp.employment_status === 'MATERNITY_LEAVE' ? 'Nghỉ thai sản' :
               emp.employment_status === 'INACTIVE' ? 'Đã nghỉ' :
               'Đang làm việc'
             } />

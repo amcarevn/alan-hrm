@@ -116,44 +116,28 @@ export const employeesAPI = {
     await managementApi.delete(`/api-hrm/employees/${id}/`);
   },
 
-  stats: async (): Promise<{
+  stats: async (params?: { month?: string }): Promise<{
     total: number;
     active: number;
-    probation: number;
     paused: number;
     maternity_leave: number;
     inactive: number;
-    deactivated: number;
-    department_stats: Array<{
-      department_id: number;
-      department_name: string;
-      count: number;
-    }>;
     gender_stats: {
       male: number;
       female: number;
-      other: number;
     };
   }> => {
     const response: AxiosResponse<{
       total: number;
       active: number;
-      probation: number;
       paused: number;
       maternity_leave: number;
       inactive: number;
-      deactivated: number;
-      department_stats: Array<{
-        department_id: number;
-        department_name: string;
-        count: number;
-      }>;
       gender_stats: {
         male: number;
         female: number;
-        other: number;
       };
-    }> = await managementApi.get('/api-hrm/employees/stats/');
+    }> = await managementApi.get('/api-hrm/employees/stats/', { params });
     return response.data;
   },
 
