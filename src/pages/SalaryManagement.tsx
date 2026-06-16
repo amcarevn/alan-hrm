@@ -30,6 +30,8 @@ const TABS = [
   { key: 'view', label: 'Bảng lương', icon: TableCellsIcon },
 ];
 
+const NO_LEGAL_ENTITY_FILTER = '__NO_LEGAL_ENTITY__';
+
 function getStandardWorkDays(year: number, month: number): number {
   const daysInMonth = new Date(year, month, 0).getDate();
   let sundays = 0;
@@ -3365,6 +3367,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         ma_nv: record.ma_nv,
         ho_va_ten: record.ho_va_ten,
         phong_ban: record.phong_ban ?? '',
+        phap_nhan_con: record.phap_nhan_con ?? '',
         year: record.year,
         month: record.month,
         luong_co_ban: Math.round(luongCoBan),
@@ -3413,6 +3416,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         { header: 'Mã NV', key: 'ma_nv', width: 14 },
         { header: 'Họ và tên', key: 'ho_va_ten', width: 24 },
         { header: 'Phòng ban', key: 'phong_ban', width: 18 },
+        { header: 'Pháp nhân con', key: 'phap_nhan_con', width: 22 },
         { header: 'Năm', key: 'year', width: 8 },
         { header: 'Tháng', key: 'month', width: 8 },
         { header: 'Lương cơ bản', key: 'luong_co_ban', width: 16 },
@@ -3561,6 +3565,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           ma_nv: record.ma_nv,
           ho_va_ten: record.ho_va_ten,
           phong_ban: record.phong_ban ?? '',
+          phap_nhan_con: record.phap_nhan_con ?? '',
           year: record.year,
           month: record.month,
           luong_co_ban: Math.round(luongCoBan),
@@ -4032,6 +4037,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const pagedSalaryRecords = filteredSalaryRecords.slice((salaryPage - 1) * SALARY_PAGE_SIZE, salaryPage * SALARY_PAGE_SIZE);
   const yearOptions = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
+  const legalEntityFilterLabel = legalEntityFilterView === NO_LEGAL_ENTITY_FILTER
+    ? 'Không có pháp nhân'
+    : legalEntityFilterView;
 
   const title = activeTab === 'view' ? 'Bảng lương' : 'Cấu hình tính lương cho từng người';
   const description =
@@ -4292,6 +4300,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       value={legalEntityFilterView}
                       options={[
                         { value: '', label: 'Tất cả pháp nhân' },
+                        { value: NO_LEGAL_ENTITY_FILTER, label: 'Không có pháp nhân' },
                         ...legalEntities.map((entity) => ({
                           value: entity.value,
                           label: entity.label,
@@ -4385,6 +4394,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                         <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Phòng ban
                         </th>
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Pháp nhân con
+                        </th>
                         <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Lương CB
                         </th>
@@ -4433,6 +4445,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                             <p className="text-xs text-gray-500 font-mono">{record.ma_nv}</p>
                           </td>
                           <td className="px-3 py-3 text-gray-600">{record.phong_ban ?? '—'}</td>
+                          <td className="px-3 py-3 text-gray-600">{record.phap_nhan_con ?? '—'}</td>
                           <td className="px-3 py-3 text-right text-gray-700">{formatCurrency(record.luong_co_ban)}</td>
                           <td className="px-3 py-3 text-right text-gray-700">{formatCurrency(record.phu_cap)}</td>
                           <td className="px-3 py-3 text-right text-gray-700">{formatCurrency((record as unknown as Record<string, number>)['phu_cap_an_trua'] ?? 0)}</td>
@@ -4696,7 +4709,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               <p className="text-sm text-gray-600">
                 Hệ thống sẽ xếp hàng gửi email phiếu lương{' '}
                 <strong>Tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear}</strong> cho toàn bộ nhân sự công ty
-                {legalEntityFilterView ? <> (pháp nhân: <strong>{legalEntityFilterView}</strong>)</> : ''}.
+                {legalEntityFilterView ? <> (pháp nhân: <strong>{legalEntityFilterLabel}</strong>)</> : ''}.
               </p>
 
               {loadingCompanyRecipientsPreview && (
@@ -5248,6 +5261,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 z-20 bg-gray-50 min-w-[120px]">Mã NV</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase sticky left-[120px] z-20 bg-gray-50 min-w-[220px]">Họ tên</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase sticky left-[340px] z-20 bg-gray-50 min-w-[180px]">Phòng ban</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pháp nhân con</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Năm</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tháng</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lương CB</th>
@@ -5287,6 +5301,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       <td className={`px-3 py-2 font-mono text-gray-700 sticky left-0 z-10 group-hover:!bg-indigo-100 min-w-[120px] ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}`}>{row.ma_nv}</td>
                       <td className={`px-3 py-2 text-gray-900 sticky left-[120px] z-10 group-hover:!bg-indigo-100 min-w-[220px] ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}`}>{row.ho_va_ten}</td>
                       <td className={`px-3 py-2 text-gray-700 sticky left-[340px] z-10 group-hover:!bg-indigo-100 min-w-[180px] ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}`}>{row.phong_ban || '—'}</td>
+                      <td className="px-3 py-2 text-gray-700">{row.phap_nhan_con || '—'}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{row.year}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{row.month}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.luong_co_ban)}</td>
@@ -5344,7 +5359,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <> · {departments.find(d => String(d.id) === deptFilterView)?.name}</>
                   )}
                   {legalEntityFilterView && (
-                    <> · {legalEntityFilterView}</>
+                    <> · {legalEntityFilterLabel}</>
                   )}
                 </p>
               </div>
