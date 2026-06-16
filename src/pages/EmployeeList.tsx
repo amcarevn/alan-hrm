@@ -22,14 +22,15 @@ const EmployeeList: React.FC = () => {
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
-    probation: 0,
     paused: 0,
     maternity_leave: 0,
     inactive: 0,
-    deactivated: 0,
     male: 0,
     female: 0,
-    other: 0
+  });
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -55,7 +56,7 @@ const EmployeeList: React.FC = () => {
 
   const SEND_EMAIL_COOLDOWN_KEY = 'send_all_emails_cooldown_until';
   const COOLDOWN_DURATION = 120; // 2 phút (giây)
-  const fetchEmployees = async (search = '', status = 'all', department = 'all', page = 1, pageSize = 20, contractType = 'all', expiringSoon = 'all') => {
+  const fetchEmployees = async (search = '', status = 'all', department = 'all', page = 1, pageSize = 20, contractType = 'all', expiringSoon = 'all', month?: string) => {
     try {
       setLoading(true);
       const params: any = { page, page_size: pageSize };
@@ -64,16 +65,16 @@ const EmployeeList: React.FC = () => {
       if (search || status === 'PAUSED') params.include_inactive = true;
       if (department !== 'all') params.department = department;
       if (contractType !== 'all') params.contract_type = contractType;
-      
+      if (month) params.month = month;
+
       if (expiringSoon === 'expiring') {
         const today = new Date();
         const deadline = new Date();
-        deadline.setDate(today.getDate() + 5);
+        deadline.setDate(today.getDate() + 7);
         params.expiring_soon_before = deadline.toISOString().split('T')[0];
-        // We also send a flag so the backend knows to filter by either probation or contract end date
         params.is_expiring_soon = true;
       }
-      
+
       const response = await employeesAPI.list(params);
       setEmployees(response.results);
       setTotalCount(response.count);
@@ -86,32 +87,17 @@ const EmployeeList: React.FC = () => {
     }
   };
 
-  const fetchStats = async () => {
+  const fetchStats = async (month?: string) => {
     try {
-      const statsData: any = await employeesAPI.stats();
-      
-      // Fetch active employees to calculate gender stats
-      const activeEmployees = await employeesAPI.list({ 
-        employment_status: 'ACTIVE',
-        page_size: 10000
-      });
-      
-      const employees = activeEmployees.results || [];
-      const male = employees.filter((emp: any) => emp.is_active && emp.gender === 'M').length;
-      const female = employees.filter((emp: any) => emp.is_active && emp.gender === 'F').length;
-      const other = employees.filter((emp: any) => emp.is_active && emp.gender === 'O').length;
-      
+      const statsData: any = await employeesAPI.stats(month ? { month } : undefined);
       setStats({
         total: statsData.total,
         active: statsData.active,
-        probation: statsData.probation,
         paused: statsData.paused ?? 0,
         maternity_leave: statsData.maternity_leave ?? 0,
         inactive: statsData.inactive,
-        deactivated: statsData.deactivated ?? 0,
-        male,
-        female,
-        other
+        male: statsData.gender_stats?.male ?? 0,
+        female: statsData.gender_stats?.female ?? 0,
       });
     } catch (err) {
       console.error('Error fetching stats:', err);
@@ -128,9 +114,13 @@ const EmployeeList: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchStats();
+    fetchStats(selectedMonth);
     fetchDepartments();
   }, []);
+
+  useEffect(() => {
+    fetchStats(selectedMonth);
+  }, [selectedMonth]);
 
   // Chặn scroll khi mở dialog import
   useLockBodyScroll(showImportDialog);
@@ -169,7 +159,7 @@ const EmployeeList: React.FC = () => {
     }
 
     const timeout = setTimeout(() => {
-      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter);
+      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth);
     }, 300); // 300ms debounce delay
 
     setSearchTimeout(timeout);
@@ -179,11 +169,11 @@ const EmployeeList: React.FC = () => {
         clearTimeout(searchTimeout);
       }
     };
-  }, [searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter]);
+  }, [searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchEmployees(searchTerm, statusFilter, departmentFilter, 1, itemsPerPage, contractTypeFilter, expiringSoonFilter);
+    fetchEmployees(searchTerm, statusFilter, departmentFilter, 1, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth);
   };
 
   const handleReset = () => {
@@ -200,8 +190,8 @@ const EmployeeList: React.FC = () => {
     if (window.confirm('Bạn có chắc chắn muốn xóa nhân viên này?')) {
       try {
         await employeesAPI.delete(id);
-        fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter);
-        fetchStats(); // Refresh stats
+        fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth);
+        fetchStats(selectedMonth); // Refresh stats
       } catch (err: any) {
         alert('Xóa thất bại: ' + (err.message || 'Lỗi không xác định'));
       }
@@ -211,8 +201,8 @@ const EmployeeList: React.FC = () => {
   const handleActivate = async (id: number) => {
     try {
       await employeesAPI.activate(id);
-      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter);
-      fetchStats(); // Refresh stats
+      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth);
+      fetchStats(selectedMonth);
     } catch (err: any) {
       alert('Kích hoạt thất bại: ' + (err.message || 'Lỗi không xác định'));
     }
@@ -221,12 +211,13 @@ const EmployeeList: React.FC = () => {
   const handleDeactivate = async (id: number) => {
     try {
       await employeesAPI.deactivate(id);
-      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter);
-      fetchStats(); // Refresh stats
+      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth);
+      fetchStats(selectedMonth);
     } catch (err: any) {
       alert('Vô hiệu hóa thất bại: ' + (err.message || 'Lỗi không xác định'));
     }
   };
+
   const handleExport = async () => {
     try {
       const exportPageSize = Math.max(totalCount, 1000);
@@ -1024,8 +1015,8 @@ const EmployeeList: React.FC = () => {
       const result = await employeesAPI.importFile(importFile);
       setImportResult(result);
       if (result.summary.created > 0 || result.summary.updated > 0) {
-        fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter);
-        fetchStats();
+        fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth);
+        fetchStats(selectedMonth);
       }
     } catch (err: any) {
       alert('Import thất bại: ' + (err.message || 'Lỗi không xác định'));
@@ -1034,23 +1025,16 @@ const EmployeeList: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string, isActive?: boolean) => {
-    if (isActive === false) {
-      return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-600">Vô hiệu hoá</span>;
-    }
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'ACTIVE':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-600">Đang làm việc</span>;
-      case 'PAUSED':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Tạm dừng</span>;
-      case 'MATERNITY_LEAVE':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-pink-100 text-pink-700">Nghỉ thai sản</span>;
       case 'INACTIVE':
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-600">Đã nghỉ</span>;
-      case 'PROBATION':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-600">Thử việc</span>;
-      case 'DEACTIVATED':
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Vô hiệu hoá</span>;
+      case 'MATERNITY_LEAVE':
+        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-pink-100 text-pink-700">Nghỉ thai sản</span>;
+      case 'PAUSED':
+        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Tạm dừng</span>;
       default:
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{status}</span>;
     }
@@ -1069,7 +1053,7 @@ const EmployeeList: React.FC = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const deadline = new Date(today);
-    deadline.setDate(today.getDate() + 5);
+    deadline.setDate(today.getDate() + 7);
 
     const probEnd = employee.probation_end_date ? new Date(employee.probation_end_date) : null;
     const contEnd = employee.contract_end_date ? new Date(employee.contract_end_date) : null;
@@ -1094,35 +1078,50 @@ const EmployeeList: React.FC = () => {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         {/* Statistics Section - At the top as requested */}
         <div className="mb-8">
-          <h2 className="text-sm font-bold text-gray-900 mb-4">Thống kê nhân viên</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-3">
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold text-gray-900">Thống kê nhân viên</h2>
+            <div className="w-44">
+              <SelectBox
+                label=""
+                value={selectedMonth}
+                options={(() => {
+                  const now = new Date();
+                  const currentYear = now.getFullYear();
+                  const currentMonth = now.getMonth() + 1;
+                  const opts = [];
+                  for (let y = 2026; y <= currentYear; y++) {
+                    const maxMonth = y === currentYear ? currentMonth : 12;
+                    for (let m = 1; m <= maxMonth; m++) {
+                      const val = `${y}-${String(m).padStart(2, '0')}`;
+                      opts.push({ value: val, label: `Tháng ${m}/${y}` });
+                    }
+                  }
+                  return opts;
+                })()}
+                onChange={(val) => setSelectedMonth(val)}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-4">
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Tổng số</p>
               <p className="text-2xl font-extrabold text-primary-600 mt-1">{stats.total}</p>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-emerald-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('ACTIVE'); setCurrentPage(1); }}>
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-emerald-500 shadow-sm p-4">
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Đang làm việc</p>
               <p className="text-2xl font-extrabold text-emerald-600 mt-1">{stats.active}</p>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-amber-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('PROBATION'); setCurrentPage(1); }}>
-              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Thử việc</p>
-              <p className="text-2xl font-extrabold text-amber-600 mt-1">{stats.probation}</p>
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-yellow-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('PAUSED'); setCurrentPage(1); }}>
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-yellow-500 shadow-sm p-4">
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Tạm dừng</p>
               <p className="text-2xl font-extrabold text-yellow-600 mt-1">{stats.paused}</p>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-pink-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('MATERNITY_LEAVE'); setCurrentPage(1); }}>
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-pink-500 shadow-sm p-4">
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Nghỉ thai sản</p>
               <p className="text-2xl font-extrabold text-pink-600 mt-1">{stats.maternity_leave}</p>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-red-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('INACTIVE'); setCurrentPage(1); }}>
+            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-red-500 shadow-sm p-4">
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Đã nghỉ</p>
               <p className="text-2xl font-extrabold text-red-600 mt-1">{stats.inactive}</p>
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-gray-400 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter('DEACTIVATED'); setCurrentPage(1); }}>
-              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Vô hiệu hoá</p>
-              <p className="text-2xl font-extrabold text-gray-500 mt-1">{stats.deactivated}</p>
             </div>
             <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-300 shadow-sm p-4">
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Nam</p>
@@ -1131,10 +1130,6 @@ const EmployeeList: React.FC = () => {
             <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-pink-400 shadow-sm p-4">
               <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Nữ</p>
               <p className="text-2xl font-extrabold text-pink-500 mt-1">{stats.female}</p>
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-violet-400 shadow-sm p-4">
-              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Khác</p>
-              <p className="text-2xl font-extrabold text-violet-500 mt-1">{stats.other}</p>
             </div>
           </div>
         </div>
@@ -1178,11 +1173,9 @@ const EmployeeList: React.FC = () => {
               options={[
                 { value: 'all', label: 'Tất cả trạng thái' },
                 { value: 'ACTIVE', label: 'Đang làm việc' },
-                { value: 'PROBATION', label: 'Thử việc' },
-                { value: 'PAUSED', label: 'Tạm dừng' },
-                { value: 'MATERNITY_LEAVE', label: 'Nghỉ thai sản' },
                 { value: 'INACTIVE', label: 'Đã nghỉ' },
-                { value: 'DEACTIVATED', label: 'Vô hiệu hoá' },
+                { value: 'MATERNITY_LEAVE', label: 'Nghỉ thai sản' },
+                { value: 'PAUSED', label: 'Tạm dừng' },
               ]}
               onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
             />
@@ -1200,12 +1193,14 @@ const EmployeeList: React.FC = () => {
               value={contractTypeFilter}
               options={[
                 { value: 'all', label: 'Tất cả loại hợp đồng' },
-                { value: 'PROBATION', label: 'Hợp đồng thử việc' },
-                { value: 'INTERN', label: 'Hợp đồng thực tập sinh' },
-                { value: 'COLLABORATOR', label: 'Hợp đồng cộng tác viên' },
                 { value: 'ONE_YEAR', label: 'Hợp đồng lao động 12 tháng' },
                 { value: 'TWO_YEAR', label: 'Hợp đồng lao động 24 tháng' },
-                { value: 'INDEFINITE', label: 'Hợp đồng vô thời hạn' },
+                { value: 'THREE_YEAR', label: 'Hợp đồng lao động 36 tháng' },
+                { value: 'INDEFINITE', label: 'Không xác định thời hạn' },
+                { value: 'PROBATION_1M', label: 'Thử việc 1 tháng' },
+                { value: 'PROBATION_2M', label: 'Thử việc 2 tháng' },
+                { value: 'COLLABORATOR', label: 'Cộng tác viên' },
+                { value: 'INTERN', label: 'Thực tập sinh' },
                 { value: 'SERVICE', label: 'Hợp đồng dịch vụ' },
               ]}
               onChange={(v) => { setContractTypeFilter(v); setCurrentPage(1); }}
@@ -1215,7 +1210,7 @@ const EmployeeList: React.FC = () => {
               value={expiringSoonFilter}
               options={[
                 { value: 'all', label: 'Tất cả' },
-                { value: 'expiring', label: 'Sắp hết hạn (≤ 5 ngày)' },
+                { value: 'expiring', label: 'Sắp hết hạn (≤ 7 ngày)' },
               ]}
               onChange={(v) => { setExpiringSoonFilter(v); setCurrentPage(1); }}
             />
@@ -1313,7 +1308,7 @@ const EmployeeList: React.FC = () => {
             <p className="text-lg font-medium text-gray-900">Đã xảy ra lỗi</p>
             <p className="text-gray-500 mt-1">{error}</p>
             <button 
-              onClick={() => fetchEmployees()}
+              onClick={() => fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth)}
               className="mt-4 btn-primary"
             >
               Thử lại
@@ -1398,7 +1393,7 @@ const EmployeeList: React.FC = () => {
                         <div className="flex items-center">
                           <div className="text-sm font-medium text-gray-900">{employee.full_name}</div>
                           {isExpiringSoon(employee) && (
-                            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-600" title="Sắp hết hạn hợp đồng/thử việc (≤ 5 ngày)">
+                            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-600" title="Sắp hết hạn hợp đồng/thử việc (≤ 7 ngày)">
                               ⚠️
                             </span>
                           )}
@@ -1415,7 +1410,7 @@ const EmployeeList: React.FC = () => {
                         <div className="text-sm text-gray-900">{employee.position?.title || 'Chưa phân chức vụ'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(employee.employment_status, employee.is_active)}
+                        {getStatusBadge(employee.employment_status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">

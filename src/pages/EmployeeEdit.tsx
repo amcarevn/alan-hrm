@@ -36,11 +36,9 @@ const GENDER_OPTIONS = [
 
 const EMPLOYMENT_STATUS_OPTIONS = [
   { label: 'Đang làm việc', value: 'ACTIVE' },
-  { label: 'Thử việc', value: 'PROBATION' },
   { label: 'Tạm dừng', value: 'PAUSED' },
   { label: 'Nghỉ thai sản', value: 'MATERNITY_LEAVE' },
   { label: 'Đã nghỉ', value: 'INACTIVE' },
-  { label: 'Vô hiệu hoá', value: 'DEACTIVATED' },
 ];
 
 const MARITAL_STATUS_OPTIONS = [
@@ -70,12 +68,14 @@ const BLOCK_OPTIONS = [
 ];
 
 const CONTRACT_TYPE_OPTIONS = [
-  { label: 'Hợp đồng thử việc', value: 'PROBATION' },
-  { label: 'Hợp đồng thực tập sinh', value: 'INTERN' },
-  { label: 'Hợp đồng cộng tác viên', value: 'COLLABORATOR' },
   { label: 'Hợp đồng lao động 12 tháng', value: 'ONE_YEAR' },
   { label: 'Hợp đồng lao động 24 tháng', value: 'TWO_YEAR' },
-  { label: 'Hợp đồng vô thời hạn', value: 'INDEFINITE' },
+  { label: 'Hợp đồng lao động 36 tháng', value: 'THREE_YEAR' },
+  { label: 'Không xác định thời hạn', value: 'INDEFINITE' },
+  { label: 'Thử việc 1 tháng', value: 'PROBATION_1M' },
+  { label: 'Thử việc 2 tháng', value: 'PROBATION_2M' },
+  { label: 'Cộng tác viên', value: 'COLLABORATOR' },
+  { label: 'Thực tập sinh', value: 'INTERN' },
   { label: 'Hợp đồng dịch vụ', value: 'SERVICE' },
 ];
 
@@ -349,7 +349,7 @@ const EmployeeEdit: React.FC = () => {
         allowance: e.allowance != null ? Number(e.allowance).toLocaleString('de-DE') : '',
         contract_type: (() => {
           const endDate = toDisplayDate(e.probation_end_date);
-          const isProtected = ['INACTIVE', 'PAUSED', 'MATERNITY_LEAVE', 'DEACTIVATED'].includes(e.employment_status);
+          const isProtected = ['INACTIVE', 'PAUSED', 'MATERNITY_LEAVE'].includes(e.employment_status);
           if (e.contract_type === 'PROBATION' && endDate && !isProtected) {
             const parts = endDate.match(/(\d{2})\/(\d{2})\/(\d{4})/);
             if (parts) {
@@ -479,7 +479,7 @@ const EmployeeEdit: React.FC = () => {
   // Sync contract_type và employment_status theo probation_end_date
   const syncContractAfterProbation = (next: any) => {
     if (!next.probation_end_date) return;
-    if (['INACTIVE', 'PAUSED', 'MATERNITY_LEAVE', 'DEACTIVATED'].includes(next.employment_status)) return;
+    if (['INACTIVE', 'PAUSED', 'MATERNITY_LEAVE'].includes(next.employment_status)) return;
     if (isProbationEnded(next.probation_end_date)) {
       next.contract_type = 'ONE_YEAR';
       next.employment_status = 'ACTIVE';
@@ -514,12 +514,14 @@ const EmployeeEdit: React.FC = () => {
   };
 
   const CONTRACT_TO_STATUS: Record<string, string> = {
-    PROBATION:          'PROBATION',
-    INTERN:             'PROBATION',
-    COLLABORATOR:       'PROBATION',
     ONE_YEAR:           'ACTIVE',
     TWO_YEAR:           'ACTIVE',
+    THREE_YEAR:         'ACTIVE',
     INDEFINITE:         'ACTIVE',
+    PROBATION_1M:       'ACTIVE',
+    PROBATION_2M:       'ACTIVE',
+    COLLABORATOR:       'ACTIVE',
+    INTERN:             'ACTIVE',
     SERVICE:            'ACTIVE',
     CONFIDENTIALITY:    'ACTIVE',
     COMPANY_RULES:      'ACTIVE',
@@ -533,15 +535,9 @@ const EmployeeEdit: React.FC = () => {
       // Sync employment_status theo contract_type
       if (name === 'contract_type' && value) {
         const mapped = CONTRACT_TO_STATUS[value];
-        if (mapped && !['INACTIVE', 'PAUSED', 'MATERNITY_LEAVE', 'DEACTIVATED'].includes(prev.employment_status)) {
+        if (mapped && !['INACTIVE', 'PAUSED', 'MATERNITY_LEAVE'].includes(prev.employment_status)) {
           next.employment_status = mapped;
-          next.is_active = mapped !== 'INACTIVE' && mapped !== 'PAUSED' && mapped !== 'MATERNITY_LEAVE';
         }
-      }
-
-      if (name === 'employment_status') {
-        if (value === 'INACTIVE' || value === 'PAUSED' || value === 'MATERNITY_LEAVE') next.is_active = false;
-        else if (value === 'ACTIVE' || value === 'PROBATION') next.is_active = true;
       }
       return next;
     });
@@ -914,20 +910,6 @@ const EmployeeEdit: React.FC = () => {
             />
 
             <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-colors ${formData.is_active ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100' : 'bg-red-50 border-red-200 hover:bg-red-100'}`}>
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
-                  checked={formData.is_active}
-                  onChange={(e) => handleSelect('is_active', e.target.checked)}
-                />
-                <div>
-                  <p className={`text-sm font-medium ${formData.is_active ? 'text-emerald-700' : 'text-red-700'}`}>
-                    {formData.is_active ? 'Đang hoạt động' : 'Đã vô hiệu hoá'}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">Bỏ tick để vô hiệu hoá tài khoản nhân viên này</p>
-                </div>
-              </label>
               <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 cursor-pointer hover:bg-primary-50 transition-colors">
                 <input
                   type="checkbox"
