@@ -534,7 +534,7 @@ export const socialInsuranceAPI = {
     await managementApi.delete(`/api-hrm/social-insurance/${id}/`);
   },
 
-  stats: async (): Promise<{ total: number; ACTIVE: number; RESIGNED: number; SUSPENDED: number }> => {
+  stats: async (): Promise<{ total: number; ACTIVE: number; RESIGNED: number; SUSPENDED: number; total_employee_contribution: number; total_employer_contribution: number; total_contribution: number }> => {
     const response = await managementApi.get('/api-hrm/social-insurance/stats/');
     return response.data;
   },

@@ -50,16 +50,18 @@ const StatusBadge: React.FC<{ status: SocialInsuranceStatus; label: string }> = 
 };
 
 // ── Format currency ───────────────────────────────────────────
-const formatCurrency = (val: string | null) => {
-  if (!val) return '—';
+const EmptyCell = () => <span className="text-gray-400 italic">Chưa có dữ liệu</span>;
+
+const formatCurrency = (val: string | null): string | React.ReactElement => {
+  if (!val) return <EmptyCell />;
   return Number(val).toLocaleString('vi-VN') + ' ₫';
 };
-const formatDate = (val: string | null) => {
-  if (!val) return '—';
+const formatDate = (val: string | null): string | React.ReactElement => {
+  if (!val) return <EmptyCell />;
   return new Date(val).toLocaleDateString('vi-VN');
 };
-const formatRate = (val: string | null) => {
-  if (!val) return '—';
+const formatRate = (val: string | null): string | React.ReactElement => {
+  if (!val) return <EmptyCell />;
   return `${parseFloat(val)}%`;
 };
 
@@ -69,11 +71,11 @@ const DetailModal: React.FC<{
   onClose: () => void;
   onEdit: () => void;
 }> = ({ item, onClose, onEdit }) => {
-  const Row: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => (
-    <div className="flex items-baseline justify-between py-2.5 border-b border-gray-100 last:border-0">
+  const Row: React.FC<{ label: string; value?: string | React.ReactElement | null }> = ({ label, value }) => (
+    <div className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0">
       <span className="text-xs text-gray-400 shrink-0 mr-3">{label}</span>
-      <span className={`text-sm text-right ${value ? 'font-medium text-gray-800' : 'text-gray-300 italic'}`}>
-        {value || 'Chưa có'}
+      <span className={`text-sm text-right ${value ? 'font-medium text-gray-800' : ''}`}>
+        {value || <EmptyCell />}
       </span>
     </div>
   );
@@ -105,9 +107,11 @@ const DetailModal: React.FC<{
           <Row label="Pháp nhân đóng BHXH" value={item.legal_entity} />
           <Row label="Ngày bắt đầu"     value={formatDate(item.start_date)} />
           <Row label="Ngày dừng"        value={formatDate(item.end_date)} />
-          <Row label="Lương đóng BHXH"  value={formatCurrency(item.salary_base)} />
-          <Row label="Tỷ lệ đóng (%)"   value={formatRate(item.contribution_rate)} />
-          <Row label="Ghi chú"          value={item.note} />
+          <Row label="Lương đóng BHXH"       value={formatCurrency(item.salary_base)} />
+          <Row label="Tỷ lệ NLĐ đóng (%)"   value={formatRate(item.employee_rate)} />
+          <Row label="Tỷ lệ DN đóng (%)"    value={formatRate(item.employer_rate)} />
+          <Row label="Tổng tỷ lệ đóng (%)"  value={formatRate(item.contribution_rate)} />
+          <Row label="Ghi chú"              value={item.note} />
         </div>
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
           <button onClick={onClose} className="btn-secondary">Đóng</button>
@@ -140,6 +144,8 @@ const EMPTY_FORM: SocialInsuranceCreateData = {
   start_date: '',
   end_date: '',
   salary_base: '',
+  employee_rate: '',
+  employer_rate: '',
   contribution_rate: '',
   status: 'ACTIVE',
   note: '',
@@ -169,6 +175,8 @@ const FormModal: React.FC<{
           start_date: initial.start_date ?? '',
           end_date: initial.end_date ?? '',
           salary_base: initSalaryRaw,
+          employee_rate: initial.employee_rate ? String(parseFloat(initial.employee_rate)) : '',
+          employer_rate: initial.employer_rate ? String(parseFloat(initial.employer_rate)) : '',
           contribution_rate: initial.contribution_rate ? String(parseFloat(initial.contribution_rate)) : '',
           status: initial.status,
           note: initial.note ?? '',
@@ -213,6 +221,21 @@ const FormModal: React.FC<{
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  const computeTotal = (er: string, dr: string) => {
+    const e = parseFloat(er);
+    const d = parseFloat(dr);
+    const eVal = isNaN(e) ? 0 : e;
+    const dVal = isNaN(d) ? 0 : d;
+    return String(eVal + dVal);
+  };
+
+  const totalRate = computeTotal(form.employee_rate || '', form.employer_rate || '');
+
+  useEffect(() => {
+    const total = computeTotal(form.employee_rate || '', form.employer_rate || '');
+    setForm(prev => ({ ...prev, contribution_rate: total }));
+  }, [form.employee_rate, form.employer_rate]);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});
@@ -222,7 +245,6 @@ const FormModal: React.FC<{
     if (!form.employee.trim())          errs.employee        = 'Vui lòng chọn nhân viên';
     if (!form.insurance_number?.trim()) errs.insurance_number = 'Vui lòng nhập mã số BHXH';
     if (!form.legal_entity?.trim())     errs.legal_entity    = 'Vui lòng chọn pháp nhân';
-    if (!form.start_date)               errs.start_date      = 'Vui lòng chọn ngày bắt đầu';
     if (!form.salary_base)              errs.salary_base     = 'Vui lòng nhập lương đóng BHXH';
     return errs;
   };
@@ -255,6 +277,8 @@ const FormModal: React.FC<{
         start_date: form.start_date || undefined,
         end_date: form.end_date || undefined,
         salary_base: form.salary_base || undefined,
+        employee_rate: form.employee_rate !== '' ? form.employee_rate : '0',
+        employer_rate: form.employer_rate !== '' ? form.employer_rate : '0',
         contribution_rate: form.contribution_rate || undefined,
         note: form.note || undefined,
       };
@@ -367,7 +391,7 @@ const FormModal: React.FC<{
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label={<>Ngày bắt đầu <span className="text-red-500">*</span></>} error={fieldErrors.start_date}>
+            <Field label="Ngày bắt đầu" error={fieldErrors.start_date}>
               <input
                 type="date"
                 value={form.start_date}
@@ -380,21 +404,50 @@ const FormModal: React.FC<{
             </Field>
           </div>
 
+          <Field label={<>Lương đóng BHXH (₫) <span className="text-red-500">*</span></>} error={fieldErrors.salary_base}>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={salaryDisplay}
+              onChange={e => { handleSalaryChange(e); clearFieldError('salary_base'); }}
+              className={`input-field ${fieldErrors.salary_base ? 'border-red-400 focus:ring-red-300' : ''}`}
+              placeholder="4.000.000"
+            />
+          </Field>
+
           <div className="grid grid-cols-2 gap-4">
-            <Field label={<>Lương đóng BHXH (₫) <span className="text-red-500">*</span></>} error={fieldErrors.salary_base}>
+            <Field label="Tỷ lệ NLĐ đóng (%)">
               <input
                 type="text"
-                inputMode="numeric"
-                value={salaryDisplay}
-                onChange={e => { handleSalaryChange(e); clearFieldError('salary_base'); }}
-                className={`input-field ${fieldErrors.salary_base ? 'border-red-400 focus:ring-red-300' : ''}`}
-                placeholder="4.000.000"
+                inputMode="decimal"
+                value={form.employee_rate}
+                onChange={e => set('employee_rate', e.target.value.replace(',', '.'))}
+                className="input-field"
+                placeholder="10.5"
               />
             </Field>
-            <Field label="Tỷ lệ đóng (%)">
-              <input type="number" value={form.contribution_rate} onChange={e => set('contribution_rate', e.target.value)} className="input-field" placeholder="0.00" step="0.01" min="0" max="100" />
+            <Field label="Tỷ lệ DN đóng (%)">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={form.employer_rate}
+                onChange={e => set('employer_rate', e.target.value.replace(',', '.'))}
+                className="input-field"
+                placeholder="21.5"
+              />
             </Field>
           </div>
+
+          <Field label="Tổng tỷ lệ đóng (%)">
+            <div className={`input-field bg-gray-50 text-gray-500 cursor-not-allowed flex items-center justify-between ${totalRate ? 'font-semibold text-gray-800' : ''}`}>
+              <span>{totalRate ? `${totalRate}%` : <span className="text-gray-400 italic text-sm">Tự động tính từ NLĐ + DN</span>}</span>
+              {totalRate && (
+                <span className="text-xs text-gray-400 font-normal">
+                  {form.employee_rate || '0'}% + {form.employer_rate || '0'}%
+                </span>
+              )}
+            </div>
+          </Field>
 
           <Field label="Ghi chú">
             <textarea value={form.note} onChange={e => set('note', e.target.value)} className="input-field" rows={2} placeholder="Ghi chú..." />
@@ -703,7 +756,7 @@ const SocialInsuranceList: React.FC = () => {
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  const tableHeaders = ['Mã NV', 'Tên nhân viên', 'Mã số BHXH', 'Pháp nhân', 'Ngày bắt đầu', 'Ngày dừng', 'Lương đóng', 'Tỷ lệ đóng %', 'Trạng thái', 'Ghi chú', 'Thao tác'];
+  const tableHeaders = ['Mã NV', 'Tên nhân viên', 'Mã số BHXH', 'Pháp nhân', 'Ngày bắt đầu', 'Ngày dừng', 'Lương đóng', 'Tỷ lệ NLĐ (%)', 'Tỷ lệ DN (%)', 'Tổng tỷ lệ (%)', 'Trạng thái', 'Ghi chú', 'Thao tác'];
 
   return (
     <div className="space-y-6">
@@ -859,18 +912,20 @@ const SocialInsuranceList: React.FC = () => {
                   ) : (
                     items.map(item => (
                       <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="table-cell font-medium text-primary-700">{item.employee_code}</td>
-                        <td className="table-cell font-medium">{item.employee_name}</td>
-                        <td className="table-cell">{item.insurance_number || '—'}</td>
-                        <td className="table-cell max-w-[160px] truncate">{item.legal_entity || '—'}</td>
+                        <td className="table-cell font-semibold text-gray-900">{item.employee_code || <EmptyCell />}</td>
+                        <td className="table-cell font-medium text-gray-900">{item.employee_name || <EmptyCell />}</td>
+                        <td className="table-cell">{item.insurance_number || <EmptyCell />}</td>
+                        <td className="table-cell max-w-[160px] truncate">{item.legal_entity || <EmptyCell />}</td>
                         <td className="table-cell whitespace-nowrap">{formatDate(item.start_date)}</td>
                         <td className="table-cell whitespace-nowrap">{formatDate(item.end_date)}</td>
                         <td className="table-cell whitespace-nowrap">{formatCurrency(item.salary_base)}</td>
+                        <td className="table-cell">{formatRate(item.employee_rate)}</td>
+                        <td className="table-cell">{formatRate(item.employer_rate)}</td>
                         <td className="table-cell">{formatRate(item.contribution_rate)}</td>
                         <td className="table-cell">
                           <StatusBadge status={item.status} label={item.status_display} />
                         </td>
-                        <td className="table-cell max-w-[160px] truncate">{item.note || '—'}</td>
+                        <td className="table-cell max-w-[160px] truncate">{item.note || <EmptyCell />}</td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center gap-1.5">
                             <button

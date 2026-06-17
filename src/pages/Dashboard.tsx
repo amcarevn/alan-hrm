@@ -13,6 +13,7 @@ import {
   ChartPieIcon,
   BuildingOfficeIcon,
   LockClosedIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 import {
   PieChart,
@@ -30,6 +31,7 @@ import {
   Line,
 } from 'recharts';
 import { dashboardAPI, employeesAPI, managementApi } from '@/utils/api';
+import { socialInsuranceAPI } from '@/utils/api/hrm.api';
 import type { Employee } from '@/utils/api/types';
 import { formatNumber, formatVND, formatVNDShort } from '../utils/formatUtils';
 import { useAuth } from '../contexts/AuthContext';
@@ -479,6 +481,10 @@ const Dashboard = () => {
   const [legalEntityGroups, setLegalEntityGroups] = useState<{ label: string; value: string; employees: Employee[] }[]>([]);
   const [legalEntityLoading, setLegalEntityLoading] = useState(false);
   const [totalBasicSalary, setTotalBasicSalary] = useState(0);
+  const [totalEmployeeInsurance, setTotalEmployeeInsurance] = useState(0);
+  const [totalEmployerInsurance, setTotalEmployerInsurance] = useState(0);
+  const [totalInsurance, setTotalInsurance] = useState(0);
+  const [totalInsuredEmployees, setTotalInsuredEmployees] = useState(0);
   const [employeeCodeInput, setEmployeeCodeInput] = useState('');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | ''>('');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
@@ -519,6 +525,14 @@ const Dashboard = () => {
       .then(setStats)
       .catch((err: any) => setError(err.message || 'Lỗi khi tải dashboard'))
       .finally(() => setLoading(false));
+    socialInsuranceAPI.stats()
+      .then((s) => {
+        setTotalEmployeeInsurance(s.total_employee_contribution);
+        setTotalEmployerInsurance(s.total_employer_contribution);
+        setTotalInsurance(s.total_contribution);
+        setTotalInsuredEmployees(s.ACTIVE);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -737,10 +751,13 @@ const Dashboard = () => {
       {/* ── Tab: Tổng quan ── */}
       {activeTab === 'overview' && (
         <div className="flex flex-col gap-5 flex-1">
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard name="Tổng nhân viên" rawValue={stats.employee_stats.active} formatter={formatNumber}
               subtext="Đang hoạt động"
               icon={UsersIcon} iconBg="bg-primary-100 text-primary-600" trend={stats.trends.employee_growth} />
+            <StatCard name="Tổng lương cứng nhân sự" rawValue={totalBasicSalary} formatter={formatCurrency}
+              subtext=""
+              icon={CurrencyDollarIcon} iconBg="bg-primary-100 text-primary-600" trend={null} />
             <StatCard name="Tài sản đang dùng" rawValue={stats.asset_stats.in_use} formatter={formatNumber}
               subtext={`${formatNumber(stats.asset_stats.total)} tổng tài sản`}
               icon={ComputerDesktopIcon} iconBg="bg-emerald-100 text-emerald-600" trend={stats.trends.asset_growth} />
@@ -748,11 +765,41 @@ const Dashboard = () => {
               subtext={`${formatNumber(stats.asset_stats.current_assignments)} đang gán`}
               icon={CurrencyDollarIcon} iconBg="bg-violet-100 text-violet-600" trend={null} />
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <StatCard name="Tổng lương cứng nhân sự" rawValue={totalBasicSalary} formatter={formatCurrency}
-              subtext={`${formatNumber(stats.employee_stats.active)} nhân viên đang làm & thử việc`}
-              icon={CurrencyDollarIcon} iconBg="bg-emerald-100 text-emerald-600" trend={null} />
-          </div>
+          {(() => {
+            return (
+              <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-5">
+                <div className="flex flex-col lg:flex-row lg:items-center gap-5">
+                  {/* Tổng chi phí */}
+                  <div className="flex items-start gap-3 lg:min-w-[280px]">
+                    <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <ShieldCheckIcon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-gray-600 uppercase tracking-wide">Chi phí BHXH / tháng</p>
+                      <p className="text-2xl font-extrabold text-gray-900 tracking-tight mt-0.5">{formatCurrency(totalInsurance)}</p>
+                      <p className="text-xs font-semibold text-gray-600 mt-0.5">{formatNumber(totalInsuredEmployees)} nhân viên đang tham gia</p>
+                    </div>
+                  </div>
+
+                  <div className="hidden lg:block w-px h-14 bg-gray-100 flex-shrink-0" />
+
+                  {/* Breakdown */}
+                  <div className="flex-1 flex flex-col gap-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-primary-50 rounded-xl p-3">
+                        <p className="text-xs font-bold text-primary-700 uppercase tracking-wide mb-1">Người lao động</p>
+                        <p className="text-base font-bold text-gray-900 truncate">{formatCurrency(totalEmployeeInsurance)}</p>
+                        </div>
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Doanh nghiệp</p>
+                        <p className="text-base font-bold text-gray-900 truncate">{formatCurrency(totalEmployerInsurance)}</p>
+                        </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           {legalEntityLoading ? (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-10">
               <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary-600" />
@@ -833,8 +880,39 @@ const Dashboard = () => {
               icon={UserGroupIcon} iconBg="bg-emerald-100 text-emerald-600" trend={null} />
             <StatCard name="Tổng lương cứng" rawValue={totalBasicSalary} formatter={formatCurrency}
               subtext={`${formatNumber(stats.employee_stats.active)} nhân viên đang hoạt động`}
-              icon={CurrencyDollarIcon} iconBg="bg-violet-100 text-violet-600" trend={null} />
+              icon={CurrencyDollarIcon} iconBg="bg-primary-100 text-primary-600" trend={null} />
           </div>
+          {(() => {
+            return (
+              <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-5">
+                <div className="flex flex-col lg:flex-row lg:items-center gap-5">
+                  <div className="flex items-start gap-3 lg:min-w-[280px]">
+                    <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <ShieldCheckIcon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-gray-600 uppercase tracking-wide">Chi phí BHXH / tháng</p>
+                      <p className="text-2xl font-extrabold text-gray-900 tracking-tight mt-0.5">{formatCurrency(totalInsurance)}</p>
+                      <p className="text-xs font-semibold text-gray-600 mt-0.5">{formatNumber(totalInsuredEmployees)} nhân viên đang tham gia</p>
+                    </div>
+                  </div>
+                  <div className="hidden lg:block w-px h-14 bg-gray-100 flex-shrink-0" />
+                  <div className="flex-1 flex flex-col gap-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-primary-50 rounded-xl p-3">
+                        <p className="text-xs font-bold text-primary-700 uppercase tracking-wide mb-1">Người lao động</p>
+                        <p className="text-base font-bold text-gray-900 truncate">{formatCurrency(totalEmployeeInsurance)}</p>
+                        </div>
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Doanh nghiệp</p>
+                        <p className="text-base font-bold text-gray-900 truncate">{formatCurrency(totalEmployerInsurance)}</p>
+                        </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <DonutCard title="Phân bố giới tính" data={genderData}
               centerValue={stats.employee_stats.active} centerLabel="Nhân viên" />
