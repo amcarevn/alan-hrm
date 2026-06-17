@@ -1236,6 +1236,7 @@ const EmployeeList: React.FC = () => {
               value={legalEntityFilter}
               options={[
                 { value: 'all', label: 'Tất cả pháp nhân' },
+                { value: '__none__', label: 'Chưa gắn pháp nhân' },
                 ...legalEntities.map((e) => ({ value: e.value, label: e.label })),
               ]}
               onChange={(v) => { setLegalEntityFilter(v); setCurrentPage(1); }}
