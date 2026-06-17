@@ -4,7 +4,6 @@ import {
   CurrencyDollarIcon,
   ArrowUpIcon,
   ArrowDownIcon,
-  UserPlusIcon,
   UsersIcon,
   ComputerDesktopIcon,
   WrenchScrewdriverIcon,
@@ -30,7 +29,9 @@ import {
   LineChart,
   Line,
 } from 'recharts';
-import { dashboardAPI } from '@/utils/api';
+import { dashboardAPI, employeesAPI, managementApi } from '@/utils/api';
+import type { Employee } from '@/utils/api/types';
+import { formatNumber, formatVND, formatVNDShort } from '../utils/formatUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { salaryService, type SalaryListResponse } from '../services/salary.service';
 import HRStats from '../components/HRStats';
@@ -42,7 +43,8 @@ interface HRMDashboardStats {
   employee_stats: {
     total: number;
     active: number;
-    probation: number;
+    paused: number;
+    maternity_leave: number;
     inactive: number;
     new_last_30_days: number;
     recent_hires: number;
@@ -68,21 +70,8 @@ const CHART_COLORS = [
   '#ec4899', '#06b6d4', '#f97316', '#84cc16',
 ];
 
-const formatNumber = (n: number) =>
-  n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-const formatCurrency = (n: number) => {
-  const value = Number(n || 0);
-  if (Math.abs(value) >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(2)} tỷ`;
-  }
-  if (Math.abs(value) >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)} triệu`;
-  }
-  return `${formatNumber(Math.round(value))} VNĐ`;
-};
-
-const formatCurrencyFull = (n: number) => `${formatNumber(Math.round(Number(n || 0)))} VNĐ`;
+const formatCurrency = formatVND;
+const formatCurrencyFull = formatVND;
 
 const formatDate = (d: Date | string) => {
   const date = typeof d === 'string' ? new Date(d) : d;
@@ -487,6 +476,9 @@ const Dashboard = () => {
   const [stats, setStats] = useState<HRMDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [legalEntityGroups, setLegalEntityGroups] = useState<{ label: string; value: string; employees: Employee[] }[]>([]);
+  const [legalEntityLoading, setLegalEntityLoading] = useState(false);
+  const [totalBasicSalary, setTotalBasicSalary] = useState(0);
   const [employeeCodeInput, setEmployeeCodeInput] = useState('');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | ''>('');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
@@ -527,6 +519,32 @@ const Dashboard = () => {
       .then(setStats)
       .catch((err: any) => setError(err.message || 'Lỗi khi tải dashboard'))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    setLegalEntityLoading(true);
+    Promise.all([
+      managementApi.get<{ value: string; label: string }[]>('/api/v1/salary/records/legal-entities/'),
+      employeesAPI.list({ employment_status: 'ACTIVE', page_size: 1000 }),
+    ])
+      .then(([leRes, activeRes]) => {
+        const entities: { value: string; label: string }[] = Array.isArray(leRes.data) ? leRes.data : [];
+        const allEmployees = activeRes.results;
+        const grouped = entities.map((le) => ({
+          label: le.label,
+          value: le.value,
+          employees: allEmployees.filter((e) => e.subsidiary_legal_entity === le.value),
+        }));
+        const assignedIds = new Set(grouped.flatMap((g) => g.employees.map((e) => e.id)));
+        const unassigned = allEmployees.filter((e) => !assignedIds.has(e.id));
+        if (unassigned.length > 0) {
+          grouped.push({ label: 'Chưa phân pháp nhân', value: '__none__', employees: unassigned });
+        }
+        setLegalEntityGroups(grouped);
+        setTotalBasicSalary(allEmployees.reduce((sum, e) => sum + Number(e.basic_salary ?? 0), 0));
+      })
+      .catch(() => {})
+      .finally(() => setLegalEntityLoading(false));
   }, []);
 
   // Auto-fetch salary analytics when BOD user views employee tab
@@ -719,13 +737,10 @@ const Dashboard = () => {
       {/* ── Tab: Tổng quan ── */}
       {activeTab === 'overview' && (
         <div className="flex flex-col gap-5 flex-1">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard name="Tổng nhân viên" rawValue={stats.employee_stats.active + stats.employee_stats.probation} formatter={formatNumber}
-              subtext=""
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <StatCard name="Tổng nhân viên" rawValue={stats.employee_stats.active} formatter={formatNumber}
+              subtext="Đang hoạt động"
               icon={UsersIcon} iconBg="bg-primary-100 text-primary-600" trend={stats.trends.employee_growth} />
-            <StatCard name="Thử việc" rawValue={stats.employee_stats.probation} formatter={formatNumber}
-              subtext=""
-              icon={UserPlusIcon} iconBg="bg-amber-100 text-amber-600" trend={null} />
             <StatCard name="Tài sản đang dùng" rawValue={stats.asset_stats.in_use} formatter={formatNumber}
               subtext={`${formatNumber(stats.asset_stats.total)} tổng tài sản`}
               icon={ComputerDesktopIcon} iconBg="bg-emerald-100 text-emerald-600" trend={stats.trends.asset_growth} />
@@ -733,8 +748,75 @@ const Dashboard = () => {
               subtext={`${formatNumber(stats.asset_stats.current_assignments)} đang gán`}
               icon={CurrencyDollarIcon} iconBg="bg-violet-100 text-violet-600" trend={null} />
           </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <StatCard name="Tổng lương cứng nhân sự" rawValue={totalBasicSalary} formatter={formatCurrency}
+              subtext={`${formatNumber(stats.employee_stats.active)} nhân viên đang làm & thử việc`}
+              icon={CurrencyDollarIcon} iconBg="bg-emerald-100 text-emerald-600" trend={null} />
+          </div>
+          {legalEntityLoading ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-10">
+              <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary-600" />
+            </div>
+          ) : legalEntityGroups.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <DonutCard
+                title="Nhân viên theo Pháp nhân"
+                sub="Đang làm việc & thử việc"
+                data={legalEntityGroups.map((g, i) => ({ name: g.label, value: g.employees.length, color: CHART_COLORS[i % CHART_COLORS.length] }))}
+                centerValue={legalEntityGroups.reduce((s, g) => s + g.employees.length, 0)}
+                centerLabel="Nhân viên"
+              />
+              <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-5">
+                <div className="mb-4">
+                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <BuildingOfficeIcon className="h-4 w-4 text-primary-600" />
+                    Tổng lương cứng theo Pháp nhân
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Đang làm việc & thử việc</p>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-gray-100">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50 border-b border-gray-100">
+                      <tr>
+                        <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-gray-600">Pháp nhân</th>
+                        <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-gray-600">Nhân viên</th>
+                        <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-gray-600">Tổng lương cứng</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {legalEntityGroups.map((g, i) => {
+                        const salary = g.employees.reduce((s, e) => s + Number(e.basic_salary ?? 0), 0);
+                        return (
+                          <tr key={g.value} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}>
+                            <td className="px-4 py-2.5 font-medium text-gray-800">
+                              <div className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                                {g.label}
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">{g.employees.length}</td>
+                            <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-primary-700">{formatCurrency(salary)}</td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="bg-primary-50 border-t-2 border-primary-200">
+                        <td className="px-4 py-2.5 font-bold text-gray-900">Tổng cộng</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums font-bold text-gray-900">
+                          {legalEntityGroups.reduce((s, g) => s + g.employees.length, 0)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular-nums font-bold text-primary-800">
+                          {formatCurrency(legalEntityGroups.reduce((s, g) => s + g.employees.reduce((ss, e) => ss + Number(e.basic_salary ?? 0), 0), 0))}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex-1">
-            <HRStats />
+            <HRStats employees={legalEntityGroups.flatMap(g => g.employees)} />
           </div>
         </div>
       )}
@@ -742,32 +824,91 @@ const Dashboard = () => {
       {/* ── Tab: Nhân viên ── */}
       {activeTab === 'employee' && (
         <div className="space-y-5">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard name="Đang làm việc" rawValue={stats.employee_stats.active} formatter={formatNumber}
-              subtext={`Tổng ${formatNumber(stats.employee_stats.active + stats.employee_stats.probation)} nhân viên`}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <StatCard name="Đang hoạt động" rawValue={stats.employee_stats.active} formatter={formatNumber}
+              subtext={`${formatNumber(stats.employee_stats.new_last_30_days)} mới trong 30 ngày`}
               icon={UsersIcon} iconBg="bg-primary-100 text-primary-600" trend={stats.trends.employee_growth} />
-            <StatCard name="Thử việc" rawValue={stats.employee_stats.probation} formatter={formatNumber}
-              subtext={`${formatNumber(stats.employee_stats.new_last_30_days)} mới / 30 ngày`}
-              icon={UserPlusIcon} iconBg="bg-amber-100 text-amber-600" trend={null} />
             <StatCard name="Mới tuyển dụng" rawValue={stats.employee_stats.recent_hires} formatter={formatNumber}
               subtext="Trong 30 ngày gần nhất"
               icon={UserGroupIcon} iconBg="bg-emerald-100 text-emerald-600" trend={null} />
-            <StatCard name="Tổng cộng" rawValue={stats.employee_stats.active + stats.employee_stats.probation} formatter={formatNumber}
-              subtext="Đang hoạt động"
-              icon={UserGroupIcon} iconBg="bg-violet-100 text-violet-600" trend={null} />
+            <StatCard name="Tổng lương cứng" rawValue={totalBasicSalary} formatter={formatCurrency}
+              subtext={`${formatNumber(stats.employee_stats.active)} nhân viên đang hoạt động`}
+              icon={CurrencyDollarIcon} iconBg="bg-violet-100 text-violet-600" trend={null} />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <DonutCard title="Phân bố giới tính" data={genderData}
-              centerValue={stats.employee_stats.active + stats.employee_stats.probation} centerLabel="Nhân viên" />
+              centerValue={stats.employee_stats.active} centerLabel="Nhân viên" />
             <DonutCard title="Tóm tắt phòng ban" sub="Top 5 phòng ban" data={deptDonutData}
-              centerValue={stats.employee_stats.active + stats.employee_stats.probation} centerLabel="Đang làm & TV" />
+              centerValue={stats.employee_stats.active} centerLabel="Đang làm & TV" />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <DonutCard title="Phân bố nhân sự theo phòng ban" sub="Top 6 phòng ban" data={deptBarData}
-              centerValue={stats.employee_stats.active + stats.employee_stats.probation} centerLabel="Tổng NV" />
+              centerValue={stats.employee_stats.active} centerLabel="Tổng NV" />
             <DonutCard title="Hoạt động gần đây" sub="7 ngày qua" data={safeActivityData}
               centerValue={totalActivities} centerLabel="Hoạt động" />
           </div>
+
+          {legalEntityLoading ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-10">
+              <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary-600" />
+            </div>
+          ) : legalEntityGroups.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <DonutCard
+                title="Nhân viên theo Pháp nhân"
+                sub="Đang làm việc & thử việc"
+                data={legalEntityGroups.map((g, i) => ({ name: g.label, value: g.employees.length, color: CHART_COLORS[i % CHART_COLORS.length] }))}
+                centerValue={legalEntityGroups.reduce((s, g) => s + g.employees.length, 0)}
+                centerLabel="Nhân viên"
+              />
+              <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-5">
+                <div className="mb-4">
+                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <BuildingOfficeIcon className="h-4 w-4 text-primary-600" />
+                    Tổng lương cứng theo Pháp nhân
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Đang làm việc & thử việc</p>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-gray-100">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50 border-b border-gray-100">
+                      <tr>
+                        <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-gray-600">Pháp nhân</th>
+                        <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-gray-600">Nhân viên</th>
+                        <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-gray-600">Tổng lương cứng</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {legalEntityGroups.map((g, i) => {
+                        const salary = g.employees.reduce((s, e) => s + Number(e.basic_salary ?? 0), 0);
+                        return (
+                          <tr key={g.value} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}>
+                            <td className="px-4 py-2.5 font-medium text-gray-800">
+                              <div className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                                {g.label}
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">{g.employees.length}</td>
+                            <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-primary-700">{formatCurrency(salary)}</td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="bg-primary-50 border-t-2 border-primary-200">
+                        <td className="px-4 py-2.5 font-bold text-gray-900">Tổng cộng</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums font-bold text-gray-900">
+                          {legalEntityGroups.reduce((s, g) => s + g.employees.length, 0)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular-nums font-bold text-primary-800">
+                          {formatCurrency(legalEntityGroups.reduce((s, g) => s + g.employees.reduce((ss, e) => ss + Number(e.basic_salary ?? 0), 0), 0))}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
           {isBod ? (
             <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-5 space-y-4">
