@@ -1076,7 +1076,9 @@ export interface SocialInsurance {
   start_date: string | null;
   end_date: string | null;
   salary_base: string | null;
-  contribution_rate: string | null;
+  employee_rate: string | null;
+  employer_rate: string | null;
+  contribution_rate: string | null; // auto = employee_rate + employer_rate
   status: SocialInsuranceStatus;
   status_display: string;
   note: string | null;
@@ -1092,6 +1094,8 @@ export interface SocialInsuranceCreateData {
   start_date?: string;
   end_date?: string;
   salary_base?: string;
+  employee_rate?: string;
+  employer_rate?: string;
   contribution_rate?: string;
   status: SocialInsuranceStatus;
   note?: string;
