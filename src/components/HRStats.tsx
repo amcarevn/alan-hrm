@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { dashboardAPI } from '../utils/api';
+import type { Employee } from '../utils/api/types';
 import { usePieAnimation } from '../hooks/usePieAnimation';
 import { AnimatedNum } from './AnimatedNum';
 import { DonutCenter } from './DonutCenter';
+import { formatNumber, formatVND } from '../utils/formatUtils';
 
-const formatNumber = (n: number) =>
-  n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+const formatSalary = (n: number) => n === 0 ? '—' : formatVND(n);
+
 import {
   BuildingOffice2Icon,
   EllipsisHorizontalIcon,
@@ -20,7 +22,6 @@ interface HRStatsData {
   employee_stats: {
     total: number;
     active: number;
-    probation: number;
     inactive: number;
     new_last_30_days: number;
     recent_hires: number;
@@ -36,16 +37,15 @@ interface HRStatsData {
   trends: { employee_growth: number; asset_growth: number };
 }
 
-// Bảng màu chuẩn từ design system /hrm-ui
 const CHART_COLORS = [
-  '#1B65B8', // primary-500
-  '#10b981', // emerald-500
-  '#f59e0b', // amber-500
-  '#8b5cf6', // violet-500
-  '#ec4899', // pink-500
-  '#06b6d4', // cyan-500
-  '#f97316', // orange-500
-  '#84cc16', // lime-500
+  '#1B65B8',
+  '#10b981',
+  '#f59e0b',
+  '#8b5cf6',
+  '#ec4899',
+  '#06b6d4',
+  '#f97316',
+  '#84cc16',
 ];
 
 const CustomTooltip = ({ active, payload }: any) => {
@@ -60,37 +60,44 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 const DeptMiniCard = ({
-  dept, idx, active,
+  dept, idx, active, color, totalSalary,
 }: {
   dept: { id: number; name: string; employee_count: number };
   idx: number;
   active: number;
+  color: string;
+  totalSalary: number;
 }) => {
   const p = active > 0 ? (dept.employee_count / active) * 100 : 0;
   const isTop = idx === 0;
   const isGood = p >= 2;
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ borderLeft: '4px solid #1B65B8' }}>
+    <div
+      className="bg-white rounded-2xl border border-gray-100 p-4"
+      style={{ borderLeft: `4px solid ${color}` }}
+    >
       <div className="flex items-start justify-between mb-2">
         <span className="text-[11px] font-semibold text-gray-600 truncate max-w-[90px]">{dept.name}</span>
         <div className="flex gap-0.5 flex-shrink-0">
-          {[0,1,2].map(i => (
+          {[0, 1, 2].map(i => (
             <span key={i} className="h-1.5 w-1.5 rounded-full"
-              style={{ backgroundColor: '#1B65B8', opacity: 0.3 + i * 0.2 }} />
+              style={{ backgroundColor: color, opacity: 0.3 + i * 0.2 }} />
           ))}
         </div>
       </div>
-      <p className="text-3xl font-extrabold text-gray-800 tracking-tight leading-none mb-1">
-        <AnimatedNum value={dept.employee_count} />
-      </p>
-      <div className="flex items-center gap-1.5">
-        <span className="text-[11px] text-gray-400">Nhân viên</span>
+      <div className="flex items-baseline gap-1.5 mb-0.5">
+        <p className="text-3xl font-extrabold text-gray-800 tracking-tight leading-none">
+          <AnimatedNum value={dept.employee_count} />
+        </p>
+        <span className="text-[11px] font-medium text-gray-400">nhân viên</span>
+      </div>
+      <div className="flex items-center gap-1.5 mb-2">
         {isTop ? (
           <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600">
             <ArrowUpIcon className="h-2.5 w-2.5" />{p.toFixed(1)}%
           </span>
         ) : isGood ? (
-          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary-600">
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold" style={{ color }}>
             <ArrowUpIcon className="h-2.5 w-2.5" />{p.toFixed(1)}%
           </span>
         ) : (
@@ -98,12 +105,25 @@ const DeptMiniCard = ({
             <MinusIcon className="h-2.5 w-2.5" />{p.toFixed(1)}%
           </span>
         )}
+        <span className="text-[10px] text-gray-300">tổng NV</span>
       </div>
+      {totalSalary > 0 && (
+        <div className="border-t pt-1.5" style={{ borderColor: `${color}30` }}>
+          <p className="text-[10px] font-medium text-gray-400 mb-0.5">Lương cứng</p>
+          <p className="text-[11px] font-extrabold truncate" style={{ color }}>
+            {formatSalary(totalSalary)}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
 
-const HRStats: React.FC = () => {
+interface HRStatsProps {
+  employees?: Employee[];
+}
+
+const HRStats: React.FC<HRStatsProps> = ({ employees = [] }) => {
   const [stats, setStats] = useState<HRStatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
@@ -121,10 +141,18 @@ const HRStats: React.FC = () => {
     }
   };
 
+  // Tính tổng basic_salary theo department id
+  const salaryByDept = employees.reduce<Record<number, number>>((acc, emp) => {
+    const deptId = emp.department?.id;
+    if (deptId !== undefined) {
+      acc[deptId] = (acc[deptId] ?? 0) + Number(emp.basic_salary ?? 0);
+    }
+    return acc;
+  }, {});
+
   if (loading) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 animate-pulse space-y-4">
-        {/* header skeleton */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 bg-gray-100 rounded-xl" />
@@ -135,12 +163,10 @@ const HRStats: React.FC = () => {
           </div>
           <div className="h-7 w-16 bg-gray-100 rounded-lg" />
         </div>
-        {/* main grid skeleton */}
         <div className="grid grid-cols-5 gap-4">
           <div className="col-span-3 h-72 bg-gray-100 rounded-2xl" />
           <div className="col-span-2 h-72 bg-gray-100 rounded-2xl" />
         </div>
-        {/* bottom cards skeleton */}
         <div className="flex gap-3">
           {[1,2,3,4,5].map(i => <div key={i} className="h-28 w-36 flex-shrink-0 bg-gray-100 rounded-2xl" />)}
         </div>
@@ -161,8 +187,7 @@ const HRStats: React.FC = () => {
 
   const listDepts = sorted.slice(0, 7);
   const cardDepts = sorted.slice(0, 5);
-  const active = stats.employee_stats.active;
-  const totalActiveAndProbation = stats.employee_stats.active + stats.employee_stats.probation;
+  const totalActiveAndProbation = stats.employee_stats.active;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4 h-full">
@@ -192,7 +217,7 @@ const HRStats: React.FC = () => {
             Tổng nhân viên
           </p>
           <ResponsiveContainer width="100%" height="100%" minHeight={280}>
-            <PieChart key={active}>
+            <PieChart key={totalActiveAndProbation}>
               <Pie
                 data={donutData}
                 cx="50%" cy="50%"
@@ -214,7 +239,7 @@ const HRStats: React.FC = () => {
                 <Label
                   content={({ viewBox }) => {
                     const { cx, cy } = viewBox as any;
-                    return <DonutCenter value={totalActiveAndProbation} label="Nhân viên" subtitle="Đang làm & Thử việc" cx={cx} cy={cy} fontSize={34} />;
+                    return <DonutCenter value={totalActiveAndProbation} label="Nhân viên" subtitle="Đang hoạt động" cx={cx} cy={cy} fontSize={34} />;
                   }}
                   position="center"
                 />
@@ -233,10 +258,20 @@ const HRStats: React.FC = () => {
             </button>
           </div>
 
+          {/* Column headers */}
+          <div className="flex items-center gap-2.5 mb-2 pb-1.5 border-b border-gray-100">
+            <span className="h-2.5 w-2.5 flex-shrink-0" />
+            <span className="flex-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide min-w-0">Phòng ban</span>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex-shrink-0">Lương cứng</span>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex-shrink-0 w-6 text-center">NV</span>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex-shrink-0 w-10 text-right">%</span>
+          </div>
+
           <div className="flex-1 space-y-3 overflow-y-auto">
             {listDepts.map((dept, idx) => {
               const color = CHART_COLORS[idx] ?? '#9ca3af';
               const p = totalActiveAndProbation > 0 ? (dept.employee_count / totalActiveAndProbation) * 100 : 0;
+              const deptSalary = salaryByDept[dept.id] ?? 0;
               return (
                 <div key={dept.id} className="flex items-center gap-2.5">
                   <span
@@ -244,10 +279,13 @@ const HRStats: React.FC = () => {
                     style={{ backgroundColor: color }}
                   />
                   <span className="flex-1 text-sm text-gray-700 truncate min-w-0">{dept.name}</span>
-                  <span className="text-sm font-extrabold text-gray-900 flex-shrink-0">
+                  <span className="text-[11px] font-semibold text-gray-700 flex-shrink-0 tabular-nums">
+                    {deptSalary > 0 ? formatSalary(deptSalary) : <span className="text-gray-300">—</span>}
+                  </span>
+                  <span className="text-sm font-extrabold text-gray-900 flex-shrink-0 w-6 text-center">
                     <AnimatedNum value={dept.employee_count} />
                   </span>
-                  <span className="text-xs text-gray-400 flex-shrink-0 w-10 text-right tabular-nums">
+                  <span className="text-xs font-semibold text-gray-500 flex-shrink-0 w-10 text-right tabular-nums">
                     {p.toFixed(1)}%
                   </span>
                 </div>
@@ -285,6 +323,11 @@ const HRStats: React.FC = () => {
                       <span className="text-[11px] text-gray-700 truncate">{dept.name}</span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      {(salaryByDept[dept.id] ?? 0) > 0 && (
+                        <span className="text-[10px] text-gray-400 tabular-nums">
+                          {formatSalary(salaryByDept[dept.id])}
+                        </span>
+                      )}
                       <span className="text-[11px] font-bold text-gray-900 tabular-nums">
                         <AnimatedNum value={dept.employee_count} />
                       </span>
@@ -313,11 +356,18 @@ const HRStats: React.FC = () => {
         </p>
         <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
           {cardDepts.map((dept, idx) => (
-            <DeptMiniCard key={dept.id} dept={dept} idx={idx} active={totalActiveAndProbation} />
+            <DeptMiniCard
+              key={dept.id}
+              dept={dept}
+              idx={idx}
+              active={totalActiveAndProbation}
+              color={CHART_COLORS[idx]}
+              totalSalary={salaryByDept[dept.id] ?? 0}
+            />
           ))}
 
           {/* Card tổng hợp */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col justify-between" style={{ borderLeft: `4px solid #1B65B8` }}>
+          <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 p-4 flex flex-col justify-between">
             <div className="h-9 w-9 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center mb-2">
               <UserGroupIcon className="h-5 w-5" />
             </div>
