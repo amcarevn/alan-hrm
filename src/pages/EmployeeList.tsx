@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { employeesAPI, departmentsAPI, Employee, sendAccountEmailsAPI } from '../utils/api';
+import { employeesAPI, departmentsAPI, Employee, sendAccountEmailsAPI, managementApi } from '../utils/api';
 import { WORK_LOCATION_OPTIONS } from '../constants/onboarding';
 
 const WORK_LOCATION_LABELS: Record<string, string> = Object.fromEntries(
@@ -37,6 +37,8 @@ const EmployeeList: React.FC = () => {
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [contractTypeFilter, setContractTypeFilter] = useState<string>('all');
   const [expiringSoonFilter, setExpiringSoonFilter] = useState<string>('all');
+  const [legalEntityFilter, setLegalEntityFilter] = useState<string>('all');
+  const [legalEntities, setLegalEntities] = useState<{ value: string; label: string }[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isSendingEmails, setIsSendingEmails] = useState(false);
@@ -56,7 +58,7 @@ const EmployeeList: React.FC = () => {
 
   const SEND_EMAIL_COOLDOWN_KEY = 'send_all_emails_cooldown_until';
   const COOLDOWN_DURATION = 120; // 2 phút (giây)
-  const fetchEmployees = async (search = '', status = 'all', department = 'all', page = 1, pageSize = 20, contractType = 'all', expiringSoon = 'all', month?: string) => {
+  const fetchEmployees = async (search = '', status = 'all', department = 'all', page = 1, pageSize = 20, contractType = 'all', expiringSoon = 'all', month?: string, legalEntity = 'all') => {
     try {
       setLoading(true);
       const params: any = { page, page_size: pageSize };
@@ -66,6 +68,7 @@ const EmployeeList: React.FC = () => {
       if (department !== 'all') params.department = department;
       if (contractType !== 'all') params.contract_type = contractType;
       if (month) params.month = month;
+      if (legalEntity !== 'all') params.subsidiary_legal_entity = legalEntity;
 
       if (expiringSoon === 'expiring') {
         const today = new Date();
@@ -113,9 +116,22 @@ const EmployeeList: React.FC = () => {
     }
   };
 
+  const fetchLegalEntities = async () => {
+    try {
+      const response = await managementApi.get<{ value: string; label: string }[]>(
+        '/api/v1/salary/records/legal-entities/'
+      );
+      const data = Array.isArray(response.data) ? response.data : [];
+      setLegalEntities(data);
+    } catch (err) {
+      console.error('Error fetching legal entities:', err);
+    }
+  };
+
   useEffect(() => {
     fetchStats(selectedMonth);
     fetchDepartments();
+    fetchLegalEntities();
   }, []);
 
   useEffect(() => {
@@ -159,7 +175,7 @@ const EmployeeList: React.FC = () => {
     }
 
     const timeout = setTimeout(() => {
-      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth);
+      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth, legalEntityFilter);
     }, 300); // 300ms debounce delay
 
     setSearchTimeout(timeout);
@@ -169,11 +185,11 @@ const EmployeeList: React.FC = () => {
         clearTimeout(searchTimeout);
       }
     };
-  }, [searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth]);
+  }, [searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth, legalEntityFilter]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchEmployees(searchTerm, statusFilter, departmentFilter, 1, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth);
+    fetchEmployees(searchTerm, statusFilter, departmentFilter, 1, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth, legalEntityFilter);
   };
 
   const handleReset = () => {
@@ -182,6 +198,7 @@ const EmployeeList: React.FC = () => {
     setDepartmentFilter('all');
     setContractTypeFilter('all');
     setExpiringSoonFilter('all');
+    setLegalEntityFilter('all');
     setCurrentPage(1);
     // Don't call fetchEmployees here, the useEffect will handle it
   };
@@ -190,7 +207,7 @@ const EmployeeList: React.FC = () => {
     if (window.confirm('Bạn có chắc chắn muốn xóa nhân viên này?')) {
       try {
         await employeesAPI.delete(id);
-        fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth);
+        fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth, legalEntityFilter);
         fetchStats(selectedMonth); // Refresh stats
       } catch (err: any) {
         alert('Xóa thất bại: ' + (err.message || 'Lỗi không xác định'));
@@ -201,7 +218,7 @@ const EmployeeList: React.FC = () => {
   const handleActivate = async (id: number) => {
     try {
       await employeesAPI.activate(id);
-      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth);
+      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth, legalEntityFilter);
       fetchStats(selectedMonth);
     } catch (err: any) {
       alert('Kích hoạt thất bại: ' + (err.message || 'Lỗi không xác định'));
@@ -211,7 +228,7 @@ const EmployeeList: React.FC = () => {
   const handleDeactivate = async (id: number) => {
     try {
       await employeesAPI.deactivate(id);
-      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth);
+      fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth, legalEntityFilter);
       fetchStats(selectedMonth);
     } catch (err: any) {
       alert('Vô hiệu hóa thất bại: ' + (err.message || 'Lỗi không xác định'));
@@ -1015,7 +1032,7 @@ const EmployeeList: React.FC = () => {
       const result = await employeesAPI.importFile(importFile);
       setImportResult(result);
       if (result.summary.created > 0 || result.summary.updated > 0) {
-        fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth);
+        fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth, legalEntityFilter);
         fetchStats(selectedMonth);
       }
     } catch (err: any) {
@@ -1154,7 +1171,7 @@ const EmployeeList: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tìm kiếm
@@ -1213,6 +1230,15 @@ const EmployeeList: React.FC = () => {
                 { value: 'expiring', label: 'Sắp hết hạn (≤ 7 ngày)' },
               ]}
               onChange={(v) => { setExpiringSoonFilter(v); setCurrentPage(1); }}
+            />
+            <SelectBox<string>
+              label="Pháp nhân"
+              value={legalEntityFilter}
+              options={[
+                { value: 'all', label: 'Tất cả pháp nhân' },
+                ...legalEntities.map((e) => ({ value: e.value, label: e.label })),
+              ]}
+              onChange={(v) => { setLegalEntityFilter(v); setCurrentPage(1); }}
             />
           </div>
         </div>
@@ -1308,7 +1334,7 @@ const EmployeeList: React.FC = () => {
             <p className="text-lg font-medium text-gray-900">Đã xảy ra lỗi</p>
             <p className="text-gray-500 mt-1">{error}</p>
             <button 
-              onClick={() => fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth)}
+              onClick={() => fetchEmployees(searchTerm, statusFilter, departmentFilter, currentPage, itemsPerPage, contractTypeFilter, expiringSoonFilter, selectedMonth, legalEntityFilter)}
               className="mt-4 btn-primary"
             >
               Thử lại
@@ -1332,6 +1358,9 @@ const EmployeeList: React.FC = () => {
                     Chức vụ
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Pháp nhân
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Trạng thái
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1341,7 +1370,7 @@ const EmployeeList: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center">
                       <div className="h-12 w-12 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center mx-auto mb-4">
                         <UsersIcon className="h-7 w-7" />
@@ -1376,6 +1405,9 @@ const EmployeeList: React.FC = () => {
                       Chức vụ
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Pháp nhân
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Trạng thái
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1398,16 +1430,19 @@ const EmployeeList: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <div className="text-sm text-gray-500">{employee.phone_number || 'Chưa có số điện thoại'}</div>
+                        <div className="text-sm text-gray-500">{employee.phone_number || <span className="text-gray-400 italic">Chưa có dữ liệu</span>}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{getGenderText(employee.gender)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{employee.department?.name || 'Chưa phân phòng'}</div>
+                        <div className="text-sm text-gray-900">{employee.department?.name || <span className="text-gray-400 italic">Chưa có dữ liệu</span>}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{employee.position?.title || 'Chưa phân chức vụ'}</div>
+                        <div className="text-sm text-gray-900">{employee.position?.title || <span className="text-gray-400 italic">Chưa có dữ liệu</span>}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{(employee as any).subsidiary_legal_entity || <span className="text-gray-400 italic">Chưa có dữ liệu</span>}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(employee.employment_status)}
