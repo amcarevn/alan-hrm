@@ -87,7 +87,7 @@ const AttendanceManagement: React.FC = () => {
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncTotal, setSyncTotal] = useState(0);
   const [syncEmployeeList, setSyncEmployeeList] = useState<Array<{
-    code: string; name: string; status: 'pending' | 'synced' | 'not_found' | 'error' | 'skipped';
+    code: string; name: string; status: 'pending' | 'synced' | 'not_found' | 'error' | 'skipped'; days?: number;
   }>>([]);
   const [syncResult, setSyncResult] = useState<{
     type: 'success' | 'error';
@@ -1441,7 +1441,7 @@ const AttendanceManagement: React.FC = () => {
               setSyncEmployeeList(prev => {
                 const next = [...prev];
                 const existing = next.findIndex(e => e.code === event.code);
-                const item = { code: event.code, name: event.name, status: event.status };
+                const item = { code: event.code, name: event.name, status: event.status, days: event.days };
                 if (existing >= 0) next[existing] = item; else next.push(item);
                 return next;
               });
@@ -1649,9 +1649,10 @@ const AttendanceManagement: React.FC = () => {
                             emp.status === 'not_found' ? 'text-amber-600' :
                             emp.status === 'error' ? 'text-red-500' : 'text-gray-400'
                           }`}>
-                            {emp.status === 'synced' ? '✓ Đồng bộ' :
-                             emp.status === 'not_found' ? '— Không tìm thấy' :
-                             emp.status === 'error' ? '✗ Lỗi' : 'Bỏ qua'}
+                            {emp.status === 'synced'
+                              ? `✓ ${emp.days != null ? emp.days + ' ngày' : 'Đồng bộ'}`
+                              : emp.status === 'not_found' ? '— Không tìm thấy'
+                              : emp.status === 'error' ? '✗ Lỗi' : 'Bỏ qua'}
                           </span>
                         </div>
                       ))}
