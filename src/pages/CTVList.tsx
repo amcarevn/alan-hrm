@@ -28,8 +28,8 @@ import { toDisplayDate } from '../utils/dateUtils';
 // HELPERS / CONSTANTS
 // ============================================================
 
-const SERVICE_TAGS = ['Nám, Tàn Nhang, Sắc Tố', 'Mụn', 'Sẹo Rỗ', 'Làm Đầy', 'Thon Gọn'];
 
+const SERVICE_TAGS = ['Nám, Tàn Nhang, Sắc Tố', 'Mụn', 'Sẹo Rỗ', 'Làm Đầy', 'Thon Gọn'];
 
 const WORK_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: 'HIRE_IMAGE_MEDIA', label: 'Thuê hình ảnh + kênh truyền thông' },
@@ -442,29 +442,13 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
                 {errMsg('phone')}
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Dịch vụ</label>
-                <textarea rows={2} className={inputCls('service') + ' resize-none'} placeholder="Nhập dịch vụ hoặc chọn nhanh bên dưới..."
-                  value={form.service ?? ''} onChange={(e) => set('service', e.target.value)} />
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {SERVICE_TAGS.map((tag) => {
-                    const active = (form.service ?? '').split(' | ').map(s => s.trim()).includes(tag);
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => {
-                          const parts = (form.service ?? '').split(' | ').map(s => s.trim()).filter(Boolean);
-                          set('service', active
-                            ? parts.filter(s => s !== tag).join(' | ')
-                            : [...parts, tag].join(' | '));
-                        }}
-                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${active ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-600 border-gray-300 hover:border-primary-400 hover:text-primary-600'}`}
-                      >
-                        {tag}
-                      </button>
-                    );
-                  })}
-                </div>
+                <SelectBox<string>
+                  label="Dịch vụ"
+                  value={form.service ?? ''}
+                  options={SERVICE_TAGS.map((tag) => ({ value: tag, label: tag }))}
+                  onChange={(val) => set('service', val)}
+                  placeholder="— Chọn dịch vụ —"
+                />
               </div>
             </div>
           </div>
