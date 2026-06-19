@@ -29,7 +29,7 @@ import { toDisplayDate } from '../utils/dateUtils';
 // ============================================================
 
 
-const SERVICE_TAGS = ['Nám, Tàn Nhang, Sắc Tố', 'Mụn', 'Sẹo Rỗ', 'Làm Đầy', 'Thon Gọn'];
+const SERVICE_TAGS = ['Nám, Tàn Nhang, Sắc Tố', 'Mụn', 'Sẹo Rỗ', 'Làm Đầy', 'Thon Gọn', 'Lỗ Chân Lông To', 'Nâng Cơ Trẻ Hóa'];
 
 const WORK_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: 'HIRE_IMAGE_MEDIA', label: 'Thuê hình ảnh + kênh truyền thông' },
