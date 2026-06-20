@@ -176,6 +176,7 @@ interface MultiSelectBoxProps<T extends string> {
   options: SelectOption<T>[];
   onChange: (value: T[]) => void;
   allLabel?: string;
+  showAllOption?: boolean;
 }
 
 function MultiSelectBoxInner<T extends string>({
@@ -184,6 +185,7 @@ function MultiSelectBoxInner<T extends string>({
   options,
   onChange,
   allLabel = 'Tất cả',
+  showAllOption = true,
 }: MultiSelectBoxProps<T>) {
   const allSelected = value.length === 0;
   const selectedLabels = options
@@ -217,20 +219,21 @@ function MultiSelectBoxInner<T extends string>({
           </Listbox.Button>
 
           <Listbox.Options className="absolute z-50 mt-1 min-w-full w-max max-w-[min(32rem,90vw)] rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm overflow-hidden">
-            {/* "Tất cả" option */}
-            <div
-              onClick={() => onChange([])}
-              className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${allSelected ? 'bg-primary-50' : ''}`}
-            >
-              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${allSelected ? 'bg-primary-500 border-primary-500' : 'border-gray-300 bg-white'}`}>
-                {allSelected && (
-                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
-                    <path d="M1 4l2.5 2.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
+            {showAllOption && (
+              <div
+                onClick={() => onChange([])}
+                className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${allSelected ? 'bg-primary-50' : ''}`}
+              >
+                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${allSelected ? 'bg-primary-500 border-primary-500' : 'border-gray-300 bg-white'}`}>
+                  {allSelected && (
+                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
+                      <path d="M1 4l2.5 2.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+                <span className={`text-sm whitespace-nowrap ${allSelected ? 'font-semibold text-primary-700' : 'text-gray-600'}`}>{allLabel}</span>
               </div>
-              <span className={`text-sm whitespace-nowrap ${allSelected ? 'font-semibold text-primary-700' : 'text-gray-600'}`}>{allLabel}</span>
-            </div>
+            )}
 
             {options.map((option) => {
               const isSelected = value.includes(option.value);

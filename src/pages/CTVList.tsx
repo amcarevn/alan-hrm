@@ -442,12 +442,13 @@ const CTVForm: React.FC<CTVFormProps> = ({ mode, initialData, onClose, onSuccess
                 {errMsg('phone')}
               </div>
               <div className="sm:col-span-2">
-                <SelectBox<string>
+                <MultiSelectBox<string>
                   label="Dịch vụ"
-                  value={form.service ?? ''}
+                  value={(form.service ?? '').split('|').map(s => s.trim()).filter(Boolean)}
                   options={SERVICE_TAGS.map((tag) => ({ value: tag, label: tag }))}
-                  onChange={(val) => set('service', val)}
-                  placeholder="— Chọn dịch vụ —"
+                  onChange={(vals) => set('service', vals.join('|'))}
+                  allLabel="Chọn dịch vụ"
+                  showAllOption={false}
                 />
               </div>
             </div>
@@ -938,8 +939,7 @@ const CTVList: React.FC = () => {
   const [updatingExpired, setUpdatingExpired] = useState(false);
   const [showColumnToggle, setShowColumnToggle] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
-    'doctor', 'leader', 'assigned', 'name', 'phone', 'service',
-    'date_received', 'status', 'note_marketing',
+    'doctor', 'service', 'date_received', 'work_type', 'first_post',
   ]));
   const columnToggleRef = useRef<HTMLDivElement>(null);
 
@@ -1519,7 +1519,7 @@ const CTVList: React.FC = () => {
                           )}
                           {visibleColumns.has('service') && (
                             <td className="px-6 py-4 max-w-[160px]">
-                              <span className="text-sm text-gray-900 block truncate" title={ctv.service || ''}>{emptyVal(ctv.service)}</span>
+                              <span className="text-sm text-gray-900 block truncate" title={(ctv.service || '').replace(/\|/g, ', ')}>{emptyVal((ctv.service || '').replace(/\|/g, ', '))}</span>
                             </td>
                           )}
                           {visibleColumns.has('date_received') && (
@@ -1712,7 +1712,7 @@ const CTVList: React.FC = () => {
                   <DetailRow label="Số điện thoại" value={viewingCTV.phone} />
                   <DetailRow label="Địa chỉ email" value={viewingCTV.email} />
                   <div className="col-span-2">
-                    <DetailRow label="Dịch vụ" value={viewingCTV.service} />
+                    <DetailRow label="Dịch vụ" value={(viewingCTV.service || '').replace(/\|/g, ', ')} />
                   </div>
                 </dl>
               </div>

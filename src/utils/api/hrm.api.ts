@@ -141,6 +141,25 @@ export const employeesAPI = {
     return response.data;
   },
 
+  status_log: async (params?: { month?: string }): Promise<{
+    count: number;
+    results: Array<{
+      id: number;
+      employee_id: string;
+      full_name: string;
+      from_status: string | null;
+      from_status_label: string | null;
+      to_status: string;
+      to_status_label: string;
+      changed_at: string;
+      changed_by: string | null;
+      note: string | null;
+    }>;
+  }> => {
+    const response = await managementApi.get('/api-hrm/employees/status_log/', { params });
+    return response.data;
+  },
+
   hr_employees: async (params?: {
     page?: number;
     page_size?: number;
