@@ -1082,8 +1082,6 @@ interface SalaryConfigurationValues {
   taxPolicy: {
     region: 'I' | 'II' | 'III' | 'IV';
     dependentCount: number;
-    insuranceSalaryMode: 'official' | 'custom';
-    insuranceSalaryOverride: number;
   };
   deductions: {
     pit: number;
@@ -1250,8 +1248,6 @@ const DEFAULT_SALARY_CONFIG: SalaryConfigurationValues = {
   taxPolicy: {
     region: 'I',
     dependentCount: 0,
-    insuranceSalaryMode: 'official',
-    insuranceSalaryOverride: 0,
   },
   deductions: {
     pit: 0,
@@ -1522,22 +1518,14 @@ const getGrossIncomeForTaxFromRecord = (record: SalaryRecord, employee?: Employe
 
 const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee): PayrollTaxComputation => {
   const savedAdjustments = employee ? (employee.salary_adjustments as Record<string, unknown> | undefined) : undefined;
-  const savedOutput = savedAdjustments?.payroll_output_preview as Record<string, number> | undefined;
   const savedConfig = savedAdjustments?.payroll_config as Record<string, unknown> | undefined;
   const savedTaxPolicy = savedConfig?.taxPolicy as Record<string, unknown> | undefined;
-  const savedBaseSalary = savedConfig?.baseSalary as Record<string, unknown> | undefined;
-
-  const mucLuongDongBHFromConfig = savedTaxPolicy?.insuranceSalaryMode === 'custom'
-    ? toNumber(savedTaxPolicy.insuranceSalaryOverride)
-    : toNumber(savedBaseSalary?.amount) * Math.max(toNumber(savedBaseSalary?.factor, 1), 1);
-
   const mucLuongDongBH = (record as unknown as Record<string, number>)['muc_luong_dong_bh']
-    ?? savedOutput?.insuranceSalaryBase
-    ?? (mucLuongDongBHFromConfig || (record.luong_co_ban ?? 0));
+    ?? 0;
 
-  const socialInsurance = Math.round(savedOutput?.socialInsurance ?? mucLuongDongBH * EMPLOYEE_SOCIAL_INSURANCE_RATE);
-  const healthInsurance = Math.round(savedOutput?.healthInsurance ?? mucLuongDongBH * EMPLOYEE_HEALTH_INSURANCE_RATE);
-  const unemploymentInsurance = Math.round(savedOutput?.unemploymentInsurance ?? mucLuongDongBH * EMPLOYEE_UNEMPLOYMENT_INSURANCE_RATE);
+  const socialInsurance = Math.round(mucLuongDongBH * EMPLOYEE_SOCIAL_INSURANCE_RATE);
+  const healthInsurance = Math.round(mucLuongDongBH * EMPLOYEE_HEALTH_INSURANCE_RATE);
+  const unemploymentInsurance = Math.round(mucLuongDongBH * EMPLOYEE_UNEMPLOYMENT_INSURANCE_RATE);
   const insuranceTotal = socialInsurance + healthInsurance + unemploymentInsurance;
 
   const taxYear = new Date(`${record.year}-${String(record.month).padStart(2, '0')}-01`).getFullYear();
@@ -1891,8 +1879,6 @@ const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValue
           ? taxPolicyConfig.region
           : inferredRegion,
       dependentCount: Math.max(toNumber(taxPolicyConfig.dependentCount), 0),
-      insuranceSalaryMode: taxPolicyConfig.insuranceSalaryMode === 'custom' ? 'custom' : 'official',
-      insuranceSalaryOverride: Math.max(toNumber(taxPolicyConfig.insuranceSalaryOverride), 0),
     },
     deductions: {
       pit: toNumber(savedConfig.deductions?.pit),
@@ -1946,10 +1932,9 @@ const calculatePayrollOutput = (config: SalaryConfigurationValues): PayrollOutpu
   const personalDeduction = taxYear >= 2026 ? PERSONAL_DEDUCTION_2026 : PERSONAL_DEDUCTION_LEGACY;
   const dependentDeductionPerPerson = taxYear >= 2026 ? DEPENDENT_DEDUCTION_2026 : DEPENDENT_DEDUCTION_LEGACY;
   const dependentDeduction = Math.max(config.taxPolicy.dependentCount, 0) * dependentDeductionPerPerson;
-  const insuranceSalaryRaw =
-    config.taxPolicy.insuranceSalaryMode === 'custom'
-      ? Math.max(config.taxPolicy.insuranceSalaryOverride, 0)
-      : Math.max(config.baseSalary.amount * config.baseSalary.factor, 0);
+  // Bản xem trước cấu hình không tự suy diễn mức đóng BHXH từ salary_adjustments.
+  // Giá trị chính thức được API bảng lương lấy từ SocialInsurance.salary_base.
+  const insuranceSalaryRaw = 0;
   const socialInsuranceSalaryCap = 20 * baseSalaryReference;
   const unemploymentInsuranceSalaryCap = 20 * regionalMinimum;
   const insuranceSalaryForSocialAndHealth = Math.min(insuranceSalaryRaw, socialInsuranceSalaryCap);
@@ -2618,37 +2603,10 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
                   })
                 }
               />
-              <SelectBox
-                label="Mức lương đóng bảo hiểm"
-                value={config.taxPolicy.insuranceSalaryMode}
-                options={[
-                  { value: 'official', label: 'Trên lương chính thức' },
-                  { value: 'custom', label: 'Khác' },
-                ]}
-                onChange={(value) =>
-                  updateGroup('taxPolicy', {
-                    ...config.taxPolicy,
-                    insuranceSalaryMode: value as SalaryConfigurationValues['taxPolicy']['insuranceSalaryMode'],
-                  })
-                }
-              />
-              {config.taxPolicy.insuranceSalaryMode === 'custom' ? (
-                <NumberField
-                  label="Mức lương đóng BH tùy chỉnh"
-                  value={config.taxPolicy.insuranceSalaryOverride}
-                  onChange={(value) =>
-                    updateGroup('taxPolicy', {
-                      ...config.taxPolicy,
-                      insuranceSalaryOverride: value,
-                    })
-                  }
-                />
-              ) : (
-                <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                  <p className="text-xs text-gray-500">Mức lương đóng BH</p>
-                  <p className="text-base font-semibold text-gray-900">{formatCurrency(payrollOutput.insuranceSalaryBase)}</p>
-                </div>
-              )}
+              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-xs text-gray-500">Mức lương đóng BHXH</p>
+                <p className="text-sm font-medium text-gray-900">Quản lý tại hồ sơ Bảo hiểm xã hội</p>
+              </div>
 
               <NumberField
                 label="Số người phụ thuộc"
