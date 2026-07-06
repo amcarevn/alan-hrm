@@ -905,7 +905,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                   <span className="text-xs text-gray-500">
                     {taxDetail.taxMode === 'flat_10'
                       ? (taxDetail.taxableIncome < FLAT_TAX_EXEMPT_THRESHOLD && taxDetail.totalTax <= 0
-                          ? '(Miễn khấu trừ dưới 2 triệu)'
+                          ? '(Miễn khấu trừ dưới 5 triệu)'
                           : '(10% trên thu nhập tháng)')
                       : `(NPT: ${nptCount} người)`}
                   </span>
@@ -1156,7 +1156,7 @@ const PERSONAL_DEDUCTION_2026 = 15500000;
 const PERSONAL_DEDUCTION_LEGACY = 11000000;
 const DEPENDENT_DEDUCTION_2026 = 6200000;
 const DEPENDENT_DEDUCTION_LEGACY = 4400000;
-const FLAT_TAX_EXEMPT_THRESHOLD = 2000000;
+const FLAT_TAX_EXEMPT_THRESHOLD = 5000000;
 
 const REGIONAL_MINIMUM_2026: Record<'I' | 'II' | 'III' | 'IV', number> = {
   I: 5310000,
