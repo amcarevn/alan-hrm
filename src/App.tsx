@@ -84,6 +84,7 @@ import LeavePolicyList from './pages/LeavePolicyList';
 import LeavePolicyCreate from './pages/LeavePolicyCreate';
 import { EmployeeOnboardingForm } from "./pages/EmployeeOnboardingForm";
 import WorkFinalization from './pages/WorkFinalization';
+import WorkFinalizationData from './pages/WorkFinalizationData';
 import WorkFinalizationApprovals from './pages/WorkFinalizationApprovals';
 import ContractTemplates from './pages/ContractTemplates';
 import DocumentTemplates from './pages/DocumentTemplates';
@@ -884,6 +885,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <WorkFinalization />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/work-finalization/data"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <WorkFinalizationData />
                 </Layout>
               </ProtectedRoute>
             }

@@ -55,7 +55,9 @@ export interface WorkFinalizationParams {
   year: number;
   month: number;
   employee_code?: string;
+  search?: string;
   department_id?: number;
+  records_only?: boolean;
 }
 
 export interface FinalizeRequest {
@@ -194,6 +196,23 @@ class WorkFinalizationService {
       `/api-hrm/work-finalization/${employeeCode}/${year}/${month}/`
     );
     return response.data;
+  }
+
+  async update(
+    employeeCode: string,
+    year: number,
+    month: number,
+    data: Partial<WorkFinalizationRecord> & { nghi_phep_thang?: number }
+  ): Promise<WorkFinalizationRecord> {
+    const response = await managementApi.patch(
+      `/api-hrm/work-finalization/${employeeCode}/${year}/${month}/`,
+      data
+    );
+    return response.data;
+  }
+
+  async delete(employeeCode: string, year: number, month: number): Promise<void> {
+    await managementApi.delete(`/api-hrm/work-finalization/${employeeCode}/${year}/${month}/`);
   }
 
   // ─── Finalization Lock ───
