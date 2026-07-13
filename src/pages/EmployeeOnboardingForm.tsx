@@ -45,7 +45,13 @@ interface OnboardingData {
   position_name: string;
   department_name: string;
   token_expires_at: string;
+  is_existing_employee?: boolean;
 }
+
+// Bước ẩn khi đây là link tự cập nhật cho nhân viên ĐÃ TỒN TẠI
+// (index trong STEP_LABELS): 1 = Công việc. Bước 5 (Lương) vẫn giữ lại vì
+// chứa thông tin ngân hàng — chỉ ẩn riêng phần lương/thử việc bên trong.
+const EXISTING_EMPLOYEE_HIDDEN_STEPS = [1];
 
 interface FormValues {
   candidate_name: string;
@@ -214,6 +220,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
+  const [isExistingEmployee, setIsExistingEmployee] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning'; msg: string } | null>(null);
@@ -292,6 +299,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
         const data = await res.json();
         if (!data.success) { setPageError(data.error); return; }
         setOnboardingData(data.data);
+        setIsExistingEmployee(Boolean(data.data.is_existing_employee));
         setValues((v) => ({
           ...v,
           candidate_name: data.data.candidate_name,
@@ -499,9 +507,20 @@ export const EmployeeOnboardingForm: React.FC = () => {
   };
 
   const handleNext = () => {
-    if (validateStep(currentStep + 1)) setCurrentStep((s) => Math.min(s + 1, totalSteps - 1));
+    if (!validateStep(currentStep + 1)) return;
+    setCurrentStep((s) => {
+      let next = Math.min(s + 1, totalSteps - 1);
+      while (isExistingEmployee && EXISTING_EMPLOYEE_HIDDEN_STEPS.includes(next) && next < totalSteps - 1) next++;
+      return next;
+    });
   };
-  const handlePrevious = () => setCurrentStep((s) => Math.max(s - 1, 0));
+  const handlePrevious = () => {
+    setCurrentStep((s) => {
+      let prev = Math.max(s - 1, 0);
+      while (isExistingEmployee && EXISTING_EMPLOYEE_HIDDEN_STEPS.includes(prev) && prev > 0) prev--;
+      return prev;
+    });
+  };
 
   // ===== FILE =====
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -537,6 +556,8 @@ export const EmployeeOnboardingForm: React.FC = () => {
   // ===== SUBMIT =====
   const handleSubmit = async () => {
     for (let step = 1; step <= 5; step++) {
+      // validateStep(n) kiểm tra dữ liệu của step index (n-1) — bỏ qua các step đã ẩn
+      if (isExistingEmployee && EXISTING_EMPLOYEE_HIDDEN_STEPS.includes(step - 1)) continue;
       if (!validateStep(step)) return;
     }
     if (!citizenIdFile) { showToast('error', 'Vui lòng upload file CCCD (PDF)'); return; }
@@ -556,20 +577,22 @@ export const EmployeeOnboardingForm: React.FC = () => {
       ap('ethnicity', values.ethnicity);
       ap('birth_place', values.birth_place);
       ap('nationality', values.nationality);
-      ap('probation_rate', values.probation_rate);
       ap('facebook_link', values.facebook_link);
       ap('start_date', values.start_date);
-      ap('company_unit', values.company_unit);
-      ap('region', values.region);
-      ap('block', values.block);
-      ap('sub_department', values.sub_department);
-      ap('section', values.section);
-      ap('position', values.position);
-      ap('job_rank', values.job_rank);
-      ap('doctor_team', values.doctor_team);
-      ap('work_form', values.work_form);
-      ap('work_type', workType);
-      ap('work_location', values.work_location);
+      if (!isExistingEmployee) {
+        ap('probation_rate', values.probation_rate);
+        ap('company_unit', values.company_unit);
+        ap('region', values.region);
+        ap('block', values.block);
+        ap('sub_department', values.sub_department);
+        ap('section', values.section);
+        ap('position', values.position);
+        ap('job_rank', values.job_rank);
+        ap('doctor_team', values.doctor_team);
+        ap('work_form', values.work_form);
+        ap('work_type', workType);
+        ap('work_location', values.work_location);
+      }
       ap('citizen_id', values.citizen_id);
       if (citizenIdFile) payload.append('citizen_id_file', citizenIdFile);
       if (vneidScreenshotFile) payload.append('vneid_screenshot', vneidScreenshotFile);
@@ -587,9 +610,11 @@ export const EmployeeOnboardingForm: React.FC = () => {
       ap('emergency_contact_dob', values.emergency_contact_dob);
       ap('emergency_contact_occupation', values.emergency_contact_occupation);
       ap('emergency_contact_address', values.emergency_contact_address);
-      ap('salary', values.salary);
-      ap('allowance', values.allowance);
-      ap('probation_period_months', values.probation_period_months);
+      if (!isExistingEmployee) {
+        ap('salary', values.salary);
+        ap('allowance', values.allowance);
+        ap('probation_period_months', values.probation_period_months);
+      }
       ap('bank_account', values.bank_account);
       ap('bank_name', values.bank_name);
       ap('bank_branch', values.bank_branch);
@@ -837,25 +862,31 @@ export const EmployeeOnboardingForm: React.FC = () => {
       // ── BƯỚC 6: Thông tin lương ──
       case 5: return (
         <div className="flex-1 flex flex-col gap-5 justify-evenly">
-          <h3 className="text-3xl font-bold text-gray-900 text-center">Thông tin lương</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <TF label="Mức lương cơ bản (VNĐ)" value={values.salary} onChange={handleChange('salary')} type="number" placeholder="10000000" />
-            <TF label="Phụ cấp (VNĐ)" value={values.allowance} onChange={handleChange('allowance')} type="number" placeholder="2000000" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SF label="Số tháng thử việc" value={values.probation_period_months} onChange={handleSelect('probation_period_months')} options={[
-              { value: '0', label: 'Không thử việc' },
-              { value: '1', label: '1 tháng' },
-              { value: '2', label: '2 tháng' },
-              { value: '3', label: '3 tháng' },
-              { value: '6', label: '6 tháng' },
-            ]} />
-            <SF label="Tỉ lệ thử việc" value={values.probation_rate} onChange={handleSelect('probation_rate')} options={[
-              { value: 'OPTION_1', label: 'Tháng đầu 85%, tháng sau 85%' },
-              { value: 'OPTION_2', label: 'Tháng đầu 85%, tháng sau 100%' },
-              { value: 'OPTION_3', label: 'Tháng đầu 100%, tháng sau 100%' },
-            ]} />
-          </div>
+          <h3 className="text-3xl font-bold text-gray-900 text-center">
+            {isExistingEmployee ? 'Thông tin ngân hàng' : 'Thông tin lương'}
+          </h3>
+          {!isExistingEmployee && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <TF label="Mức lương cơ bản (VNĐ)" value={values.salary} onChange={handleChange('salary')} type="number" placeholder="10000000" />
+                <TF label="Phụ cấp (VNĐ)" value={values.allowance} onChange={handleChange('allowance')} type="number" placeholder="2000000" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <SF label="Số tháng thử việc" value={values.probation_period_months} onChange={handleSelect('probation_period_months')} options={[
+                  { value: '0', label: 'Không thử việc' },
+                  { value: '1', label: '1 tháng' },
+                  { value: '2', label: '2 tháng' },
+                  { value: '3', label: '3 tháng' },
+                  { value: '6', label: '6 tháng' },
+                ]} />
+                <SF label="Tỉ lệ thử việc" value={values.probation_rate} onChange={handleSelect('probation_rate')} options={[
+                  { value: 'OPTION_1', label: 'Tháng đầu 85%, tháng sau 85%' },
+                  { value: 'OPTION_2', label: 'Tháng đầu 85%, tháng sau 100%' },
+                  { value: 'OPTION_3', label: 'Tháng đầu 100%, tháng sau 100%' },
+                ]} />
+              </div>
+            </>
+          )}
 
           <div className="border border-gray-200 rounded-xl p-4 space-y-4">
             <p className="text-base font-semibold text-gray-700">Thông tin ngân hàng</p>
@@ -896,7 +927,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
             ['Quốc tịch', values.nationality],
             ['Link Facebook', values.facebook_link],
           ]},
-          { title: 'Công việc', color: 'indigo', fields: [
+          ...(isExistingEmployee ? [] : [{ title: 'Công việc', color: 'indigo', fields: [
             ['Đơn vị', companyUnits.find(cu => cu.code === values.company_unit)?.name || values.company_unit || null],
             ['Vùng/Miền', values.region],
             ['Khối', values.block],
@@ -907,7 +938,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
             ['Team Bác sĩ', values.doctor_team],
             ['Hình thức', WORK_FORM_OPTIONS.find(o => o.value === values.work_form)?.label || values.work_form || null],
             ['Địa điểm', WORK_LOCATION_OPTIONS.find(o => o.value === values.work_location)?.label || values.work_location || null],
-          ]},
+          ] as [string, string | null][] }]),
           { title: 'CCCD', color: 'amber', fields: [
             ['Số CCCD', values.citizen_id],
             ['Ngày cấp', values.citizen_id_issue_date ? new Date(values.citizen_id_issue_date).toLocaleDateString('vi-VN') : null],
@@ -931,11 +962,13 @@ export const EmployeeOnboardingForm: React.FC = () => {
             ['Nghề nghiệp', values.emergency_contact_occupation],
             ['Địa chỉ', values.emergency_contact_address],
           ]},
-          { title: 'Lương & Ngân hàng', color: 'purple', fields: [
-            ['Mức lương', values.salary ? `${parseInt(values.salary).toLocaleString()} VNĐ` : null],
-            ['Phụ cấp', values.allowance ? `${parseInt(values.allowance).toLocaleString()} VNĐ` : null],
-            ['Thời gian thử việc', values.probation_period_months ? `${values.probation_period_months} tháng` : null],
-            ['Tỉ lệ thử việc', ({ OPTION_1: '85% → 85%', OPTION_2: '85% → 100%', OPTION_3: '100% → 100%' } as Record<string, string>)[values.probation_rate] || null],
+          { title: isExistingEmployee ? 'Ngân hàng' : 'Lương & Ngân hàng', color: 'purple', fields: [
+            ...(isExistingEmployee ? [] : [
+              ['Mức lương', values.salary ? `${parseInt(values.salary).toLocaleString()} VNĐ` : null],
+              ['Phụ cấp', values.allowance ? `${parseInt(values.allowance).toLocaleString()} VNĐ` : null],
+              ['Thời gian thử việc', values.probation_period_months ? `${values.probation_period_months} tháng` : null],
+              ['Tỉ lệ thử việc', ({ OPTION_1: '85% → 85%', OPTION_2: '85% → 100%', OPTION_3: '100% → 100%' } as Record<string, string>)[values.probation_rate] || null],
+            ] as [string, string | null][]),
             ['Ngân hàng', values.bank_name],
             ['Số tài khoản', values.bank_account],
             ['Chi nhánh', values.bank_branch],
@@ -985,6 +1018,12 @@ export const EmployeeOnboardingForm: React.FC = () => {
   // ============================================
   // MAIN RENDER
   // ============================================
+
+  const visibleSteps = STEP_LABELS
+    .map((label, i) => ({ label: (isExistingEmployee && i === 5) ? 'Ngân hàng' : label, i }))
+    .filter(({ i }) => !isExistingEmployee || !EXISTING_EMPLOYEE_HIDDEN_STEPS.includes(i));
+  const visiblePosition = visibleSteps.findIndex((s) => s.i === currentStep) + 1;
+  const visibleTotal = visibleSteps.length;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -1038,14 +1077,14 @@ export const EmployeeOnboardingForm: React.FC = () => {
           <div className="lg:w-72 shrink-0">
             {/* Mobile: horizontal steps */}
             <div className="flex lg:hidden items-center justify-between bg-white rounded-2xl p-3 sm:p-4 shadow-sm border border-gray-100 mb-3 gap-1">
-              {STEP_LABELS.map((label, i) => {
+              {visibleSteps.map(({ label, i }, idx) => {
                 const active = i === currentStep;
                 const done = i < currentStep;
                 return (
                   <button key={label} onClick={() => done && setCurrentStep(i)} className="flex flex-col items-center flex-1 gap-1">
                     <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold transition-all
                       ${done ? 'bg-green-500 text-white' : active ? 'bg-blue-600 text-white ring-2 sm:ring-4 ring-blue-100' : 'bg-gray-100 text-gray-400'}`}>
-                      {done ? <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5" /> : i + 1}
+                      {done ? <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5" /> : idx + 1}
                     </div>
                     <span className={`text-[9px] sm:text-xs font-semibold leading-tight text-center ${active ? 'text-blue-600' : done ? 'text-green-600' : 'text-gray-400'}`}>{label}</span>
                   </button>
@@ -1057,12 +1096,12 @@ export const EmployeeOnboardingForm: React.FC = () => {
             <div className="hidden lg:block bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sticky top-6">
               {/* Header + progress */}
               {(() => {
-                const pct = Math.round((currentStep / totalSteps) * 100);
+                const pct = Math.round((visiblePosition / visibleTotal) * 100);
                 return (
                   <div className="mb-5">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">Các bước</p>
-                      <span className={`text-sm font-bold ${pct >= 100 ? 'text-green-600' : 'text-blue-600'}`}>{currentStep}/{totalSteps}</span>
+                      <span className={`text-sm font-bold ${pct >= 100 ? 'text-green-600' : 'text-blue-600'}`}>{visiblePosition}/{visibleTotal}</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                       <div className={`h-2 rounded-full transition-all duration-500 ${pct >= 100 ? 'bg-gradient-to-r from-green-400 to-green-500' : 'bg-gradient-to-r from-blue-400 to-blue-600'}`} style={{ width: `${pct}%` }} />
@@ -1072,7 +1111,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
               })()}
 
               <div className="space-y-2">
-                {STEP_LABELS.map((label, i) => {
+                {visibleSteps.map(({ label, i }, idx) => {
                   const active = i === currentStep;
                   const done = i < currentStep;
                   return (
@@ -1084,7 +1123,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
                     >
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm font-bold transition-all
                         ${done ? 'bg-green-500 text-white' : active ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                        {done ? <CheckCircleIcon className="w-5 h-5" /> : i + 1}
+                        {done ? <CheckCircleIcon className="w-5 h-5" /> : idx + 1}
                       </div>
                       <div className="flex flex-col">
                         <span className="leading-tight">{label}</span>
@@ -1103,7 +1142,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col flex-1">
               {/* Mobile progress bar */}
               <div className="lg:hidden h-1.5 bg-gray-100">
-                <div className={`h-1.5 transition-all duration-500 ${currentStep >= totalSteps ? 'bg-green-500' : 'bg-blue-600'}`} style={{ width: `${Math.round((currentStep / totalSteps) * 100)}%` }} />
+                <div className={`h-1.5 transition-all duration-500 ${visiblePosition >= visibleTotal ? 'bg-green-500' : 'bg-blue-600'}`} style={{ width: `${Math.round((visiblePosition / visibleTotal) * 100)}%` }} />
               </div>
 
               {/* Form body */}

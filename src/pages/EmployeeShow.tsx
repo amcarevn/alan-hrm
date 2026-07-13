@@ -20,6 +20,7 @@ import {
   ShieldCheckIcon,
   PhoneIcon,
   PaperClipIcon,
+  LinkIcon,
 } from '@heroicons/react/24/outline';
 
 // ============================================
@@ -156,6 +157,11 @@ const EmployeeShow: React.FC = () => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewPdf, setPreviewPdf] = useState<string | null>(null);
 
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [onboardingLink, setOnboardingLink] = useState<string | null>(null);
+  const [onboardingLinkError, setOnboardingLinkError] = useState<string | null>(null);
+  const [onboardingLinkCopied, setOnboardingLinkCopied] = useState(false);
+
   useEffect(() => {
     if (id) loadEmployee(Number(id));
   }, [id, location.key]);
@@ -170,6 +176,33 @@ const EmployeeShow: React.FC = () => {
       setError(err.message || 'Không thể tải thông tin nhân viên');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateOnboardingLink = async () => {
+    if (!employee) return;
+    setGeneratingLink(true);
+    setOnboardingLinkError(null);
+    setOnboardingLinkCopied(false);
+    try {
+      const res = await employeesAPI.generateOnboardingLink(employee.id);
+      setOnboardingLink(res.data.employee_form_url);
+    } catch (err: any) {
+      setOnboardingLinkError(
+        err?.response?.data?.message || 'Không thể tạo link. Vui lòng thử lại.'
+      );
+    } finally {
+      setGeneratingLink(false);
+    }
+  };
+
+  const handleCopyOnboardingLink = async () => {
+    if (!onboardingLink) return;
+    try {
+      await navigator.clipboard.writeText(onboardingLink);
+      setOnboardingLinkCopied(true);
+    } catch {
+      prompt('Copy link này và gửi cho nhân viên:', onboardingLink);
     }
   };
 
@@ -242,6 +275,19 @@ const EmployeeShow: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             {getStatusBadge(employee.employment_status)}
+            <button
+              onClick={() => {
+                setOnboardingLink(null);
+                setOnboardingLinkError(null);
+                setOnboardingLinkCopied(false);
+                handleGenerateOnboardingLink();
+              }}
+              disabled={generatingLink}
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <LinkIcon className="w-4 h-4" />
+              {generatingLink ? 'Đang tạo link...' : 'Tạo link onboarding'}
+            </button>
             <button
               onClick={() => navigate(`/dashboard/employees/${employee.id}/edit`)}
               className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors"
@@ -583,6 +629,53 @@ const EmployeeShow: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Onboarding link dialog */}
+      {(onboardingLink || onboardingLinkError) && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+          onClick={() => { setOnboardingLink(null); setOnboardingLinkError(null); }}
+        >
+          <div
+            className="relative w-full max-w-lg bg-white rounded-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => { setOnboardingLink(null); setOnboardingLinkError(null); }}
+              className="absolute top-4 right-4 p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            >
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+            {onboardingLinkError ? (
+              <>
+                <h3 className="text-lg font-semibold text-red-900 mb-2">Tạo link thất bại</h3>
+                <p className="text-sm text-red-700">{onboardingLinkError}</p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Link onboarding</h3>
+                <p className="text-sm text-gray-500 mb-3">
+                  Gửi link này cho nhân viên để họ tự điền/cập nhật thông tin cá nhân. Link có hiệu lực trong 2 ngày.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={onboardingLink || ''}
+                    className="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-700"
+                    onFocus={(e) => e.currentTarget.select()}
+                  />
+                  <button
+                    onClick={handleCopyOnboardingLink}
+                    className="px-3 py-2 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg whitespace-nowrap"
+                  >
+                    {onboardingLinkCopied ? 'Đã copy!' : 'Copy link'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* PDF preview dialog */}
       {previewPdf && (
