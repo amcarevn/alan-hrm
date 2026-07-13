@@ -193,6 +193,19 @@ export const employeesAPI = {
     return response.data;
   },
 
+  generateOnboardingLink: async (id: number): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      token: string;
+      employee_form_url: string;
+      expires_at: string;
+    };
+  }> => {
+    const response = await managementApi.post(`/api-hrm/employees/${id}/generate-onboarding-link/`);
+    return response.data;
+  },
+
   setManager: async (managerEmployeeId: string | null): Promise<Employee> => {
     const response: AxiosResponse<Employee> = await managementApi.post(
       '/api-hrm/employees/set-manager/',
