@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { positionsAPI, employeesAPI } from '../utils/api';
 import {
   ArrowPathIcon,
   LinkIcon,
@@ -45,19 +44,10 @@ type OnboardingItem = {
   task1_status?: string; // PENDING, IN_PROGRESS, COMPLETED
 };
 
-// ── Bỏ candidate_phone, thêm direct_manager_id ──
+// ── Chỉ cần Họ và tên + Email, phần còn lại nhân viên tự điền qua link ──
 type CreateOnboardingForm = {
   candidate_name: string;
-  gender: 'M' | 'F' | 'O';
   candidate_email: string;
-  direct_manager_id: string;
-  company_unit?: string | null;
-};
-
-type EmployeeOption = {
-  id: number;
-  full_name: string;
-  employee_id: string;
 };
 
 type ApiResponse<T> = { results?: T[]; count?: number } | T[];
@@ -98,54 +88,12 @@ type CreateModalProps = {
 
 const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess }) => {
   const [submitting, setSubmitting] = useState(false);
-  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
-  const [loadingEmployees, setLoadingEmployees] = useState(true);
-  const [companyUnits, setCompanyUnits] = useState<{ id: number; name: string; prefix_code?: string; code?: string }[]>([]);
-  const [loadingUnits, setLoadingUnits] = useState(false);
 
   const [form, setForm] = useState<CreateOnboardingForm>({
     candidate_name: '',
-    gender: 'M',
     candidate_email: '',
-    direct_manager_id: '',
-    company_unit: null,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof CreateOnboardingForm, string>>>({});
-
-  useEffect(() => {
-    const fetchManagers = async () => {
-      setLoadingEmployees(true);
-      try {
-        const posData = await positionsAPI.list({ is_management: true, page_size: 100 });
-        const managementPositions = posData.results ?? [];
-        if (managementPositions.length === 0) {
-          setEmployees([]);
-          setLoadingEmployees(false);
-          return;
-        }
-        const empRequests = managementPositions.map((pos) =>
-          employeesAPI.list({ position: pos.id, page_size: 1000 })
-        );
-        const empResults = await Promise.all(empRequests);
-        const seenIds = new Set<number>();
-        const list: EmployeeOption[] = [];
-        for (const result of empResults) {
-          for (const e of result.results ?? []) {
-            if (!seenIds.has(e.id)) {
-              seenIds.add(e.id);
-              list.push({ id: e.id, full_name: e.full_name, employee_id: e.employee_id });
-            }
-          }
-        }
-        setEmployees(list);
-      } catch (err) {
-        console.error('Failed to load managers:', err);
-      } finally {
-        setLoadingEmployees(false);
-      }
-    };
-    fetchManagers();
-  }, []);
 
   const validate = (): boolean => {
     const errs: Partial<Record<keyof CreateOnboardingForm, string>> = {};
@@ -166,13 +114,9 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
       const payload: any = {
         candidate_name: form.candidate_name,
         full_name: form.candidate_name,
-        gender: form.gender,
         candidate_email: form.candidate_email,
         start_date: new Date().toISOString().slice(0, 10),
       };
-      if (form.direct_manager_id) {
-        payload.direct_manager_id = parseInt(form.direct_manager_id);
-      }
       await onboardingService.create(payload);
       alert(`✅ Tạo quy trình thành công!\n`);
       onSuccess();
@@ -256,19 +200,6 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
             />
           )}
 
-          {field('gender', 'Giới tính', true,
-            <SelectBox
-              label=""
-              value={form.gender}
-              options={[
-                { value: 'M', label: 'Nam' },
-                { value: 'F', label: 'Nữ' },
-                { value: 'O', label: 'Khác' },
-              ]}
-              onChange={(v) => setForm({ ...form, gender: v as 'M' | 'F' | 'O' })}
-            />
-          )}
-
           {field('candidate_email', 'Email', true,
             <input
               type="email"
@@ -282,32 +213,6 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
                 if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) setErrors(prev => ({ ...prev, candidate_email: 'Email không hợp lệ' }));
                 else setErrors(prev => { const { candidate_email, ...rest } = prev; return rest; });
               }}
-            />
-          )}
-
-          {field('company_unit', 'Đơn vị làm việc', true,
-            <SelectBox
-              label=""
-              value={form.company_unit}
-              options={companyUnits.map((u) => ({
-                value: String(u.id),
-                label: `${u.name} (${u.prefix_code || u.code || 'N/A'})`
-              }))}
-              onChange={(v) => setForm({ ...form, company_unit: v })}
-              searchable
-              placeholder={loadingUnits ? 'Đang tải...' : 'Chọn đơn vị làm việc'}
-            />
-          )}
-
-
-          {field('direct_manager_id', 'Quản lý trực tiếp', false,
-            <SelectBox
-              label=""
-              value={form.direct_manager_id}
-              options={employees.map((e) => ({ value: String(e.id), label: `${e.full_name} (${e.employee_id})` }))}
-              onChange={(v) => setForm({ ...form, direct_manager_id: v })}
-              searchable
-              placeholder={loadingEmployees ? 'Đang tải...' : 'Chọn quản lý trực tiếp'}
             />
           )}
         </div>
