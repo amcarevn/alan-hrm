@@ -44,7 +44,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   PENDING_SIGN: { label: 'Chờ ký',   color: 'bg-amber-100 text-amber-700' },
   SIGNED:       { label: 'Đang hiệu lực', color: 'bg-emerald-100 text-emerald-700' },
   EXPIRED:      { label: 'Hết hạn',  color: 'bg-red-100 text-red-700' },
-  CANCELLED:    { label: 'Đã hủy',   color: 'bg-gray-100 text-gray-500' },
+  CANCELLED:    { label: 'Đã hết hiệu lực',   color: 'bg-gray-100 text-gray-500' },
 };
 
 type Employee = {
@@ -54,7 +54,12 @@ type Employee = {
   department_name: string | null;
   department: { id: number; name: string; code: string } | null;
   is_active: boolean;
+  employment_status?: 'ACTIVE' | 'SUSPENDED' | 'PAUSED' | 'INACTIVE';
 };
+
+/** Nhân viên đã nghỉ việc — không cần cảnh báo hết hạn hợp đồng. */
+const isResigned = (e: Employee): boolean =>
+  e.is_active === false || e.employment_status === 'INACTIVE';
 
 type ContractTemplate = {
   id: number;
@@ -90,7 +95,6 @@ type RowState = {
   template: ContractTemplate | null;
   start_date: string;
   end_date: string;
-  override: boolean;
 };
 
 type RowResult = 'success' | 'error' | 'pending';
@@ -129,7 +133,6 @@ const BulkContracts: React.FC = () => {
   const [bulkTemplate, setBulkTemplate] = useState<ContractTemplate | null>(null);
   const [bulkStartDate, setBulkStartDate] = useState('');
   const [bulkEndDate, setBulkEndDate] = useState('');
-  const [bulkOverride, setBulkOverride] = useState(false);
   const [filterUnit, setFilterUnit] = useState('');
   const [filterDept, setFilterDept] = useState('');
   const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
@@ -171,7 +174,7 @@ const BulkContracts: React.FC = () => {
         const tplList: ContractTemplate[] = Array.isArray(tplRes.data) ? tplRes.data : tplRes.data.results || [];
         setEmployees(empList);
         setTemplates(tplList);
-        setRows(empList.map((e) => ({ employeeId: e.id, selected: false, template: null, start_date: '', end_date: '', override: false })));
+        setRows(empList.map((e) => ({ employeeId: e.id, selected: false, template: null, start_date: '', end_date: '' })));
         await fetchContractsMap();
       } finally {
         setLoading(false);
@@ -221,7 +224,9 @@ const BulkContracts: React.FC = () => {
 
       setRowResults((prev) => ({ ...prev, [row.employeeId]: 'pending' }));
       try {
-        if (row.override) {
+        // Luôn ghi đè: hủy mọi HĐ chưa CANCELLED/EXPIRED trước khi tạo HĐ mới
+        // → tránh 1 NV có nhiều HĐ hiệu lực cùng lúc
+        {
           setBatchState({ current: i + 1, total, phase: 'cancel', employeeName, successCount, errorCount });
           const existing = (contractsMap[row.employeeId] || []).filter(
             (c) => !['CANCELLED', 'EXPIRED'].includes(c.status)
@@ -367,11 +372,10 @@ const BulkContracts: React.FC = () => {
           ...(bulkTemplate ? { template: bulkTemplate } : {}),
           ...(bulkStartDate ? { start_date: bulkStartDate } : {}),
           ...(bulkEndDate ? { end_date: bulkEndDate } : {}),
-          override: bulkOverride,
         };
       })
     );
-  }, [bulkTemplate, bulkStartDate, bulkEndDate, bulkOverride]);
+  }, [bulkTemplate, bulkStartDate, bulkEndDate]);
 
   const multiPreviewItems = useMemo<ContractPreviewItem[]>(
     () =>
@@ -433,21 +437,26 @@ const BulkContracts: React.FC = () => {
     let noContract = 0;
     let pendingSign = 0;
     for (const emp of employees) {
+      const resigned = isResigned(emp);
       const contracts = contractsMap[emp.id] || [];
-      if (contracts.length === 0) { noContract++; continue; }
+      if (contracts.length === 0) {
+        if (!resigned) noContract++;
+        continue;
+      }
       const activeSigned = contracts.find(
         (c) => c.status === 'SIGNED' && effectiveStatus(c.status, c.end_date) === 'SIGNED'
       );
       if (activeSigned) {
         signed++;
         const days = getDaysUntilExpiry(activeSigned.end_date);
-        if (days !== null && days <= 5) expiringSoon++;
+        // Bỏ qua cảnh báo sắp hết hạn nếu NV đã nghỉ việc
+        if (!resigned && days !== null && days <= 5) expiringSoon++;
       }
-      // Hết hạn: SIGNED đã qua end_date hoặc status EXPIRED trong DB
+      // Hết hạn: SIGNED đã qua end_date hoặc status EXPIRED trong DB — bỏ qua nếu đã nghỉ việc
       const hasExpired = contracts.some(
         (c) => effectiveStatus(c.status, c.end_date) === 'EXPIRED'
       );
-      if (hasExpired && !activeSigned) alreadyExpired++;
+      if (!resigned && hasExpired && !activeSigned) alreadyExpired++;
       if (contracts.some((c) => c.status === 'PENDING_SIGN')) pendingSign++;
     }
     return { signed, expiringSoon, alreadyExpired, noContract, pendingSign };
@@ -459,7 +468,7 @@ const BulkContracts: React.FC = () => {
     { value: 'EXPIRED',         label: 'Hết hạn' },
     { value: 'PENDING_SIGN',    label: 'Chờ ký' },
     { value: 'DRAFT',           label: 'Nháp' },
-    { value: 'CANCELLED',       label: 'Đã hủy' },
+    { value: 'CANCELLED',       label: 'Đã hết hiệu lực' },
     { value: 'NONE',            label: 'Chưa có hợp đồng' },
   ];
 
@@ -476,11 +485,14 @@ const BulkContracts: React.FC = () => {
         if (latestUnitName !== filterUnit) return false;
       }
       if (filterStatuses.length > 0) {
+        const resigned = isResigned(e);
         const latest = (contractsMap[e.id] || [])[0];
         const latestEffective = latest ? effectiveStatus(latest.status, latest.end_date) : 'NONE';
         const days = latest ? getDaysUntilExpiry(latest.end_date) : null;
         const isExpiringSoon = latestEffective === 'SIGNED' && days !== null && days <= 5;
         const matched = filterStatuses.some((f) => {
+          // Đã nghỉ việc → không match các filter cảnh báo HĐ
+          if (resigned && (f === 'SIGNED_EXPIRING' || f === 'EXPIRED' || f === 'NONE')) return false;
           if (f === 'SIGNED_EXPIRING') return isExpiringSoon;
           if (f === 'SIGNED') return latestEffective === 'SIGNED' && !isExpiringSoon;
           return f === latestEffective;
@@ -697,15 +709,6 @@ const BulkContracts: React.FC = () => {
               className="input-field"
             />
           </div>
-          <label className="flex items-center gap-1.5 text-sm text-amber-700 cursor-pointer select-none whitespace-nowrap border border-amber-200 bg-amber-50 rounded-lg px-3 py-1.5">
-            <input
-              type="checkbox"
-              checked={bulkOverride}
-              onChange={(e) => setBulkOverride(e.target.checked)}
-              className="rounded"
-            />
-            Ghi đè nhanh
-          </label>
           <button
             onClick={applyBulkToSelected}
             disabled={!bulkStartDate || !bulkEndDate}
@@ -899,8 +902,6 @@ const BulkContracts: React.FC = () => {
               if (!row) return null;
               const contracts = contractsMap[emp.id] || [];
               const latestContract = contracts[0] || null;
-              // hasSigned: có hợp đồng SIGNED còn hiệu lực (end_date >= today hoặc không có end_date)
-              const hasSigned = contracts.some((c) => c.status === 'SIGNED' && effectiveStatus(c.status, c.end_date) === 'SIGNED');
               const nonFinalContracts = contracts.filter((c) => !['CANCELLED', 'EXPIRED'].includes(c.status));
               const deletableContracts = contracts.filter((c) => ['DRAFT', 'PENDING_SIGN'].includes(c.status));
               // Hợp đồng đang hiệu lực: SIGNED + chưa qua end_date
@@ -985,22 +986,11 @@ const BulkContracts: React.FC = () => {
                           placeholder="Chọn template"
                           searchable
                         />
-                        {hasSigned && (
+                        {nonFinalContracts.length > 0 && (
                           <div className="flex items-center gap-1 text-xs text-amber-600">
                             <ExclamationTriangleIcon className="w-3.5 h-3.5" />
-                            Đang có hợp đồng hiệu lực
+                            Sẽ ghi đè {nonFinalContracts.length} HĐ hiện có
                           </div>
-                        )}
-                        {nonFinalContracts.length > 0 && (
-                          <label className="flex items-center gap-1 text-xs text-amber-600 cursor-pointer select-none">
-                            <input
-                              type="checkbox"
-                              checked={row.override}
-                              onChange={(e) => updateRow(emp.id, { override: e.target.checked })}
-                              className="rounded"
-                            />
-                            Ghi đè ({nonFinalContracts.length} hợp đồng hiện có)
-                          </label>
                         )}
                       </div>
                     </td>

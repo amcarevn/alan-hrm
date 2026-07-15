@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useNotificationDrawer } from '../contexts/NotificationDrawerContext';
-import { hrmAPI } from '../utils/api';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
+import { hrmAPI, managementApi } from '../utils/api';
 import { employeesAPI, departmentsAPI, birthdayWishesAPI, BirthdayWish } from '../utils/api';
 import {
   BuildingOfficeIcon,
@@ -22,6 +23,8 @@ import {
   CheckCircleIcon,
   TrophyIcon,
   MegaphoneIcon,
+  ExclamationTriangleIcon,
+  BellAlertIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon } from '@heroicons/react/24/solid';
 import onboardingService from '../services/onboarding.service';
@@ -104,12 +107,27 @@ const Home: React.FC = () => {
   const { unreadIds, markRead, openDrawer } = useNotificationDrawer();
   const [unreadAnnouncements, setUnreadAnnouncements] = useState<any[]>([]);
 
+  // Contract expiry alert (ADMIN/HR only)
+  type ExpiringContract = {
+    id: number;
+    employee_name: string;
+    end_date: string | null;
+    contract_type_display: string;
+    contract_number: string | null;
+    days: number;
+  };
+  const [expiringContracts, setExpiringContracts] = useState<ExpiringContract[]>([]);
+  const [showContractAlert, setShowContractAlert] = useState(false);
+
   useEffect(() => {
     fetchEmployeeData();
     fetchBirthdaysToday();
     fetchBirthdaysTomorrow();
     fetchAttendanceRanking();
+    fetchExpiringContracts();
   }, []);
+
+  useLockBodyScroll(showContractAlert);
 
   useEffect(() => {
     hrmAPI.getCompanyAnnouncements({ is_current: true, unread_only: true, page_size: 5 })
@@ -166,6 +184,37 @@ const Home: React.FC = () => {
     } finally {
       setRankingLoading(false);
     }
+  };
+
+  const fetchExpiringContracts = async () => {
+    try {
+      const res = await managementApi.get('/api-hrm/employee-contracts/expiring-alert/');
+      const { dismissed_today, contracts } = res.data;
+      if (!contracts?.length) return;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const expiring: ExpiringContract[] = contracts.map((c: any) => {
+        const expiry = new Date(c.end_date);
+        expiry.setHours(0, 0, 0, 0);
+        const days = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return { id: c.id, employee_name: c.employee_name, end_date: c.end_date, contract_type_display: c.contract_type_display, contract_number: c.contract_number, days };
+      });
+
+      setExpiringContracts(expiring);
+      if (!dismissed_today) setShowContractAlert(true);
+    } catch {
+      // Không có quyền (nhân viên thường) → bỏ qua
+      setExpiringContracts([]);
+      setShowContractAlert(false);
+    }
+  };
+
+  const dismissContractAlert = async () => {
+    setShowContractAlert(false);
+    try {
+      await managementApi.post('/api-hrm/employee-contracts/expiring-alert/');
+    } catch { }
   };
 
   const fetchSentWishes = async (senderEmployeeId: number) => {
@@ -891,6 +940,85 @@ const Home: React.FC = () => {
                   {markingReadId === viewingDoc.id ? 'Đang lưu...' : 'Đánh dấu đã đọc'}
                 </button>
               )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Contract expiry alert dialog */}
+      {showContractAlert && expiringContracts.length > 0 && createPortal(
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/60">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-500 to-orange-500 rounded-t-2xl px-6 py-5 flex items-start gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <BellAlertIcon className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-bold text-white">Cảnh báo hợp đồng sắp hết hạn</h3>
+                <p className="text-sm text-white/80 mt-0.5">
+                  {expiringContracts.filter(c => c.days <= 0).length > 0
+                    ? `${expiringContracts.filter(c => c.days <= 0).length} hợp đồng đã hết hạn · ${expiringContracts.filter(c => c.days > 0).length} sắp hết hạn`
+                    : `${expiringContracts.length} hợp đồng sắp hết hạn trong 5 ngày tới`
+                  }
+                </p>
+              </div>
+              <button
+                onClick={dismissContractAlert}
+                className="p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-lg transition-colors flex-shrink-0"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Contract list */}
+            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-2">
+              {expiringContracts.map((c) => (
+                <div
+                  key={c.id}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${c.days <= 0
+                      ? 'bg-red-50 border-red-200'
+                      : 'bg-orange-50 border-orange-200'
+                    }`}
+                >
+                  <ExclamationTriangleIcon className={`w-5 h-5 flex-shrink-0 ${c.days <= 0 ? 'text-red-500' : 'text-orange-500'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{c.employee_name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {c.contract_type_display}
+                      {c.contract_number ? ` · ${c.contract_number}` : ''}
+                      {c.end_date ? ` · HH: ${new Date(c.end_date).toLocaleDateString('vi-VN')}` : ''}
+                    </p>
+                  </div>
+                  <span className={`text-xs font-bold whitespace-nowrap px-2.5 py-1 rounded-full ${c.days <= 0
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-orange-100 text-orange-700'
+                    }`}>
+                    {c.days <= 0 ? 'Đã hết hạn' : `Còn ${c.days} ngày`}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer actions */}
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
+              <button
+                onClick={dismissContractAlert}
+                className="text-sm text-gray-500 hover:text-gray-700 underline"
+              >
+                Không nhắc lại hôm nay
+              </button>
+              <button
+                onClick={() => {
+                  dismissContractAlert();
+                  navigate('/dashboard/bulk-contracts');
+                }}
+                className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                Xử lý ngay
+                <ArrowRightIcon className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>,

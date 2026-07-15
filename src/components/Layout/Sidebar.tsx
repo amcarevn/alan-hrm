@@ -339,6 +339,12 @@ const navigationItems: NavigationItem[] = [
         roles: ['ADMIN', 'HR'],
       },
       {
+        name: 'Hợp đồng hàng loạt',
+        href: '/dashboard/bulk-contracts',
+        icon: DocumentTextIcon,
+        roles: ['ADMIN', 'HR'],
+      },
+      {
         name: 'Template tài liệu',
         href: '/dashboard/document-templates',
         icon: DocumentTextIcon,
@@ -600,7 +606,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
         />
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-gradient-to-b from-primary-700 via-primary-800 to-primary-900">
           <div className="relative flex h-16 items-center justify-center border-b border-primary-600">
-            <img src="/logo_alan.png" alt="Trung Anh Group" className="h-10 w-auto max-w-[140px] object-contain drop-shadow-sm brightness-[400]" />
+            <img src="/elani-logo-gold.png" alt="Elani Dermatology" className="h-10 w-auto max-w-[140px] object-contain drop-shadow-sm" />
             <button
               onClick={() => setSidebarOpen(false)}
               className="absolute right-3 text-white/70 hover:text-white"
@@ -660,9 +666,9 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
         <div className="flex min-h-0 flex-1 flex-col bg-gradient-to-b from-primary-700 via-primary-800 to-primary-900 border-r border-primary-900">
           <div className="relative flex h-16 items-center justify-center border-b border-primary-600">
             {!isCollapsed && (
-              <img src="/logo_alan.png"
-                alt="Trung Anh Group"
-                className="h-12 w-auto max-w-[140px] object-contain drop-shadow-sm  brightness-[400]"
+              <img src="/elani-logo-gold.png"
+                alt="Elani Dermatology"
+                className="h-12 w-auto max-w-[140px] object-contain drop-shadow-sm"
               />
             )}
             <button
@@ -732,7 +738,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
         </button>
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <Link to="/" className="pointer-events-auto">
-            <img src="/logo_alan.png" alt="Alan HRM" className="h-10 w-auto object-contain drop-shadow-sm brightness-[400]" />
+            <img src="/elani-logo-gold.png" alt="Elani Dermatology" className="h-10 w-auto object-contain drop-shadow-sm" />
           </Link>
         </div>
       </div>
