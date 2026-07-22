@@ -227,6 +227,8 @@ const EmployeeEdit: React.FC = () => {
     old_id_number: '',
     birth_place: '',
     social_insurance_number: '',
+    insurance_participation: '',
+    insurance_increase_time: '',
     tax_code: '',
     household_code: '',
     link_cccd: '',
@@ -255,6 +257,8 @@ const EmployeeEdit: React.FC = () => {
 
     // Hồ sơ
     file_status: '',
+    file_submission_deadline: '',
+    file_submission_date: '',
     file_review_notes: '',
 
     // Người liên hệ khẩn cấp
@@ -339,6 +343,8 @@ const EmployeeEdit: React.FC = () => {
         old_id_number: e.old_id_number || ei.old_id_number || '',
         birth_place: e.birth_place || '',
         social_insurance_number: e.social_insurance_number || '',
+        insurance_participation: e.insurance_participation || '',
+        insurance_increase_time: e.insurance_increase_time || '',
         tax_code: e.tax_code || '',
         household_code: e.household_code || '',
         link_cccd: e.link_cccd || '',
@@ -375,6 +381,8 @@ const EmployeeEdit: React.FC = () => {
         profit_percentage: e.profit_percentage || '',
 
         file_status: e.file_status || '',
+        file_submission_deadline: toDisplayDate(e.file_submission_deadline),
+        file_submission_date: toDisplayDate(e.file_submission_date),
         file_review_notes: e.file_review_notes || '',
 
         doc_resume: e.doc_resume || false,
@@ -629,6 +637,8 @@ const EmployeeEdit: React.FC = () => {
       add('old_id_number', formData.old_id_number?.trim());
       add('birth_place', formData.birth_place?.trim());
       add('social_insurance_number', formData.social_insurance_number?.trim());
+      add('insurance_participation', formData.insurance_participation?.trim());
+      add('insurance_increase_time', formData.insurance_increase_time?.trim());
       add('tax_code', formData.tax_code?.trim());
       add('household_code', formData.household_code?.trim());
       add('link_cccd', formData.link_cccd?.trim());
@@ -654,6 +664,8 @@ const EmployeeEdit: React.FC = () => {
       add('profit_percentage', formData.profit_percentage);
 
       add('file_status', formData.file_status);
+      add('file_submission_deadline', toApiDate(formData.file_submission_deadline));
+      add('file_submission_date', toApiDate(formData.file_submission_date));
       add('file_review_notes', formData.file_review_notes?.trim());
       add('doc_resume', formData.doc_resume);
       add('doc_cccd', formData.doc_cccd);
@@ -1022,6 +1034,16 @@ const EmployeeEdit: React.FC = () => {
                 onChange={handleInput} placeholder="1234567890" className={inputClass} />
             </Field>
 
+            <Field label="Đang tham gia đóng tại Công ty">
+              <input type="text" name="insurance_participation" value={formData.insurance_participation}
+                onChange={handleInput} placeholder="Ví dụ: Công ty TNHH ABC" className={inputClass} />
+            </Field>
+
+            <Field label="Thời điểm báo tăng">
+              <input type="text" name="insurance_increase_time" value={formData.insurance_increase_time}
+                onChange={handleInput} placeholder="Ví dụ: 01/2026" className={inputClass} />
+            </Field>
+
             <Field label="Mã số thuế">
               <input type="text" name="tax_code" value={formData.tax_code}
                 onChange={handleInput} placeholder="0123456789" className={inputClass} />
@@ -1167,6 +1189,14 @@ const EmployeeEdit: React.FC = () => {
               options={FILE_STATUS_OPTIONS}
               onChange={(v) => handleSelect('file_status', v)}
             />
+
+            <Field label="Hạn nộp hồ sơ">
+              <DateInput name="file_submission_deadline" value={formData.file_submission_deadline} onChange={handleInput} className={inputClass} />
+            </Field>
+
+            <Field label="Ngày nộp hồ sơ">
+              <DateInput name="file_submission_date" value={formData.file_submission_date} onChange={handleInput} className={inputClass} />
+            </Field>
 
             <div className="md:col-span-2">
               <Field label="Ghi chú hồ sơ">
