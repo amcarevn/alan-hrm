@@ -887,17 +887,19 @@ const OnboardingDetail: React.FC = () => {
         {/* ── Thông tin nhân viên ── */}
         <div className="bg-white rounded-xl border p-5">
           <SectionHeader title="Thông tin nhân viên" color="blue" onEdit={() => openEdit('employee_info', {
-            employee_id: employeeProfile?.employee_id ?? onboarding.employee?.employee_id ?? '',
-            full_name: employeeProfile?.full_name ?? onboarding.candidate_name ?? '',
-            personal_email: employeeProfile?.personal_email ?? onboarding.candidate_email ?? '',
-            phone_number: employeeProfile?.phone_number ?? onboarding.candidate_phone ?? '',
-            gender: employeeProfile?.gender ?? '',
-            date_of_birth: employeeProfile?.date_of_birth ?? '',
+            employee_id: employeeProfile?.employee_id || onboarding.employee?.employee_id || '',
+            full_name: employeeProfile?.full_name || onboarding.candidate_name || '',
+            personal_email: employeeProfile?.personal_email || onboarding.candidate_email || '',
+            phone_number: employeeProfile?.phone_number || onboarding.candidate_phone || '',
+            gender: employeeProfile?.gender || (
+              onboarding.gender === 'MALE' ? 'M' : onboarding.gender === 'FEMALE' ? 'F' : onboarding.gender === 'OTHER' ? 'O' : ''
+            ),
+            date_of_birth: employeeProfile?.date_of_birth || onboarding.date_of_birth || '',
             ethnicity: employeeProfile?.ethnicity || onboarding.ethnicity || 'Chưa có dữ liệu',
             nationality: employeeProfile?.nationality || onboarding.nationality || 'Chưa có dữ liệu',
-            marital_status: (employeeProfile as any)?.marital_status ?? (onboarding as any)?.marital_status ?? '',
-            start_date: employeeProfile?.start_date ?? onboarding.start_date ?? '',
-            end_date: (employeeProfile as any)?.end_date ?? '',
+            marital_status: (employeeProfile as any)?.marital_status || (onboarding as any)?.marital_status || '',
+            start_date: employeeProfile?.start_date || onboarding.start_date || '',
+            end_date: (employeeProfile as any)?.end_date || '',
           })} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8">
             <InfoField label="Mã nhân viên" value={employeeProfile?.employee_id ?? onboarding.employee?.employee_id ?? 'Chưa có'} highlight />
@@ -972,15 +974,15 @@ const OnboardingDetail: React.FC = () => {
             {/* ── Giấy tờ tùy thân & địa chỉ ── */}
             <div className="bg-white rounded-xl border p-5">
               <SectionHeader title="Giấy tờ tùy thân & địa chỉ" color="amber" onEdit={() => openEdit('personal', {
-                cccd_number: employeeProfile?.cccd_number ?? onboarding.citizen_id ?? '',
-                cccd_issue_date: employeeProfile?.cccd_issue_date ?? (onboarding as any).citizen_id_issue_date ?? '',
-                cccd_issue_place: employeeProfile?.cccd_issue_place ?? (onboarding as any).citizen_id_issue_place ?? '',
-                old_id_number: (employeeProfile as any)?.old_id_number ?? extraInfo.old_id_number ?? '',
-                birth_place: employeeProfile?.birth_place ?? onboarding.birth_place ?? '',
-                permanent_residence: employeeProfile?.permanent_residence ?? onboarding.permanent_address ?? '',
-                current_address: employeeProfile?.current_address ?? onboarding.current_address ?? '',
-                social_insurance_number: employeeProfile?.social_insurance_number ?? onboarding.social_insurance_number ?? '',
-                tax_code: employeeProfile?.tax_code ?? onboarding.tax_code ?? '',
+                cccd_number: employeeProfile?.cccd_number || onboarding.citizen_id || '',
+                cccd_issue_date: employeeProfile?.cccd_issue_date || (onboarding as any).citizen_id_issue_date || '',
+                cccd_issue_place: employeeProfile?.cccd_issue_place || (onboarding as any).citizen_id_issue_place || '',
+                old_id_number: (employeeProfile as any)?.old_id_number || extraInfo.old_id_number || '',
+                birth_place: employeeProfile?.birth_place || onboarding.birth_place || '',
+                permanent_residence: employeeProfile?.permanent_residence || onboarding.permanent_address || '',
+                current_address: employeeProfile?.current_address || onboarding.current_address || '',
+                social_insurance_number: employeeProfile?.social_insurance_number || onboarding.social_insurance_number || '',
+                tax_code: employeeProfile?.tax_code || onboarding.tax_code || '',
               })} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8">
                 <InfoField label="Số CCCD" value={safeDisplay(employeeProfile?.cccd_number || onboarding.citizen_id)} />
@@ -1006,10 +1008,10 @@ const OnboardingDetail: React.FC = () => {
             {/* ── Trình độ học vấn ── */}
             <div className="bg-white rounded-xl border p-5">
               <SectionHeader title="Trình độ học vấn" color="emerald" onEdit={() => openEdit('education', {
-                education_level: employeeProfile?.education_level ?? onboarding.education_level ?? '',
-                university: (extraInfo.university || onboarding.university) ?? '',
-                major: (extraInfo.major || onboarding.major) ?? '',
-                graduation_year: (extraInfo.graduation_year || onboarding.graduation_year) ?? '',
+                education_level: employeeProfile?.education_level || onboarding.education_level || '',
+                university: extraInfo.university || onboarding.university || '',
+                major: extraInfo.major || onboarding.major || '',
+                graduation_year: extraInfo.graduation_year || onboarding.graduation_year || '',
               })} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8">
                 <InfoField label="Trình độ" value={safeDisplay(employeeProfile?.education_level || onboarding.education_level)} />
@@ -1022,10 +1024,10 @@ const OnboardingDetail: React.FC = () => {
             {/* ── Thông tin tài chính & ngân hàng ── */}
             <div className="bg-white rounded-xl border p-5">
               <SectionHeader title="Tài chính & ngân hàng" color="purple" onEdit={() => openEdit('financial', {
-                bank_name: employeeProfile?.bank_name ?? onboarding.bank_name ?? '',
-                bank_account: employeeProfile?.bank_account ?? onboarding.bank_account ?? '',
-                bank_account_holder: (extraInfo.bank_account_holder || onboarding.bank_account_holder) ?? '',
-                bank_branch: employeeProfile?.bank_branch ?? onboarding.bank_branch ?? '',
+                bank_name: employeeProfile?.bank_name || onboarding.bank_name || '',
+                bank_account: employeeProfile?.bank_account || onboarding.bank_account || '',
+                bank_account_holder: extraInfo.bank_account_holder || onboarding.bank_account_holder || '',
+                bank_branch: employeeProfile?.bank_branch || onboarding.bank_branch || '',
               })} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8">
                 <InfoField label="Ngân hàng" value={safeDisplay(employeeProfile?.bank_name || onboarding.bank_name)} />
