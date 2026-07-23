@@ -333,9 +333,9 @@ const Onboarding: React.FC = () => {
       await onboardingService.generateToken(item.id);
       alert('Đã tạo link thành công! Bạn có thể copy hoặc gửi email cho nhân viên.');
       await fetchOnboardings();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert('Tạo link thất bại. Vui lòng thử lại.');
+      alert(e.response?.data?.message || 'Tạo link thất bại. Vui lòng thử lại.');
     } finally {
       setTokenLoading(null);
     }
@@ -418,13 +418,20 @@ const Onboarding: React.FC = () => {
       </button>
     ) : null;
 
-    // 1. Đã điền thông tin
-    if (item.task1_status === 'COMPLETED') {
+    // 1. Đã điền thông tin (task1 đã được HR duyệt hoàn thành, hoặc nhân viên
+    // đã submit form — token_status 'completed' — nhưng task1 chưa được duyệt).
+    // Không có nhánh cho token_status === 'completed' trước đây khiến case này
+    // rơi xuống nhánh "Chưa gửi link" mặc dù link đã được tạo và dùng rồi, và
+    // bấm "Tạo link" sẽ luôn lỗi vì backend chặn tạo lại token khi đã completed.
+    if (item.task1_status === 'COMPLETED' || item.token_status === 'completed') {
       return (
         <div className="flex flex-col gap-1.5">
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-600">
             <CheckCircleIcon className="w-3 h-3" /> Đã điền thông tin
           </span>
+          {item.task1_status !== 'COMPLETED' && (
+            <span className="text-[11px] text-gray-400">Chờ HR duyệt</span>
+          )}
           {resendEmailButton}
         </div>
       );
