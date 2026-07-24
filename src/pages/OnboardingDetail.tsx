@@ -655,6 +655,7 @@ const OnboardingDetail: React.FC = () => {
         // Fields to update in employee
         if ('bank_name' in editData) employeeData.bank_name = editData.bank_name;
         if ('bank_account' in editData) employeeData.bank_account = editData.bank_account;
+        if ('bank_account_holder' in editData) employeeData.bank_account_holder = editData.bank_account_holder;
         if ('bank_branch' in editData) employeeData.bank_branch = editData.bank_branch;
 
         // Update onboarding
@@ -662,24 +663,11 @@ const OnboardingDetail: React.FC = () => {
           await onboardingService.superAdminPartialUpdate(parseInt(id), onboardingData);
         }
 
-        // Update employee profile
+        // Update employee profile — bank_account_holder là field thật trên Employee
+        // (khớp với backend EmployeeOnboardingFormSerializer), không lưu qua extra_info
+        // nữa vì phần hiển thị đọc thẳng employeeProfile.bank_account_holder.
         if (empId && Object.keys(employeeData).length > 0) {
-          const updateData = { ...employeeData };
-          if ('bank_account_holder' in editData) {
-            updateData.extra_info = JSON.stringify({
-              ...(() => {
-                try {
-                  return typeof employeeProfile?.extra_info === 'string'
-                    ? JSON.parse(employeeProfile.extra_info || '{}')
-                    : (employeeProfile?.extra_info || {});
-                } catch {
-                  return {};
-                }
-              })(),
-              bank_account_holder: editData.bank_account_holder || undefined,
-            });
-          }
-          await employeesAPI.partialUpdateByEmployeeId(empId, updateData);
+          await employeesAPI.partialUpdateByEmployeeId(empId, employeeData);
         }
 
         await fetchOnboardingDetail();
@@ -902,10 +890,10 @@ const OnboardingDetail: React.FC = () => {
             end_date: (employeeProfile as any)?.end_date || '',
           })} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8">
-            <InfoField label="Mã nhân viên" value={employeeProfile?.employee_id ?? onboarding.employee?.employee_id ?? 'Chưa có'} highlight />
-            <InfoField label="Họ và tên" value={employeeProfile?.full_name ?? onboarding.candidate_name} />
-            <InfoField label="Email" value={employeeProfile?.personal_email ?? onboarding.candidate_email} />
-            <InfoField label="Số điện thoại" value={employeeProfile?.phone_number ?? onboarding.candidate_phone} />
+            <InfoField label="Mã nhân viên" value={employeeProfile?.employee_id || onboarding.employee?.employee_id || 'Chưa có'} highlight />
+            <InfoField label="Họ và tên" value={employeeProfile?.full_name || onboarding.candidate_name} />
+            <InfoField label="Email" value={employeeProfile?.personal_email || onboarding.candidate_email} />
+            <InfoField label="Số điện thoại" value={employeeProfile?.phone_number || onboarding.candidate_phone} />
             <InfoField label="Giới tính" value={
               employeeProfile?.gender
                 ? (employeeProfile.gender === 'M' ? 'Nam' : employeeProfile.gender === 'F' ? 'Nữ' : 'Khác')
@@ -920,7 +908,7 @@ const OnboardingDetail: React.FC = () => {
               const ms = employeeProfile?.marital_status || (onboarding as any)?.marital_status;
               return ms ? (MARITAL_STATUS_LABELS[ms] || ms) : null;
             })()} />
-            <InfoField label="Ngày bắt đầu làm việc" value={formatDate(employeeProfile?.start_date ?? onboarding.start_date)} />
+            <InfoField label="Ngày bắt đầu làm việc" value={formatDate(employeeProfile?.start_date || onboarding.start_date)} />
             <InfoField label="Ngày nghỉ việc" value={(employeeProfile as any)?.end_date ? formatDate((employeeProfile as any).end_date) : null} />
           </div>
         </div>
@@ -1026,13 +1014,13 @@ const OnboardingDetail: React.FC = () => {
               <SectionHeader title="Tài chính & ngân hàng" color="purple" onEdit={() => openEdit('financial', {
                 bank_name: employeeProfile?.bank_name || onboarding.bank_name || '',
                 bank_account: employeeProfile?.bank_account || onboarding.bank_account || '',
-                bank_account_holder: extraInfo.bank_account_holder || onboarding.bank_account_holder || '',
+                bank_account_holder: (employeeProfile as any)?.bank_account_holder || onboarding.bank_account_holder || '',
                 bank_branch: employeeProfile?.bank_branch || onboarding.bank_branch || '',
               })} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8">
                 <InfoField label="Ngân hàng" value={safeDisplay(employeeProfile?.bank_name || onboarding.bank_name)} />
                 <InfoField label="Số tài khoản" value={safeDisplay(employeeProfile?.bank_account || onboarding.bank_account)} />
-                <InfoField label="Chủ tài khoản" value={safeDisplay(extraInfo.bank_account_holder || onboarding.bank_account_holder)} />
+                <InfoField label="Chủ tài khoản" value={safeDisplay((employeeProfile as any)?.bank_account_holder || onboarding.bank_account_holder)} />
                 <InfoField label="Chi nhánh" value={safeDisplay(employeeProfile?.bank_branch || onboarding.bank_branch)} />
               </div>
             </div>
