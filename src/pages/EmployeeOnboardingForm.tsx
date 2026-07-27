@@ -48,11 +48,6 @@ interface OnboardingData {
   is_existing_employee?: boolean;
 }
 
-// Bước ẩn khi đây là link tự cập nhật cho nhân viên ĐÃ TỒN TẠI
-// (index trong STEP_LABELS): 1 = Công việc. Bước 5 (Lương) vẫn giữ lại vì
-// chứa thông tin ngân hàng — chỉ ẩn riêng phần lương/thử việc bên trong.
-const EXISTING_EMPLOYEE_HIDDEN_STEPS = [1];
-
 interface FormValues {
   candidate_name: string;
   candidate_email: string;
@@ -88,8 +83,6 @@ interface FormValues {
   emergency_contact_name: string;
   emergency_contact_relationship: string;
   emergency_contact_phone: string;
-  emergency_contact_dob: string;
-  emergency_contact_occupation: string;
   emergency_contact_address: string;
   salary: string;
   allowance: string;
@@ -117,10 +110,11 @@ interface TFProps {
   maxLength?: number;
 }
 
-const TF: React.FC<TFProps> = ({ label, value, onChange, placeholder, type = 'text', disabled, multiline, rows, error, maxLength }) => (
+const TF: React.FC<TFProps> = ({ label, value, onChange, placeholder, type = 'text', disabled, required, multiline, rows, error, maxLength }) => (
   <div>
     <label className="block text-base font-semibold text-gray-800 mb-1.5">
       {label}
+      {required && <span className="text-red-500 ml-0.5">*</span>}
     </label>
     {multiline ? (
       <textarea
@@ -161,11 +155,11 @@ interface SFProps {
   searchable?: boolean;
 }
 
-const SF: React.FC<SFProps> = ({ label, value, onChange, options, searchable }) => {
+const SF: React.FC<SFProps> = ({ label, value, onChange, options, required, searchable }) => {
   const normalized = options.map((o) => typeof o === 'string' ? { value: o, label: o } : o);
   return (
     <SelectBox
-      label={label}
+      label={required ? `${label} *` : label}
       value={value}
       options={normalized}
       onChange={onChange}
@@ -184,11 +178,14 @@ interface RFProps {
   required?: boolean;
 }
 
-const RF: React.FC<RFProps> = ({ label, value, onChange, options }) => {
+const RF: React.FC<RFProps> = ({ label, value, onChange, options, required }) => {
   const normalized = options.map((o) => typeof o === 'string' ? { value: o, label: o } : o);
   return (
     <fieldset>
-      <legend className="text-base font-semibold text-gray-800 mb-2.5">{label}</legend>
+      <legend className="text-base font-semibold text-gray-800 mb-2.5">
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </legend>
       <div className="flex flex-wrap gap-2">
         {normalized.map((o) => (
           <label key={o.value} className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border-2 text-sm transition-all ${value === o.value ? 'border-blue-500 bg-blue-50 shadow-sm font-semibold' : 'border-gray-200 hover:border-gray-300 bg-white'}`}>
@@ -211,6 +208,12 @@ const RF: React.FC<RFProps> = ({ label, value, onChange, options }) => {
 // ============================================
 // MAIN COMPONENT
 // ============================================
+
+// Autosave draft vào localStorage — chống mất dữ liệu đang gõ dở nếu tab bị
+// reload/đóng giữa chừng (điện thoại khoá màn hình, mở app khác rồi quay lại,
+// webview Zalo/Messenger reload tab...). Key theo token nên mỗi link onboarding
+// có draft riêng, không lẫn giữa các lần cấp link khác nhau.
+const draftStorageKey = (token: string) => `onboarding_draft_${token}`;
 
 export const EmployeeOnboardingForm: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -242,8 +245,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
     old_id_number: '', permanent_address: '', current_address: '',
     social_insurance_number: '', tax_code: '', marital_status: 'SINGLE',
     emergency_contact_name: '', emergency_contact_relationship: '',
-    emergency_contact_phone: '', emergency_contact_dob: '',
-    emergency_contact_occupation: '', emergency_contact_address: '',
+    emergency_contact_phone: '', emergency_contact_address: '',
     salary: '', allowance: '', probation_period_months: '2',
     bank_account: '', bank_name: '', bank_branch: '',
   });
@@ -305,6 +307,16 @@ export const EmployeeOnboardingForm: React.FC = () => {
           candidate_name: data.data.candidate_name,
           candidate_email: data.data.candidate_email,
         }));
+        // Khôi phục draft đã gõ dở (nếu có) — ghi đè lên trên, vì đây là dữ liệu
+        // người dùng tự nhập, mới và đầy đủ hơn 2 field vừa lấy từ server.
+        try {
+          const raw = localStorage.getItem(draftStorageKey(token!));
+          if (raw) {
+            const draft = JSON.parse(raw);
+            if (draft?.values) setValues((v) => ({ ...v, ...draft.values }));
+            if (typeof draft?.currentStep === 'number') setCurrentStep(draft.currentStep);
+          }
+        } catch {}
       } catch {
         setPageError('Không thể tải thông tin. Vui lòng kiểm tra lại link.');
       } finally {
@@ -313,6 +325,23 @@ export const EmployeeOnboardingForm: React.FC = () => {
     };
     fetch_();
   }, [token]);
+
+  // Autosave draft mỗi khi values/currentStep thay đổi — không lưu file (File
+  // object không serialize được vào localStorage; nếu mất tab, nhân viên chỉ
+  // cần chọn lại 2 file CCCD/VNeID, còn toàn bộ text/date/select đã gõ vẫn còn).
+  useEffect(() => {
+    if (!token || loading) return;
+    try {
+      localStorage.setItem(draftStorageKey(token), JSON.stringify({ values, currentStep }));
+    } catch {}
+  }, [token, loading, values, currentStep]);
+
+  // Nộp thành công -> xoá draft, không cần giữ nữa
+  useEffect(() => {
+    if (success && token) {
+      try { localStorage.removeItem(draftStorageKey(token)); } catch {}
+    }
+  }, [success, token]);
 
   // ===== INLINE VALIDATION =====
   const NAME_REGEX = /^[a-zA-ZÀ-ỹ\s]+$/;
@@ -346,19 +375,6 @@ export const EmployeeOnboardingForm: React.FC = () => {
         today.setHours(23, 59, 59, 999);
         if (d < minDate) return 'Ngày cấp CCCD gắn chip phải từ 01/01/2019 trở đi';
         if (d > today) return 'Ngày cấp không được sau hôm nay';
-        return '';
-      }
-      case 'emergency_contact_dob': {
-        const d = new Date(val);
-        if (isNaN(d.getTime())) return 'Ngày sinh không hợp lệ';
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (d > today) return 'Ngày sinh không được sau hôm nay';
-        let age = today.getFullYear() - d.getFullYear();
-        const monthDiff = today.getMonth() - d.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d.getDate())) age--;
-        if (age < 18) return `Người liên hệ phải đủ 18 tuổi (hiện ${age} tuổi)`;
-        if (age > 100) return `Tuổi không hợp lệ (${age} tuổi)`;
         return '';
       }
       case 'candidate_name':
@@ -462,12 +478,6 @@ export const EmployeeOnboardingForm: React.FC = () => {
       if (!NAME_REGEX.test(values.emergency_contact_relationship.trim())) { showToast('error', 'Mối quan hệ không được chứa số hoặc ký tự đặc biệt'); return false; }
       if (!values.emergency_contact_phone.trim()) { showToast('error', 'Vui lòng nhập số điện thoại người liên hệ'); return false; }
       if (!/^\d{10}$/.test(values.emergency_contact_phone.trim())) { showToast('error', 'Số điện thoại người liên hệ phải có đúng 10 chữ số'); return false; }
-      if (!values.emergency_contact_dob) { showToast('error', 'Vui lòng chọn ngày sinh người liên hệ'); return false; }
-      {
-        const err = getFieldError('emergency_contact_dob', values.emergency_contact_dob);
-        if (err) { showToast('error', err); return false; }
-      }
-      if (!values.emergency_contact_occupation.trim()) { showToast('error', 'Vui lòng nhập nghề nghiệp người liên hệ'); return false; }
       if (!values.emergency_contact_address.trim()) { showToast('error', 'Vui lòng nhập địa chỉ người liên hệ'); return false; }
     }
     return true;
@@ -499,8 +509,6 @@ export const EmployeeOnboardingForm: React.FC = () => {
     if (step === 4) {
       return !!(values.emergency_contact_name.trim() && values.emergency_contact_relationship.trim() &&
         values.emergency_contact_phone.trim() && /^\d{10}$/.test(values.emergency_contact_phone.trim()) &&
-        values.emergency_contact_dob && !getFieldError('emergency_contact_dob', values.emergency_contact_dob) &&
-        values.emergency_contact_occupation.trim() &&
         values.emergency_contact_address.trim());
     }
     return true;
@@ -508,18 +516,10 @@ export const EmployeeOnboardingForm: React.FC = () => {
 
   const handleNext = () => {
     if (!validateStep(currentStep + 1)) return;
-    setCurrentStep((s) => {
-      let next = Math.min(s + 1, totalSteps - 1);
-      while (isExistingEmployee && EXISTING_EMPLOYEE_HIDDEN_STEPS.includes(next) && next < totalSteps - 1) next++;
-      return next;
-    });
+    setCurrentStep((s) => Math.min(s + 1, totalSteps - 1));
   };
   const handlePrevious = () => {
-    setCurrentStep((s) => {
-      let prev = Math.max(s - 1, 0);
-      while (isExistingEmployee && EXISTING_EMPLOYEE_HIDDEN_STEPS.includes(prev) && prev > 0) prev--;
-      return prev;
-    });
+    setCurrentStep((s) => Math.max(s - 1, 0));
   };
 
   // ===== FILE =====
@@ -556,8 +556,6 @@ export const EmployeeOnboardingForm: React.FC = () => {
   // ===== SUBMIT =====
   const handleSubmit = async () => {
     for (let step = 1; step <= 5; step++) {
-      // validateStep(n) kiểm tra dữ liệu của step index (n-1) — bỏ qua các step đã ẩn
-      if (isExistingEmployee && EXISTING_EMPLOYEE_HIDDEN_STEPS.includes(step - 1)) continue;
       if (!validateStep(step)) return;
     }
     if (!citizenIdFile) { showToast('error', 'Vui lòng upload file CCCD (PDF)'); return; }
@@ -579,20 +577,17 @@ export const EmployeeOnboardingForm: React.FC = () => {
       ap('nationality', values.nationality);
       ap('facebook_link', values.facebook_link);
       ap('start_date', values.start_date);
-      if (!isExistingEmployee) {
-        ap('probation_rate', values.probation_rate);
-        ap('company_unit', values.company_unit);
-        ap('region', values.region);
-        ap('block', values.block);
-        ap('sub_department', values.sub_department);
-        ap('section', values.section);
-        ap('position', values.position);
-        ap('job_rank', values.job_rank);
-        ap('doctor_team', values.doctor_team);
-        ap('work_form', values.work_form);
-        ap('work_type', workType);
-        ap('work_location', values.work_location);
-      }
+      ap('company_unit', values.company_unit);
+      ap('region', values.region);
+      ap('block', values.block);
+      ap('sub_department', values.sub_department);
+      ap('section', values.section);
+      ap('position', values.position);
+      ap('job_rank', values.job_rank);
+      ap('doctor_team', values.doctor_team);
+      ap('work_form', values.work_form);
+      ap('work_type', workType);
+      ap('work_location', values.work_location);
       ap('citizen_id', values.citizen_id);
       if (citizenIdFile) payload.append('citizen_id_file', citizenIdFile);
       if (vneidScreenshotFile) payload.append('vneid_screenshot', vneidScreenshotFile);
@@ -607,13 +602,12 @@ export const EmployeeOnboardingForm: React.FC = () => {
       ap('emergency_contact_name', values.emergency_contact_name);
       ap('emergency_contact_relationship', values.emergency_contact_relationship);
       ap('emergency_contact_phone', values.emergency_contact_phone);
-      ap('emergency_contact_dob', values.emergency_contact_dob);
-      ap('emergency_contact_occupation', values.emergency_contact_occupation);
       ap('emergency_contact_address', values.emergency_contact_address);
       if (!isExistingEmployee) {
         ap('salary', values.salary);
         ap('allowance', values.allowance);
         ap('probation_period_months', values.probation_period_months);
+        ap('probation_rate', values.probation_rate);
       }
       ap('bank_account', values.bank_account);
       ap('bank_name', values.bank_name);
@@ -712,11 +706,11 @@ export const EmployeeOnboardingForm: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <SF label="Trình độ học vấn" value={values.education_level} onChange={handleSelect('education_level')} options={EDUCATION_LEVEL_OPTIONS} required />
-            <SF label="Dân tộc" value={values.ethnicity} onChange={handleSelect('ethnicity')} options={ETHNICITY_OPTIONS} searchable />
+            <SF label="Dân tộc" value={values.ethnicity} onChange={handleSelect('ethnicity')} options={ETHNICITY_OPTIONS} searchable required />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <TF label="Nơi khai sinh" value={values.birth_place} onChange={handleChange('birth_place')} placeholder="Xã/Phường, Tỉnh/TP theo đơn vị hành chính mới" />
-            <SF label="Quốc tịch" value={values.nationality} onChange={handleSelect('nationality')} options={NATIONALITY_OPTIONS} searchable />
+            <TF label="Nơi khai sinh" value={values.birth_place} onChange={handleChange('birth_place')} required placeholder="Xã/Phường, Tỉnh/TP theo đơn vị hành chính mới" />
+            <SF label="Quốc tịch" value={values.nationality} onChange={handleSelect('nationality')} options={NATIONALITY_OPTIONS} searchable required />
           </div>
           <TF label="Link Facebook" value={values.facebook_link} onChange={handleChange('facebook_link')} placeholder="https://facebook.com/..." required error={getFieldError('facebook_link', values.facebook_link)} />
         </div>
@@ -728,16 +722,16 @@ export const EmployeeOnboardingForm: React.FC = () => {
           <h3 className="text-3xl font-bold text-gray-900 text-center">Thông tin công việc chi tiết</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
             <SF label="Đơn vị làm việc" value={values.company_unit} onChange={handleSelect('company_unit')}
-              options={companyUnits.map(cu => ({ value: cu.code, label: cu.name }))} />
-            <SF label="Vùng/Miền" value={values.region} onChange={handleSelect('region')} options={REGION_OPTIONS} />
-            <SF label="Khối" value={values.block} onChange={handleSelect('block')} options={BLOCK_OPTIONS} />
+              options={companyUnits.map(cu => ({ value: cu.code, label: cu.name }))} required />
+            <SF label="Vùng/Miền" value={values.region} onChange={handleSelect('region')} options={REGION_OPTIONS} required />
+            <SF label="Khối" value={values.block} onChange={handleSelect('block')} options={BLOCK_OPTIONS} required />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SF label="Phòng/Ban" value={values.sub_department} onChange={handleSelect('sub_department')} options={departments.length > 0 ? departments.map(d => ({ value: d.name, label: d.name })) : SUB_DEPARTMENT_OPTIONS} searchable />
+            <SF label="Phòng/Ban" value={values.sub_department} onChange={handleSelect('sub_department')} options={departments.length > 0 ? departments.map(d => ({ value: d.name, label: d.name })) : SUB_DEPARTMENT_OPTIONS} searchable required />
             <SF label="Bộ phận" value={values.section} onChange={handleSelect('section')} options={sections.length > 0 ? sections.map(s => ({ value: s.name, label: s.name })) : SECTION_OPTIONS} searchable />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SF label="Vị trí" value={values.position} onChange={handleSelect('position')} options={positions.length > 0 ? positions.map(p => ({ value: p.title, label: p.title })) : POSITION_OPTIONS} searchable />
+            <SF label="Vị trí" value={values.position} onChange={handleSelect('position')} options={positions.length > 0 ? positions.map(p => ({ value: p.title, label: p.title })) : POSITION_OPTIONS} searchable required />
             <SF label="Cấp bậc" value={values.job_rank} onChange={handleSelect('job_rank')} options={RANK_OPTIONS} required />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -850,10 +844,6 @@ export const EmployeeOnboardingForm: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <TF label="Số điện thoại" value={values.emergency_contact_phone} onChange={handleChange('emergency_contact_phone')} required placeholder="0987654321" error={getFieldError('emergency_contact_phone', values.emergency_contact_phone)} maxLength={10} />
-            <TF label="Ngày sinh" value={values.emergency_contact_dob} onChange={handleChange('emergency_contact_dob')} type="date" required error={getFieldError('emergency_contact_dob', values.emergency_contact_dob)} />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <TF label="Nghề nghiệp" value={values.emergency_contact_occupation} onChange={handleChange('emergency_contact_occupation')} required placeholder="Giáo viên, Bác sĩ..." />
             <TF label="Địa chỉ" value={values.emergency_contact_address} onChange={handleChange('emergency_contact_address')} required placeholder="Số nhà, đường, phường/xã..." />
           </div>
         </div>
@@ -927,7 +917,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
             ['Quốc tịch', values.nationality],
             ['Link Facebook', values.facebook_link],
           ]},
-          ...(isExistingEmployee ? [] : [{ title: 'Công việc', color: 'indigo', fields: [
+          { title: 'Công việc', color: 'indigo', fields: [
             ['Đơn vị', companyUnits.find(cu => cu.code === values.company_unit)?.name || values.company_unit || null],
             ['Vùng/Miền', values.region],
             ['Khối', values.block],
@@ -938,7 +928,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
             ['Team Bác sĩ', values.doctor_team],
             ['Hình thức', WORK_FORM_OPTIONS.find(o => o.value === values.work_form)?.label || values.work_form || null],
             ['Địa điểm', WORK_LOCATION_OPTIONS.find(o => o.value === values.work_location)?.label || values.work_location || null],
-          ] as [string, string | null][] }]),
+          ] as [string, string | null][] },
           { title: 'CCCD', color: 'amber', fields: [
             ['Số CCCD', values.citizen_id],
             ['Ngày cấp', values.citizen_id_issue_date ? new Date(values.citizen_id_issue_date).toLocaleDateString('vi-VN') : null],
@@ -958,8 +948,6 @@ export const EmployeeOnboardingForm: React.FC = () => {
             ['Họ và tên', values.emergency_contact_name],
             ['Mối quan hệ', values.emergency_contact_relationship],
             ['Số điện thoại', values.emergency_contact_phone],
-            ['Ngày sinh', values.emergency_contact_dob ? new Date(values.emergency_contact_dob).toLocaleDateString('vi-VN') : null],
-            ['Nghề nghiệp', values.emergency_contact_occupation],
             ['Địa chỉ', values.emergency_contact_address],
           ]},
           { title: isExistingEmployee ? 'Ngân hàng' : 'Lương & Ngân hàng', color: 'purple', fields: [
@@ -1020,8 +1008,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
   // ============================================
 
   const visibleSteps = STEP_LABELS
-    .map((label, i) => ({ label: (isExistingEmployee && i === 5) ? 'Ngân hàng' : label, i }))
-    .filter(({ i }) => !isExistingEmployee || !EXISTING_EMPLOYEE_HIDDEN_STEPS.includes(i));
+    .map((label, i) => ({ label: (isExistingEmployee && i === 5) ? 'Ngân hàng' : label, i }));
   const visiblePosition = visibleSteps.findIndex((s) => s.i === currentStep) + 1;
   const visibleTotal = visibleSteps.length;
 
