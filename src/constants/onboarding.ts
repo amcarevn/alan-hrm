@@ -95,16 +95,10 @@ export const WORK_FORM_OPTIONS = [
 ];
 
 export const WORK_LOCATION_OPTIONS = [
-  { value: '789_LE_HONG_PHONG', label: '789/C9 Lê Hồng Phong, Phường 12, Quận 10, TP.HCM' },
-  { value: '16_NGUYEN_NHU_DO', label: '16 Nguyễn Như Đổ, Văn Miếu, Đống Đa, Hà Nội' },
-  { value: '61_VU_THANH', label: '61 Vũ Thạnh, Ô Chợ Dừa, Đống Đa, Hà Nội' },
-  { value: '9_SU_VAN_HANH', label: '9 Sư Vạn Hạnh, Phường 9, Quận 5, TP.HCM' },
-  { value: '355_AN_DUONG_VUONG', label: '355 An Dương Vương' },
-  { value: '1E_TRUONG_TRINH', label: 'Số 1E Trường Trinh, Hà Nội' },
-  { value: '50_TRUNG_PHUNG', label: 'Số 50 Trung Phụng, Hà Nội' },
-  { value: '219_TRUNG_KINH', label: 'Số 219 Trung Kính, Cầu Giấy, Hà Nội' },
-  { value: '100_NGUYEN_DU', label: '100 Nguyễn Du' },
-  { value: '106_DAI_CO_VIET', label: '106 Đại Cồ Việt' },
+  { value: 'VP_219_TRUNG_KINH', label: 'VP: 219 Trung Kính, Cầu Giấy, Hà Nội' },
+  { value: 'VP_167_TRUNG_KINH', label: 'VP: 167 Trung Kính, Cầu Giấy, Hà Nội' },
+  { value: 'CS_106_DAI_CO_VIET', label: 'Cơ sở: 106 Đại Cồ Việt, Hà Nội' },
+  { value: 'CS_100_NGUYEN_DU', label: 'Cơ sở: 100 Nguyễn Du, Hồ Chí Minh' },
 ];
 
 export const CITIZEN_ID_ISSUE_PLACE_OPTIONS = [
