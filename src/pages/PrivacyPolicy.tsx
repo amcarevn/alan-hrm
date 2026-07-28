@@ -181,7 +181,7 @@ export default function PrivacyPolicy() {
           </p>
           <div className="bg-gray-50 p-4 rounded-lg">
             <p className="text-gray-900">
-              <strong>CÔNG TY CP THƯƠNG MẠI VÀ DỊCH VỤ ALAN</strong>
+              <strong>CÔNG TY CP THƯƠNG MẠI VÀ DỊCH VỤ ELANI</strong>
             </p>
             <p className="text-gray-900">Email: info@alanbeautyclinic.com</p>
             <p className="text-gray-900">Điện thoại: +84916-258-766</p>
