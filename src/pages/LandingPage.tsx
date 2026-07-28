@@ -99,7 +99,7 @@ export default function LandingPage() {
             <div className="bg-white rounded-xl px-3 py-1.5 shadow-md">
               <img
                 src="/logo-alan.png"
-                alt="Alan HRM"
+                alt="ELANI HRM"
                 className="h-7 w-auto max-w-[130px] object-contain"
               />
             </div>
@@ -149,7 +149,7 @@ export default function LandingPage() {
                 custom={1} variants={fadeUp} initial="hidden" animate="visible"
                 className="text-6xl lg:text-8xl font-black text-white leading-[0.8] uppercase"
               >
-                ALAN <br />
+                ELANI <br />
                 <span className="block mt-[-5px] lg:mt-[-10px] text-3xl lg:text-5xl font-bold text-white tracking-normal normal-case">Beauty Medical Clinic</span>
               </motion.h1>
               <motion.p
@@ -163,7 +163,7 @@ export default function LandingPage() {
                 className="mt-5 text-base lg:text-lg text-white/60 leading-relaxed max-w-xl"
               >
                 Nền tảng quản lý nhân sự, chấm công, tính lương và tài sản tập trung —
-                vận hành toàn bộ hoạt động nhân sự của Alan Beauty Medical Clinic trên một hệ thống duy nhất.
+                vận hành toàn bộ hoạt động nhân sự của ELANI Beauty Medical Clinic trên một hệ thống duy nhất.
               </motion.p>
 
               <motion.div
@@ -220,7 +220,7 @@ export default function LandingPage() {
                 <div className="flex items-center justify-between mb-5">
                   <div>
                     <p className="text-white font-semibold text-sm">Tổng quan Nhân sự</p>
-                    <p className="text-white/60 text-xs mt-0.5">Alan Beauty Medical Clinic · 2026</p>
+                    <p className="text-white/60 text-xs mt-0.5">ELANI Beauty Medical Clinic · 2026</p>
                   </div>
                   <span className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded-full">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -292,7 +292,7 @@ export default function LandingPage() {
               <span className="block text-primary-500 mt-1">trong một nền tảng duy nhất</span>
             </h2>
             <p className="mt-4 text-gray-500 max-w-xl">
-              Hệ thống HRM Alan Beauty Medical Clinic bao gồm đầy đủ các phân hệ — từ quản lý hồ sơ đến tính lương và báo cáo, được xây dựng theo đúng quy trình nội bộ.
+              Hệ thống HRM ELANI Beauty Medical Clinic bao gồm đầy đủ các phân hệ — từ quản lý hồ sơ đến tính lương và báo cáo, được xây dựng theo đúng quy trình nội bộ.
             </p>
           </div>
 
@@ -360,7 +360,7 @@ export default function LandingPage() {
               Sẵn sàng trải nghiệm hệ thống?
             </h2>
             <p className="mt-2 text-white/65 text-sm">
-              Dành cho cán bộ nhân viên Alan Beauty Medical Clinic. Liên hệ quản trị viên nếu cần hỗ trợ.
+              Dành cho cán bộ nhân viên ELANI Beauty Medical Clinic. Liên hệ quản trị viên nếu cần hỗ trợ.
             </p>
           </div>
           <a
@@ -384,7 +384,7 @@ export default function LandingPage() {
               </div>
               <span className="text-white/50 text-xs hidden sm:block">Hệ thống Quản lý Nhân sự</span>
             </div>
-            <span className="text-white/40 text-xs tracking-wide">© 2026 Alan Beauty Medical Clinic. All rights reserved.</span>
+            <span className="text-white/40 text-xs tracking-wide">© 2026 ELANI Beauty Medical Clinic. All rights reserved.</span>
           </div>
         </div>
       </section>

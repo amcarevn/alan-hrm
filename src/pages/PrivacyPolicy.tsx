@@ -18,7 +18,7 @@ export default function PrivacyPolicy() {
             1. Thông tin chúng tôi thu thập
           </h2>
           <p className="mb-4 text-gray-900">
-            Alan Medical Service ("chúng tôi", "của chúng tôi", hoặc "dịch vụ")
+            ELANI Medical Service ("chúng tôi", "của chúng tôi", hoặc "dịch vụ")
             thu thập các loại thông tin sau đây:
           </p>
 

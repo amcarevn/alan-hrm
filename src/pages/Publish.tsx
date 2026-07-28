@@ -241,7 +241,7 @@ const Publish: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-800">Trợ lý AI</h1>
-                <p className="text-sm text-gray-500">Cung cấp ALAN</p>
+                <p className="text-sm text-gray-500">Cung cấp ELANI</p>
               </div>
             </div>
 
