@@ -472,10 +472,10 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               <table style="border-collapse: collapse;" role="presentation">
                 <tr>
                   <td style="width: 80px; vertical-align: middle; padding-right: 16px;">
-                    <img src="${logoUrl}" alt="ALAN BEAUTY MEDICAL CLINIC Logo" style="width: 80px;">
+                    <img src="${logoUrl}" alt="ELANI BEAUTY MEDICAL CLINIC Logo" style="width: 80px;">
                   </td>
                   <td style="vertical-align: middle; color: #666; font-size: 13px; line-height: 1.5;">
-                    <strong>Phòng HCNS - ALAN BEAUTY MEDICAL CLINIC</strong><br>
+                    <strong>Phòng HCNS - ELANI BEAUTY MEDICAL CLINIC</strong><br>
                     Địa chỉ: Số 219 Trung Kính, Yên Hòa, Hà Nội<br>
                     SĐT: 0936.004.735
                   </td>

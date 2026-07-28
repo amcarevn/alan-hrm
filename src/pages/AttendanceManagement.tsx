@@ -1679,7 +1679,7 @@ const AttendanceManagement: React.FC = () => {
                     <span className="font-semibold text-gray-700">
                       {currentDate.getMonth() + 1}/{currentDate.getFullYear()}
                     </span>{' '}
-                    từ APP ALAN và cập nhật vào ALAN HRM.
+                    từ APP ELANI và cập nhật vào ELANI HRM.
                   </p>
                 </div>
 

@@ -18,7 +18,7 @@ export default function TermsOfService() {
             1. Chấp nhận điều khoản
           </h2>
           <p className="mb-4 text-gray-900">
-            Bằng việc truy cập và sử dụng website Alan Medical Service, bạn đồng
+            Bằng việc truy cập và sử dụng website ELANI Medical Service, bạn đồng
             ý tuân thủ và bị ràng buộc bởi các điều khoản và điều kiện này. Nếu
             bạn không đồng ý với bất kỳ phần nào của các điều khoản này, vui
             lòng không sử dụng dịch vụ của chúng tôi.
@@ -30,7 +30,7 @@ export default function TermsOfService() {
             2. Mô tả dịch vụ
           </h2>
           <p className="mb-4 text-gray-900">
-            Alan Medical Service cung cấp các dịch vụ y tế thẩm mỹ và chăm sóc
+            ELANI Medical Service cung cấp các dịch vụ y tế thẩm mỹ và chăm sóc
             sức khỏe, bao gồm:
           </p>
           <ul className="list-disc pl-6 mb-4 space-y-2 text-gray-900">
@@ -93,7 +93,7 @@ export default function TermsOfService() {
             5. Hạn chế trách nhiệm
           </h2>
           <p className="mb-4 text-gray-900">
-            Alan Medical Service không chịu trách nhiệm về:
+            ELANI Medical Service không chịu trách nhiệm về:
           </p>
           <ul className="list-disc pl-6 mb-4 space-y-2 text-gray-900">
             <li>Kết quả điều trị không như mong đợi</li>
@@ -111,7 +111,7 @@ export default function TermsOfService() {
           <p className="mb-4 text-gray-900">
             Tất cả nội dung trên website, bao gồm nhưng không giới hạn ở văn
             bản, hình ảnh, logo, thiết kế và phần mềm, đều thuộc quyền sở hữu
-            của Alan Medical Service hoặc được cấp phép sử dụng.
+            của ELANI Medical Service hoặc được cấp phép sử dụng.
           </p>
         </section>
 
@@ -167,7 +167,7 @@ export default function TermsOfService() {
           </p>
           <div className="bg-gray-50 p-4 rounded-lg">
             <p className="text-gray-900">
-              <strong>CÔNG TY CP THƯƠNG MẠI VÀ DỊCH VỤ ALAN</strong>
+              <strong>CÔNG TY CP THƯƠNG MẠI VÀ DỊCH VỤ ELANI</strong>
             </p>
             <p className="text-gray-900">Email: info@alanbeautyclinic.com</p>
             <p className="text-gray-900">Điện thoại: +84916-258-766</p>

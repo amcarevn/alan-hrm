@@ -13,7 +13,7 @@ export default function Header() {
       >
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3">
-          <span className="sr-only">ALAN Beauty Medical Clinic</span>
+          <span className="sr-only">ELANI Beauty Medical Clinic</span>
           <div className="h-9 w-9 rounded-lg bg-ruby-primary flex items-center justify-center flex-shrink-0 shadow-lg shadow-ruby-primary/20">
             <span className="text-white font-black text-sm tracking-tight">ALAN</span>
           </div>
