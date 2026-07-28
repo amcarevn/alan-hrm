@@ -152,8 +152,8 @@ export const POSITION_OPTIONS = [
 ];
 
 export const COMPANY_UNIT_OPTIONS = [
-  { value: 'HOMIE', label: 'Homie' },
-  { value: 'AMCARE', label: 'Amcare' },
+  { value: 'NITA', label: 'Nita' },
+  { value: 'ELANI', label: 'Elani' },
 ];
 
 export const REGION_OPTIONS = ['Miền Bắc', 'Miền Nam'];

@@ -11,7 +11,7 @@ import {
   ETHNICITY_OPTIONS, NATIONALITY_OPTIONS, SECTION_OPTIONS, WORK_FORM_OPTIONS, WORK_LOCATION_OPTIONS,
   CITIZEN_ID_ISSUE_PLACE_OPTIONS, EDUCATION_LEVEL_OPTIONS, RANK_OPTIONS,
   REGION_OPTIONS, BLOCK_OPTIONS, SUB_DEPARTMENT_OPTIONS, POSITION_OPTIONS,
-  GENDER_OPTIONS, PROBATION_MONTHS_OPTIONS, PROBATION_RATE_OPTIONS,
+  GENDER_OPTIONS, PROBATION_MONTHS_OPTIONS, PROBATION_RATE_OPTIONS, COMPANY_UNIT_OPTIONS,
 } from '../constants/onboarding';
 import {
   CheckCircleIcon,
@@ -362,9 +362,6 @@ export const EmployeeOnboardingForm: React.FC = () => {
       case 'start_date': {
         const sd = new Date(val);
         if (isNaN(sd.getTime())) return 'Ngày không hợp lệ';
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-        if (sd < now) return 'Ngày bắt đầu phải từ hôm nay trở đi';
         return '';
       }
       case 'citizen_id_issue_date': {
@@ -722,7 +719,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
           <h3 className="text-3xl font-bold text-gray-900 text-center">Thông tin công việc chi tiết</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
             <SF label="Đơn vị làm việc" value={values.company_unit} onChange={handleSelect('company_unit')}
-              options={companyUnits.map(cu => ({ value: cu.code, label: cu.name }))} required />
+              options={companyUnits.length > 0 ? companyUnits.map(cu => ({ value: cu.code, label: cu.name })) : COMPANY_UNIT_OPTIONS} required />
             <SF label="Vùng/Miền" value={values.region} onChange={handleSelect('region')} options={REGION_OPTIONS} required />
             <SF label="Khối" value={values.block} onChange={handleSelect('block')} options={BLOCK_OPTIONS} required />
           </div>

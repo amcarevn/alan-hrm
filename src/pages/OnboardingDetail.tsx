@@ -27,7 +27,7 @@ import { SelectBox } from '../components/LandingLayout/SelectBox';
 import {
   CITIZEN_ID_ISSUE_PLACE_OPTIONS as CCCD_ISSUE_PLACE_OPTIONS,
   PROBATION_RATE_OPTIONS, ETHNICITY_OPTIONS, NATIONALITY_OPTIONS, GENDER_OPTIONS, MARITAL_STATUS_OPTIONS,
-  WORK_LOCATION_OPTIONS,
+  WORK_LOCATION_OPTIONS, COMPANY_UNIT_OPTIONS,
 } from '../constants/onboarding';
 
 // ============================================
@@ -934,7 +934,11 @@ const OnboardingDetail: React.FC = () => {
             work_type: extraInfo.work_type ?? '',
           })} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8">
-            <InfoField label="Đơn vị" value={allCompanyUnits.find(cu => cu.code === onboarding.company_unit)?.name || safeDisplay(onboarding.company_unit)} />
+            <InfoField label="Đơn vị" value={
+              allCompanyUnits.find(cu => cu.code === onboarding.company_unit)?.name
+              || COMPANY_UNIT_OPTIONS.find(cu => cu.value === onboarding.company_unit)?.label
+              || safeDisplay(onboarding.company_unit)
+            } />
             <InfoField label="Phòng ban" value={safeDisplay((employeeProfile as any)?.department?.name || onboarding.department?.name)} />
             <InfoField label="Vị trí" value={safeDisplay((employeeProfile as any)?.position?.title || onboarding.position?.title)} />
             <InfoField label="Cấp bậc" value={safeDisplay(employeeProfile?.rank || onboarding.rank)} />
@@ -1397,7 +1401,7 @@ const OnboardingDetail: React.FC = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {ef('Đơn vị làm việc', 'company_unit', undefined,
-                  allCompanyUnits.map(cu => ({ value: cu.code, label: cu.name }))
+                  allCompanyUnits.length > 0 ? allCompanyUnits.map(cu => ({ value: cu.code, label: cu.name })) : COMPANY_UNIT_OPTIONS
                 )}
                 {ef('Phòng ban', 'department_id', undefined, departmentSelectOptions)}
               </div>
