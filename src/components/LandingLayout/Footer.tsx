@@ -7,15 +7,15 @@ export default function Footer() {
           <div className="space-y-6">
             <div className="flex items-center gap-3">
                <div className="h-9 w-9 rounded-lg bg-ruby-primary flex items-center justify-center flex-shrink-0 shadow-lg shadow-ruby-primary/20">
-                <span className="text-white font-black text-sm tracking-tight">ALAN</span>
+                <span className="text-white font-black text-sm tracking-tight">ELANI</span>
               </div>
               <div>
-                <div className="text-white font-bold text-sm leading-tight uppercase tracking-wide">ALAN Beauty Medical Clinic</div>
+                <div className="text-white font-bold text-sm leading-tight uppercase tracking-wide">ELANI Beauty Medical Clinic</div>
                 <div className="text-ruby-accent text-[10px] uppercase font-semibold tracking-widest opacity-70">Hệ thống Quản trị Nội bộ</div>
               </div>
             </div>
             <p className="text-sm leading-6 text-gray-400">
-              Hệ thống Quản lý Hành chính Nhân sự nội bộ của ALAN Beauty Medical Clinic —
+              Hệ thống Quản lý Hành chính Nhân sự nội bộ của ELANI Beauty Medical Clinic —
               tối ưu hóa quy trình chấm công, tính lương và quản trị tài sản tập trung.
             </p>
           </div>
@@ -87,7 +87,7 @@ export default function Footer() {
 
         <div className="mt-16 border-t border-white/5 pt-8 sm:mt-20 lg:mt-24">
           <p className="text-xs leading-5 text-gray-500 text-center tracking-wide">
-            &copy; 2026 ALAN Beauty Medical Clinic. All rights reserved.
+            &copy; 2026 ELANI Beauty Medical Clinic. All rights reserved.
           </p>
         </div>
       </div>

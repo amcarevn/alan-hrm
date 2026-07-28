@@ -74,7 +74,7 @@ function SelectBoxInner<T>({
                 <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
               </Combobox.Button>
             </div>
-            <Combobox.Options className="absolute z-50 mt-1 min-w-full w-max max-w-[min(32rem,90vw)] rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+            <Combobox.Options className="absolute z-50 mt-1 min-w-full w-max max-w-[min(32rem,90vw)] max-h-60 overflow-y-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
               {filteredOptions.length === 0 && query !== "" ? (
                 <div className="relative cursor-default select-none py-2 px-4 text-gray-700">
                   Không tìm thấy kết quả.
@@ -132,7 +132,7 @@ function SelectBoxInner<T>({
             </span>
           </Listbox.Button>
 
-          <Listbox.Options className="absolute z-50 mt-1 min-w-full w-max max-w-[min(32rem,90vw)] rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+          <Listbox.Options className="absolute z-50 mt-1 min-w-full w-max max-w-[min(32rem,90vw)] max-h-60 overflow-y-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
             {options.map((option) => (
               <Listbox.Option
                 key={String(option.value)}
@@ -218,7 +218,7 @@ function MultiSelectBoxInner<T extends string>({
             </span>
           </Listbox.Button>
 
-          <Listbox.Options className="absolute z-50 mt-1 min-w-full w-max max-w-[min(32rem,90vw)] rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm overflow-hidden">
+          <Listbox.Options className="absolute z-50 mt-1 min-w-full w-max max-w-[min(32rem,90vw)] max-h-60 overflow-y-auto rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
             {showAllOption && (
               <div
                 onClick={() => onChange([])}

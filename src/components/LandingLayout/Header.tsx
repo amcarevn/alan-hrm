@@ -15,10 +15,10 @@ export default function Header() {
         <Link to="/" className="flex items-center gap-3">
           <span className="sr-only">ELANI Beauty Medical Clinic</span>
           <div className="h-9 w-9 rounded-lg bg-ruby-primary flex items-center justify-center flex-shrink-0 shadow-lg shadow-ruby-primary/20">
-            <span className="text-white font-black text-sm tracking-tight">ALAN</span>
+            <span className="text-white font-black text-sm tracking-tight">ELANI</span>
           </div>
           <div>
-            <div className="text-white font-bold text-sm leading-tight uppercase tracking-wide">ALAN Beauty Medical Clinic</div>
+            <div className="text-white font-bold text-sm leading-tight uppercase tracking-wide">ELANI Beauty Medical Clinic</div>
             <div className="text-ruby-accent text-[10px] uppercase font-semibold tracking-widest opacity-80">Hệ thống Quản trị Nội bộ</div>
           </div>
         </Link>
@@ -54,11 +54,11 @@ export default function Header() {
           <div className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-[#111827] px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-white/10">
             <div className="flex items-center justify-between">
               <Link to="/" className="flex items-center gap-3" onClick={() => setMobileMenuOpen(false)}>
-                <span className="sr-only">ALAN Beauty Medical Clinic</span>
+                <span className="sr-only">ELANI Beauty Medical Clinic</span>
                 <div className="h-9 w-9 rounded-lg bg-ruby-primary flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-black text-sm tracking-tight">ALAN</span>
+                  <span className="text-white font-black text-sm tracking-tight">ELANI</span>
                 </div>
-                <div className="text-white font-bold text-sm">ALAN BEAUTY</div>
+                <div className="text-white font-bold text-sm">ELANI BEAUTY</div>
               </Link>
               <button
                 type="button"
