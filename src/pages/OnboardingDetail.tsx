@@ -1812,7 +1812,10 @@ const OnboardingDetail: React.FC = () => {
               {([
                 ['SĐT', employeeProfile?.phone_number || onboarding.candidate_phone],
                 ['Email', employeeProfile?.personal_email || onboarding.candidate_email],
-                ['Ngày bắt đầu', onboarding.start_date ? new Date(onboarding.start_date).toLocaleDateString('vi-VN') : null],
+                ['Ngày bắt đầu', (() => {
+                  const d = employeeProfile?.start_date || onboarding.start_date;
+                  return d ? new Date(d).toLocaleDateString('vi-VN') : null;
+                })()],
               ] as [string, string | null | undefined][]).map(([label, val]) => {
                 const display = safeDisplay(val);
                 const isEmpty = display === 'Chưa có dữ liệu';
