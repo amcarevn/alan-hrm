@@ -297,6 +297,9 @@ export const EmployeeOnboardingForm: React.FC = () => {
           ...v,
           candidate_name: data.data.candidate_name,
           candidate_email: data.data.candidate_email,
+          // HR đã chọn sẵn phòng ban/vị trí lúc tạo quy trình → điền sẵn, nhân viên không cần chọn lại
+          ...(data.data.department_name ? { sub_department: data.data.department_name } : {}),
+          ...(data.data.position_name ? { position: data.data.position_name } : {}),
         }));
         // Khôi phục draft đã gõ dở (nếu có) — ghi đè lên trên, vì đây là dữ liệu
         // người dùng tự nhập, mới và đầy đủ hơn 2 field vừa lấy từ server.
@@ -706,8 +709,17 @@ export const EmployeeOnboardingForm: React.FC = () => {
             <SF label="Địa điểm làm việc" value={values.work_location} onChange={handleSelect('work_location')} options={WORK_LOCATION_OPTIONS} required />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SF label="Phòng/Ban" value={values.sub_department} onChange={handleSelect('sub_department')} options={departments.length > 0 ? departments.map(d => ({ value: d.name, label: d.name })) : SUB_DEPARTMENT_OPTIONS} searchable required />
-            <SF label="Vị trí" value={values.position} onChange={handleSelect('position')} options={positions.length > 0 ? positions.map(p => ({ value: p.title, label: p.title })) : POSITION_OPTIONS} searchable required />
+            {/* HR đã chọn sẵn phòng ban/vị trí lúc tạo quy trình → hiện read-only, giống field Email */}
+            {onboardingData?.department_name ? (
+              <TF label="Phòng/Ban" value={values.sub_department} onChange={() => {}} disabled required />
+            ) : (
+              <SF label="Phòng/Ban" value={values.sub_department} onChange={handleSelect('sub_department')} options={departments.length > 0 ? departments.map(d => ({ value: d.name, label: d.name })) : SUB_DEPARTMENT_OPTIONS} searchable required />
+            )}
+            {onboardingData?.position_name ? (
+              <TF label="Vị trí" value={values.position} onChange={() => {}} disabled required />
+            ) : (
+              <SF label="Vị trí" value={values.position} onChange={handleSelect('position')} options={positions.length > 0 ? positions.map(p => ({ value: p.title, label: p.title })) : POSITION_OPTIONS} searchable required />
+            )}
           </div>
           <div className="p-4 bg-gray-50 rounded-lg">
             <RF label="Hình thức làm việc" value={values.work_form}
