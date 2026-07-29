@@ -16,6 +16,8 @@ import { useAuth } from '../contexts/AuthContext';
 import Pagination from '../components/Pagination';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
 import { useDebounce } from '../hooks/useDebounce';
+import { departmentsAPI, positionsAPI } from '../utils/api';
+import type { Department, Position } from '../utils/api';
 
 // ============================================
 // TYPES
@@ -44,10 +46,13 @@ type OnboardingItem = {
   task1_status?: string; // PENDING, IN_PROGRESS, COMPLETED
 };
 
-// ── Chỉ cần Họ và tên + Email, phần còn lại nhân viên tự điền qua link ──
+// ── Họ và tên + Email bắt buộc; Phòng ban/Vị trí tùy chọn — nếu HR chọn sẵn ở
+// đây, nhân viên mở link sẽ thấy thông tin này điền sẵn, không cần tự chọn ──
 type CreateOnboardingForm = {
   candidate_name: string;
   candidate_email: string;
+  department_id: number | null;
+  position_id: number | null;
 };
 
 type ApiResponse<T> = { results?: T[]; count?: number } | T[];
@@ -88,12 +93,21 @@ type CreateModalProps = {
 
 const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess }) => {
   const [submitting, setSubmitting] = useState(false);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
 
   const [form, setForm] = useState<CreateOnboardingForm>({
     candidate_name: '',
     candidate_email: '',
+    department_id: null,
+    position_id: null,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof CreateOnboardingForm, string>>>({});
+
+  useEffect(() => {
+    departmentsAPI.list({ page_size: 1000 }).then((res) => setDepartments(res.results)).catch(() => setDepartments([]));
+    positionsAPI.list({ page_size: 1000 }).then((res) => setPositions(res.results)).catch(() => setPositions([]));
+  }, []);
 
   const validate = (): boolean => {
     const errs: Partial<Record<keyof CreateOnboardingForm, string>> = {};
@@ -116,6 +130,8 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
         full_name: form.candidate_name,
         candidate_email: form.candidate_email,
         start_date: new Date().toISOString().slice(0, 10),
+        ...(form.department_id ? { department: form.department_id } : {}),
+        ...(form.position_id ? { position: form.position_id } : {}),
       };
       await onboardingService.create(payload);
       alert(`✅ Tạo quy trình thành công!\n`);
@@ -213,6 +229,28 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
                 if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) setErrors(prev => ({ ...prev, candidate_email: 'Email không hợp lệ' }));
                 else setErrors(prev => { const { candidate_email, ...rest } = prev; return rest; });
               }}
+            />
+          )}
+
+          {field('department_id', 'Phòng ban (tùy chọn)', false,
+            <SelectBox<number | null>
+              label=""
+              value={form.department_id}
+              options={departments.map((d) => ({ value: d.id, label: d.name }))}
+              onChange={(v) => setForm({ ...form, department_id: v })}
+              placeholder="Chọn phòng ban — nếu để trống, nhân viên sẽ tự chọn"
+              searchable
+            />
+          )}
+
+          {field('position_id', 'Vị trí (tùy chọn)', false,
+            <SelectBox<number | null>
+              label=""
+              value={form.position_id}
+              options={positions.map((p) => ({ value: p.id, label: p.title }))}
+              onChange={(v) => setForm({ ...form, position_id: v })}
+              placeholder="Chọn vị trí — nếu để trống, nhân viên sẽ tự chọn"
+              searchable
             />
           )}
         </div>
