@@ -154,6 +154,7 @@ type OnboardingDetail = {
   vneid_screenshot_url?: string | null;
   employee_info_completed?: boolean;
   employee_info_completed_at?: string | null;
+  facebook_link?: string | null;
 };
 
 // ============================================
@@ -1180,7 +1181,11 @@ const OnboardingDetail: React.FC = () => {
                 )}
 
                 {/* Facebook — cùng grid với các file */}
-                {extraInfo.facebook_link && (
+                {/* extraInfo.facebook_link chỉ có khi employeeProfile đã tải được (cần
+                    onboarding.employee tồn tại) — fallback về onboarding.facebook_link
+                    (field lưu trực tiếp lúc nhân viên submit form) để không bị mất hiển
+                    thị khi Employee chưa link hoặc chưa đồng bộ được. */}
+                {(extraInfo.facebook_link || onboarding.facebook_link) && (
                   <div className="border border-gray-100 rounded-xl overflow-hidden">
                     <div className="h-32 bg-primary-50 flex flex-col items-center justify-center">
                       <span className="text-3xl mb-1">👤</span>
@@ -1191,7 +1196,7 @@ const OnboardingDetail: React.FC = () => {
                     <div className="p-2 bg-white flex items-center justify-between">
                       <label className="text-xs text-gray-600 font-medium truncate">Facebook</label>
                       <a
-                        href={extraInfo.facebook_link}
+                        href={extraInfo.facebook_link || onboarding.facebook_link || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-1 rounded text-gray-500 hover:bg-gray-100 transition-colors"
