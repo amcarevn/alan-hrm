@@ -16,8 +16,8 @@ import { useAuth } from '../contexts/AuthContext';
 import Pagination from '../components/Pagination';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
 import { useDebounce } from '../hooks/useDebounce';
-import { departmentsAPI, positionsAPI } from '../utils/api';
-import type { Department, Position } from '../utils/api';
+import { departmentsAPI, positionsAPI, employeesAPI } from '../utils/api';
+import type { Department, Position, Employee } from '../utils/api';
 
 // ============================================
 // TYPES
@@ -46,13 +46,15 @@ type OnboardingItem = {
   task1_status?: string; // PENDING, IN_PROGRESS, COMPLETED
 };
 
-// ── Họ và tên + Email bắt buộc; Phòng ban/Vị trí tùy chọn — nếu HR chọn sẵn ở
-// đây, nhân viên mở link sẽ thấy thông tin này điền sẵn, không cần tự chọn ──
+// ── Họ và tên + Email bắt buộc; Phòng ban/Vị trí/Quản lý trực tiếp tùy chọn —
+// nếu HR chọn sẵn ở đây, nhân viên mở link sẽ thấy thông tin này điền sẵn,
+// không cần tự chọn ──
 type CreateOnboardingForm = {
   candidate_name: string;
   candidate_email: string;
   department_id: number | null;
   position_id: number | null;
+  manager_id: number | null;
 };
 
 type ApiResponse<T> = { results?: T[]; count?: number } | T[];
@@ -95,18 +97,21 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
   const [submitting, setSubmitting] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [managers, setManagers] = useState<Employee[]>([]);
 
   const [form, setForm] = useState<CreateOnboardingForm>({
     candidate_name: '',
     candidate_email: '',
     department_id: null,
     position_id: null,
+    manager_id: null,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof CreateOnboardingForm, string>>>({});
 
   useEffect(() => {
     departmentsAPI.list({ page_size: 1000 }).then((res) => setDepartments(res.results)).catch(() => setDepartments([]));
     positionsAPI.list({ page_size: 1000 }).then((res) => setPositions(res.results)).catch(() => setPositions([]));
+    employeesAPI.list({ page_size: 1000, is_active: true }).then((res) => setManagers(res.results)).catch(() => setManagers([]));
   }, []);
 
   const validate = (): boolean => {
@@ -132,6 +137,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
         start_date: new Date().toISOString().slice(0, 10),
         ...(form.department_id ? { department: form.department_id } : {}),
         ...(form.position_id ? { position: form.position_id } : {}),
+        ...(form.manager_id ? { direct_manager_id: form.manager_id } : {}),
       };
       await onboardingService.create(payload);
       alert(`✅ Tạo quy trình thành công!\n`);
@@ -250,6 +256,17 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
               options={positions.map((p) => ({ value: p.id, label: p.title }))}
               onChange={(v) => setForm({ ...form, position_id: v })}
               placeholder="Chọn vị trí — nếu để trống, nhân viên sẽ tự chọn"
+              searchable
+            />
+          )}
+
+          {field('manager_id', 'Quản lý trực tiếp (tùy chọn)', false,
+            <SelectBox<number | null>
+              label=""
+              value={form.manager_id}
+              options={managers.map((m) => ({ value: m.id, label: `${m.full_name} (${m.employee_id})` }))}
+              onChange={(v) => setForm({ ...form, manager_id: v })}
+              placeholder="Chọn quản lý trực tiếp"
               searchable
             />
           )}

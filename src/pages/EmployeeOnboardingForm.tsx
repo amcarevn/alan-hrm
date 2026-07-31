@@ -44,6 +44,7 @@ interface OnboardingData {
   start_date: string;
   position_name: string;
   department_name: string;
+  direct_manager_name?: string | null;
   token_expires_at: string;
   is_existing_employee?: boolean;
 }
@@ -720,6 +721,10 @@ export const EmployeeOnboardingForm: React.FC = () => {
             ) : (
               <SF label="Vị trí" value={values.position} onChange={handleSelect('position')} options={positions.length > 0 ? positions.map(p => ({ value: p.title, label: p.title })) : POSITION_OPTIONS} searchable required />
             )}
+            {/* HR đã chọn sẵn quản lý trực tiếp lúc tạo quy trình — chỉ hiện khi có, nhân viên không tự chọn */}
+            {onboardingData?.direct_manager_name && (
+              <TF label="Quản lý trực tiếp" value={onboardingData.direct_manager_name} onChange={() => {}} disabled />
+            )}
           </div>
           <div className="p-4 bg-gray-50 rounded-lg">
             <RF label="Hình thức làm việc" value={values.work_form}
@@ -1015,6 +1020,9 @@ export const EmployeeOnboardingForm: React.FC = () => {
             </div>
             <div className="flex flex-col items-start sm:items-end gap-1.5 text-base">
               <span className="text-blue-200">{onboardingData?.position_name || '—'} — {onboardingData?.department_name || '—'}</span>
+              {onboardingData?.direct_manager_name && (
+                <span className="text-blue-200">Quản lý trực tiếp: <strong className="text-white">{onboardingData.direct_manager_name}</strong></span>
+              )}
               <span className="text-blue-200">
                 Ngày bắt đầu: <strong className="text-white">{onboardingData?.start_date ? new Date(onboardingData.start_date).toLocaleDateString('vi-VN') : '—'}</strong>
               </span>
