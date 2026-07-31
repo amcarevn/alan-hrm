@@ -16,8 +16,8 @@ import { useAuth } from '../contexts/AuthContext';
 import Pagination from '../components/Pagination';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
 import { useDebounce } from '../hooks/useDebounce';
-import { departmentsAPI, positionsAPI, employeesAPI } from '../utils/api';
-import type { Department, Position, Employee } from '../utils/api';
+import { departmentsAPI, positionsAPI, employeesAPI, companyUnitsAPI } from '../utils/api';
+import type { Department, Position, Employee, CompanyUnit } from '../utils/api';
 
 // ============================================
 // TYPES
@@ -55,6 +55,7 @@ type CreateOnboardingForm = {
   department_id: number | null;
   position_id: number | null;
   manager_id: number | null;
+  company_unit: string | null;
 };
 
 type ApiResponse<T> = { results?: T[]; count?: number } | T[];
@@ -98,6 +99,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [managers, setManagers] = useState<Employee[]>([]);
+  const [companyUnits, setCompanyUnits] = useState<CompanyUnit[]>([]);
 
   const [form, setForm] = useState<CreateOnboardingForm>({
     candidate_name: '',
@@ -105,6 +107,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
     department_id: null,
     position_id: null,
     manager_id: null,
+    company_unit: null,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof CreateOnboardingForm, string>>>({});
 
@@ -112,6 +115,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
     departmentsAPI.list({ page_size: 1000 }).then((res) => setDepartments(res.results)).catch(() => setDepartments([]));
     positionsAPI.list({ page_size: 1000 }).then((res) => setPositions(res.results)).catch(() => setPositions([]));
     employeesAPI.list({ page_size: 1000, is_active: true }).then((res) => setManagers(res.results)).catch(() => setManagers([]));
+    companyUnitsAPI.list({ page_size: 1000, active_only: true }).then((res) => setCompanyUnits(res.results)).catch(() => setCompanyUnits([]));
   }, []);
 
   const validate = (): boolean => {
@@ -138,6 +142,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
         ...(form.department_id ? { department: form.department_id } : {}),
         ...(form.position_id ? { position: form.position_id } : {}),
         ...(form.manager_id ? { direct_manager_id: form.manager_id } : {}),
+        ...(form.company_unit ? { company_unit: form.company_unit } : {}),
       };
       await onboardingService.create(payload);
       alert(`✅ Tạo quy trình thành công!\n`);
@@ -267,6 +272,17 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
               options={managers.map((m) => ({ value: m.id, label: `${m.full_name} (${m.employee_id})` }))}
               onChange={(v) => setForm({ ...form, manager_id: v })}
               placeholder="Chọn quản lý trực tiếp"
+              searchable
+            />
+          )}
+
+          {field('company_unit', 'Đơn vị làm việc (tùy chọn)', false,
+            <SelectBox<string | null>
+              label=""
+              value={form.company_unit}
+              options={companyUnits.map((cu) => ({ value: cu.code, label: cu.name }))}
+              onChange={(v) => setForm({ ...form, company_unit: v })}
+              placeholder="Chọn đơn vị làm việc — nếu để trống, nhân viên sẽ tự chọn"
               searchable
             />
           )}

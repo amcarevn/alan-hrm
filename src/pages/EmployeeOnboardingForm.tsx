@@ -45,6 +45,7 @@ interface OnboardingData {
   position_name: string;
   department_name: string;
   direct_manager_name?: string | null;
+  company_unit?: string | null;
   token_expires_at: string;
   is_existing_employee?: boolean;
 }
@@ -298,9 +299,10 @@ export const EmployeeOnboardingForm: React.FC = () => {
           ...v,
           candidate_name: data.data.candidate_name,
           candidate_email: data.data.candidate_email,
-          // HR đã chọn sẵn phòng ban/vị trí lúc tạo quy trình → điền sẵn, nhân viên không cần chọn lại
+          // HR đã chọn sẵn phòng ban/vị trí/đơn vị lúc tạo quy trình → điền sẵn, nhân viên không cần chọn lại
           ...(data.data.department_name ? { sub_department: data.data.department_name } : {}),
           ...(data.data.position_name ? { position: data.data.position_name } : {}),
+          ...(data.data.company_unit ? { company_unit: data.data.company_unit } : {}),
         }));
         // Khôi phục draft đã gõ dở (nếu có) — ghi đè lên trên, vì đây là dữ liệu
         // người dùng tự nhập, mới và đầy đủ hơn 2 field vừa lấy từ server.
@@ -705,8 +707,13 @@ export const EmployeeOnboardingForm: React.FC = () => {
         <div className="flex-1 flex flex-col gap-5 justify-evenly">
           <h3 className="text-3xl font-bold text-gray-900 text-center">Thông tin công việc chi tiết</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-            <SF label="Đơn vị làm việc" value={values.company_unit} onChange={handleSelect('company_unit')}
-              options={companyUnits.length > 0 ? companyUnits.map(cu => ({ value: cu.code, label: cu.name })) : COMPANY_UNIT_OPTIONS} required />
+            {/* HR đã chọn sẵn đơn vị làm việc lúc tạo quy trình → hiện read-only, giống field Email */}
+            {onboardingData?.company_unit ? (
+              <TF label="Đơn vị làm việc" value={companyUnits.find(cu => cu.code === values.company_unit)?.name || values.company_unit} onChange={() => {}} disabled required />
+            ) : (
+              <SF label="Đơn vị làm việc" value={values.company_unit} onChange={handleSelect('company_unit')}
+                options={companyUnits.length > 0 ? companyUnits.map(cu => ({ value: cu.code, label: cu.name })) : COMPANY_UNIT_OPTIONS} required />
+            )}
             <SF label="Địa điểm làm việc" value={values.work_location} onChange={handleSelect('work_location')} options={WORK_LOCATION_OPTIONS} required />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
