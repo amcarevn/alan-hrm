@@ -29,6 +29,7 @@ interface Props {
 // Label hiển thị cho các placeholder đã biết
 const KNOWN_LABELS: Record<string, string> = {
   '{{ho_ten}}': 'Họ và tên',
+  '{{gioi_tinh}}': 'Giới tính',
   '{{ma_nhan_vien}}': 'Mã nhân viên',
   '{{ngay_sinh}}': 'Ngày sinh',
   '{{so_dien_thoai}}': 'Số điện thoại',
@@ -64,6 +65,8 @@ const KNOWN_LABELS: Record<string, string> = {
   '{{luong_co_ban}}': 'Lương cơ bản',
   '{{ngay_ket_thuc_thu_viec}}': 'Ngày kết thúc thử việc',
   '{{phan_tram_luong_thu_viec}}': '% Lương thử việc',
+  '{{thang_thu_viec}}': 'Số tháng thử việc',
+  '{{so_thang_thu_viec}}': 'Số tháng thử việc',
   '{{nguoi_lien_he_khan_cap}}': 'Người liên hệ khẩn cấp',
   '{{sdt_nguoi_lien_he}}': 'SĐT người liên hệ',
   '{{quan_he_nguoi_lien_he}}': 'Quan hệ người liên hệ',

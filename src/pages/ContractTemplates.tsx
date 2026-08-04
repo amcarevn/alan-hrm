@@ -203,6 +203,7 @@ export default function ContractTemplates() {
 
   const PLACEHOLDER_DOCS = [
     { key: '{{ho_ten}}', desc: 'Họ và tên nhân viên' },
+    { key: '{{gioi_tinh}}', desc: 'Giới tính' },
     { key: '{{ngay_sinh}}', desc: 'Ngày sinh' },
     { key: '{{so_cccd}}', desc: 'Số CCCD/CMND' },
     { key: '{{ngay_cap_cccd}}', desc: 'Ngày cấp CCCD' },
@@ -225,6 +226,7 @@ export default function ContractTemplates() {
     { key: '{{ten_ngan_hang}}', desc: 'Tên ngân hàng' },
     { key: '{{ma_so_thue}}', desc: 'Mã số thuế TNCN' },
     { key: '{{ma_bhxh}}', desc: 'Mã BHXH' },
+    { key: '{{so_thang_thu_viec}}', desc: 'Số tháng thử việc' },
   ];
 
   return (
