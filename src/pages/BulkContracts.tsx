@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import MultiPdfPreviewModal, { ContractPreviewItem } from '../components/Common/MultiPdfPreviewModal';
 import PdfPreviewModal from '../components/Common/PdfPreviewModal';
+import ContractPlaceholderModal from './ContractPlaceholderModal';
 import { SelectBox, MultiSelectBox, SelectOption } from '../components/LandingLayout/SelectBox';
 import ConfirmDialog from '../components/ConfirmDialog';
 
@@ -129,6 +130,7 @@ const BulkContracts: React.FC = () => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [assigningTemplateId, setAssigningTemplateId] = useState<number | null>(null);
   const [draftEdits, setDraftEdits] = useState<Record<number, { templateId: number; contractNumber: string }>>({});
+  const [placeholderModal, setPlaceholderModal] = useState<number | null>(null);
   const [batchState, setBatchState] = useState<BatchState>(null);
   const [bulkTemplate, setBulkTemplate] = useState<ContractTemplate | null>(null);
   const [bulkStartDate, setBulkStartDate] = useState('');
@@ -319,6 +321,7 @@ const BulkContracts: React.FC = () => {
     }
   };
 
+  // Lưu template đã chọn rồi mở modal xem trước/chỉnh sửa placeholder trước khi tạo PDF thật
   const handleAssignTemplate = async (contractId: number) => {
     const edit = draftEdits[contractId];
     if (!edit?.templateId) return;
@@ -328,14 +331,9 @@ const BulkContracts: React.FC = () => {
         template: edit.templateId,
         ...(edit.contractNumber ? { contract_number: edit.contractNumber } : {}),
       });
-      try {
-        await managementApi.post(
-          `/api-hrm/employee-contracts/${contractId}/generate_and_confirm/`,
-          { overrides: {} }
-        );
-      } catch {}
       setDraftEdits((prev) => { const next = { ...prev }; delete next[contractId]; return next; });
       await fetchContractsMap();
+      setPlaceholderModal(contractId);
     } catch (e: any) {
       alert(e.response?.data?.detail || 'Không thể gán template');
     } finally {
@@ -1325,6 +1323,22 @@ const BulkContracts: React.FC = () => {
         downloadFilename={`${singlePreview?.name || 'hop-dong'}.pdf`}
         onClose={() => setSinglePreview(null)}
       />
+
+      {placeholderModal !== null && (
+        <ContractPlaceholderModal
+          contractId={placeholderModal}
+          onClose={() => setPlaceholderModal(null)}
+          onSuccess={async () => {
+            const id = placeholderModal;
+            setPlaceholderModal(null);
+            await fetchContractsMap();
+            try {
+              const { data } = await managementApi.get(`/api-hrm/employee-contracts/${id}/`);
+              setCreatedContracts((prev) => prev.map((c) => (c.id === id ? data : c)));
+            } catch {}
+          }}
+        />
+      )}
 
       <ConfirmDialog
         open={confirmDeleteId !== null}
