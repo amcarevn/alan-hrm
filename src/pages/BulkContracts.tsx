@@ -847,7 +847,6 @@ const BulkContracts: React.FC = () => {
                                 onChange={(id) => setDraftEdits((prev) => ({ ...prev, [c.id]: { ...edit, templateId: id } }))}
                                 placeholder="Chọn template"
                                 searchable
-                                portal
                               />
                             </div>
                             <button
