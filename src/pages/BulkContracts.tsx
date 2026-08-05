@@ -103,7 +103,7 @@ type RowResult = 'success' | 'error' | 'pending';
 type BatchState = {
   current: number;
   total: number;
-  phase: 'cancel' | 'contract' | 'pdf';
+  phase: 'cancel' | 'contract';
   employeeName: string;
   successCount: number;
   errorCount: number;
@@ -248,16 +248,10 @@ const BulkContracts: React.FC = () => {
           end_date: row.end_date || null,
         });
 
-        setBatchState({ current: i + 1, total, phase: 'pdf', employeeName, successCount, errorCount });
-        let finalContract = contract;
-        try {
-          const { data: gen } = await managementApi.post(
-            `/api-hrm/employee-contracts/${contract.id}/generate_and_confirm/`,
-            { overrides: {} }
-          );
-          if (gen.success) finalContract = gen.data;
-        } catch {}
-        created.push(finalContract);
+        // Không tự generate PDF ở đây — để HR bấm "Xem trước & Tạo PDF" trong bảng kết quả
+        // bên dưới cho từng hợp đồng, mở ContractPlaceholderModal để xem trước/sửa tay
+        // placeholder trước khi chốt file thật (thay vì generate mù bằng overrides rỗng).
+        created.push(contract);
 
         successCount++;
         setRowResults((prev) => ({ ...prev, [row.employeeId]: 'success' }));
@@ -321,9 +315,14 @@ const BulkContracts: React.FC = () => {
     }
   };
 
-  // Lưu template đã chọn rồi mở modal xem trước/chỉnh sửa placeholder trước khi tạo PDF thật
-  const handleAssignTemplate = async (contractId: number) => {
-    const edit = draftEdits[contractId];
+  // Lưu template đã chọn rồi mở modal xem trước/chỉnh sửa placeholder trước khi tạo PDF thật.
+  // editOverride: dùng khi gọi trực tiếp với giá trị đã tính sẵn (vd: template gán lúc tạo hợp đồng),
+  // không phụ thuộc việc user đã đụng vào SelectBox để ghi vào draftEdits hay chưa.
+  const handleAssignTemplate = async (
+    contractId: number,
+    editOverride?: { templateId: number; contractNumber: string }
+  ) => {
+    const edit = editOverride ?? draftEdits[contractId];
     if (!edit?.templateId) return;
     setAssigningTemplateId(contractId);
     try {
@@ -722,13 +721,9 @@ const BulkContracts: React.FC = () => {
       {batchState && (() => {
         const pct = Math.round((batchState.current - 1) / batchState.total * 100);
         const phaseLabel =
-          batchState.phase === 'cancel'   ? 'Đang ghi đè hợp đồng cũ...' :
-          batchState.phase === 'contract' ? 'Đang tạo hợp đồng...' :
-                                            'Đang tạo PDF và gán số hợp đồng...';
+          batchState.phase === 'cancel' ? 'Đang ghi đè hợp đồng cũ...' : 'Đang tạo hợp đồng...';
         const phaseColor =
-          batchState.phase === 'cancel'   ? 'bg-amber-500' :
-          batchState.phase === 'contract' ? 'bg-primary-500' :
-                                            'bg-primary-600';
+          batchState.phase === 'cancel' ? 'bg-amber-500' : 'bg-primary-500';
         return (
           <div className="rounded-2xl border border-primary-200 bg-primary-50 px-5 py-4 space-y-3">
             {/* Header row */}
@@ -839,6 +834,40 @@ const BulkContracts: React.FC = () => {
                           Xem PDF
                         </button>
                       )}
+                      {!c.generated_file && (() => {
+                        const edit = draftEdits[c.id] ?? { templateId: c.template ?? 0, contractNumber: c.contract_number ?? '' };
+                        const isSaving = assigningTemplateId === c.id;
+                        return (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-40">
+                              <SelectBox<number>
+                                label=""
+                                value={edit.templateId}
+                                options={templateOptions}
+                                onChange={(id) => setDraftEdits((prev) => ({ ...prev, [c.id]: { ...edit, templateId: id } }))}
+                                placeholder="Chọn template"
+                                searchable
+                                portal
+                              />
+                            </div>
+                            <button
+                              onClick={() => handleAssignTemplate(c.id, edit)}
+                              disabled={!edit.templateId || isSaving}
+                              className="flex items-center gap-1 px-2.5 py-1 text-xs text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                            >
+                              {isSaving ? (
+                                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                </svg>
+                              ) : (
+                                <EyeIcon className="w-3.5 h-3.5" />
+                              )}
+                              Xem trước & Tạo PDF
+                            </button>
+                          </div>
+                        );
+                      })()}
                       {c.status === 'PENDING_SIGN' && (
                         <button
                           onClick={() => handleMarkSigned(c.id)}
