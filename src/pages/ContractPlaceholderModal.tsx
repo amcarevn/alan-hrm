@@ -95,7 +95,10 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
   const [items, setItems] = useState<PlaceholderItem[]>([]);
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [loadingTemplate, setLoadingTemplate] = useState(true);
+  // previewUrl: blob URL nội bộ để hiển thị (nhúng iframe/mở tab mới) — KHÔNG gửi lên confirm_contract.
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // realFileUrl: presigned S3 URL thật, dùng để gửi lên confirm_contract khi xác nhận.
+  const [realFileUrl, setRealFileUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAutoFilled, setShowAutoFilled] = useState(false);
@@ -117,6 +120,14 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
     };
     load();
   }, [contractId]);
+
+  // Dọn blob URL khi đóng modal, tránh rò rỉ bộ nhớ
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = (key: string, val: string) => {
     setOverrides(prev => ({ ...prev, [key]: val }));
@@ -146,7 +157,20 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
         { overrides: allValues }
       );
       if (!data.success) throw new Error(data.message || 'Không thể tạo PDF');
-      setPreviewUrl(data.file_url);
+      setRealFileUrl(data.file_url);
+
+      // Lấy PDF qua backend proxy (download_file) thay vì nhúng thẳng presigned URL S3
+      // — một số máy/mạng chặn domain S3 trực tiếp (đã xác nhận: nút "Xem PDF" sau khi
+      // xác nhận luôn xem được vì đi qua domain backend, còn URL S3 thẳng thì không).
+      const pdfRes = await managementApi.get(
+        `/api-hrm/employee-contracts/${contractId}/download_file/`,
+        { responseType: 'blob' }
+      );
+      const blobUrl = URL.createObjectURL(pdfRes.data);
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return blobUrl;
+      });
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Lỗi tạo PDF xem trước');
     } finally {
@@ -155,13 +179,13 @@ const ContractPlaceholderModal: React.FC<Props> = ({ contractId, onClose, onSucc
   };
 
   const handleConfirm = async () => {
-    if (!previewUrl) return;
+    if (!realFileUrl) return;
     try {
       await managementApi.post(
         `/api-hrm/employee-contracts/${contractId}/confirm_contract/`,
-        { file_url: previewUrl }
+        { file_url: realFileUrl }
       );
-      onSuccess(previewUrl);
+      onSuccess(realFileUrl);
       onClose();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Lỗi xác nhận hợp đồng');
