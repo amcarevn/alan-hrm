@@ -1131,6 +1131,28 @@ const SalaryData: React.FC = () => {
     finally { setPaImporting(false); }
   };
 
+  // ─── ParkingAllowanceOverride: set 0 cho người còn lại ─────────────────────
+
+  const [paFillingZero, setPaFillingZero] = useState(false);
+
+  const handleFillRemainingZero = async () => {
+    const confirmed = window.confirm(
+      `Đặt phụ cấp gửi xe = 0 cho TẤT CẢ nhân viên đang hoạt động chưa có trong danh sách tháng ${selectedMonth}/${selectedYear}?\n` +
+      `Không ảnh hưởng tới các bản ghi đã có (kể cả > 0).`
+    );
+    if (!confirmed) return;
+    setPaFillingZero(true);
+    try {
+      const res = await salaryService.fillRemainingParkingAllowanceZero({ year: selectedYear, month: selectedMonth });
+      setSuccessMsg(`Đã đặt 0 cho ${res.created_count} nhân viên còn lại.${res.errors.length ? ` (${res.errors.length} lỗi)` : ''}`);
+      await loadParkingAllowances();
+    } catch (error) {
+      setErrorMsg(getApiErrorMessage(error, 'Không thể đặt 0 cho người còn lại.'));
+    } finally {
+      setPaFillingZero(false);
+    }
+  };
+
   // ─── ParkingAllowanceOverride: edit/delete ─────────────────────────────────
 
   const startPaEdit = (rec: ParkingAllowanceOverrideRecord) => { setPaEditingId(rec.id); setPaEditValues({ amount: String(Number(rec.amount)), notes: rec.notes }); setPaDeletingId(null); };
@@ -1996,6 +2018,17 @@ const SalaryData: React.FC = () => {
                   <button onClick={handleParkingAllowanceImport} disabled={paImporting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-xl hover:bg-amber-700 disabled:opacity-60 transition-colors">
                     {paImporting ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
                     {paImporting ? 'Đang import...' : `Xác nhận import (${paParsedRows.filter((r) => !r.parseError).length})`}
+                  </button>
+                )}
+                {paLoaded && (
+                  <button
+                    onClick={handleFillRemainingZero}
+                    disabled={paFillingZero}
+                    title="Đặt phụ cấp gửi xe = 0 cho những nhân viên chưa có trong danh sách tháng này"
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 disabled:opacity-60 transition-colors"
+                  >
+                    {paFillingZero ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
+                    {paFillingZero ? 'Đang xử lý...' : 'Đặt 0 cho người còn lại'}
                   </button>
                 )}
                 {paLoaded && (

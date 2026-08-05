@@ -628,6 +628,15 @@ class SalaryService {
     return response.data;
   }
 
+  async fillRemainingParkingAllowanceZero(params: { year: number; month: number }): Promise<{
+    created_count: number;
+    skipped_existing_count: number;
+    errors: { employee_code: string; error: string }[];
+  }> {
+    const response = await managementApi.post('/api/v1/salary/parking-allowance-overrides/fill-remaining-zero/', params);
+    return response.data;
+  }
+
   async bulkImportSalaryConfig(records: BulkSalaryConfigRecord[]): Promise<BulkSalaryConfigResponse> {
     const response = await managementApi.post('/api-hrm/employees/bulk-salary-config/', { records });
     return response.data;
