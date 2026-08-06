@@ -24,6 +24,11 @@ import Pagination from '../components/Pagination';
 // ============================================================================
 // CONSTS
 // ============================================================================
+// TẠM THỜI COMMENT: bỏ trần tuyệt đối 5.000.000đ và giới hạn chỉ nhận đơn
+// ngày 1-3 hàng tháng theo yêu cầu Alan. Chỉ còn giữ rule tối đa 30% lương
+// cơ bản (MAX_RATIO). Bật lại bằng cách đổi 2 flag này về true.
+const ENABLE_MAX_AMOUNT_CAP = false;
+const ENABLE_WINDOW_RESTRICTION = false;
 const WINDOW_DAYS: number[] = [1, 2, 3];
 const MAX_AMOUNT = 5_000_000;
 const MAX_RATIO = 0.3; // Alan: tối đa 30% lương cơ bản (TA dùng 80%)
@@ -194,7 +199,9 @@ const SalaryAdvance: React.FC = () => {
             Tạm ứng lương
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Đăng ký tạm ứng lương ngày 1-3 hàng tháng. Quản lý trực tiếp duyệt → HCNS duyệt cuối.
+            {ENABLE_WINDOW_RESTRICTION
+              ? 'Đăng ký tạm ứng lương ngày 1-3 hàng tháng. Quản lý trực tiếp duyệt → HCNS duyệt cuối.'
+              : 'Quản lý trực tiếp duyệt → HCNS duyệt cuối.'}
           </p>
         </div>
         {isAdmin && lockState && (
@@ -314,14 +321,16 @@ const MineTab: React.FC<{ me: CurrentEmployee | null; loadingMe: boolean }> = ({
   const [showSalary, setShowSalary] = useState(false);
 
   const today = useMemo(() => new Date(), []);
-  const isInWindow = WINDOW_DAYS.includes(today.getDate());
+  const isInWindow = ENABLE_WINDOW_RESTRICTION ? WINDOW_DAYS.includes(today.getDate()) : true;
   const amountInWords = useMemo(() => amountToWords(Number(amount) || 0), [amount]);
 
   const departmentName = me?.department?.name || me?.department_name || '—';
   const managerName = me?.manager?.full_name || me?.manager_name || '—';
   const basicSalary = Number(me?.basic_salary || 0);
   const maxByPercent = Math.floor(basicSalary * MAX_RATIO);
-  const effectiveCap = Math.min(MAX_AMOUNT, maxByPercent > 0 ? maxByPercent : MAX_AMOUNT);
+  const effectiveCap = ENABLE_MAX_AMOUNT_CAP
+    ? Math.min(MAX_AMOUNT, maxByPercent > 0 ? maxByPercent : MAX_AMOUNT)
+    : (maxByPercent > 0 ? maxByPercent : null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -355,7 +364,7 @@ const MineTab: React.FC<{ me: CurrentEmployee | null; loadingMe: boolean }> = ({
       setFormError('Vui lòng nhập số tiền hợp lệ.');
       return;
     }
-    if (amountNum > MAX_AMOUNT) {
+    if (ENABLE_MAX_AMOUNT_CAP && amountNum > MAX_AMOUNT) {
       setFormError(`Số tiền tối đa ${formatCurrency(MAX_AMOUNT)}.`);
       return;
     }
@@ -416,31 +425,53 @@ const MineTab: React.FC<{ me: CurrentEmployee | null; loadingMe: boolean }> = ({
         <InfoStat label="Quản lý trực tiếp" value={managerName} />
         <MaskedSalaryStat
           label="Có thể ứng tối đa"
-          value={effectiveCap > 0 ? formatCurrency(effectiveCap) : formatCurrency(MAX_AMOUNT)}
+          value={
+            effectiveCap != null
+              ? formatCurrency(effectiveCap)
+              : ENABLE_MAX_AMOUNT_CAP
+              ? formatCurrency(MAX_AMOUNT)
+              : '—'
+          }
           masked={!showSalary}
           onToggle={() => setShowSalary((v) => !v)}
-          hint={basicSalary > 0 ? `≤ ${MAX_RATIO_PERCENT}% lương cơ bản và ≤ 5.000.000đ` : '≤ 5.000.000đ'}
+          hint={
+            ENABLE_MAX_AMOUNT_CAP
+              ? basicSalary > 0
+                ? `≤ ${MAX_RATIO_PERCENT}% lương cơ bản và ≤ 5.000.000đ`
+                : '≤ 5.000.000đ'
+              : basicSalary > 0
+              ? `≤ ${MAX_RATIO_PERCENT}% lương cơ bản`
+              : 'Chưa xác định (thiếu lương cơ bản)'
+          }
           highlight="emerald"
         />
       </div>
 
       {/* Banner window */}
-      <div
-        className={`rounded-2xl border p-4 ${
-          isInWindow
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-            : 'border-amber-200 bg-amber-50 text-amber-800'
-        }`}
-      >
-        <p className="font-medium">
-          {isInWindow
-            ? `✅ Hôm nay (ngày ${today.getDate()}) đang trong khoảng nhận đơn tạm ứng lương.`
-            : `⚠ Chỉ nhận đơn tạm ứng lương từ ngày 1 đến ngày 3 hàng tháng. Hôm nay là ngày ${today.getDate()}.`}
-        </p>
-        <p className="text-sm mt-1 opacity-80">
-          Điều kiện: nhân viên chính thức, không có đơn xin nghỉ việc.
-        </p>
-      </div>
+      {ENABLE_WINDOW_RESTRICTION ? (
+        <div
+          className={`rounded-2xl border p-4 ${
+            isInWindow
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-amber-200 bg-amber-50 text-amber-800'
+          }`}
+        >
+          <p className="font-medium">
+            {isInWindow
+              ? `✅ Hôm nay (ngày ${today.getDate()}) đang trong khoảng nhận đơn tạm ứng lương.`
+              : `⚠ Chỉ nhận đơn tạm ứng lương từ ngày 1 đến ngày 3 hàng tháng. Hôm nay là ngày ${today.getDate()}.`}
+          </p>
+          <p className="text-sm mt-1 opacity-80">
+            Điều kiện: nhân viên chính thức, không có đơn xin nghỉ việc.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-800 p-4">
+          <p className="text-sm opacity-80">
+            Điều kiện: nhân viên chính thức, không có đơn xin nghỉ việc.
+          </p>
+        </div>
+      )}
 
       {/* Action bar */}
       <div className="flex flex-wrap gap-2 justify-end">
@@ -484,13 +515,14 @@ const MineTab: React.FC<{ me: CurrentEmployee | null; loadingMe: boolean }> = ({
             <div className="border-t border-gray-100 pt-4 space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Số tiền tạm ứng (không quá {formatCurrency(MAX_AMOUNT)}){' '}
+                  Số tiền tạm ứng
+                  {ENABLE_MAX_AMOUNT_CAP && ` (không quá ${formatCurrency(MAX_AMOUNT)})`}{' '}
                   <span className="text-rose-600">*</span>
                 </label>
                 <input
                   type="number"
                   min={0}
-                  max={MAX_AMOUNT}
+                  max={ENABLE_MAX_AMOUNT_CAP ? MAX_AMOUNT : undefined}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="VD: 3000000"
