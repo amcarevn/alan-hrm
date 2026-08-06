@@ -1903,7 +1903,7 @@ const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValue
   };
 };
 
-const calculatePayrollOutput = (config: SalaryConfigurationValues): PayrollOutput => {
+const calculatePayrollOutput = (config: SalaryConfigurationValues, effectiveUnionFee?: number): PayrollOutput => {
   const actualWorkDays = calculateActualWorkDays(config.timeAttendance);
   const lunchAllowance = calculateLunchAllowance(config.lunchAllowancePolicy, actualWorkDays, config.timeAttendance.workingDays);
   const parkingAllowance = calculateParkingAllowance(config.parkingAllowancePolicy, actualWorkDays);
@@ -1951,8 +1951,12 @@ const calculatePayrollOutput = (config: SalaryConfigurationValues): PayrollOutpu
   );
   const pit = calculateProgressiveTax(taxableIncome, taxYear >= 2026 ? PIT_BRACKETS_2026 : PIT_BRACKETS_LEGACY);
 
+  // Công đoàn: ưu tiên số đã tính tự động theo tỷ lệ công thử việc/chính thức
+  // của tháng đang xem (do backend trả về khi finalize) — chỉ fallback về số
+  // nhập tay trong config khi chưa có dữ liệu tháng đó (effectiveUnionFee === undefined).
+  const unionFee = effectiveUnionFee ?? config.deductions.unionFee;
   const configuredDeductions =
-    config.deductions.unionFee + config.deductions.advancePenaltyCompensation;
+    unionFee + config.deductions.advancePenaltyCompensation;
   const totalDeductions =
     pit + socialInsurance + healthInsurance + unemploymentInsurance + configuredDeductions + attendancePenalty;
   const netSalary = Math.max(grossIncome - totalDeductions, 0);
@@ -2050,9 +2054,16 @@ interface EditModalProps {
   onClose: () => void;
   onSave: (id: number, data: SalaryFormulaUpdateData) => Promise<void>;
   saving: boolean;
+  /** Công đoàn phí thực tế đang áp dụng cho kỳ đang xem (đã tính theo rule
+   * 50k/100k hoặc override thủ công ở backend) — null/undefined nếu chưa có
+   * dữ liệu chấm công tháng đó để tính. */
+  computedUnionFee?: number | null;
+  computedUnionFeePeriodLabel?: string | null;
 }
 
-const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, saving }) => {
+const EditSalaryModal: React.FC<EditModalProps> = ({
+  employee, onClose, onSave, saving, computedUnionFee, computedUnionFeePeriodLabel,
+}) => {
   useLockBodyScroll(true);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [config, setConfig] = useState<SalaryConfigurationValues>(() => parseEmployeeSalaryConfig(employee));
@@ -2064,7 +2075,10 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
     setStandardWorkDaysMode(employee.standard_work_days_mode ?? 'DEFAULT');
   }, [employee]);
 
-  const payrollOutput = useMemo(() => calculatePayrollOutput(config), [config]);
+  const payrollOutput = useMemo(
+    () => calculatePayrollOutput(config, computedUnionFee ?? undefined),
+    [config, computedUnionFee]
+  );
 
   const updateGroup = <T extends keyof SalaryConfigurationValues>(group: T, value: SalaryConfigurationValues[T]) => {
     setConfig((previous) => ({ ...previous, [group]: value }));
@@ -2644,11 +2658,26 @@ const EditSalaryModal: React.FC<EditModalProps> = ({ employee, onClose, onSave, 
                 </p>
               </div>
 
-              <NumberField
-                label="Công đoàn phí"
-                value={config.deductions.unionFee}
-                onChange={(value) => updateGroup('deductions', { ...config.deductions, unionFee: value })}
-              />
+              <div>
+                <NumberField
+                  label="Công đoàn phí (override đặc biệt — để trống/0 nếu dùng số tự động)"
+                  value={config.deductions.unionFee}
+                  onChange={(value) => updateGroup('deductions', { ...config.deductions, unionFee: value })}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {computedUnionFee != null ? (
+                    <>
+                      Số đang áp dụng chính thức cho bảng lương tháng{' '}
+                      <strong>{computedUnionFeePeriodLabel}</strong>:{' '}
+                      <strong className="text-gray-700">{formatCurrency(computedUnionFee)}</strong> — tự động
+                      theo tỷ lệ công thử việc/chính thức (mức 50.000đ hoặc 100.000đ). Chỉ nhập số ở trên nếu
+                      muốn override bằng 1 số đặc biệt khác 2 mức này.
+                    </>
+                  ) : (
+                    'Chưa có dữ liệu chấm công của kỳ đang xem để tính tự động — số hiển thị ở trên chỉ mang tính tham khảo.'
+                  )}
+                </p>
+              </div>
               <NumberField
                 label="Tạm ứng / phạt / bồi thường"
                 value={config.deductions.advancePenaltyCompensation}
@@ -2992,6 +3021,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [configPage, setConfigPage] = useState(1);
   const [configTotal, setConfigTotal] = useState(0);
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
+  const [editEmployeeUnionFee, setEditEmployeeUnionFee] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -3756,6 +3786,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       await salaryService.updateSalaryFormula(id, data);
       setSaveSuccess(`Đã cập nhật cấu hình lương cho ${employeeName}`);
       setEditEmployee(null);
+      setEditEmployeeUnionFee(null);
       loadEmployees(configPage);
     } catch {
       setSaveError('Không thể cập nhật. Vui lòng thử lại.');
@@ -3972,6 +4003,25 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const handleOpenConfig = async (employee: Employee) => {
     setSaveError(null);
     setLoadingEmployeeConfig(employee.id);
+
+    // Công đoàn phí thực tế áp dụng cho kỳ (selectedYear/selectedMonth) đang xem.
+    // Ưu tiên dùng salaryRecords đã tải sẵn (tab "Bảng lương"); nếu chưa có (chưa
+    // mở tab đó, hoặc đang lọc theo phòng ban khác) thì fetch riêng không lọc
+    // phòng ban để vẫn có số đúng.
+    const cachedRecord = salaryRecords.find((r) => r.employee_id === employee.id);
+    if (cachedRecord) {
+      setEditEmployeeUnionFee(cachedRecord.cong_doan ?? null);
+    } else {
+      setEditEmployeeUnionFee(null);
+      salaryService
+        .getSalaryByDepartment({ year: selectedYear, month: selectedMonth })
+        .then((res) => {
+          const match = (res.results ?? []).find((r) => r.employee_id === employee.id);
+          setEditEmployeeUnionFee(match?.cong_doan ?? null);
+        })
+        .catch(() => setEditEmployeeUnionFee(null));
+    }
+
     try {
       const freshEmployee = await salaryService.getEmployeeSalaryConfig(employee.id);
       setEditEmployee(freshEmployee);
@@ -4628,9 +4678,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       {editEmployee && createPortal(
         <EditSalaryModal
           employee={editEmployee}
-          onClose={() => setEditEmployee(null)}
+          onClose={() => { setEditEmployee(null); setEditEmployeeUnionFee(null); }}
           onSave={handleSave}
           saving={saving}
+          computedUnionFee={editEmployeeUnionFee}
+          computedUnionFeePeriodLabel={`${String(selectedMonth).padStart(2, '0')}/${selectedYear}`}
         />,
         document.body,
       )}
