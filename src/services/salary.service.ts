@@ -157,6 +157,13 @@ export interface AdvanceRecord {
   employee: number;
   employee_name: string;
   employee_code: string;
+  department_name: string | null;
+  manager_name: string | null;
+  start_date: string | null;
+  basic_salary: string | number | null;
+  region: string | null;
+  bank_account: string | null;
+  bank_name: string | null;
   year: number;
   month: number;
   amount: number;
