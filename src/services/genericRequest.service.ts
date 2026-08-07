@@ -1,6 +1,6 @@
 import { managementApi } from '../utils/api/client';
 
-export type GenericRequestType = 'RESIGNATION' | 'PROPOSAL' | 'CONFIRMATION' | 'COMPLAINT' | 'OTHER';
+export type GenericRequestType = 'RESIGNATION' | 'SALARY_ADVANCE' | 'PROPOSAL' | 'CONFIRMATION' | 'COMPLAINT' | 'OTHER';
 export type GenericRequestStatus =
   | 'DRAFT'
   | 'PENDING_MANAGER'
@@ -69,6 +69,12 @@ export interface PaginatedResponse<T> {
   next: string | null;
   previous: string | null;
   results: T[];
+}
+
+export interface SalaryAdvanceApprovalLockState {
+  is_locked: boolean;
+  updated_by_name: string | null;
+  updated_at: string | null;
 }
 
 class GenericRequestService {
@@ -141,6 +147,16 @@ class GenericRequestService {
       responseType: 'blob',
     });
     return URL.createObjectURL(res.data);
+  }
+
+  async getApprovalLock(): Promise<SalaryAdvanceApprovalLockState> {
+    const res = await managementApi.get(`${this.base}approval-lock/`);
+    return res.data;
+  }
+
+  async setApprovalLock(isLocked: boolean): Promise<SalaryAdvanceApprovalLockState> {
+    const res = await managementApi.post(`${this.base}approval-lock/`, { is_locked: isLocked });
+    return res.data;
   }
 }
 

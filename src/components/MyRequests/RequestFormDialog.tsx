@@ -36,6 +36,7 @@ const TYPE_DEFAULT_TITLE: Record<GenericRequestType, string> = {
   CONFIRMATION: 'Đơn xác nhận',
   COMPLAINT: 'Đơn khiếu nại',
   RESIGNATION: 'Đơn xin nghỉ việc',
+  SALARY_ADVANCE: 'Đơn tạm ứng lương',
   OTHER: 'Đơn khác',
 };
 

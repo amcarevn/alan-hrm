@@ -54,6 +54,7 @@ export interface SalaryRecord {
   giam_tru_ban_than?: number;
   giam_tru_nguoi_phu_thuoc?: number;
   bao_hiem_bat_buoc?: number;
+  cong_doan?: number;
   tam_ung: number;
   luong_thuc_linh: number;
   con_phai_thanh_toan?: number;
@@ -157,6 +158,13 @@ export interface AdvanceRecord {
   employee: number;
   employee_name: string;
   employee_code: string;
+  department_name: string | null;
+  manager_name: string | null;
+  start_date: string | null;
+  basic_salary: string | number | null;
+  region: string | null;
+  bank_account: string | null;
+  bank_name: string | null;
   year: number;
   month: number;
   amount: number;

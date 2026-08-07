@@ -57,6 +57,7 @@ export default function ProtectedRoute({ children, allowedRoles, requireBod = fa
         currentPath === '/dashboard/organization-chart' ||
         currentPath === '/dashboard/approvals' ||
         currentPath === '/dashboard/my-requests' ||
+        currentPath === '/dashboard/salary-advance' ||
         (currentPath === '/dashboard/attendance/upload' && userDepartmentCode === 'HCNS') ||
         currentPath === '/dashboard/onboarding' ||
         currentPath.startsWith('/dashboard/onboarding/') ||

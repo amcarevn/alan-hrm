@@ -314,6 +314,14 @@ const navigationItems: NavigationItem[] = [
     ],
   },
 
+  // --- Tạm ứng lương (top-level) ---
+  {
+    name: 'Tạm ứng lương',
+    href: '/dashboard/salary-advance',
+    icon: CurrencyDollarIcon,
+    roles: ['ADMIN', 'USER', 'CUSTOMER', 'STAFF', 'HR'],
+  },
+
   // --- Đơn từ & Phê duyệt ---
   {
     name: 'Đơn từ & Phê duyệt',
