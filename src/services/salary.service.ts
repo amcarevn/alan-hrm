@@ -75,6 +75,17 @@ export interface SalaryListResponse {
   results: SalaryRecord[];
 }
 
+export interface SalaryFinalizeState {
+  year: number;
+  month: number;
+  is_finalized: boolean;
+  finalized_at: string | null;
+  /** true = đã chốt nhưng số liệu tính lại bây giờ đã khác bản chốt */
+  is_stale: boolean;
+  changed_count: number;
+  total_finalized: number;
+}
+
 export interface FinalizeSalaryResponse {
   year: number;
   month: number;
@@ -331,6 +342,8 @@ export interface SendDepartmentPayslipPayload {
   department_id: number;
   subject_template?: string;
   body_template?: string;
+  /** HR đã xác nhận chốt lại bảng lương khi số liệu đã đổi so với bản đã chốt */
+  confirm_refinalize?: boolean;
 }
 
 export interface SendDepartmentPayslipResponse {
@@ -393,6 +406,8 @@ export interface SendCompanyPayslipPayload {
   legal_entity?: string;
   subject_template?: string;
   body_template?: string;
+  /** HR đã xác nhận chốt lại bảng lương khi số liệu đã đổi so với bản đã chốt */
+  confirm_refinalize?: boolean;
 }
 
 export interface SendCompanyPayslipResponse {
@@ -458,6 +473,18 @@ class SalaryService {
    * Chốt cho tất cả nhân viên của tháng, không lọc theo phòng ban.
    * Chạy lại nhiều lần vô hại, mỗi lần ghi đè bằng số liệu tính từ dữ liệu hiện tại.
    */
+  /**
+   * Trạng thái chốt lương của tháng. Tách khỏi getSalaryByDepartment vì phía backend
+   * phải tính lại toàn bộ để biết số liệu còn khớp bản đã chốt hay không.
+   */
+  async getSalaryFinalizeState(params: { year: number; month: number }): Promise<SalaryFinalizeState> {
+    const response = await managementApi.get('/api-hrm/salary/finalize-state/', {
+      params,
+      timeout: 300000,
+    });
+    return response.data;
+  }
+
   async finalizeSalaryMonth(params: { year: number; month: number }): Promise<FinalizeSalaryResponse> {
     // Duyệt toàn bộ nhân viên nên chậm hơn các POST khác, nới timeout.
     const response = await managementApi.post('/api-hrm/salary/finalize/', params, { timeout: 300000 });

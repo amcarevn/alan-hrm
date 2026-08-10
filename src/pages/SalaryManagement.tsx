@@ -22,7 +22,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { employeesAPI } from '../utils/api';
 import type { Department, Employee } from '../utils/api';
-import { salaryService, SalaryFormulaUpdateData, SalaryRecord, PenaltyRecord, CommissionRecord, type BulkSalaryConfigRecord, type PayslipEmailBatchStatus, type DepartmentPayslipRecipientsResponse, type CompanyPayslipRecipientsResponse } from '../services/salary.service';
+import { salaryService, SalaryFormulaUpdateData, SalaryRecord, PenaltyRecord, CommissionRecord, type BulkSalaryConfigRecord, type PayslipEmailBatchStatus, type DepartmentPayslipRecipientsResponse, type CompanyPayslipRecipientsResponse, type SalaryFinalizeState } from '../services/salary.service';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
 import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,6 +33,96 @@ const TABS = [
 ];
 
 const NO_LEGAL_ENTITY_FILTER = '__NO_LEGAL_ENTITY__';
+
+/**
+ * Khối thông báo trạng thái chốt lương, hiện trong hộp xác nhận gửi phiếu lương.
+ *
+ * Ba trường hợp:
+ * - Chưa chốt: báo cho HR biết gửi email sẽ đồng thời chốt bảng lương.
+ * - Đã chốt, số liệu còn khớp: yên tâm, email dùng đúng số đã chốt.
+ * - Đã chốt nhưng số liệu đã đổi: bắt tick xác nhận mới cho gửi.
+ */
+const PayslipFinalizeNotice: React.FC<{
+  state: SalaryFinalizeState | null;
+  loading: boolean;
+  month: number;
+  year: number;
+  confirmRefinalize: boolean;
+  onChangeConfirmRefinalize: (value: boolean) => void;
+}> = ({ state, loading, month, year, confirmRefinalize, onChangeConfirmRefinalize }) => {
+  const monthLabel = `Tháng ${String(month).padStart(2, '0')}/${year}`;
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <ArrowPathIcon className="h-4 w-4 animate-spin" />
+        Đang kiểm tra trạng thái chốt lương...
+      </div>
+    );
+  }
+
+  if (!state) return null;
+
+  if (!state.is_finalized) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="flex items-start gap-2">
+          <LockClosedIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div>
+            <div className="font-medium">Gửi email sẽ đồng thời chốt bảng lương {monthLabel}</div>
+            <div className="mt-1 text-amber-700">
+              Số liệu tháng này sẽ được lưu lại. Sau khi chốt, sửa cấu hình lương hay phụ cấp
+              sẽ không còn làm thay đổi bảng lương tháng này nữa.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!state.is_stale) {
+    return (
+      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="flex items-start gap-2">
+          <LockClosedIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div>
+            Bảng lương {monthLabel} đã chốt
+            {state.finalized_at ? ` lúc ${formatFinalizedAt(state.finalized_at)}` : ''}. Email sẽ
+            dùng đúng số liệu đã chốt.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+      <div className="flex items-start gap-2">
+        <ExclamationCircleIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
+        <div className="flex-1">
+          <div className="font-medium">Số liệu đã thay đổi sau khi chốt</div>
+          <div className="mt-1 text-red-700">
+            Bảng lương {monthLabel} đã chốt
+            {state.finalized_at ? ` lúc ${formatFinalizedAt(state.finalized_at)}` : ''}, nhưng có{' '}
+            <strong>{state.changed_count}</strong> nhân viên đang cho ra số khác bản đã chốt — có
+            người đã sửa cấu hình lương hoặc chốt lại công. Phải chốt lại thì email mới khớp.
+          </div>
+          <label className="mt-2 flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={confirmRefinalize}
+              onChange={(event) => onChangeConfirmRefinalize(event.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-500"
+            />
+            <span className="font-medium">
+              Tôi xác nhận chốt lại bảng lương {monthLabel} bằng số liệu hiện tại rồi gửi email.
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 /** Hiển thị thời điểm chốt lương dạng "HH:MM dd/mm/yyyy". */
 function formatFinalizedAt(value: string): string {
@@ -3066,6 +3156,32 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   // true = đang xem bản tính lại (?refresh=1) để đối chiếu với bản đã chốt
   const [payrollLiveMode, setPayrollLiveMode] = useState(false);
 
+  // Trạng thái chốt lương dùng cho hộp xác nhận gửi phiếu lương. Nạp khi mở hộp xác
+  // nhận chứ không nạp cùng bảng lương, vì backend phải tính lại toàn bộ mới biết số
+  // liệu còn khớp bản đã chốt hay không.
+  const [finalizeState, setFinalizeState] = useState<SalaryFinalizeState | null>(null);
+  const [loadingFinalizeState, setLoadingFinalizeState] = useState(false);
+  const [confirmRefinalize, setConfirmRefinalize] = useState(false);
+
+  const loadFinalizeState = useCallback(async () => {
+    setLoadingFinalizeState(true);
+    setFinalizeState(null);
+    setConfirmRefinalize(false);
+    try {
+      setFinalizeState(await salaryService.getSalaryFinalizeState({ year: selectedYear, month: selectedMonth }));
+    } catch {
+      // Không chặn luồng gửi email chỉ vì không đọc được trạng thái chốt; backend vẫn
+      // là chốt chặn cuối, sẽ trả 409 nếu cần chốt lại.
+      setFinalizeState(null);
+    } finally {
+      setLoadingFinalizeState(false);
+    }
+  }, [selectedYear, selectedMonth]);
+
+  // Đã chốt nhưng số liệu đã đổi -> phải tick xác nhận mới cho gửi.
+  const needsRefinalizeConfirm = Boolean(finalizeState?.is_finalized && finalizeState?.is_stale);
+  const canSendPayslips = !loadingFinalizeState && (!needsRefinalizeConfirm || confirmRefinalize);
+
   const [departments, setDepartments] = useState<Department[]>([]);
   const [legalEntities, setLegalEntities] = useState<Array<{ value: string; label: string }>>([]);
 
@@ -3918,6 +4034,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     setCompanyRecipientsPreviewError(null);
     setSelectedCompanyRecipientPreview(null);
     setShowCompanyPayslipConfirm(true);
+    void loadFinalizeState();
     setLoadingCompanyRecipientsPreview(true);
     salaryService.getCompanyPayslipRecipients({
       year: selectedYear,
@@ -3942,6 +4059,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         year: selectedYear,
         month: selectedMonth,
         ...(legalEntityFilterView ? { legal_entity: legalEntityFilterView } : {}),
+        ...(confirmRefinalize ? { confirm_refinalize: true } : {}),
       });
       setCompanyPayslipBatchId(response.batch_id);
       setCompanyPayslipEmailResult({
@@ -3971,6 +4089,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     const departmentId = parseInt(deptFilterView, 10);
 
     setShowDeptPayslipConfirm(true);
+    void loadFinalizeState();
     setLoadingRecipientsPreview(true);
     salaryService.getDepartmentPayslipRecipients({
       year: selectedYear,
@@ -3996,6 +4115,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         year: selectedYear,
         month: selectedMonth,
         department_id: departmentId,
+        ...(confirmRefinalize ? { confirm_refinalize: true } : {}),
       });
       setDeptPayslipBatchId(response.batch_id);
       setDeptPayslipEmailResult({
@@ -4868,6 +4988,15 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 {legalEntityFilterView ? <> (pháp nhân: <strong>{legalEntityFilterLabel}</strong>)</> : ''}.
               </p>
 
+              <PayslipFinalizeNotice
+                state={finalizeState}
+                loading={loadingFinalizeState}
+                month={selectedMonth}
+                year={selectedYear}
+                confirmRefinalize={confirmRefinalize}
+                onChangeConfirmRefinalize={setConfirmRefinalize}
+              />
+
               {loadingCompanyRecipientsPreview && (
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <ArrowPathIcon className="h-4 w-4 animate-spin" />
@@ -4970,7 +5099,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               </button>
               <button
                 onClick={handleConfirmSendCompanyPayslips}
-                disabled={loadingCompanyRecipientsPreview || !!companyRecipientsPreviewError || companyPreviewRecipientsWithEmail.length === 0}
+                disabled={loadingCompanyRecipientsPreview || !!companyRecipientsPreviewError || companyPreviewRecipientsWithEmail.length === 0 || !canSendPayslips}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <EnvelopeIcon className="h-4 w-4" />
@@ -4995,6 +5124,15 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                 <strong>Tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear}</strong> cho toàn bộ nhân sự phòng ban{' '}
                 <strong>{departments.find((d) => d.id === parseInt(deptFilterView, 10))?.name ?? ''}</strong>.
               </p>
+
+              <PayslipFinalizeNotice
+                state={finalizeState}
+                loading={loadingFinalizeState}
+                month={selectedMonth}
+                year={selectedYear}
+                confirmRefinalize={confirmRefinalize}
+                onChangeConfirmRefinalize={setConfirmRefinalize}
+              />
 
               {loadingRecipientsPreview && (
                 <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -5098,7 +5236,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               </button>
               <button
                 onClick={handleConfirmSendDeptPayslips}
-                disabled={loadingRecipientsPreview || !!deptRecipientsPreviewError || previewRecipientsWithEmail.length === 0}
+                disabled={loadingRecipientsPreview || !!deptRecipientsPreviewError || previewRecipientsWithEmail.length === 0 || !canSendPayslips}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <EnvelopeIcon className="h-4 w-4" />
