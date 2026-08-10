@@ -30,6 +30,7 @@ import {
   type SalaryDataMonthlySummary,
 } from '../services/salary.service';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
+import Pagination from '../components/Pagination';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -173,6 +174,8 @@ const SalaryData: React.FC = () => {
   const [cSaving,            setCSaving]            = useState(false);
   const [cDeletingId,        setCDeletingId]        = useState<number | null>(null);
   const [cDeleting,          setCDeleting]          = useState(false);
+  const [cPage,              setCPage]              = useState(1);
+  const [cPageSize,          setCPageSize]          = useState(20);
   const cFileRef = useRef<HTMLInputElement>(null);
 
   // ── OtherAllowance state ──
@@ -190,6 +193,8 @@ const SalaryData: React.FC = () => {
   const [oSaving,     setOSaving]     = useState(false);
   const [oDeletingId, setODeletingId] = useState<number | null>(null);
   const [oDeleting,   setODeleting]   = useState(false);
+  const [oPage,       setOPage]       = useState(1);
+  const [oPageSize,   setOPageSize]   = useState(20);
   const oFileRef = useRef<HTMLInputElement>(null);
 
   // ── ParkingAllowanceOverride state ──
@@ -211,6 +216,8 @@ const SalaryData: React.FC = () => {
   const [paCreating,   setPaCreating]   = useState(false);
   const [paCreateValues, setPaCreateValues] = useState({ employeeId: 0, amount: '', notes: '' });
   const [paImportErr, setPaImportErr] = useState<{ errors: {employee_code:string;error:string}[]; failedRows: ParsedParkingAllowanceRow[] } | null>(null);
+  const [paPage,     setPaPage]     = useState(1);
+  const [paPageSize, setPaPageSize] = useState(20);
   const paFileRef = useRef<HTMLInputElement>(null);
 
   // ── LunchAllowanceOverride state ──
@@ -233,6 +240,8 @@ const SalaryData: React.FC = () => {
   const [laCreateValues, setLaCreateValues] = useState({ employeeId: 0, amount: '', notes: '' });
   const [laImportErr, setLaImportErr] = useState<{ errors: {employee_code:string;error:string}[]; failedRows: ParsedLunchAllowanceRow[] } | null>(null);
   const [laSyncing, setLaSyncing] = useState(false);
+  const [laPage,     setLaPage]     = useState(1);
+  const [laPageSize, setLaPageSize] = useState(20);
   const laFileRef = useRef<HTMLInputElement>(null);
 
   // ── Advance state ──
@@ -250,6 +259,8 @@ const SalaryData: React.FC = () => {
   const [aSaving,         setASaving]         = useState(false);
   const [aDeletingId,     setADeletingId]     = useState<number | null>(null);
   const [aDeleting,       setADeleting]       = useState(false);
+  const [aPage,           setAPage]           = useState(1);
+  const [aPageSize,       setAPageSize]       = useState(20);
   const aFileRef = useRef<HTMLInputElement>(null);
 
   // ── Penalty state ──
@@ -267,6 +278,8 @@ const SalaryData: React.FC = () => {
   const [pSaving,         setPSaving]         = useState(false);
   const [pDeletingId,     setPDeletingId]     = useState<number | null>(null);
   const [pDeleting,       setPDeleting]       = useState(false);
+  const [pPage,           setPPage]           = useState(1);
+  const [pPageSize,       setPPageSize]       = useState(20);
   const pFileRef = useRef<HTMLInputElement>(null);
 
   // ── Per-tab import errors (detailed) ──
@@ -313,6 +326,7 @@ const SalaryData: React.FC = () => {
     try {
       const data = await salaryService.listCommissions({ year, month });
       setCommissionRecords(data);
+      setCPage(1);
       setCommissionLoaded(true);
     } catch {
       setErrorMsg('Không thể tải danh sách hoa hồng.');
@@ -327,6 +341,7 @@ const SalaryData: React.FC = () => {
     try {
       const data = await salaryService.listPenalties({ year, month });
       setPenaltyRecords(data);
+      setPPage(1);
       setPenaltyLoaded(true);
     } catch {
       setErrorMsg('Không thể tải danh sách phạt biên bản.');
@@ -341,6 +356,7 @@ const SalaryData: React.FC = () => {
     try {
       const data = await salaryService.listOtherAllowances({ year, month });
       setORecords(data);
+      setOPage(1);
       setOLoaded(true);
     } catch {
       setErrorMsg('Không thể tải danh sách phụ cấp khác.');
@@ -355,6 +371,7 @@ const SalaryData: React.FC = () => {
     try {
       const data = await salaryService.listParkingAllowanceOverrides({ year, month });
       setPaRecords(data);
+      setPaPage(1);
       setPaLoaded(true);
     } catch {
       setErrorMsg('Không thể tải danh sách phụ cấp gửi xe.');
@@ -369,6 +386,7 @@ const SalaryData: React.FC = () => {
     try {
       const data = await salaryService.listLunchAllowanceOverrides({ year, month });
       setLaRecords(data);
+      setLaPage(1);
       setLaLoaded(true);
     } catch {
       setErrorMsg('Không thể tải danh sách phụ cấp ăn trưa.');
@@ -383,6 +401,7 @@ const SalaryData: React.FC = () => {
     try {
       const data = await salaryService.listAdvances({ year, month });
       setAdvanceRecords(data);
+      setAPage(1);
       setAdvanceLoaded(true);
     } catch {
       setErrorMsg('Không thể tải danh sách tạm ứng.');
@@ -440,6 +459,14 @@ const SalaryData: React.FC = () => {
   useEffect(() => {
     loadEmployeeOptions();
   }, [loadEmployeeOptions]);
+
+  // Reset trang phân trang về 1 khi từ khoá tìm kiếm của từng tab thay đổi
+  useEffect(() => { setCPage(1); }, [cSearch]);
+  useEffect(() => { setPPage(1); }, [pSearch]);
+  useEffect(() => { setAPage(1); }, [aSearch]);
+  useEffect(() => { setOPage(1); }, [oSearch]);
+  useEffect(() => { setPaPage(1); }, [paSearch]);
+  useEffect(() => { setLaPage(1); }, [laSearch]);
 
   // ─── Month/Year handlers ───────────────────────────────────────────────────
 
@@ -1568,21 +1595,44 @@ const SalaryData: React.FC = () => {
   const filteredCommissions = commissionRecords.filter((r) =>
     !cSearch || r.employee_code.toLowerCase().includes(cSearch.toLowerCase()) || r.employee_name.toLowerCase().includes(cSearch.toLowerCase())
   );
+  const cTotalAmount = filteredCommissions.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const cTotalPages = Math.max(1, Math.ceil(filteredCommissions.length / cPageSize));
+  const paginatedCommissions = filteredCommissions.slice((cPage - 1) * cPageSize, cPage * cPageSize);
+
   const filteredPenalties = penaltyRecords.filter((r) =>
     !pSearch || r.employee_code.toLowerCase().includes(pSearch.toLowerCase()) || r.employee_name.toLowerCase().includes(pSearch.toLowerCase())
   );
+  const pTotalAmount = filteredPenalties.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const pTotalPages = Math.max(1, Math.ceil(filteredPenalties.length / pPageSize));
+  const paginatedPenalties = filteredPenalties.slice((pPage - 1) * pPageSize, pPage * pPageSize);
+
   const filteredAdvances = advanceRecords.filter((r) =>
     !aSearch || r.employee_code.toLowerCase().includes(aSearch.toLowerCase()) || r.employee_name.toLowerCase().includes(aSearch.toLowerCase())
   );
+  const aTotalAmount = filteredAdvances.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const aTotalPages = Math.max(1, Math.ceil(filteredAdvances.length / aPageSize));
+  const paginatedAdvances = filteredAdvances.slice((aPage - 1) * aPageSize, aPage * aPageSize);
+
   const filteredOtherAllowances = oRecords.filter((r) =>
     !oSearch || r.employee_code.toLowerCase().includes(oSearch.toLowerCase()) || r.employee_name.toLowerCase().includes(oSearch.toLowerCase())
   );
+  const oTotalAmount = filteredOtherAllowances.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const oTotalPages = Math.max(1, Math.ceil(filteredOtherAllowances.length / oPageSize));
+  const paginatedOtherAllowances = filteredOtherAllowances.slice((oPage - 1) * oPageSize, oPage * oPageSize);
+
   const filteredParkingAllowances = paRecords.filter((r) =>
     !paSearch || r.employee_code.toLowerCase().includes(paSearch.toLowerCase()) || r.employee_name.toLowerCase().includes(paSearch.toLowerCase())
   );
+  const paTotalAmount = filteredParkingAllowances.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const paTotalPages = Math.max(1, Math.ceil(filteredParkingAllowances.length / paPageSize));
+  const paginatedParkingAllowances = filteredParkingAllowances.slice((paPage - 1) * paPageSize, paPage * paPageSize);
+
   const filteredLunchAllowances = laRecords.filter((r) =>
     !laSearch || r.employee_code.toLowerCase().includes(laSearch.toLowerCase()) || r.employee_name.toLowerCase().includes(laSearch.toLowerCase())
   );
+  const laTotalAmount = filteredLunchAllowances.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const laTotalPages = Math.max(1, Math.ceil(filteredLunchAllowances.length / laPageSize));
+  const paginatedLunchAllowances = filteredLunchAllowances.slice((laPage - 1) * laPageSize, laPage * laPageSize);
 
   const employeeSelectOptions = employeeOptions.map((employee) => ({
     value: employee.id,
@@ -1923,7 +1973,7 @@ const SalaryData: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
-                        {filteredCommissions.map((rec, i) => {
+                        {paginatedCommissions.map((rec, i) => {
                           const isEditing  = cEditingId  === rec.id;
                           const isDeleting = cDeletingId === rec.id;
                           return (
@@ -1981,7 +2031,27 @@ const SalaryData: React.FC = () => {
                     </table>
                   </div>
                 )}
+                {filteredCommissions.length > 0 && (
+                  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-100">
+                    <span className="text-sm font-medium text-gray-600">
+                      Tổng số tiền ({filteredCommissions.length} nhân viên)
+                    </span>
+                    <span className="text-base font-semibold text-gray-900">{fmtMoney(cTotalAmount)}</span>
+                  </div>
+                )}
               </div>
+              {filteredCommissions.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    currentPage={cPage}
+                    totalPages={cTotalPages}
+                    totalItems={filteredCommissions.length}
+                    itemsPerPage={cPageSize}
+                    onPageChange={setCPage}
+                    onItemsPerPageChange={(n) => { setCPageSize(n); setCPage(1); }}
+                  />
+                </div>
+              )}
             </>
           )}
 
@@ -2144,7 +2214,7 @@ const SalaryData: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
-                        {filteredOtherAllowances.map((rec, i) => {
+                        {paginatedOtherAllowances.map((rec, i) => {
                           const isEditing  = oEditingId  === rec.id;
                           const isDeleting = oDeletingId === rec.id;
                           return (
@@ -2210,7 +2280,27 @@ const SalaryData: React.FC = () => {
                     </table>
                   </div>
                 )}
+                {filteredOtherAllowances.length > 0 && (
+                  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-100">
+                    <span className="text-sm font-medium text-gray-600">
+                      Tổng số tiền ({filteredOtherAllowances.length} nhân viên)
+                    </span>
+                    <span className="text-base font-semibold text-gray-900">{fmtMoney(oTotalAmount)}</span>
+                  </div>
+                )}
               </div>
+              {filteredOtherAllowances.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    currentPage={oPage}
+                    totalPages={oTotalPages}
+                    totalItems={filteredOtherAllowances.length}
+                    itemsPerPage={oPageSize}
+                    onPageChange={setOPage}
+                    onItemsPerPageChange={(n) => { setOPageSize(n); setOPage(1); }}
+                  />
+                </div>
+              )}
             </>
           )}
 
@@ -2384,7 +2474,7 @@ const SalaryData: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
-                        {filteredParkingAllowances.map((rec, i) => {
+                        {paginatedParkingAllowances.map((rec, i) => {
                           const isEditing  = paEditingId  === rec.id;
                           const isDeleting = paDeletingId === rec.id;
                           return (
@@ -2450,7 +2540,27 @@ const SalaryData: React.FC = () => {
                     </table>
                   </div>
                 )}
+                {filteredParkingAllowances.length > 0 && (
+                  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-100">
+                    <span className="text-sm font-medium text-gray-600">
+                      Tổng số tiền ({filteredParkingAllowances.length} nhân viên)
+                    </span>
+                    <span className="text-base font-semibold text-gray-900">{fmtMoney(paTotalAmount)}</span>
+                  </div>
+                )}
               </div>
+              {filteredParkingAllowances.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    currentPage={paPage}
+                    totalPages={paTotalPages}
+                    totalItems={filteredParkingAllowances.length}
+                    itemsPerPage={paPageSize}
+                    onPageChange={setPaPage}
+                    onItemsPerPageChange={(n) => { setPaPageSize(n); setPaPage(1); }}
+                  />
+                </div>
+              )}
             </>
           )}
 
@@ -2624,7 +2734,7 @@ const SalaryData: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
-                        {filteredLunchAllowances.map((rec, i) => {
+                        {paginatedLunchAllowances.map((rec, i) => {
                           const isEditing  = laEditingId  === rec.id;
                           const isDeleting = laDeletingId === rec.id;
                           return (
@@ -2690,7 +2800,27 @@ const SalaryData: React.FC = () => {
                     </table>
                   </div>
                 )}
+                {filteredLunchAllowances.length > 0 && (
+                  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-100">
+                    <span className="text-sm font-medium text-gray-600">
+                      Tổng số tiền ({filteredLunchAllowances.length} nhân viên)
+                    </span>
+                    <span className="text-base font-semibold text-gray-900">{fmtMoney(laTotalAmount)}</span>
+                  </div>
+                )}
               </div>
+              {filteredLunchAllowances.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    currentPage={laPage}
+                    totalPages={laTotalPages}
+                    totalItems={filteredLunchAllowances.length}
+                    itemsPerPage={laPageSize}
+                    onPageChange={setLaPage}
+                    onItemsPerPageChange={(n) => { setLaPageSize(n); setLaPage(1); }}
+                  />
+                </div>
+              )}
             </>
           )}
 
@@ -2840,7 +2970,7 @@ const SalaryData: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
-                        {filteredAdvances.map((rec, i) => {
+                        {paginatedAdvances.map((rec, i) => {
                           const isEditing  = aEditingId  === rec.id;
                           const isDeleting = aDeletingId === rec.id;
                           return (
@@ -2898,7 +3028,27 @@ const SalaryData: React.FC = () => {
                     </table>
                   </div>
                 )}
+                {filteredAdvances.length > 0 && (
+                  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-100">
+                    <span className="text-sm font-medium text-gray-600">
+                      Tổng số tiền ({filteredAdvances.length} nhân viên)
+                    </span>
+                    <span className="text-base font-semibold text-gray-900">{fmtMoney(aTotalAmount)}</span>
+                  </div>
+                )}
               </div>
+              {filteredAdvances.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    currentPage={aPage}
+                    totalPages={aTotalPages}
+                    totalItems={filteredAdvances.length}
+                    itemsPerPage={aPageSize}
+                    onPageChange={setAPage}
+                    onItemsPerPageChange={(n) => { setAPageSize(n); setAPage(1); }}
+                  />
+                </div>
+              )}
             </>
           )}
 
@@ -3069,7 +3219,7 @@ const SalaryData: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
-                        {filteredPenalties.map((rec, i) => {
+                        {paginatedPenalties.map((rec, i) => {
                           const isEditing  = pEditingId  === rec.id;
                           const isDeleting = pDeletingId === rec.id;
                           return (
@@ -3135,7 +3285,27 @@ const SalaryData: React.FC = () => {
                     </table>
                   </div>
                 )}
+                {filteredPenalties.length > 0 && (
+                  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-100">
+                    <span className="text-sm font-medium text-gray-600">
+                      Tổng số tiền ({filteredPenalties.length} bản ghi)
+                    </span>
+                    <span className="text-base font-semibold text-gray-900">{fmtMoney(pTotalAmount)}</span>
+                  </div>
+                )}
               </div>
+              {filteredPenalties.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    currentPage={pPage}
+                    totalPages={pTotalPages}
+                    totalItems={filteredPenalties.length}
+                    itemsPerPage={pPageSize}
+                    onPageChange={setPPage}
+                    onItemsPerPageChange={(n) => { setPPageSize(n); setPPage(1); }}
+                  />
+                </div>
+              )}
             </>
           )}
 
