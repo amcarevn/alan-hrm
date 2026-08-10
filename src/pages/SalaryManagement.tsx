@@ -18,12 +18,14 @@ import {
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   QuestionMarkCircleIcon,
+  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 import { employeesAPI } from '../utils/api';
 import type { Department, Employee } from '../utils/api';
 import { salaryService, SalaryFormulaUpdateData, SalaryRecord, PenaltyRecord, CommissionRecord, type BulkSalaryConfigRecord, type PayslipEmailBatchStatus, type DepartmentPayslipRecipientsResponse, type CompanyPayslipRecipientsResponse } from '../services/salary.service';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
 import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
+import { useAuth } from '../contexts/AuthContext';
 
 const TABS = [
   { key: 'config', label: 'Cấu hình tính lương', icon: CurrencyDollarIcon },
@@ -31,6 +33,14 @@ const TABS = [
 ];
 
 const NO_LEGAL_ENTITY_FILTER = '__NO_LEGAL_ENTITY__';
+
+/** Hiển thị thời điểm chốt lương dạng "HH:MM dd/mm/yyyy". */
+function formatFinalizedAt(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(parsed.getHours())}:${pad(parsed.getMinutes())} ${pad(parsed.getDate())}/${pad(parsed.getMonth() + 1)}/${parsed.getFullYear()}`;
+}
 
 function getStandardWorkDays(year: number, month: number): number {
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -3043,6 +3053,19 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [legalEntityFilterView, setLegalEntityFilterView] = useState<string>('');
   const [searchSalary, setSearchSalary] = useState('');
 
+  // ── Chốt lương tháng ──
+  // Trang đã được gác requireBod ở tầng route, nhưng endpoint chốt lương chỉ cho HR/Admin,
+  // nên ẩn nút với BOD không kiêm HR/Admin thay vì để họ bấm rồi nhận 403.
+  const { user } = useAuth();
+  const canFinalizeSalary = ['ADMIN', 'HR'].includes((user?.role || '').toUpperCase());
+  // Bảng lương vốn được tính lại mỗi lần gọi API từ cấu hình hiện tại, nên sửa cấu hình
+  // sẽ làm đổi số liệu của các tháng đã qua. Chốt lương chụp lại bảng lương vào DB.
+  const [finalizingSalary, setFinalizingSalary] = useState(false);
+  const [salaryIsFinalized, setSalaryIsFinalized] = useState(false);
+  const [salaryFinalizedAt, setSalaryFinalizedAt] = useState<string | null>(null);
+  // true = đang xem bản tính lại (?refresh=1) để đối chiếu với bản đã chốt
+  const [payrollLiveMode, setPayrollLiveMode] = useState(false);
+
   const [departments, setDepartments] = useState<Department[]>([]);
   const [legalEntities, setLegalEntities] = useState<Array<{ value: string; label: string }>>([]);
 
@@ -3709,7 +3732,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     }
   }, [activeTab, loadEmployees]);
 
-  const loadSalary = useCallback(async () => {
+  const loadSalary = useCallback(async (opts?: { live?: boolean }) => {
+    const live = opts?.live ?? payrollLiveMode;
     setLoadingSalary(true);
     setSalaryError(null);
     setDeptPayslipEmailResult(null);
@@ -3726,6 +3750,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           month: selectedMonth,
           department_id: deptFilterView ? parseInt(deptFilterView, 10) : undefined,
           legal_entity: legalEntityFilterView || undefined,
+          refresh: live ? 1 : undefined,
         }),
         salaryService.listCommissions({ year: selectedYear, month: selectedMonth }),
         salaryService.getDepartmentPayslipEmailStatuses({
@@ -3740,6 +3765,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
       const res = salaryRes.value;
       setSalaryRecords(res.results ?? []);
+      setSalaryIsFinalized(Boolean(res.is_finalized));
+      setSalaryFinalizedAt(res.finalized_at ?? null);
       setSalaryCommissions(commissionRes.status === 'fulfilled' ? commissionRes.value : []);
 
       if (emailStatusRes.status === 'fulfilled') {
@@ -3763,10 +3790,12 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       setSalaryRecords([]);
       setSalaryCommissions([]);
       setEmailStatusFromQueueMap({});
+      setSalaryIsFinalized(false);
+      setSalaryFinalizedAt(null);
     } finally {
       setLoadingSalary(false);
     }
-  }, [selectedYear, selectedMonth, deptFilterView, legalEntityFilterView]);
+  }, [selectedYear, selectedMonth, deptFilterView, legalEntityFilterView, payrollLiveMode]);
 
   useEffect(() => {
     setSalaryPage(1);
@@ -3777,6 +3806,55 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       loadSalary();
     }
   }, [activeTab, loadSalary]);
+
+  const handleFinalizeSalaryMonth = async () => {
+    const confirmed = window.confirm(
+      `Chốt bảng lương tháng ${selectedMonth}/${selectedYear}?\n\n` +
+      'Toàn bộ bảng lương của tháng sẽ được lưu lại vào hệ thống. Từ đó về sau, thay đổi ' +
+      'cấu hình lương hay phụ cấp sẽ không làm đổi số liệu tháng này nữa.\n\n' +
+      'Chốt cho tất cả nhân viên, không phụ thuộc bộ lọc phòng ban đang chọn. ' +
+      'Chốt lại lần nữa sẽ ghi đè bằng số liệu mới nhất.'
+    );
+    if (!confirmed) return;
+
+    setFinalizingSalary(true);
+    setSaveError(null);
+    setSaveSuccess(null);
+    try {
+      const res = await salaryService.finalizeSalaryMonth({
+        year: selectedYear,
+        month: selectedMonth,
+      });
+      setSaveSuccess(
+        `Đã chốt bảng lương ${res.total_processed} nhân viên tháng ${selectedMonth}/${selectedYear}` +
+        (res.total_errors > 0
+          ? `. ${res.total_errors} nhân viên lỗi: ` +
+            res.errors.slice(0, 5).map((e) => `${e.employee_code} (${e.error})`).join('; ') +
+            (res.errors.length > 5 ? '…' : '')
+          : '.')
+      );
+      // Quay về xem bản đã chốt. Nếu đang ở bản tính lại thì đổi state là đủ,
+      // useEffect sẽ tự tải lại vì loadSalary phụ thuộc payrollLiveMode.
+      if (payrollLiveMode) {
+        setPayrollLiveMode(false);
+      } else {
+        await loadSalary({ live: false });
+      }
+    } catch (error: unknown) {
+      const normalized = error as { response?: { status?: number; data?: { detail?: string; error?: string } } };
+      if (normalized?.response?.status === 403) {
+        setSaveError('Chỉ HR hoặc Admin mới có quyền chốt bảng lương.');
+      } else {
+        setSaveError(
+          normalized?.response?.data?.detail ||
+          normalized?.response?.data?.error ||
+          'Không thể chốt bảng lương. Vui lòng thử lại.'
+        );
+      }
+    } finally {
+      setFinalizingSalary(false);
+    }
+  };
 
   const handleSave = async (id: number, data: SalaryFormulaUpdateData) => {
     setSaving(true);
@@ -4329,7 +4407,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   />
                 </div>
                 <button
-                  onClick={loadSalary}
+                  onClick={() => loadSalary()}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700"
                 >
                   <ArrowPathIcon className="h-4 w-4" />
@@ -4371,7 +4449,75 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   <EyeIcon className="h-4 w-4" />
                   Xem trước
                 </button>
+                {canFinalizeSalary && (
+                  <button
+                    onClick={handleFinalizeSalaryMonth}
+                    disabled={finalizingSalary || loadingSalary}
+                    title={`Lưu lại bảng lương tháng ${selectedMonth}/${selectedYear} để về sau đổi cấu hình không làm thay đổi số liệu tháng này`}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {finalizingSalary ? (
+                      <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <LockClosedIcon className="h-4 w-4" />
+                    )}
+                    {finalizingSalary
+                      ? 'Đang chốt...'
+                      : salaryIsFinalized
+                        ? `Chốt lại lương tháng ${selectedMonth}/${selectedYear}`
+                        : `Chốt lương tháng ${selectedMonth}/${selectedYear}`}
+                  </button>
+                )}
               </div>
+
+              {/* Trạng thái chốt lương */}
+              {!loadingSalary && salaryRecords.length > 0 && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                  {salaryIsFinalized ? (
+                    <>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium">
+                        <LockClosedIcon className="h-3.5 w-3.5" />
+                        Đã chốt{salaryFinalizedAt ? ` lúc ${formatFinalizedAt(salaryFinalizedAt)}` : ''}
+                      </span>
+                      <span className="text-gray-500">
+                        Số liệu đã lưu, không đổi khi sửa cấu hình lương.
+                      </span>
+                      <button
+                        onClick={() => setPayrollLiveMode(true)}
+                        className="text-primary-600 hover:text-primary-700 underline underline-offset-2"
+                      >
+                        Xem bản tính lại để đối chiếu
+                      </button>
+                    </>
+                  ) : payrollLiveMode ? (
+                    <>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-medium">
+                        <ArrowPathIcon className="h-3.5 w-3.5" />
+                        Bản tính lại
+                      </span>
+                      <span className="text-gray-500">
+                        Đang tính từ cấu hình hiện tại, chưa phải số đã chốt.
+                      </span>
+                      <button
+                        onClick={() => setPayrollLiveMode(false)}
+                        className="text-primary-600 hover:text-primary-700 underline underline-offset-2"
+                      >
+                        Quay lại bản đã chốt
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-medium">
+                        <ExclamationCircleIcon className="h-3.5 w-3.5" />
+                        Chưa chốt
+                      </span>
+                      <span className="text-gray-500">
+                        Số liệu được tính lại mỗi lần mở, sẽ đổi theo nếu sửa cấu hình lương.
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="bg-white rounded-lg shadow overflow-hidden">
