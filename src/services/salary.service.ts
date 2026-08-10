@@ -68,8 +68,20 @@ export interface SalaryListResponse {
   department_id: number | null;
   legal_entity?: string | null;
   department_name: string | null;
+  /** true = đang trả bảng lương đã chốt, không phải số tính lại tại thời điểm gọi */
+  is_finalized?: boolean;
+  finalized_at?: string | null;
   total: number;
   results: SalaryRecord[];
+}
+
+export interface FinalizeSalaryResponse {
+  year: number;
+  month: number;
+  total_processed: number;
+  total_errors: number;
+  results: { employee_code: string; ho_va_ten: string; created: boolean }[];
+  errors: { employee_code: string; ho_va_ten: string; error: string }[];
 }
 
 export interface SalaryFormulaUpdateData {
@@ -434,8 +446,21 @@ class SalaryService {
     department_id?: number;
     legal_entity?: string;
     employee_code?: string;
+    /** 1 = bỏ qua bảng lương đã chốt, tính lại từ dữ liệu hiện tại để đối chiếu */
+    refresh?: 1;
   }): Promise<SalaryListResponse> {
     const response = await managementApi.get('/api-hrm/salary/department/', { params });
+    return response.data;
+  }
+
+  /**
+   * Chốt bảng lương tháng — chụp lại toàn bộ bảng lương vào DB.
+   * Chốt cho tất cả nhân viên của tháng, không lọc theo phòng ban.
+   * Chạy lại nhiều lần vô hại, mỗi lần ghi đè bằng số liệu tính từ dữ liệu hiện tại.
+   */
+  async finalizeSalaryMonth(params: { year: number; month: number }): Promise<FinalizeSalaryResponse> {
+    // Duyệt toàn bộ nhân viên nên chậm hơn các POST khác, nới timeout.
+    const response = await managementApi.post('/api-hrm/salary/finalize/', params, { timeout: 300000 });
     return response.data;
   }
 
