@@ -222,7 +222,7 @@ export default function ContractTemplates() {
     { key: '{{vi_tri}}', desc: 'Vị trí/Chức danh' },
     { key: '{{chuc_vu}}', desc: 'Chức vụ (rank)' },
     { key: '{{loai_hop_dong}}', desc: 'Loại hợp đồng' },
-    { key: '{{ma_nhan_vien}}', desc: 'Mã nhân viên' },
+    { key: '{{mnv}}', desc: 'Mã nhân viên' },
     { key: '{{so_tai_khoan}}', desc: 'Số tài khoản ngân hàng' },
     { key: '{{ten_ngan_hang}}', desc: 'Tên ngân hàng' },
     { key: '{{ma_so_thue}}', desc: 'Mã số thuế TNCN' },
