@@ -30,7 +30,7 @@ interface Props {
 const KNOWN_LABELS: Record<string, string> = {
   '{{ho_ten}}': 'Họ và tên',
   '{{gioi_tinh}}': 'Giới tính',
-  '{{ma_nhan_vien}}': 'Mã nhân viên',
+  '{{mnv}}': 'Mã nhân viên',
   '{{ngay_sinh}}': 'Ngày sinh',
   '{{so_dien_thoai}}': 'Số điện thoại',
   '{{email}}': 'Email',
