@@ -2767,11 +2767,10 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
                 <p className="text-xs text-gray-500 mt-1">
                   {computedUnionFee != null ? (
                     <>
-                      Số đang áp dụng chính thức cho bảng lương tháng{' '}
-                      <strong>{computedUnionFeePeriodLabel}</strong>:{' '}
-                      <strong className="text-gray-700">{formatCurrency(computedUnionFee)}</strong> — tự động
-                      theo tỷ lệ công thử việc/chính thức (mức 50.000đ hoặc 100.000đ). Chỉ nhập số ở trên nếu
-                      muốn override bằng 1 số đặc biệt khác 2 mức này.
+                      Nếu để trống/0: tự động tính theo tỷ lệ công thử việc/chính thức — số đang áp dụng
+                      cho bảng lương tháng <strong>{computedUnionFeePeriodLabel}</strong> hiện là{' '}
+                      <strong className="text-gray-700">{formatCurrency(computedUnionFee)}</strong>. Nhập bất kỳ
+                      số dương nào ở trên (kể cả đúng 50.000đ hoặc 100.000đ) để ép cứng đúng số đó, bỏ qua tính tự động.
                     </>
                   ) : (
                     'Chưa có dữ liệu chấm công của kỳ đang xem để tính tự động — số hiển thị ở trên chỉ mang tính tham khảo.'
