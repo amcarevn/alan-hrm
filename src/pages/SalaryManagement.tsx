@@ -3588,6 +3588,57 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       });
       ws.getRow(1).height = 30;
 
+      // Hàng giải thích ngắn gọn ngay dưới hàng tiêu đề, ứng với từng cột theo key.
+      const COLUMN_EXPLAINS: Record<string, string> = {
+        ma_nv: 'Mã nhân viên',
+        ho_va_ten: 'Họ tên nhân viên',
+        phong_ban: 'Phòng ban',
+        phap_nhan_con: 'Pháp nhân/đơn vị con',
+        year: 'Năm tính lương',
+        month: 'Tháng tính lương',
+        luong_co_ban: 'Lương cơ bản của tháng',
+        cong_chuan: 'Số công chuẩn của tháng (số ngày − Chủ nhật)',
+        tong_cong: 'Số công thực tế đã làm',
+        luong_ngay_cong: 'Lương tính theo công thực tế',
+        luong_doanh_so: 'Hoa hồng doanh số',
+        luong_tang_ca: 'Tiền tăng ca',
+        luong_truc_ca: 'Tiền trực ca',
+        thu_nhap_khac: 'Thu nhập khác (nhập tay)',
+        tong_luong_iii: 'Tổng các khoản lương ở trên',
+        phu_cap_gui_xe: 'Phụ cấp gửi xe',
+        phu_cap_an_trua: 'Phụ cấp ăn trưa',
+        phu_cap_trach_nhiem: 'Phụ cấp trách nhiệm',
+        phu_cap_khac: 'Phụ cấp khác',
+        tong_phu_cap_iv: 'Tổng các khoản phụ cấp',
+        thuong: 'Tiền thưởng (nhập tay)',
+        tong_thu_nhap_vi: 'Tổng thu nhập trước khi trừ',
+        bhxh: 'Bảo hiểm xã hội (8%)',
+        bhyt: 'Bảo hiểm y tế (1,5%)',
+        bhtn: 'Bảo hiểm thất nghiệp (1%)',
+        tong_bh: 'Tổng 3 loại bảo hiểm trên',
+        cong_doan: 'Phí công đoàn (50k/100k, 0đ nếu không có công)',
+        tong_phat: 'Phạt đi muộn/về sớm',
+        tong_phat_bienban: 'Phạt theo biên bản',
+        tong_giam_tru_vii: 'Tổng các khoản bị trừ',
+        dieu_chinh: 'Điều chỉnh cộng/trừ thêm (nhập tay)',
+        thue_tncn: 'Thuế thu nhập cá nhân',
+        tam_ung: 'Tiền đã tạm ứng trong tháng',
+        luong_thuc_linh: 'Thu nhập sau khi trừ BH/công đoàn/phạt',
+        con_phai_thanh_toan: 'Số tiền cuối cùng cần trả cho nhân viên',
+      };
+      const explainRow = ws.addRow(
+        Object.fromEntries(
+          (ws.columns || []).map((c) => [String(c.key), COLUMN_EXPLAINS[String(c.key)] || ''])
+        )
+      );
+      explainRow.eachCell((cell) => {
+        cell.font = { italic: true, size: 9, color: { argb: 'FF6B7280' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+      });
+      explainRow.height = 28;
+      ws.views = [{ state: 'frozen', ySplit: 2 }];
+
       const totals = {
         luong_co_ban: 0,
         luong_ngay_cong: 0,
