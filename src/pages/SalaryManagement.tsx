@@ -3540,6 +3540,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet('Bang Luong Chi Tiet');
 
+      // Định dạng số tiền có phân cách hàng nghìn (hiển thị kiểu 22.000.000 theo
+      // locale VN của Excel — mã '#,##0' chỉ là placeholder, Excel tự áp đúng ký
+      // tự phân cách theo vùng của máy đang mở file).
+      const MONEY_FMT = { numFmt: '#,##0' };
+
       ws.columns = [
         { header: 'Mã NV', key: 'ma_nv', width: 14 },
         { header: 'Họ và tên', key: 'ho_va_ten', width: 24 },
@@ -3547,38 +3552,38 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         { header: 'Pháp nhân con', key: 'phap_nhan_con', width: 22 },
         { header: 'Năm', key: 'year', width: 8 },
         { header: 'Tháng', key: 'month', width: 8 },
-        { header: 'Lương cơ bản', key: 'luong_co_ban', width: 16 },
+        { header: 'Lương cơ bản', key: 'luong_co_ban', width: 16, style: MONEY_FMT },
         // numFmt ép cứng định dạng số thường (không phải ngày/giờ) — công có thể lẻ
         // (vd 26.5), để "General" mặc định thì một số phần mềm mở file (không phải
         // Excel gốc) có thể tự đoán nhầm đây là ngày và hiển thị ra số serial ngày.
         { header: 'Công chuẩn', key: 'cong_chuan', width: 12, style: { numFmt: '0.##' } },
         { header: 'Tổng công', key: 'tong_cong', width: 12, style: { numFmt: '0.##' } },
-        { header: 'Lương ngày công thực tế', key: 'luong_ngay_cong', width: 20 },
-        { header: 'Lương doanh số', key: 'luong_doanh_so', width: 16 },
-        { header: 'Lương tăng ca', key: 'luong_tang_ca', width: 14 },
-        { header: 'Lương trực ca', key: 'luong_truc_ca', width: 14 },
-        { header: 'Thu nhập khác', key: 'thu_nhap_khac', width: 14 },
-        { header: 'Tổng khoản lương (III)', key: 'tong_luong_iii', width: 18 },
-        { header: 'PC gửi xe', key: 'phu_cap_gui_xe', width: 14 },
-        { header: 'PC ăn trưa', key: 'phu_cap_an_trua', width: 14 },
-        { header: 'PC trách nhiệm', key: 'phu_cap_trach_nhiem', width: 16 },
-        { header: 'PC khác', key: 'phu_cap_khac', width: 14 },
-        { header: 'Tổng phụ cấp (IV)', key: 'tong_phu_cap_iv', width: 16 },
-        { header: 'Thưởng', key: 'thuong', width: 12 },
-        { header: 'Tổng thu nhập (VI)', key: 'tong_thu_nhap_vi', width: 18 },
-        { header: 'BHXH', key: 'bhxh', width: 12 },
-        { header: 'BHYT', key: 'bhyt', width: 12 },
-        { header: 'BHTN', key: 'bhtn', width: 12 },
-        { header: 'Tổng BH', key: 'tong_bh', width: 12 },
-        { header: 'Công đoàn', key: 'cong_doan', width: 12 },
-        { header: 'Phạt đi muộn', key: 'tong_phat', width: 14 },
-        { header: 'Phạt biên bản', key: 'tong_phat_bienban', width: 14 },
-        { header: 'Tổng giảm trừ (VII)', key: 'tong_giam_tru_vii', width: 18 },
-        { header: 'Điều chỉnh (VIII)', key: 'dieu_chinh', width: 16 },
-        { header: 'Thuế TNCN (X)', key: 'thue_tncn', width: 14 },
-        { header: 'Tạm ứng (XI)', key: 'tam_ung', width: 14 },
-        { header: 'Lương thực lĩnh (IX)', key: 'luong_thuc_linh', width: 18 },
-        { header: 'Còn phải thanh toán (XII)', key: 'con_phai_thanh_toan', width: 22 },
+        { header: 'Lương ngày công thực tế', key: 'luong_ngay_cong', width: 20, style: MONEY_FMT },
+        { header: 'Lương doanh số', key: 'luong_doanh_so', width: 16, style: MONEY_FMT },
+        { header: 'Lương tăng ca', key: 'luong_tang_ca', width: 14, style: MONEY_FMT },
+        { header: 'Lương trực ca', key: 'luong_truc_ca', width: 14, style: MONEY_FMT },
+        { header: 'Thu nhập khác', key: 'thu_nhap_khac', width: 14, style: MONEY_FMT },
+        { header: 'Tổng khoản lương (III)', key: 'tong_luong_iii', width: 18, style: MONEY_FMT },
+        { header: 'PC gửi xe', key: 'phu_cap_gui_xe', width: 14, style: MONEY_FMT },
+        { header: 'PC ăn trưa', key: 'phu_cap_an_trua', width: 14, style: MONEY_FMT },
+        { header: 'PC trách nhiệm', key: 'phu_cap_trach_nhiem', width: 16, style: MONEY_FMT },
+        { header: 'PC khác', key: 'phu_cap_khac', width: 14, style: MONEY_FMT },
+        { header: 'Tổng phụ cấp (IV)', key: 'tong_phu_cap_iv', width: 16, style: MONEY_FMT },
+        { header: 'Thưởng', key: 'thuong', width: 12, style: MONEY_FMT },
+        { header: 'Tổng thu nhập (VI)', key: 'tong_thu_nhap_vi', width: 18, style: MONEY_FMT },
+        { header: 'BHXH', key: 'bhxh', width: 12, style: MONEY_FMT },
+        { header: 'BHYT', key: 'bhyt', width: 12, style: MONEY_FMT },
+        { header: 'BHTN', key: 'bhtn', width: 12, style: MONEY_FMT },
+        { header: 'Tổng BH', key: 'tong_bh', width: 12, style: MONEY_FMT },
+        { header: 'Công đoàn', key: 'cong_doan', width: 12, style: MONEY_FMT },
+        { header: 'Phạt đi muộn', key: 'tong_phat', width: 14, style: MONEY_FMT },
+        { header: 'Phạt biên bản', key: 'tong_phat_bienban', width: 14, style: MONEY_FMT },
+        { header: 'Tổng giảm trừ (VII)', key: 'tong_giam_tru_vii', width: 18, style: MONEY_FMT },
+        { header: 'Điều chỉnh (VIII)', key: 'dieu_chinh', width: 16, style: MONEY_FMT },
+        { header: 'Thuế TNCN (X)', key: 'thue_tncn', width: 14, style: MONEY_FMT },
+        { header: 'Tạm ứng (XI)', key: 'tam_ung', width: 14, style: MONEY_FMT },
+        { header: 'Lương thực lĩnh (IX)', key: 'luong_thuc_linh', width: 18, style: MONEY_FMT },
+        { header: 'Còn phải thanh toán (XII)', key: 'con_phai_thanh_toan', width: 22, style: MONEY_FMT },
       ];
 
       ws.getRow(1).eachCell((cell) => {
