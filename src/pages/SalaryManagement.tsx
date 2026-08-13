@@ -3786,7 +3786,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           con_phai_thanh_toan: Math.round(payslipComputation.conPhaiThanhToan),
         };
 
-        ws.addRow(rowData);
+        const dataRow = ws.addRow(rowData);
+        // '0.##' vẫn để lại dấu phẩy thừa ở số tròn trên một số bản Excel (vd "27,")
+        // — set numFmt riêng theo từng ô: số tròn dùng '0' (không chấm/phẩy), số lẻ mới dùng '0.##'.
+        dataRow.getCell('cong_chuan').numFmt = Number.isInteger(rowData.cong_chuan) ? '0' : '0.##';
+        dataRow.getCell('tong_cong').numFmt = Number.isInteger(rowData.tong_cong) ? '0' : '0.##';
 
         totals.luong_co_ban += rowData.luong_co_ban;
         totals.luong_ngay_cong += rowData.luong_ngay_cong;
