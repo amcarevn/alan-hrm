@@ -12,6 +12,153 @@ import Pagination from '../components/Pagination';
 import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import { UsersIcon } from '@heroicons/react/24/outline';
 
+const getExportStatusLabel = (status: string) => {
+  switch (status) {
+    case 'ACTIVE': return 'Đang làm việc';
+    case 'INACTIVE': return 'Đã nghỉ';
+    case 'PROBATION': return 'Thử việc';
+    case 'PAUSED': return 'Tạm dừng';
+    case 'MATERNITY_LEAVE': return 'Nghỉ thai sản';
+    default: return status;
+  }
+};
+
+const getExportGenderLabel = (gender: string) => {
+  switch (gender) {
+    case 'M': return 'Nam';
+    case 'F': return 'Nữ';
+    case 'O': return 'Khác';
+    default: return gender;
+  }
+};
+
+const getExportProbationRateLabel = (rate: string) => {
+  switch (rate) {
+    case 'OPTION_1': return 'Tháng đầu 85%, tháng sau 85%';
+    case 'OPTION_2': return 'Tháng đầu 85%, tháng sau 100%';
+    case 'OPTION_3': return 'Tháng đầu 100%, tháng sau 100%';
+    default: return rate;
+  }
+};
+
+// Nguồn dùng chung cho "Xuất toàn bộ" (mọi cột) và "Xuất tùy chọn" (HR tự chọn cột).
+// Thêm/bớt cột chỉ cần sửa ở đây, cả hai nút xuất đều tự động theo.
+type ExportFieldDef = {
+  key: string;
+  header: string;
+  width: number;
+  group: string;
+  getValue: (emp: Employee) => string | number;
+};
+
+const EXPORT_FIELD_GROUPS = [
+  'Thông tin cơ bản',
+  'CCCD / VNEID',
+  'Tổ chức',
+  'Quản lý',
+  'Hợp đồng & trạng thái',
+  'Hồ sơ',
+  'Lương & ngân hàng',
+  'BHXH & thuế',
+  'Nghỉ phép',
+  'Người liên hệ khẩn cấp',
+  'Khác',
+];
+
+const EXPORT_FIELD_DEFS: ExportFieldDef[] = [
+  // Thông tin cơ bản
+  { key: 'employee_id', header: 'Mã NV', width: 12, group: 'Thông tin cơ bản', getValue: (emp) => emp.employee_id },
+  { key: 'full_name', header: 'Họ tên', width: 25, group: 'Thông tin cơ bản', getValue: (emp) => emp.full_name },
+  { key: 'gender', header: 'Giới tính', width: 10, group: 'Thông tin cơ bản', getValue: (emp) => getExportGenderLabel(emp.gender) },
+  { key: 'date_of_birth', header: 'Ngày sinh', width: 14, group: 'Thông tin cơ bản', getValue: (emp) => emp.date_of_birth || '' },
+  { key: 'phone_number', header: 'Số điện thoại', width: 15, group: 'Thông tin cơ bản', getValue: (emp) => emp.phone_number || '' },
+  { key: 'personal_email', header: 'Email', width: 28, group: 'Thông tin cơ bản', getValue: (emp) => emp.personal_email || '' },
+  { key: 'facebook_link', header: 'Facebook', width: 28, group: 'Thông tin cơ bản', getValue: (emp) => emp.facebook_link || '' },
+  // CCCD / VNEID
+  { key: 'cccd_number', header: 'Số CCCD', width: 16, group: 'CCCD / VNEID', getValue: (emp) => emp.cccd_number || '' },
+  { key: 'old_id_number', header: 'Số CMND cũ', width: 14, group: 'CCCD / VNEID', getValue: (emp) => emp.old_id_number || '' },
+  { key: 'cccd_issue_date', header: 'Ngày cấp CCCD', width: 16, group: 'CCCD / VNEID', getValue: (emp) => emp.cccd_issue_date || '' },
+  { key: 'cccd_issue_place', header: 'Nơi cấp CCCD', width: 20, group: 'CCCD / VNEID', getValue: (emp) => emp.cccd_issue_place || '' },
+  { key: 'link_cccd', header: 'Link CCCD/CMT', width: 28, group: 'CCCD / VNEID', getValue: (emp) => (emp as any).link_cccd || '' },
+  { key: 'birth_place', header: 'Quê quán', width: 20, group: 'CCCD / VNEID', getValue: (emp) => emp.birth_place || '' },
+  { key: 'permanent_residence', header: 'Hộ khẩu thường trú', width: 30, group: 'CCCD / VNEID', getValue: (emp) => emp.permanent_residence || '' },
+  { key: 'current_address', header: 'Địa chỉ hiện tại', width: 30, group: 'CCCD / VNEID', getValue: (emp) => emp.current_address || '' },
+  { key: 'marital_status', header: 'Tình trạng hôn nhân', width: 20, group: 'CCCD / VNEID', getValue: (emp) => emp.marital_status || '' },
+  { key: 'ethnicity', header: 'Dân tộc', width: 14, group: 'CCCD / VNEID', getValue: (emp) => emp.ethnicity || '' },
+  { key: 'nationality', header: 'Quốc tịch', width: 14, group: 'CCCD / VNEID', getValue: (emp) => emp.nationality || '' },
+  // Tổ chức
+  { key: 'department', header: 'Phòng ban', width: 20, group: 'Tổ chức', getValue: (emp) => emp.department?.name || '' },
+  { key: 'position', header: 'Chức vụ', width: 20, group: 'Tổ chức', getValue: (emp) => emp.position?.title || '' },
+  { key: 'region', header: 'Vùng/Miền', width: 14, group: 'Tổ chức', getValue: (emp) => emp.region || '' },
+  { key: 'block', header: 'Khối', width: 14, group: 'Tổ chức', getValue: (emp) => emp.block || '' },
+  { key: 'section', header: 'Bộ phận', width: 16, group: 'Tổ chức', getValue: (emp) => emp.section || '' },
+  { key: 'rank', header: 'Cấp bậc', width: 14, group: 'Tổ chức', getValue: (emp) => emp.rank || '' },
+  { key: 'work_location', header: 'Địa điểm làm việc', width: 20, group: 'Tổ chức', getValue: (emp) => emp.work_location ? (WORK_LOCATION_LABELS[emp.work_location] || emp.work_location) : '' },
+  { key: 'doctor_team', header: 'Team Bác sĩ', width: 16, group: 'Tổ chức', getValue: (emp) => emp.doctor_team || '' },
+  { key: 'work_form', header: 'Hình thức làm việc', width: 20, group: 'Tổ chức', getValue: (emp) => emp.work_form || '' },
+  {
+    key: 'work_type', header: 'Loại hình làm việc', width: 18, group: 'Tổ chức', getValue: (emp) => {
+      try {
+        const ei = typeof (emp as any).extra_info === 'string'
+          ? JSON.parse((emp as any).extra_info || '{}')
+          : ((emp as any).extra_info || {});
+        return ei?.work_type || '';
+      } catch { return ''; }
+    },
+  },
+  { key: 'education_level', header: 'Trình độ học vấn', width: 18, group: 'Tổ chức', getValue: (emp) => emp.education_level || '' },
+  // Quản lý
+  { key: 'manager', header: 'Quản lý trực tiếp', width: 22, group: 'Quản lý', getValue: (emp) => emp.manager?.full_name || emp.manager_name || '' },
+  { key: 'manager_level_2', header: 'Quản lý cấp 2', width: 22, group: 'Quản lý', getValue: (emp) => emp.manager_level_2?.full_name || '' },
+  { key: 'manager_level_3', header: 'Quản lý cấp 3', width: 22, group: 'Quản lý', getValue: (emp) => emp.manager_level_3?.full_name || '' },
+  // Hợp đồng & trạng thái
+  { key: 'employment_status', header: 'Trạng thái', width: 16, group: 'Hợp đồng & trạng thái', getValue: (emp) => getExportStatusLabel(emp.employment_status) },
+  { key: 'employment_status_notes', header: 'Ghi chú trạng thái', width: 24, group: 'Hợp đồng & trạng thái', getValue: (emp) => emp.employment_status_notes || '' },
+  { key: 'contract_type', header: 'Loại hợp đồng', width: 18, group: 'Hợp đồng & trạng thái', getValue: (emp) => emp.contract_type_display || emp.contract_type || '' },
+  { key: 'probation_rate', header: 'Tỉ lệ thử việc', width: 16, group: 'Hợp đồng & trạng thái', getValue: (emp) => getExportProbationRateLabel(emp.probation_rate || '') },
+  { key: 'probation_months', header: 'Số tháng thử việc', width: 18, group: 'Hợp đồng & trạng thái', getValue: (emp) => emp.probation_months ?? '' },
+  { key: 'start_date', header: 'Ngày vào làm', width: 14, group: 'Hợp đồng & trạng thái', getValue: (emp) => emp.start_date || '' },
+  { key: 'end_date', header: 'Ngày nghỉ việc', width: 14, group: 'Hợp đồng & trạng thái', getValue: (emp) => emp.end_date || '' },
+  { key: 'probation_end_date', header: 'Ngày kết thúc thử việc', width: 22, group: 'Hợp đồng & trạng thái', getValue: (emp) => emp.probation_end_date || '' },
+  { key: 'official_start_date', header: 'Ngày lên chính thức', width: 20, group: 'Hợp đồng & trạng thái', getValue: (emp) => emp.official_start_date || '' },
+  { key: 'termination_reason', header: 'Lý do nghỉ việc', width: 24, group: 'Hợp đồng & trạng thái', getValue: (emp) => emp.termination_reason || '' },
+  { key: 'total_work_months', header: 'Tổng TG làm việc (tháng)', width: 24, group: 'Hợp đồng & trạng thái', getValue: (emp) => emp.total_work_months ?? '' },
+  // Hồ sơ
+  { key: 'file_status', header: 'Trạng thái hồ sơ', width: 18, group: 'Hồ sơ', getValue: (emp) => emp.file_status_display || emp.file_status || '' },
+  { key: 'file_submission_deadline', header: 'Hạn nộp hồ sơ', width: 16, group: 'Hồ sơ', getValue: (emp) => emp.file_submission_deadline || '' },
+  { key: 'file_submission_date', header: 'Ngày nộp hồ sơ', width: 16, group: 'Hồ sơ', getValue: (emp) => emp.file_submission_date || '' },
+  { key: 'doc_resume', header: 'Sơ yếu lý lịch', width: 16, group: 'Hồ sơ', getValue: (emp) => emp.doc_resume ? 'x' : '' },
+  { key: 'doc_cccd', header: 'Căn cước công dân', width: 18, group: 'Hồ sơ', getValue: (emp) => emp.doc_cccd ? 'x' : '' },
+  { key: 'doc_degree', header: 'Bằng cấp', width: 12, group: 'Hồ sơ', getValue: (emp) => emp.doc_degree ? 'x' : '' },
+  { key: 'doc_health', header: 'Giấy khám sức khỏe', width: 20, group: 'Hồ sơ', getValue: (emp) => emp.doc_health ? 'x' : '' },
+  // Lương & ngân hàng
+  { key: 'basic_salary', header: 'Lương cơ bản', width: 16, group: 'Lương & ngân hàng', getValue: (emp) => emp.basic_salary ?? '' },
+  { key: 'allowance', header: 'Phụ cấp', width: 14, group: 'Lương & ngân hàng', getValue: (emp) => emp.allowance ?? '' },
+  { key: 'salary_notes', header: 'Ghi chú lương', width: 24, group: 'Lương & ngân hàng', getValue: (emp) => emp.salary_notes || '' },
+  { key: 'allowance_notes', header: 'Ghi chú phụ cấp', width: 24, group: 'Lương & ngân hàng', getValue: (emp) => emp.allowance_notes || '' },
+  { key: 'bank_name', header: 'Ngân hàng', width: 18, group: 'Lương & ngân hàng', getValue: (emp) => emp.bank_name || '' },
+  { key: 'bank_branch', header: 'Chi nhánh NH', width: 20, group: 'Lương & ngân hàng', getValue: (emp) => emp.bank_branch || '' },
+  { key: 'bank_account', header: 'Số tài khoản', width: 20, group: 'Lương & ngân hàng', getValue: (emp) => emp.bank_account || '' },
+  // BHXH & thuế
+  { key: 'social_insurance_number', header: 'Mã số BHXH', width: 16, group: 'BHXH & thuế', getValue: (emp) => emp.social_insurance_number || '' },
+  { key: 'tax_code', header: 'Mã số thuế TNCN', width: 16, group: 'BHXH & thuế', getValue: (emp) => emp.tax_code || '' },
+  { key: 'household_code', header: 'Mã hộ gia đình', width: 16, group: 'BHXH & thuế', getValue: (emp) => emp.household_code || '' },
+  { key: 'insurance_participation', header: 'Đóng BHXH tại', width: 24, group: 'BHXH & thuế', getValue: (emp) => emp.insurance_participation || '' },
+  { key: 'insurance_increase_time', header: 'Thời điểm báo tăng', width: 20, group: 'BHXH & thuế', getValue: (emp) => emp.insurance_increase_time || '' },
+  // Nghỉ phép
+  { key: 'annual_leave_balance', header: 'Số ngày phép còn lại', width: 20, group: 'Nghỉ phép', getValue: (emp) => emp.annual_leave_balance ?? '' },
+  { key: 'annual_leave_balance_year', header: 'Năm số dư phép', width: 16, group: 'Nghỉ phép', getValue: (emp) => emp.annual_leave_balance_year ?? '' },
+  // Người liên hệ khẩn cấp
+  { key: 'emergency_contact_name', header: 'Người LH khẩn cấp', width: 22, group: 'Người liên hệ khẩn cấp', getValue: (emp) => emp.emergency_contact_name || '' },
+  { key: 'emergency_contact_relationship', header: 'Mối quan hệ', width: 16, group: 'Người liên hệ khẩn cấp', getValue: (emp) => emp.emergency_contact_relationship || '' },
+  { key: 'emergency_contact_phone', header: 'SĐT người thân', width: 16, group: 'Người liên hệ khẩn cấp', getValue: (emp) => emp.emergency_contact_phone || '' },
+  { key: 'emergency_contact_dob', header: 'Ngày sinh người thân', width: 20, group: 'Người liên hệ khẩn cấp', getValue: (emp) => emp.emergency_contact_dob || '' },
+  { key: 'emergency_contact_occupation', header: 'Nghề nghiệp người thân', width: 22, group: 'Người liên hệ khẩn cấp', getValue: (emp) => emp.emergency_contact_occupation || '' },
+  { key: 'emergency_contact_address', header: 'Địa chỉ người LH', width: 28, group: 'Người liên hệ khẩn cấp', getValue: (emp) => emp.emergency_contact_address || '' },
+  // Khác
+  { key: 'notes', header: 'Ghi chú', width: 28, group: 'Khác', getValue: (emp) => emp.notes || '' },
+  { key: 'created_at', header: 'Ngày tạo', width: 14, group: 'Khác', getValue: (emp) => emp.created_at ? emp.created_at.slice(0, 10) : '' },
+];
 
 const EmployeeList: React.FC = () => {
   const navigate = useNavigate();
@@ -53,6 +200,11 @@ const EmployeeList: React.FC = () => {
     summary: { total: number; created: number; updated: number; failed: number };
     errors: Array<{ row: number; employee_id?: string; warnings?: string[]; errors?: string[] }>;
   } | null>(null);
+  const [showCustomExportDialog, setShowCustomExportDialog] = useState(false);
+  const [customExportSelectedKeys, setCustomExportSelectedKeys] = useState<Set<string>>(
+    () => new Set(['employee_id', 'full_name', 'gender', 'date_of_birth', 'phone_number', 'department', 'position', 'start_date'])
+  );
+  const [isExportingCustom, setIsExportingCustom] = useState(false);
   const isAdmin = user?.role === 'admin' || user?.is_super_admin === true;
   const isSuperUser = user?.is_superuser === true || user?.is_super_admin === true;
 
@@ -140,6 +292,8 @@ const EmployeeList: React.FC = () => {
 
   // Chặn scroll khi mở dialog import
   useLockBodyScroll(showImportDialog);
+  // Chặn scroll khi mở dialog xuất tùy chọn
+  useLockBodyScroll(showCustomExportDialog);
 
   // Khởi tạo cooldown từ localStorage và đếm ngược
   useEffect(() => {
@@ -339,240 +493,71 @@ const EmployeeList: React.FC = () => {
     }
   };
 
+  // `fieldDefs` cho phép "Xuất tùy chọn" tái dùng hàm này với danh sách cột đã lọc theo lựa chọn của HR.
+  const exportEmployeesToExcel = async (
+    fieldDefs: ExportFieldDef[],
+    sheetName: string,
+    filenamePrefix: string,
+  ) => {
+    const response = await employeesAPI.exportAll();
+    const allEmployees = response.results;
+
+    const ExcelJS = (await import('exceljs')).default;
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet(sheetName);
+
+    const HEADER_FILL = {
+      type: 'pattern' as const,
+      pattern: 'solid' as const,
+      fgColor: { argb: 'FF1E3A5F' },
+    };
+
+    sheet.columns = fieldDefs.map((f) => ({ header: f.header, key: f.key, width: f.width }));
+
+    const headerRow = sheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = HEADER_FILL;
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    allEmployees.forEach((emp) => {
+      const row: Record<string, string | number> = {};
+      fieldDefs.forEach((f) => { row[f.key] = f.getValue(emp); });
+      sheet.addRow(row);
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleExportAll = async () => {
     try {
-      const response = await employeesAPI.exportAll();
-      const allEmployees = response.results;
-
-      const getStatusLabel = (status: string) => {
-        switch (status) {
-          case 'ACTIVE': return 'Đang làm việc';
-          case 'INACTIVE': return 'Đã nghỉ';
-          case 'PROBATION': return 'Thử việc';
-          case 'PAUSED': return 'Tạm dừng';
-          case 'MATERNITY_LEAVE': return 'Nghỉ thai sản';
-          default: return status;
-        }
-      };
-
-      const getGenderLabel = (gender: string) => {
-        switch (gender) {
-          case 'M': return 'Nam';
-          case 'F': return 'Nữ';
-          case 'O': return 'Khác';
-          default: return gender;
-        }
-      };
-
-      const getProbationRateLabel = (rate: string) => {
-        switch (rate) {
-          case 'OPTION_1': return 'Tháng đầu 85%, tháng sau 85%';
-          case 'OPTION_2': return 'Tháng đầu 85%, tháng sau 100%';
-          case 'OPTION_3': return 'Tháng đầu 100%, tháng sau 100%';
-          default: return rate;
-        }
-      };
-
-      const ExcelJS = (await import('exceljs')).default;
-      const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet('Toàn bộ nhân viên');
-
-      const HEADER_FILL = {
-        type: 'pattern' as const,
-        pattern: 'solid' as const,
-        fgColor: { argb: 'FF1E3A5F' },
-      };
-
-      sheet.columns = [
-        // Thông tin cơ bản
-        { header: 'Mã NV', key: 'employee_id', width: 12 },
-        { header: 'Họ tên', key: 'full_name', width: 25 },
-        { header: 'Giới tính', key: 'gender', width: 10 },
-        { header: 'Ngày sinh', key: 'date_of_birth', width: 14 },
-        { header: 'Số điện thoại', key: 'phone_number', width: 15 },
-        { header: 'Email', key: 'personal_email', width: 28 },
-        { header: 'Facebook', key: 'facebook_link', width: 28 },
-        // CCCD / VNEID
-        { header: 'Số CCCD', key: 'cccd_number', width: 16 },
-        { header: 'Số CMND cũ', key: 'old_id_number', width: 14 },
-        { header: 'Ngày cấp CCCD', key: 'cccd_issue_date', width: 16 },
-        { header: 'Nơi cấp CCCD', key: 'cccd_issue_place', width: 20 },
-        { header: 'Link CCCD/CMT', key: 'link_cccd', width: 28 },
-        { header: 'Quê quán', key: 'birth_place', width: 20 },
-        { header: 'Hộ khẩu thường trú', key: 'permanent_residence', width: 30 },
-        { header: 'Địa chỉ hiện tại', key: 'current_address', width: 30 },
-        { header: 'Tình trạng hôn nhân', key: 'marital_status', width: 20 },
-        { header: 'Dân tộc', key: 'ethnicity', width: 14 },
-        { header: 'Quốc tịch', key: 'nationality', width: 14 },
-        // Tổ chức
-        { header: 'Phòng ban', key: 'department', width: 20 },
-        { header: 'Chức vụ', key: 'position', width: 20 },
-        { header: 'Vùng/Miền', key: 'region', width: 14 },
-        { header: 'Khối', key: 'block', width: 14 },
-        { header: 'Bộ phận', key: 'section', width: 16 },
-        { header: 'Cấp bậc', key: 'rank', width: 14 },
-        { header: 'Địa điểm làm việc', key: 'work_location', width: 20 },
-        { header: 'Team Bác sĩ', key: 'doctor_team', width: 16 },
-        { header: 'Hình thức làm việc', key: 'work_form', width: 20 },
-        { header: 'Loại hình làm việc', key: 'work_type', width: 18 },
-        { header: 'Trình độ học vấn', key: 'education_level', width: 18 },
-        // Quản lý
-        { header: 'Quản lý trực tiếp', key: 'manager', width: 22 },
-        { header: 'Quản lý cấp 2', key: 'manager_level_2', width: 22 },
-        { header: 'Quản lý cấp 3', key: 'manager_level_3', width: 22 },
-        // Hợp đồng & trạng thái
-        { header: 'Trạng thái', key: 'employment_status', width: 16 },
-        { header: 'Ghi chú trạng thái', key: 'employment_status_notes', width: 24 },
-        { header: 'Loại hợp đồng', key: 'contract_type', width: 18 },
-        { header: 'Tỉ lệ thử việc', key: 'probation_rate', width: 16 },
-        { header: 'Số tháng thử việc', key: 'probation_months', width: 18 },
-        { header: 'Ngày vào làm', key: 'start_date', width: 14 },
-        { header: 'Ngày nghỉ việc', key: 'end_date', width: 14 },
-        { header: 'Ngày kết thúc thử việc', key: 'probation_end_date', width: 22 },
-        { header: 'Ngày lên chính thức', key: 'official_start_date', width: 20 },
-        { header: 'Lý do nghỉ việc', key: 'termination_reason', width: 24 },
-        { header: 'Tổng TG làm việc (tháng)', key: 'total_work_months', width: 24 },
-        // Hồ sơ
-        { header: 'Trạng thái hồ sơ', key: 'file_status', width: 18 },
-        { header: 'Hạn nộp hồ sơ', key: 'file_submission_deadline', width: 16 },
-        { header: 'Ngày nộp hồ sơ', key: 'file_submission_date', width: 16 },
-        { header: 'Sơ yếu lý lịch', key: 'doc_resume', width: 16 },
-        { header: 'Căn cước công dân', key: 'doc_cccd', width: 18 },
-        { header: 'Bằng cấp', key: 'doc_degree', width: 12 },
-        { header: 'Giấy khám sức khỏe', key: 'doc_health', width: 20 },
-        // Lương & ngân hàng
-        { header: 'Lương cơ bản', key: 'basic_salary', width: 16 },
-        { header: 'Phụ cấp', key: 'allowance', width: 14 },
-        { header: 'Ghi chú lương', key: 'salary_notes', width: 24 },
-        { header: 'Ghi chú phụ cấp', key: 'allowance_notes', width: 24 },
-        { header: 'Ngân hàng', key: 'bank_name', width: 18 },
-        { header: 'Chi nhánh NH', key: 'bank_branch', width: 20 },
-        { header: 'Số tài khoản', key: 'bank_account', width: 20 },
-        // BHXH & thuế
-        { header: 'Mã số BHXH', key: 'social_insurance_number', width: 16 },
-        { header: 'Mã số thuế TNCN', key: 'tax_code', width: 16 },
-        { header: 'Mã hộ gia đình', key: 'household_code', width: 16 },
-        { header: 'Đóng BHXH tại', key: 'insurance_participation', width: 24 },
-        { header: 'Thời điểm báo tăng', key: 'insurance_increase_time', width: 20 },
-        // Nghỉ phép
-        { header: 'Số ngày phép còn lại', key: 'annual_leave_balance', width: 20 },
-        { header: 'Năm số dư phép', key: 'annual_leave_balance_year', width: 16 },
-        // Người liên hệ khẩn cấp
-        { header: 'Người LH khẩn cấp', key: 'emergency_contact_name', width: 22 },
-        { header: 'Mối quan hệ', key: 'emergency_contact_relationship', width: 16 },
-        { header: 'SĐT người thân', key: 'emergency_contact_phone', width: 16 },
-        { header: 'Ngày sinh người thân', key: 'emergency_contact_dob', width: 20 },
-        { header: 'Nghề nghiệp người thân', key: 'emergency_contact_occupation', width: 22 },
-        { header: 'Địa chỉ người LH', key: 'emergency_contact_address', width: 28 },
-        // Ghi chú
-        { header: 'Ghi chú', key: 'notes', width: 28 },
-        // Ngày tạo
-        { header: 'Ngày tạo', key: 'created_at', width: 14 },
-      ];
-
-      const headerRow = sheet.getRow(1);
-      headerRow.eachCell((cell) => {
-        cell.fill = HEADER_FILL;
-        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
-        cell.alignment = { vertical: 'middle', horizontal: 'center' };
-      });
-
-      allEmployees.forEach((emp) => {
-        sheet.addRow({
-          employee_id: emp.employee_id,
-          full_name: emp.full_name,
-          gender: getGenderLabel(emp.gender),
-          date_of_birth: emp.date_of_birth || '',
-          phone_number: emp.phone_number || '',
-          personal_email: emp.personal_email || '',
-          facebook_link: emp.facebook_link || '',
-          cccd_number: emp.cccd_number || '',
-          old_id_number: emp.old_id_number || '',
-          cccd_issue_date: emp.cccd_issue_date || '',
-          cccd_issue_place: emp.cccd_issue_place || '',
-          birth_place: emp.birth_place || '',
-          permanent_residence: emp.permanent_residence || '',
-          current_address: emp.current_address || '',
-          link_cccd: (emp as any).link_cccd || '',
-          marital_status: emp.marital_status || '',
-          ethnicity: emp.ethnicity || '',
-          nationality: emp.nationality || '',
-          department: emp.department?.name || '',
-          position: emp.position?.title || '',
-          region: emp.region || '',
-          block: emp.block || '',
-          section: emp.section || '',
-          rank: emp.rank || '',
-          work_location: emp.work_location ? (WORK_LOCATION_LABELS[emp.work_location] || emp.work_location) : '',
-          doctor_team: emp.doctor_team || '',
-          work_form: emp.work_form || '',
-          work_type: (() => {
-            try {
-              const ei = typeof (emp as any).extra_info === 'string'
-                ? JSON.parse((emp as any).extra_info || '{}')
-                : ((emp as any).extra_info || {});
-              return ei?.work_type || '';
-            } catch { return ''; }
-          })(),
-          education_level: emp.education_level || '',
-          manager: emp.manager?.full_name || emp.manager_name || '',
-          manager_level_2: emp.manager_level_2?.full_name || '',
-          manager_level_3: emp.manager_level_3?.full_name || '',
-          employment_status: getStatusLabel(emp.employment_status),
-          employment_status_notes: emp.employment_status_notes || '',
-          contract_type: emp.contract_type_display || emp.contract_type || '',
-          probation_rate: getProbationRateLabel(emp.probation_rate || ''),
-          probation_months: emp.probation_months ?? '',
-          start_date: emp.start_date || '',
-          end_date: emp.end_date || '',
-          probation_end_date: emp.probation_end_date || '',
-          official_start_date: emp.official_start_date || '',
-          termination_reason: emp.termination_reason || '',
-          total_work_months: emp.total_work_months ?? '',
-          file_status: emp.file_status_display || emp.file_status || '',
-          file_submission_deadline: emp.file_submission_deadline || '',
-          file_submission_date: emp.file_submission_date || '',
-          doc_resume: emp.doc_resume ? 'x' : '',
-          doc_cccd: emp.doc_cccd ? 'x' : '',
-          doc_degree: emp.doc_degree ? 'x' : '',
-          doc_health: emp.doc_health ? 'x' : '',
-          basic_salary: emp.basic_salary ?? '',
-          allowance: emp.allowance ?? '',
-          salary_notes: emp.salary_notes || '',
-          allowance_notes: emp.allowance_notes || '',
-          bank_name: emp.bank_name || '',
-          bank_branch: emp.bank_branch || '',
-          bank_account: emp.bank_account || '',
-          social_insurance_number: emp.social_insurance_number || '',
-          tax_code: emp.tax_code || '',
-          household_code: emp.household_code || '',
-          insurance_participation: emp.insurance_participation || '',
-          insurance_increase_time: emp.insurance_increase_time || '',
-          annual_leave_balance: emp.annual_leave_balance ?? '',
-          annual_leave_balance_year: emp.annual_leave_balance_year ?? '',
-          emergency_contact_name: emp.emergency_contact_name || '',
-          emergency_contact_relationship: emp.emergency_contact_relationship || '',
-          emergency_contact_phone: emp.emergency_contact_phone || '',
-          emergency_contact_dob: emp.emergency_contact_dob || '',
-          emergency_contact_occupation: emp.emergency_contact_occupation || '',
-          emergency_contact_address: emp.emergency_contact_address || '',
-          notes: emp.notes || '',
-          created_at: emp.created_at ? emp.created_at.slice(0, 10) : '',
-        });
-      });
-
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `xuat-toan-bo-nhan-vien-${new Date().toISOString().slice(0, 10)}.xlsx`;
-      link.click();
-      URL.revokeObjectURL(url);
+      await exportEmployeesToExcel(EXPORT_FIELD_DEFS, 'Toàn bộ nhân viên', 'xuat-toan-bo-nhan-vien');
     } catch (err: any) {
       alert('Xuất toàn bộ thất bại: ' + (err.message || 'Lỗi không xác định'));
+    }
+  };
+
+  const handleExportCustom = async () => {
+    const fieldDefs = EXPORT_FIELD_DEFS.filter((f) => customExportSelectedKeys.has(f.key));
+    if (fieldDefs.length === 0) return;
+    setIsExportingCustom(true);
+    try {
+      await exportEmployeesToExcel(fieldDefs, 'Danh sách nhân viên', 'xuat-tuy-chon-nhan-vien');
+      setShowCustomExportDialog(false);
+    } catch (err: any) {
+      alert('Xuất file thất bại: ' + (err.message || 'Lỗi không xác định'));
+    } finally {
+      setIsExportingCustom(false);
     }
   };
 
@@ -1310,8 +1295,17 @@ const EmployeeList: React.FC = () => {
                   </svg>
                   Xuất toàn bộ
                 </button>
+              <button
+                  className="bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition-colors flex items-center"
+                  onClick={() => setShowCustomExportDialog(true)}
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                  </svg>
+                  Xuất tùy chọn
+                </button>
 
-              <button 
+              <button
                 className="btn-primary"
                 onClick={() => navigate('/dashboard/employees/create')}
               >
@@ -1670,6 +1664,134 @@ const EmployeeList: React.FC = () => {
                 </>
               ) : (
                 'Bắt đầu import'
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Custom Export Dialog */}
+    {showCustomExportDialog && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Xuất danh sách theo tiêu chí tự chọn</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Chọn các cột thông tin muốn xuất ra file Excel</p>
+            </div>
+            <button
+              onClick={() => setShowCustomExportDialog(false)}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Toolbar chọn nhanh */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100 bg-gray-50">
+            <span className="text-sm text-gray-600">
+              Đã chọn <strong className="text-gray-900">{customExportSelectedKeys.size}</strong>/{EXPORT_FIELD_DEFS.length} cột
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setCustomExportSelectedKeys(new Set(EXPORT_FIELD_DEFS.map((f) => f.key)))}
+                className="text-sm text-primary-600 hover:text-primary-800 font-medium"
+              >
+                Chọn tất cả
+              </button>
+              <button
+                onClick={() => setCustomExportSelectedKeys(new Set())}
+                className="text-sm text-gray-500 hover:text-gray-700 font-medium"
+              >
+                Bỏ chọn tất cả
+              </button>
+            </div>
+          </div>
+
+          {/* Danh sách cột theo nhóm */}
+          <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
+            {EXPORT_FIELD_GROUPS.map((group) => {
+              const fieldsInGroup = EXPORT_FIELD_DEFS.filter((f) => f.group === group);
+              const selectedInGroup = fieldsInGroup.filter((f) => customExportSelectedKeys.has(f.key)).length;
+              const allSelected = selectedInGroup === fieldsInGroup.length;
+              return (
+                <div key={group}>
+                  <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => { if (el) el.indeterminate = selectedInGroup > 0 && !allSelected; }}
+                      onChange={() => {
+                        setCustomExportSelectedKeys((prev) => {
+                          const next = new Set(prev);
+                          fieldsInGroup.forEach((f) => {
+                            if (allSelected) next.delete(f.key);
+                            else next.add(f.key);
+                          });
+                          return next;
+                        });
+                      }}
+                      className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-semibold text-gray-800">{group}</span>
+                    <span className="text-xs text-gray-400">({selectedInGroup}/{fieldsInGroup.length})</span>
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 pl-6">
+                    {fieldsInGroup.map((f) => (
+                      <label key={f.key} className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={customExportSelectedKeys.has(f.key)}
+                          onChange={() => {
+                            setCustomExportSelectedKeys((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(f.key)) next.delete(f.key);
+                              else next.add(f.key);
+                              return next;
+                            });
+                          }}
+                          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-gray-700">{f.header}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t">
+            <button
+              onClick={() => setShowCustomExportDialog(false)}
+              className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+            >
+              Đóng
+            </button>
+            <button
+              onClick={handleExportCustom}
+              disabled={customExportSelectedKeys.size === 0 || isExportingCustom}
+              className={`inline-flex items-center px-4 py-2 text-sm font-medium text-white rounded-xl transition-colors ${
+                customExportSelectedKeys.size === 0 || isExportingCustom
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-purple-600 hover:bg-purple-700'
+              }`}
+            >
+              {isExportingCustom ? (
+                <>
+                  <svg className="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                  Đang xuất...
+                </>
+              ) : (
+                `Xuất file (${customExportSelectedKeys.size} cột)`
               )}
             </button>
           </div>
