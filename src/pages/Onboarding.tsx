@@ -56,6 +56,7 @@ type CreateOnboardingForm = {
   position_id: number | null;
   manager_id: number | null;
   company_unit: string | null;
+  salary: string;
   skip_lavian_sync: boolean;
   old_employee_code: string;
 };
@@ -110,6 +111,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
     position_id: null,
     manager_id: null,
     company_unit: null,
+    salary: '',
     skip_lavian_sync: false,
     old_employee_code: '',
   });
@@ -130,6 +132,8 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
     if (!form.candidate_email.trim()) errs.candidate_email = 'Vui lòng nhập email';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.candidate_email))
       errs.candidate_email = 'Email không hợp lệ';
+    if (form.salary.trim() && !/^\d+$/.test(form.salary.trim()))
+      errs.salary = 'Chỉ nhập số, không có dấu chấm/phẩy';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -147,6 +151,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
         ...(form.position_id ? { position: form.position_id } : {}),
         ...(form.manager_id ? { direct_manager_id: form.manager_id } : {}),
         ...(form.company_unit ? { company_unit: form.company_unit } : {}),
+        ...(form.salary.trim() ? { salary: form.salary.trim() } : {}),
         skip_lavian_sync: form.skip_lavian_sync,
         ...(form.skip_lavian_sync && form.old_employee_code.trim()
           ? { employee_id: form.old_employee_code.trim() }
@@ -293,6 +298,25 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
               placeholder="Chọn đơn vị làm việc — nếu để trống, nhân viên sẽ tự chọn"
               searchable
             />
+          )}
+
+          {field('salary', 'Lương cơ bản (tùy chọn)', false,
+            <>
+              <input
+                type="text"
+                inputMode="numeric"
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${errors.salary ? 'border-red-400' : 'border-gray-200'}`}
+                placeholder="Ví dụ: 8000000 — nếu để trống, nhân viên sẽ tự nhập"
+                value={form.salary}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setForm({ ...form, salary: v });
+                  if (v && !/^\d+$/.test(v)) setErrors(prev => ({ ...prev, salary: 'Chỉ nhập số, không có dấu chấm/phẩy' }));
+                  else setErrors(prev => { const { salary, ...rest } = prev; return rest; });
+                }}
+              />
+              <p className="text-[11px] text-gray-500 mt-1">Chỉ nhập số, không thêm dấu chấm/phẩy phân cách hàng nghìn — ví dụ nhập 8000000, không nhập 8.000.000.</p>
+            </>
           )}
 
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
