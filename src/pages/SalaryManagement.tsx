@@ -3588,65 +3588,56 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       });
       ws.getRow(1).height = 30;
 
-      // Sheet phụ giải thích ý nghĩa từng cột — vì bảng chính có quá nhiều cột nên
-      // header hay bị cắt/khó đọc hết, tách riêng ra đây cho dễ tra cứu.
-      const glossarySheet = wb.addWorksheet('Giải thích cột');
-      glossarySheet.columns = [
-        { header: 'Cột', key: 'col', width: 26 },
-        { header: 'Ý nghĩa', key: 'desc', width: 90 },
-      ];
-      glossarySheet.getRow(1).eachCell((cell) => {
-        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } };
-        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      // Hàng giải thích ngắn gọn ngay dưới hàng tiêu đề, ứng với từng cột theo key.
+      const COLUMN_EXPLAINS: Record<string, string> = {
+        ma_nv: 'Mã nhân viên',
+        ho_va_ten: 'Họ tên nhân viên',
+        phong_ban: 'Phòng ban',
+        phap_nhan_con: 'Pháp nhân/đơn vị con',
+        year: 'Năm tính lương',
+        month: 'Tháng tính lương',
+        luong_co_ban: 'Lương cơ bản của tháng',
+        cong_chuan: 'Số công chuẩn của tháng (số ngày − Chủ nhật)',
+        tong_cong: 'Số công thực tế đã làm',
+        luong_ngay_cong: 'Lương tính theo công thực tế',
+        luong_doanh_so: 'Hoa hồng doanh số',
+        luong_tang_ca: 'Tiền tăng ca',
+        luong_truc_ca: 'Tiền trực ca',
+        thu_nhap_khac: 'Thu nhập khác (nhập tay)',
+        tong_luong_iii: 'Tổng các khoản lương ở trên',
+        phu_cap_gui_xe: 'Phụ cấp gửi xe',
+        phu_cap_an_trua: 'Phụ cấp ăn trưa',
+        phu_cap_trach_nhiem: 'Phụ cấp trách nhiệm',
+        phu_cap_khac: 'Phụ cấp khác',
+        tong_phu_cap_iv: 'Tổng các khoản phụ cấp',
+        thuong: 'Tiền thưởng (nhập tay)',
+        tong_thu_nhap_vi: 'Tổng thu nhập trước khi trừ',
+        bhxh: 'Bảo hiểm xã hội (8%)',
+        bhyt: 'Bảo hiểm y tế (1,5%)',
+        bhtn: 'Bảo hiểm thất nghiệp (1%)',
+        tong_bh: 'Tổng 3 loại bảo hiểm trên',
+        cong_doan: 'Phí công đoàn (50k/100k, 0đ nếu không có công)',
+        tong_phat: 'Phạt đi muộn/về sớm',
+        tong_phat_bienban: 'Phạt theo biên bản',
+        tong_giam_tru_vii: 'Tổng các khoản bị trừ',
+        dieu_chinh: 'Điều chỉnh cộng/trừ thêm (nhập tay)',
+        thue_tncn: 'Thuế thu nhập cá nhân',
+        tam_ung: 'Tiền đã tạm ứng trong tháng',
+        luong_thuc_linh: 'Thu nhập sau khi trừ BH/công đoàn/phạt',
+        con_phai_thanh_toan: 'Số tiền cuối cùng cần trả cho nhân viên',
+      };
+      const explainRow = ws.addRow(
+        Object.fromEntries(
+          (ws.columns || []).map((c) => [String(c.key), COLUMN_EXPLAINS[String(c.key)] || ''])
+        )
+      );
+      explainRow.eachCell((cell) => {
+        cell.font = { italic: true, size: 9, color: { argb: 'FF6B7280' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
       });
-      const GLOSSARY_ROWS: Array<[string, string]> = [
-        ['Mã NV', 'Mã nhân viên.'],
-        ['Họ và tên', 'Họ và tên nhân viên.'],
-        ['Phòng ban', 'Phòng ban nhân viên đang thuộc.'],
-        ['Pháp nhân con', 'Pháp nhân/đơn vị con mà nhân viên trực thuộc (nếu công ty có nhiều pháp nhân).'],
-        ['Năm / Tháng', 'Kỳ lương đang xem.'],
-        ['Lương CB', 'Lương cơ bản áp dụng cho tháng này (lấy theo lịch sử lương hiệu lực tại tháng tính, không phải lương hiện tại trên hồ sơ nếu đã có lịch sử lương mới hơn).'],
-        ['Công chuẩn', 'Số ngày công chuẩn của tháng = tổng số ngày trong tháng − tổng số ngày Chủ nhật trong tháng.'],
-        ['Tổng công', 'Tổng số ngày công thực tế nhân viên đã làm trong tháng (có thể lẻ, ví dụ 26,5 nếu có nửa công).'],
-        ['Lương ngày công', 'Lương tính theo số ngày công thực tế đã làm = (Lương CB / Công chuẩn) × Tổng công (thử việc/chính thức có thể theo tỷ lệ % riêng).'],
-        ['Lương doanh số', 'Hoa hồng theo doanh số bán hàng trong tháng (nếu nhân viên có áp dụng).'],
-        ['Lương tăng ca', 'Tiền tăng ca ngoài giờ làm việc chuẩn.'],
-        ['Lương trực ca', 'Tiền trực ca/trực tối.'],
-        ['Thu nhập khác', 'Các khoản thu nhập khác ngoài các mục trên (nhập tay khi chốt lương, nếu có).'],
-        ['Tổng khoản lương (III)', 'Lương ngày công + Lương doanh số + Lương tăng ca + Lương trực ca + Thu nhập khác.'],
-        ['PC gửi xe', 'Phụ cấp gửi xe (tính theo chính sách công ty đã cấu hình, hoặc nhập tay).'],
-        ['PC ăn trưa', 'Phụ cấp ăn trưa (tính theo chính sách công ty đã cấu hình, hoặc nhập tay).'],
-        ['PC trách nhiệm', 'Phụ cấp trách nhiệm (tính theo chính sách công ty đã cấu hình, hoặc nhập tay).'],
-        ['PC khác', 'Các khoản phụ cấp khác ngoài 3 loại trên.'],
-        ['Tổng phụ cấp (IV)', 'PC gửi xe + PC ăn trưa + PC trách nhiệm + PC khác.'],
-        ['Thưởng', 'Tiền thưởng trong tháng (nếu có, nhập tay khi chốt lương).'],
-        ['Tổng thu nhập (VI)', 'Tổng khoản lương (III) + Tổng phụ cấp (IV) + Thưởng — tổng thu nhập trước khi trừ bảo hiểm/công đoàn/phạt/thuế.'],
-        ['BHXH / BHYT / BHTN', 'Phần bảo hiểm xã hội (8%) / y tế (1,5%) / thất nghiệp (1%) trích từ lương, tính trên mức lương đóng BHXH khai báo ở hồ sơ BHXH của nhân viên. Bằng 0 nếu nhân viên đang thử việc 100%, thuộc diện hợp đồng chưa chính thức không trộn công, hoặc tháng đó không có công nào.'],
-        ['Tổng BH', 'BHXH + BHYT + BHTN cộng lại (tổng 10,5%).'],
-        ['Công đoàn', 'Phí công đoàn trong tháng: 50.000đ hoặc 100.000đ tuỳ tỷ lệ công thử việc/chính thức so với công chuẩn, bằng 0 nếu tháng đó không có công nào (bất kể có override tay hay không), hoặc bằng đúng số HR override tay nếu có nhập số đặc biệt khác 2 mức chuẩn.'],
-        ['Phạt đi muộn', 'Tổng tiền phạt do đi muộn/về sớm trong tháng.'],
-        ['Phạt biên bản', 'Tổng tiền phạt theo biên bản kỷ luật trong tháng.'],
-        ['Tổng giảm trừ (VII)', 'Tổng BH + Công đoàn + Phạt đi muộn + Phạt biên bản.'],
-        ['Điều chỉnh (VIII)', 'Khoản điều chỉnh cộng/trừ thêm ngoài các mục trên (nhập tay khi chốt lương, nếu có).'],
-        ['Thuế TNCN (X)', 'Thuế thu nhập cá nhân phải nộp trong tháng — tính lũy tiến từng phần (đã trừ giảm trừ bản thân/người phụ thuộc và bảo hiểm) hoặc khoán 10% tuỳ diện áp dụng của nhân viên.'],
-        ['Tạm ứng (XI)', 'Số tiền nhân viên đã tạm ứng lương trong tháng, sẽ bị trừ vào lương thực nhận.'],
-        ['Lương thực lĩnh (IX)', 'Tổng thu nhập (VI) − Tổng giảm trừ (VII). Đây là thu nhập sau khi trừ bảo hiểm/công đoàn/phạt, TRƯỚC khi trừ thuế TNCN và tạm ứng.'],
-        ['Còn phải thanh toán (XII)', 'Lương thực lĩnh (IX) − Tạm ứng (XI) − Thuế TNCN (X) — số tiền cuối cùng công ty cần trả cho nhân viên trong tháng.'],
-      ];
-      GLOSSARY_ROWS.forEach(([col, desc], idx) => {
-        const row = glossarySheet.addRow({ col, desc });
-        row.getCell(1).font = { bold: true };
-        row.getCell(2).alignment = { wrapText: true, vertical: 'top' };
-        row.eachCell((cell) => {
-          cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: idx % 2 === 0 ? 'FFFFFFFF' : 'FFF3F4F6' },
-          };
-        });
-      });
-      glossarySheet.getColumn(1).alignment = { vertical: 'top' };
+      explainRow.height = 28;
+      ws.views = [{ state: 'frozen', ySplit: 2 }];
 
       const totals = {
         luong_co_ban: 0,
