@@ -56,6 +56,7 @@ type CreateOnboardingForm = {
   position_id: number | null;
   manager_id: number | null;
   company_unit: string | null;
+  skip_lavian_sync: boolean;
 };
 
 type ApiResponse<T> = { results?: T[]; count?: number } | T[];
@@ -108,6 +109,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
     position_id: null,
     manager_id: null,
     company_unit: null,
+    skip_lavian_sync: false,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof CreateOnboardingForm, string>>>({});
 
@@ -143,6 +145,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
         ...(form.position_id ? { position: form.position_id } : {}),
         ...(form.manager_id ? { direct_manager_id: form.manager_id } : {}),
         ...(form.company_unit ? { company_unit: form.company_unit } : {}),
+        skip_lavian_sync: form.skip_lavian_sync,
       };
       await onboardingService.create(payload);
       alert(`✅ Tạo quy trình thành công!\n`);
@@ -286,6 +289,19 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
               searchable
             />
           )}
+
+          <label className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-0.5 w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+              checked={form.skip_lavian_sync}
+              onChange={(e) => setForm({ ...form, skip_lavian_sync: e.target.checked })}
+            />
+            <span className="text-xs text-amber-800">
+              <span className="font-medium">Nhân viên này đã có tài khoản app.bckd68 từ trước</span> (thường là nhân viên cũ quay lại) —
+              tick để bỏ qua bước tự động tạo tài khoản mới bên app.bckd68, tránh tạo trùng tài khoản cho cùng 1 người.
+            </span>
+          </label>
         </div>
 
         {/* Footer */}
