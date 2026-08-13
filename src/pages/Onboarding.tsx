@@ -57,6 +57,7 @@ type CreateOnboardingForm = {
   manager_id: number | null;
   company_unit: string | null;
   skip_lavian_sync: boolean;
+  old_employee_code: string;
 };
 
 type ApiResponse<T> = { results?: T[]; count?: number } | T[];
@@ -110,6 +111,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
     manager_id: null,
     company_unit: null,
     skip_lavian_sync: false,
+    old_employee_code: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof CreateOnboardingForm, string>>>({});
 
@@ -146,6 +148,9 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
         ...(form.manager_id ? { direct_manager_id: form.manager_id } : {}),
         ...(form.company_unit ? { company_unit: form.company_unit } : {}),
         skip_lavian_sync: form.skip_lavian_sync,
+        ...(form.skip_lavian_sync && form.old_employee_code.trim()
+          ? { employee_id: form.old_employee_code.trim() }
+          : {}),
       };
       await onboardingService.create(payload);
       alert(`✅ Tạo quy trình thành công!\n`);
@@ -290,18 +295,38 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
             />
           )}
 
-          <label className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 cursor-pointer">
-            <input
-              type="checkbox"
-              className="mt-0.5 w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
-              checked={form.skip_lavian_sync}
-              onChange={(e) => setForm({ ...form, skip_lavian_sync: e.target.checked })}
-            />
-            <span className="text-xs text-amber-800">
-              <span className="font-medium">Nhân viên này đã có tài khoản app.bckd68 từ trước</span> (thường là nhân viên cũ quay lại) —
-              tick để bỏ qua bước tự động tạo tài khoản mới bên app.bckd68, tránh tạo trùng tài khoản cho cùng 1 người.
-            </span>
-          </label>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                checked={form.skip_lavian_sync}
+                onChange={(e) => setForm({ ...form, skip_lavian_sync: e.target.checked, old_employee_code: e.target.checked ? form.old_employee_code : '' })}
+              />
+              <span className="text-xs text-amber-800">
+                <span className="font-medium">Nhân viên này đã có tài khoản app.bckd68 từ trước</span> (thường là nhân viên cũ quay lại) —
+                tick để bỏ qua bước tự động tạo tài khoản mới bên app.bckd68, tránh tạo trùng tài khoản cho cùng 1 người.
+              </span>
+            </label>
+            {form.skip_lavian_sync && (
+              <div className="pl-6">
+                <label className="block text-xs font-medium text-amber-800 mb-1">
+                  Mã nhân viên cũ bên app.bckd68 (tùy chọn)
+                </label>
+                <input
+                  type="text"
+                  maxLength={20}
+                  className="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                  placeholder="Nhập đúng mã nhân viên cũ để dùng lại, ví dụ NV00123"
+                  value={form.old_employee_code}
+                  onChange={(e) => setForm({ ...form, old_employee_code: e.target.value })}
+                />
+                <p className="text-[11px] text-amber-700 mt-1">
+                  Nếu điền, mã này sẽ dùng luôn làm mã nhân viên mới trên HRM (thay vì tự sinh mã mới) — giúp khớp mã giữa HRM và app.bckd68. Để trống nếu không có mã nào phù hợp.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
