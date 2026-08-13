@@ -196,9 +196,9 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary-100 rounded-xl flex items-center justify-center">
               <UserPlusIcon className="w-4 h-4 text-primary-600" />
@@ -214,7 +214,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-5 space-y-4 overflow-y-auto">
           <div className="bg-primary-50 border border-primary-200 rounded-xl p-3 text-xs text-primary-700">
             <p className="font-medium mb-1">📋 Quy trình 2 bước:</p>
             <ol className="list-decimal list-inside space-y-0.5">
@@ -354,7 +354,7 @@ const CreateOnboardingModal: React.FC<CreateModalProps> = ({ onClose, onSuccess 
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between items-center px-6 py-4 border-t bg-gray-50 rounded-b-2xl">
+        <div className="flex justify-between items-center px-6 py-4 border-t bg-gray-50 rounded-b-2xl shrink-0">
           <button
             onClick={onClose}
             disabled={submitting}
