@@ -3784,6 +3784,40 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         dataRow.getCell('cong_chuan').numFmt = Number.isInteger(rowData.cong_chuan) ? '0' : '0.##';
         dataRow.getCell('tong_cong').numFmt = Number.isInteger(rowData.tong_cong) ? '0' : '0.##';
 
+        // Các cột "tổng" hiển thị bằng công thức Excel thật (=SUM(...) / cộng trừ ô)
+        // thay vì số cứng — sửa 1 ô đầu vào thì các cột tổng liên quan tự tính lại
+        // khi mở file. `result` chỉ là giá trị cache để hiện ngay cả khi Excel chưa
+        // recalc, số thật vẫn do công thức quyết định.
+        const cellRef = (key: string) => `${ws.getColumn(colNumberOf(key)).letter}${dataRow.number}`;
+        dataRow.getCell('tong_luong_iii').value = {
+          formula: `SUM(${cellRef('luong_ngay_cong')}:${cellRef('thu_nhap_khac')})`,
+          result: rowData.tong_luong_iii,
+        };
+        dataRow.getCell('tong_phu_cap_iv').value = {
+          formula: `SUM(${cellRef('phu_cap_gui_xe')}:${cellRef('phu_cap_khac')})`,
+          result: rowData.tong_phu_cap_iv,
+        };
+        dataRow.getCell('tong_thu_nhap_vi').value = {
+          formula: `${cellRef('tong_luong_iii')}+${cellRef('tong_phu_cap_iv')}+${cellRef('thuong')}`,
+          result: rowData.tong_thu_nhap_vi,
+        };
+        dataRow.getCell('tong_bh').value = {
+          formula: `SUM(${cellRef('bhxh')}:${cellRef('bhtn')})`,
+          result: rowData.tong_bh,
+        };
+        dataRow.getCell('tong_giam_tru_vii').value = {
+          formula: `SUM(${cellRef('tong_bh')}:${cellRef('tong_phat_bienban')})`,
+          result: rowData.tong_giam_tru_vii,
+        };
+        dataRow.getCell('luong_thuc_linh').value = {
+          formula: `${cellRef('tong_thu_nhap_vi')}-${cellRef('tong_giam_tru_vii')}`,
+          result: rowData.luong_thuc_linh,
+        };
+        dataRow.getCell('con_phai_thanh_toan').value = {
+          formula: `${cellRef('luong_thuc_linh')}-${cellRef('thue_tncn')}-${cellRef('tam_ung')}`,
+          result: rowData.con_phai_thanh_toan,
+        };
+
         totals.luong_co_ban += rowData.luong_co_ban;
         totals.luong_ngay_cong += rowData.luong_ngay_cong;
         totals.luong_doanh_so += rowData.luong_doanh_so;
