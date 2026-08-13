@@ -3586,26 +3586,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         { header: 'Còn phải thanh toán (XII)', key: 'con_phai_thanh_toan', width: 22, style: MONEY_FMT },
       ];
 
-      // Hàng số thứ tự cột (1, 2, 3...) chèn lên trên hàng tiêu đề, để hàng công thức
-      // bên dưới có thể tham chiếu qua lại giữa các cột bằng số thay vì tên dài dòng.
+      // Hàng số thứ tự cột (1, 2, 3...) chèn lên trên hàng tiêu đề — cột nào là cột
+      // "tổng" (cộng/trừ từ cột khác) thì hiện luôn công thức kiểu "15=10+11+12+13+14"
+      // thay vì số đơn, tham chiếu qua số thứ tự của các cột còn lại.
       const columnKeys = (ws.columns || []).map((c) => String(c.key));
-      ws.spliceRows(1, 0, columnKeys.map((_, idx) => idx + 1));
-
-      ws.getRow(1).eachCell((cell) => {
-        cell.font = { italic: true, size: 9, color: { argb: 'FF9CA3AF' } };
-        cell.alignment = { vertical: 'middle', horizontal: 'center' };
-      });
-      ws.getRow(1).height = 14;
-
-      ws.getRow(2).eachCell((cell) => {
-        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } };
-        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-      });
-      ws.getRow(2).height = 30;
-
-      // Hàng công thức ngay dưới tiêu đề — chỉ điền cho các cột "tổng" được cộng/trừ
-      // từ cột khác, tham chiếu bằng số thứ tự ở hàng 1. Cột không phải tổng để trống.
       const colNumberOf = (key: string) => columnKeys.indexOf(key) + 1;
       const formula = (resultKey: string, terms: string) =>
         `${colNumberOf(resultKey)}=${terms}`;
@@ -3625,16 +3609,21 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         con_phai_thanh_toan: formula('con_phai_thanh_toan',
           `${colNumberOf('luong_thuc_linh')}-${colNumberOf('thue_tncn')}-${colNumberOf('tam_ung')}`),
       };
-      const formulaRow = ws.addRow(
-        Object.fromEntries(columnKeys.map((key) => [key, COLUMN_FORMULAS[key] || '']))
-      );
-      formulaRow.eachCell((cell) => {
-        cell.font = { italic: true, size: 9, color: { argb: 'FF6B7280' } };
+      ws.spliceRows(1, 0, columnKeys.map((key, idx) => COLUMN_FORMULAS[key] || idx + 1));
+
+      ws.getRow(1).eachCell((cell) => {
+        cell.font = { italic: true, size: 9, color: { argb: 'FF9CA3AF' } };
         cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
       });
-      formulaRow.height = 16;
-      ws.views = [{ state: 'frozen', ySplit: 3 }];
+      ws.getRow(1).height = 16;
+
+      ws.getRow(2).eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      });
+      ws.getRow(2).height = 30;
+      ws.views = [{ state: 'frozen', ySplit: 2 }];
 
       const totals = {
         luong_co_ban: 0,
