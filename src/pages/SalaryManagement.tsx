@@ -3498,7 +3498,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         month: record.month,
         luong_co_ban: Math.round(luongCoBan),
         cong_chuan: stdDays,
-        tong_cong: Math.round(record.tong_cong ?? 0),
+        // Không làm tròn: công có thể lẻ (vd nửa công 0.5) — làm tròn sẽ hiển thị sai
+        // lệch với số liệu thật (khớp với cách tính ở nút xuất Excel, không làm tròn).
+        tong_cong: record.tong_cong ?? 0,
         luong_ngay_cong: Math.round(luongNgayCongThucTe),
         luong_doanh_so: Math.round(luongDoanhSo),
         luong_tang_ca: Math.round(luongTangCa),
@@ -3546,8 +3548,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         { header: 'Năm', key: 'year', width: 8 },
         { header: 'Tháng', key: 'month', width: 8 },
         { header: 'Lương cơ bản', key: 'luong_co_ban', width: 16 },
-        { header: 'Công chuẩn', key: 'cong_chuan', width: 12 },
-        { header: 'Tổng công', key: 'tong_cong', width: 12 },
+        // numFmt ép cứng định dạng số thường (không phải ngày/giờ) — công có thể lẻ
+        // (vd 26.5), để "General" mặc định thì một số phần mềm mở file (không phải
+        // Excel gốc) có thể tự đoán nhầm đây là ngày và hiển thị ra số serial ngày.
+        { header: 'Công chuẩn', key: 'cong_chuan', width: 12, style: { numFmt: '0.##' } },
+        { header: 'Tổng công', key: 'tong_cong', width: 12, style: { numFmt: '0.##' } },
         { header: 'Lương ngày công thực tế', key: 'luong_ngay_cong', width: 20 },
         { header: 'Lương doanh số', key: 'luong_doanh_so', width: 16 },
         { header: 'Lương tăng ca', key: 'luong_tang_ca', width: 14 },
