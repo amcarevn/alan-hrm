@@ -38,6 +38,7 @@ const PROBATION_RATE_LABELS: Record<string, string> = {
 };
 
 const CONTRACT_TYPE_LABELS: Record<string, string> = {
+  SIX_MONTH: 'Hợp đồng lao động 6 tháng',
   ONE_YEAR: 'Hợp đồng lao động 12 tháng',
   TWO_YEAR: 'Hợp đồng lao động 24 tháng',
   THREE_YEAR: 'Hợp đồng lao động 36 tháng',

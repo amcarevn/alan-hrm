@@ -213,12 +213,17 @@ type EditSection =
   | 'emp_file_status'
   | 'attached_files';
 
+// Đồng bộ với CONTRACT_TYPE bên backend — xem ghi chú tương tự ở ContractTemplates.tsx.
 const CONTRACT_OPTIONS = [
   { value: 'PROBATION', label: 'Hợp đồng thử việc' },
+  { value: 'PROBATION_1M', label: 'Thử việc 1 tháng' },
+  { value: 'PROBATION_2M', label: 'Thử việc 2 tháng' },
   { value: 'INTERN', label: 'Hợp đồng thực tập sinh' },
   { value: 'COLLABORATOR', label: 'Hợp đồng cộng tác viên' },
+  { value: 'SIX_MONTH', label: 'Hợp đồng lao động 6 tháng' },
   { value: 'ONE_YEAR', label: 'Hợp đồng lao động 12 tháng' },
   { value: 'TWO_YEAR', label: 'Hợp đồng lao động 24 tháng' },
+  { value: 'THREE_YEAR', label: 'Hợp đồng lao động 36 tháng' },
   { value: 'INDEFINITE', label: 'Hợp đồng vô thời hạn' },
   { value: 'SERVICE', label: 'Hợp đồng dịch vụ' },
   { value: 'CONFIDENTIALITY', label: 'Thoả thuận bảo mật' },

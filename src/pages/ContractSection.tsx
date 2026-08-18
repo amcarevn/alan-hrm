@@ -20,12 +20,17 @@ const fmtDate = (d: string | null | undefined) => {
   return `${day}/${m}/${y}`;
 };
 
+// Đồng bộ với CONTRACT_TYPE bên backend — xem ghi chú tương tự ở ContractTemplates.tsx.
 const CONTRACT_TYPE_LABELS: Record<string, string> = {
   PROBATION: 'Hợp đồng thử việc',
+  PROBATION_1M: 'Thử việc 1 tháng',
+  PROBATION_2M: 'Thử việc 2 tháng',
   INTERN: 'Hợp đồng thực tập sinh',
   COLLABORATOR: 'Hợp đồng cộng tác viên',
+  SIX_MONTH: 'Hợp đồng lao động 6 tháng',
   ONE_YEAR: 'Hợp đồng lao động 12 tháng',
   TWO_YEAR: 'Hợp đồng lao động 24 tháng',
+  THREE_YEAR: 'Hợp đồng lao động 36 tháng',
   INDEFINITE: 'Hợp đồng vô thời hạn',
   SERVICE: 'Hợp đồng dịch vụ',
   CONFIDENTIALITY: 'Thoả thuận bảo mật',

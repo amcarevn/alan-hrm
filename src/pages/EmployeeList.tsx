@@ -820,12 +820,20 @@ const EmployeeList: React.FC = () => {
       "'_Dropdowns'!$B$1:$B$8",
       workLocationOptions,
     );
+    // Danh sách này phải khớp NGUYÊN VĂN nhãn tiếng Việt của CONTRACT_TYPE bên backend
+    // (employee/models.py) vì import khớp theo text, không theo code. Đã bổ sung "Hợp đồng
+    // lao động 6 tháng" + các mã trước đây bị thiếu (36 tháng, thử việc 1/2 tháng — 2 mã
+    // thử việc hiện hành, không phải "Hợp đồng thử việc" cũ).
     applyDropdown('contract_type', [
       'Hợp đồng thử việc',
+      'Thử việc 1 tháng',
+      'Thử việc 2 tháng',
       'Hợp đồng thực tập sinh',
       'Hợp đồng cộng tác viên',
+      'Hợp đồng lao động 6 tháng',
       'Hợp đồng lao động 12 tháng',
       'Hợp đồng lao động 24 tháng',
+      'Hợp đồng lao động 36 tháng',
       'Hợp đồng vô thời hạn',
       'Hợp đồng dịch vụ',
       'Thoả thuận bảo mật',
@@ -1195,6 +1203,7 @@ const EmployeeList: React.FC = () => {
               value={contractTypeFilter}
               options={[
                 { value: 'all', label: 'Tất cả loại hợp đồng' },
+                { value: 'SIX_MONTH', label: 'Hợp đồng lao động 6 tháng' },
                 { value: 'ONE_YEAR', label: 'Hợp đồng lao động 12 tháng' },
                 { value: 'TWO_YEAR', label: 'Hợp đồng lao động 24 tháng' },
                 { value: 'THREE_YEAR', label: 'Hợp đồng lao động 36 tháng' },
