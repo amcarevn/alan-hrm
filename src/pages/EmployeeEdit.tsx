@@ -69,6 +69,7 @@ const BLOCK_OPTIONS = [
 ];
 
 const CONTRACT_TYPE_OPTIONS = [
+  { label: 'Hợp đồng lao động 6 tháng', value: 'SIX_MONTH' },
   { label: 'Hợp đồng lao động 12 tháng', value: 'ONE_YEAR' },
   { label: 'Hợp đồng lao động 24 tháng', value: 'TWO_YEAR' },
   { label: 'Hợp đồng lao động 36 tháng', value: 'THREE_YEAR' },
@@ -537,6 +538,7 @@ const EmployeeEdit: React.FC = () => {
   };
 
   const CONTRACT_TO_STATUS: Record<string, string> = {
+    SIX_MONTH:          'ACTIVE',
     ONE_YEAR:           'ACTIVE',
     TWO_YEAR:           'ACTIVE',
     THREE_YEAR:         'ACTIVE',

@@ -41,8 +41,8 @@ export interface OnboardingProcess {
   section?: string;
   doctor_team?: string;
 
-  // Contract
-  contract_type: 'PROBATION' | 'INTERN' | 'COLLABORATOR' | 'ONE_YEAR' | 'TWO_YEAR' | 'INDEFINITE' | 'SERVICE' | 'CONFIDENTIALITY' | 'COMPANY_RULES' | 'NURSING_COMMITMENT';
+  // Contract — đồng bộ với CONTRACT_TYPE bên backend (employee/models.py)
+  contract_type: 'PROBATION' | 'PROBATION_1M' | 'PROBATION_2M' | 'INTERN' | 'COLLABORATOR' | 'SIX_MONTH' | 'ONE_YEAR' | 'TWO_YEAR' | 'THREE_YEAR' | 'INDEFINITE' | 'SERVICE' | 'CONFIDENTIALITY' | 'COMPANY_RULES' | 'NURSING_COMMITMENT';
   probation_period_months: number;
   salary?: string;
   salary_note?: string;

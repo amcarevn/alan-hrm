@@ -69,12 +69,17 @@ interface MyContract {
   created_at: string;
 }
 
+// Đồng bộ với CONTRACT_TYPE bên backend — xem ghi chú tương tự ở ContractTemplates.tsx.
 const CONTRACT_TYPE_MAP: Record<string, string> = {
   PROBATION: 'Hợp đồng thử việc',
+  PROBATION_1M: 'Thử việc 1 tháng',
+  PROBATION_2M: 'Thử việc 2 tháng',
   INTERN: 'Hợp đồng thực tập',
   COLLABORATOR: 'Hợp đồng cộng tác viên',
+  SIX_MONTH: 'Hợp đồng 6 tháng',
   ONE_YEAR: 'Hợp đồng 1 năm',
   TWO_YEAR: 'Hợp đồng 2 năm',
+  THREE_YEAR: 'Hợp đồng 3 năm',
   INDEFINITE: 'Hợp đồng không xác định thời hạn',
   SERVICE: 'Hợp đồng dịch vụ',
   CONFIDENTIALITY: 'Cam kết bảo mật',

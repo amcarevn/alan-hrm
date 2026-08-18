@@ -25,12 +25,19 @@ const formatDate = (d: Date | string) => {
   return `${dd}/${mm}/${yyyy}`;
 };
 
+// Danh sách này lặp lại CONTRACT_TYPE bên backend (employee/models.py) — phải giữ đồng bộ
+// thủ công vì FE không đọc choices từ API. Đã bổ sung SIX_MONTH (HĐ 6 tháng) và các mã
+// PROBATION_1M/PROBATION_2M/THREE_YEAR trước đây bị thiếu ở đây.
 const CONTRACT_TYPE_LABELS: Record<string, string> = {
   PROBATION: 'Hợp đồng thử việc',
+  PROBATION_1M: 'Thử việc 1 tháng',
+  PROBATION_2M: 'Thử việc 2 tháng',
   INTERN: 'Hợp đồng thực tập sinh',
   COLLABORATOR: 'Hợp đồng cộng tác viên',
+  SIX_MONTH: 'Hợp đồng lao động 6 tháng',
   ONE_YEAR: 'Hợp đồng lao động 12 tháng',
   TWO_YEAR: 'Hợp đồng lao động 24 tháng',
+  THREE_YEAR: 'Hợp đồng lao động 36 tháng',
   INDEFINITE: 'Hợp đồng vô thời hạn',
   SERVICE: 'Hợp đồng dịch vụ',
   CONFIDENTIALITY: 'Thoả thuận bảo mật',
