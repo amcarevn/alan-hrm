@@ -160,9 +160,11 @@ let _closeActiveTaxTooltip: (() => void) | null = null;
 
 interface TaxTooltipProps {
   taxDetail: TaxCalculationDetail;
+  /** true nếu tăng ca của tháng này không tính vào thu nhập chịu thuế (từ 8/2026) */
+  otExcluded?: boolean;
 }
 
-const TaxTooltip: React.FC<TaxTooltipProps> = ({ taxDetail }) => {
+const TaxTooltip: React.FC<TaxTooltipProps> = ({ taxDetail, otExcluded }) => {
   const [showDetail, setShowDetail] = useState(false);
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
   const btnRef = React.useRef<HTMLButtonElement>(null);
@@ -253,9 +255,16 @@ const TaxTooltip: React.FC<TaxTooltipProps> = ({ taxDetail }) => {
                     : 'Công thức: Thuế TNCN = Σ(Thu nhập trong từng bậc × Thuế suất bậc đó)'}
                 </p>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Tổng thu nhập không tính phụ cấp ăn trưa:</span>
+                  <span className="text-gray-600">
+                    Tổng thu nhập không tính phụ cấp ăn trưa{otExcluded ? ' và tăng ca' : ''}:
+                  </span>
                   <span className="font-semibold">{formatCurrency(taxDetail.grossIncome)}</span>
                 </div>
+                {otExcluded && (
+                  <p className="text-xs text-gray-400 -mt-1">
+                    (Từ 08/2026, lương tăng ca không tính vào thu nhập chịu thuế TNCN)
+                  </p>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Trừ BHXH + BHYT + BHTN:</span>
                   <span className="font-semibold text-red-600">-{formatCurrency(taxDetail.insuranceDeduction)}</span>
@@ -1021,7 +1030,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 </td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-500 flex items-center justify-end gap-2">
                   {thue ? fmt(thue) : '—'}
-                  <TaxTooltip taxDetail={taxDetail} />
+                  <TaxTooltip taxDetail={taxDetail} otExcluded={!isOtPayTaxableForRecord(record)} />
                 </td>
               </tr>
               {/* Section XIII */}
@@ -4829,7 +4838,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           <td className="px-3 py-3 font-semibold text-red-700 bg-red-50">
                             <div className="flex items-center justify-end gap-1.5">
                               {formatCurrency(recordTax)}
-                              <TaxTooltip taxDetail={recordTaxComputation.taxDetail} />
+                              <TaxTooltip taxDetail={recordTaxComputation.taxDetail} otExcluded={!isOtPayTaxableForRecord(record)} />
                             </div>
                           </td>
                           <td className="px-3 py-3 text-right font-semibold text-indigo-700 bg-indigo-50">
