@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { employeesAPI, Employee } from '../utils/api';
+import { employeesAPI, Employee, managementApi } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { WORK_LOCATION_OPTIONS } from '../constants/onboarding';
+import ConfirmDialog from '../components/ConfirmDialog';
 import {
   ArrowLeftIcon,
   ArrowPathIcon,
@@ -21,6 +22,7 @@ import {
   PhoneIcon,
   PaperClipIcon,
   LinkIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 // ============================================
@@ -49,6 +51,20 @@ const CONTRACT_TYPE_LABELS: Record<string, string> = {
   INTERN: 'Thực tập sinh',
   SERVICE: 'Hợp đồng dịch vụ',
   PROBATION: 'Hợp đồng thử việc',
+};
+
+type ContractHistoryItem = {
+  id: number;
+  contract_type: string;
+  contract_type_display: string;
+  template_name: string | null;
+  status: string;
+  status_display: string;
+  start_date: string | null;
+  end_date: string | null;
+  contract_number: string | null;
+  company_unit_name: string | null;
+  created_at: string;
 };
 
 const MARITAL_STATUS_LABELS: Record<string, string> = {
@@ -163,6 +179,10 @@ const EmployeeShow: React.FC = () => {
   const [onboardingLinkError, setOnboardingLinkError] = useState<string | null>(null);
   const [onboardingLinkCopied, setOnboardingLinkCopied] = useState(false);
 
+  const [contractHistory, setContractHistory] = useState<ContractHistoryItem[]>([]);
+  const [deletingContractId, setDeletingContractId] = useState<number | null>(null);
+  const [confirmDeleteContract, setConfirmDeleteContract] = useState<ContractHistoryItem | null>(null);
+
   useEffect(() => {
     if (id) loadEmployee(Number(id));
   }, [id, location.key]);
@@ -177,6 +197,47 @@ const EmployeeShow: React.FC = () => {
       setError(err.message || 'Không thể tải thông tin nhân viên');
     } finally {
       setLoading(false);
+    }
+    await loadContractHistory(employeeId);
+  };
+
+  const loadContractHistory = async (employeeId: number) => {
+    // Lịch sử hợp đồng — fetch song song, không chặn loading của trang
+    try {
+      const res = await managementApi.get('/api-hrm/employee-contracts/', {
+        params: { employee_id: employeeId, page_size: 100 },
+      });
+      const list: ContractHistoryItem[] = Array.isArray(res.data)
+        ? res.data
+        : res.data.results || [];
+      // Sắp xếp: HĐ mới nhất lên đầu (theo start_date desc, fallback created_at desc)
+      list.sort((a, b) => {
+        const sa = a.start_date || a.created_at || '';
+        const sb = b.start_date || b.created_at || '';
+        return sb.localeCompare(sa);
+      });
+      setContractHistory(list);
+    } catch {
+      setContractHistory([]);
+    }
+  };
+
+  const handleDeleteContract = async (contract: ContractHistoryItem) => {
+    setDeletingContractId(contract.id);
+    try {
+      await managementApi.delete(`/api-hrm/employee-contracts/${contract.id}/`);
+      setContractHistory((prev) => prev.filter((c) => c.id !== contract.id));
+      if (employee?.id) {
+        try {
+          const data = await employeesAPI.getById(employee.id);
+          setEmployee(data);
+        } catch {}
+      }
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || err?.message || 'Không xoá được hợp đồng');
+    } finally {
+      setDeletingContractId(null);
+      setConfirmDeleteContract(null);
     }
   };
 
@@ -436,6 +497,68 @@ const EmployeeShow: React.FC = () => {
             <InfoField label="Ngày kết thúc thử việc" value={emp.probation_end_date ? formatDate(emp.probation_end_date) : null} />
           </div>
         </div>
+
+        {/* ── Lịch sử hợp đồng ── */}
+        {contractHistory.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-9 w-9 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
+                <DocumentTextIcon className="h-5 w-5" />
+              </div>
+              <h3 className="text-sm font-bold text-gray-900">
+                Lịch sử hợp đồng <span className="text-gray-400 font-normal">({contractHistory.length})</span>
+              </h3>
+            </div>
+            <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+              {contractHistory.map((c) => {
+                const isActive = c.status === 'SIGNED' && (!c.end_date || new Date(c.end_date) >= new Date(new Date().toDateString()));
+                const statusColor =
+                  c.status === 'SIGNED' ? (isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500')
+                  : c.status === 'EXPIRED' ? 'bg-red-100 text-red-700'
+                  : c.status === 'CANCELLED' ? 'bg-gray-100 text-gray-500'
+                  : c.status === 'PENDING_SIGN' ? 'bg-amber-100 text-amber-700'
+                  : 'bg-gray-100 text-gray-500';
+                const label = isActive ? 'Đang hiệu lực' : c.status_display;
+                const isDeleting = deletingContractId === c.id;
+                return (
+                  <div key={c.id} className="flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">
+                        {c.template_name || c.contract_type_display || CONTRACT_TYPE_LABELS[c.contract_type] || c.contract_type}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {c.start_date ? formatDate(c.start_date) : '—'}
+                        {c.end_date ? ` → ${formatDate(c.end_date)}` : ' → Không xác định'}
+                        {c.contract_number ? ` · ${c.contract_number}` : ''}
+                        {c.company_unit_name ? ` · ${c.company_unit_name}` : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColor}`}>
+                        {label}
+                      </span>
+                      {isBodUser && (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteContract(c)}
+                          disabled={isDeleting}
+                          title="Xoá hợp đồng khỏi hệ thống"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {isDeleting ? (
+                            <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <TrashIcon className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Trạng thái hồ sơ ── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -719,6 +842,26 @@ const EmployeeShow: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* Xoá hợp đồng */}
+      <ConfirmDialog
+        open={confirmDeleteContract !== null}
+        variant="danger"
+        title="Xoá hợp đồng"
+        message={
+          confirmDeleteContract
+            ? `Xoá hợp đồng "${confirmDeleteContract.template_name || confirmDeleteContract.contract_type_display || confirmDeleteContract.contract_type}"${
+                confirmDeleteContract.start_date
+                  ? ` (${formatDate(confirmDeleteContract.start_date)}${confirmDeleteContract.end_date ? ' → ' + formatDate(confirmDeleteContract.end_date) : ''})`
+                  : ''
+              }?\n\nHợp đồng sẽ bị xoá vĩnh viễn khỏi hệ thống.`
+            : ''
+        }
+        confirmLabel="Xoá"
+        loading={deletingContractId !== null}
+        onConfirm={() => confirmDeleteContract && handleDeleteContract(confirmDeleteContract)}
+        onClose={() => setConfirmDeleteContract(null)}
+      />
     </div>
   );
 };

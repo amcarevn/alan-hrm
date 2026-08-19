@@ -61,7 +61,10 @@ const KNOWN_LABELS: Record<string, string> = {
   '{{loai_hop_dong}}': 'Loại hợp đồng',
   '{{loai_hop_dong_nv}}': 'Loại HĐ nhân viên',
   '{{ngay_ky}}': 'Ngày ký',
-  '{{thoi_han_hop_dong}}': 'Ngày hết hạn HĐ',
+  // Trước đây label này bị gán nhầm "Ngày hết hạn HĐ" (trùng {{ngay_ket_thuc}}) —
+  // đây là placeholder thời hạn hợp đồng (VD "6 tháng"), mặc định "6 tháng" từ backend,
+  // HR tự sửa khi hợp đồng có thời hạn khác.
+  '{{thoi_han_hop_dong}}': 'Thời hạn hợp đồng',
   '{{luong_co_ban}}': 'Lương cơ bản',
   '{{luong_co_ban_bang_chu}}': 'Lương cơ bản bằng chữ',
   '{{ngay_ket_thuc_thu_viec}}': 'Ngày kết thúc thử việc',
