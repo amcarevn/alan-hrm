@@ -132,16 +132,104 @@ const TF: React.FC<TFProps> = ({ label, value, onChange, placeholder, type = 'te
           placeholder={placeholder}
           disabled={disabled}
           maxLength={maxLength}
-          className={`block w-full rounded-xl border-2 px-4 py-[13px] text-base text-gray-900 placeholder-gray-400 shadow-sm focus:ring-2 focus:outline-none disabled:bg-gray-50 disabled:text-gray-400 transition-all ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-200 hover:border-gray-300 focus:border-blue-500 focus:ring-blue-500/20'} ${type === 'date' ? '[&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer' : ''}`}
+          className={`block w-full rounded-xl border-2 px-4 py-[13px] text-base text-gray-900 placeholder-gray-400 shadow-sm focus:ring-2 focus:outline-none disabled:bg-gray-50 disabled:text-gray-400 transition-all ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-200 hover:border-gray-300 focus:border-blue-500 focus:ring-blue-500/20'}`}
         />
-        {type === 'date' && (
-          <CalendarDaysIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500 pointer-events-none" />
-        )}
       </div>
     )}
     {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
   </div>
 );
+
+// ===== DATE FIELD (dd/mm/yyyy, gõ tay được) =====
+// input[type=date] trước đây dùng cho Ngày sinh/Ngày bắt đầu/Ngày cấp CCCD bị HR
+// báo KHÔNG chỉnh được: nhiều webview nhúng (Zalo/Messenger in-app browser) chỉ
+// cho mở date picker native khi tap đúng icon, không gõ tay được — và định dạng
+// hiển thị phụ thuộc locale trình duyệt/OS chứ không ép được dd/mm/yyyy dù đã cố
+// che icon bằng CSS. Đổi sang input text tự mask dd/mm/yyyy: luôn gõ tay được ở
+// mọi trình duyệt/webview, định dạng cố định đúng yêu cầu.
+// value/onChange ra ngoài vẫn dùng ISO (yyyy-mm-dd) để không phải sửa validate/submit.
+const isoToDisplay = (iso: string): string => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+};
+
+const maskDateInput = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '').slice(0, 8);
+  const parts: string[] = [];
+  if (digits.length > 0) parts.push(digits.slice(0, 2));
+  if (digits.length > 2) parts.push(digits.slice(2, 4));
+  if (digits.length > 4) parts.push(digits.slice(4, 8));
+  return parts.join('/');
+};
+
+const displayToIso = (display: string): string => {
+  const digits = display.replace(/\D/g, '');
+  if (digits.length !== 8) return '';
+  const day = parseInt(digits.slice(0, 2), 10);
+  const month = parseInt(digits.slice(2, 4), 10);
+  const year = parseInt(digits.slice(4, 8), 10);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return '';
+  const iso = `${digits.slice(4, 8)}-${digits.slice(2, 4)}-${digits.slice(0, 2)}`;
+  // Date tự "lăn" ngày không hợp lệ (VD 31/02) sang tháng sau — parse lại (UTC, vì
+  // chuỗi date-only được hiểu là UTC midnight) để phát hiện và từ chối.
+  const check = new Date(iso);
+  if (check.getUTCFullYear() !== year || check.getUTCMonth() + 1 !== month || check.getUTCDate() !== day) {
+    return '';
+  }
+  return iso;
+};
+
+interface DateTFProps {
+  label: string;
+  value: string; // ISO yyyy-mm-dd, có thể rỗng
+  onChange: (iso: string) => void;
+  required?: boolean;
+  error?: string;
+}
+
+const DateTF: React.FC<DateTFProps> = ({ label, value, onChange, required, error }) => {
+  const [text, setText] = useState(() => isoToDisplay(value));
+
+  // Đồng bộ khi value đổi từ bên ngoài (khôi phục draft từ localStorage, prefill từ server)
+  useEffect(() => { setText(isoToDisplay(value)); }, [value]);
+
+  const handleInput = (e: ChangeEvent<HTMLInputElement>) => {
+    const masked = maskDateInput(e.target.value);
+    setText(masked);
+    onChange(displayToIso(masked)); // '' nếu chưa gõ đủ 8 số hoặc ngày không hợp lệ
+  };
+
+  const digitsTyped = text.replace(/\D/g, '').length;
+  const showInvalid = digitsTyped === 8 && !displayToIso(text);
+
+  return (
+    <div>
+      <label className="block text-base font-semibold text-gray-800 mb-1.5">
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      <div className="relative">
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          value={text}
+          onChange={handleInput}
+          placeholder="dd/mm/yyyy"
+          maxLength={10}
+          className={`block w-full rounded-xl border-2 px-4 py-[13px] text-base text-gray-900 placeholder-gray-400 shadow-sm focus:ring-2 focus:outline-none transition-all ${
+            error || showInvalid
+              ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
+              : 'border-gray-200 hover:border-gray-300 focus:border-blue-500 focus:ring-blue-500/20'
+          }`}
+        />
+        <CalendarDaysIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500 pointer-events-none" />
+      </div>
+      {showInvalid && !error && <p className="text-xs text-red-500 mt-1">Ngày không hợp lệ (dd/mm/yyyy)</p>}
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+    </div>
+  );
+};
 
 interface SFProps {
   label: string;
@@ -682,13 +770,13 @@ export const EmployeeOnboardingForm: React.FC = () => {
             <TF label="Email" value={values.candidate_email} onChange={handleChange('candidate_email')} disabled />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <TF label="Ngày sinh" value={values.date_of_birth} onChange={handleChange('date_of_birth')} required type="date" error={getFieldError('date_of_birth', values.date_of_birth)} />
+            <DateTF label="Ngày sinh" value={values.date_of_birth} onChange={handleSelect('date_of_birth')} required error={getFieldError('date_of_birth', values.date_of_birth)} />
             <SF label="Giới tính" value={values.gender} onChange={handleSelect('gender')}
               options={[{ value: 'M', label: 'Nam' }, { value: 'F', label: 'Nữ' }, { value: 'O', label: 'Khác' }]} required />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <TF label="Số điện thoại" value={values.candidate_phone} onChange={handleChange('candidate_phone')} required placeholder="0123456789" error={getFieldError('candidate_phone', values.candidate_phone)} maxLength={10} />
-            <TF label="Ngày bắt đầu" value={values.start_date} onChange={handleChange('start_date')} type="date" required error={getFieldError('start_date', values.start_date)} />
+            <DateTF label="Ngày bắt đầu" value={values.start_date} onChange={handleSelect('start_date')} required error={getFieldError('start_date', values.start_date)} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <SF label="Trình độ học vấn" value={values.education_level} onChange={handleSelect('education_level')} options={EDUCATION_LEVEL_OPTIONS} required />
@@ -785,7 +873,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <TF label="Ngày cấp" value={values.citizen_id_issue_date} onChange={handleChange('citizen_id_issue_date')} type="date" required error={getFieldError('citizen_id_issue_date', values.citizen_id_issue_date)} />
+            <DateTF label="Ngày cấp" value={values.citizen_id_issue_date} onChange={handleSelect('citizen_id_issue_date')} required error={getFieldError('citizen_id_issue_date', values.citizen_id_issue_date)} />
             <SF label="Nơi cấp" value={values.citizen_id_issue_place} onChange={handleSelect('citizen_id_issue_place')} options={CITIZEN_ID_ISSUE_PLACE_OPTIONS} required />
           </div>
         </div>
