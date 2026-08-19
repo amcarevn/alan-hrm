@@ -1264,6 +1264,12 @@ const PERSONAL_DEDUCTION_LEGACY = 11000000;
 const DEPENDENT_DEDUCTION_2026 = 6200000;
 const DEPENDENT_DEDUCTION_LEGACY = 4400000;
 const FLAT_TAX_EXEMPT_THRESHOLD = 5000000;
+// Từ tháng này trở đi, lương tăng ca không tính vào thu nhập chịu thuế TNCN
+// (khớp CompanyConfig.ot_pay_taxable ở backend - chỉ dùng khi FE phải tự tính
+// dự phòng lúc thiếu record.tong_thu_nhap_chiu_thue từ backend).
+const OT_PAY_TAX_EXEMPT_FROM = new Date(2026, 7, 1); // tháng 8/2026 (Date month 0-indexed)
+const isOtPayTaxableForRecord = (record: Pick<SalaryRecord, 'year' | 'month'>) =>
+  new Date(record.year, record.month - 1, 1) < OT_PAY_TAX_EXEMPT_FROM;
 
 const REGIONAL_MINIMUM_2026: Record<'I' | 'II' | 'III' | 'IV', number> = {
   I: 5310000,
@@ -1622,7 +1628,8 @@ const getGrossIncomeForTaxFromRecord = (record: SalaryRecord, employee?: Employe
   const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
   const phuCapAnTrua = toNumber((record as unknown as Record<string, number>)['phu_cap_an_trua'], 0);
   const taxableAllowance = Math.max((record.phu_cap ?? 0) - phuCapAnTrua, 0);
-  return luongNgayCongThucTe + taxableAllowance + luongDoanhSo + thuNhapKhac + luongTrucCa + luongTangCa;
+  const taxableLuongTangCa = isOtPayTaxableForRecord(record) ? luongTangCa : 0;
+  return luongNgayCongThucTe + taxableAllowance + luongDoanhSo + thuNhapKhac + luongTrucCa + taxableLuongTangCa;
 };
 
 const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee): PayrollTaxComputation => {
