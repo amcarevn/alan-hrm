@@ -1446,7 +1446,12 @@ const EmployeeList: React.FC = () => {
                         <div className="text-sm text-gray-900">{employee.position?.title || <span className="text-gray-400 italic">Chưa có dữ liệu</span>}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{employee.company_unit?.code || <span className="text-gray-400 italic">Chưa có dữ liệu</span>}</div>
+                        {/* Ưu tiên subsidiary_legal_entity (HR tự điền qua CSV upload — bao phủ cả
+                            nhân viên cũ/nhập thủ công không có onboarding), fallback company_unit.code
+                            (bao phủ nhân viên mới đi qua form onboarding nhưng chưa được gắn pháp nhân riêng). */}
+                        <div className="text-sm text-gray-900">
+                          {(employee as any).subsidiary_legal_entity || employee.company_unit?.code || <span className="text-gray-400 italic">Chưa có dữ liệu</span>}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(employee.employment_status)}
