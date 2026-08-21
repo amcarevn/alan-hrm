@@ -1446,7 +1446,7 @@ const EmployeeList: React.FC = () => {
                         <div className="text-sm text-gray-900">{employee.position?.title || <span className="text-gray-400 italic">Chưa có dữ liệu</span>}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{(employee as any).subsidiary_legal_entity || <span className="text-gray-400 italic">Chưa có dữ liệu</span>}</div>
+                        <div className="text-sm text-gray-900">{employee.company_unit?.name || <span className="text-gray-400 italic">Chưa có dữ liệu</span>}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(employee.employment_status)}
