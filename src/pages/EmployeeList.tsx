@@ -224,7 +224,17 @@ const EmployeeList: React.FC = () => {
       if (department !== 'all') params.department = department;
       if (contractType !== 'all') params.contract_type = contractType;
       if (month) params.month = month;
-      if (legalEntity !== 'all') params.subsidiary_legal_entity = legalEntity;
+      // legalEntity là '__none__' (chưa gắn pháp nhân) hoặc id của 1 đơn vị
+      // trong "Quản lý đơn vị" (CompanyUnit). '__none__' vẫn gửi qua field
+      // text cũ subsidiary_legal_entity; còn lại gửi company_unit_id để
+      // backend tự đối chiếu công ty đó qua company_unit FK LẪN text
+      // subsidiary_legal_entity (tên/mã) — không phụ thuộc NV đang gắn theo
+      // cách nào.
+      if (legalEntity === '__none__') {
+        params.subsidiary_legal_entity = legalEntity;
+      } else if (legalEntity !== 'all') {
+        params.company_unit_id = legalEntity;
+      }
 
       if (expiringSoon === 'expiring') {
         const today = new Date();
@@ -280,8 +290,14 @@ const EmployeeList: React.FC = () => {
       // chưa có NV nào gắn text đó sẽ không hiện ra — nhìn như bị hardcode.
       // Đổi sang lấy thẳng danh sách đơn vị đang hoạt động từ "Quản lý đơn
       // vị" (CompanyUnit) để filter luôn khớp với dữ liệu gốc.
+      // Dùng id đơn vị làm value (thay vì tên) — tên hiển thị trong "Quản lý
+      // đơn vị" có thể là tên pháp lý đầy đủ (VD: "Công ty TNHH..."), khác
+      // hẳn giá trị ngắn nhân viên cũ đang lưu trong subsidiary_legal_entity
+      // (VD: "Nita", "Elani"). Gửi id để backend tự đối chiếu theo cả
+      // company_unit FK lẫn tên/mã đơn vị, tránh phải đoán đúng field nào
+      // khớp với dữ liệu text cũ.
       const response = await companyUnitsAPI.list({ active_only: true, page_size: 200 });
-      const data = (response.results || []).map((unit) => ({ value: unit.name, label: unit.name }));
+      const data = (response.results || []).map((unit) => ({ value: String(unit.id), label: unit.name }));
       setLegalEntities(data);
     } catch (err) {
       console.error('Error fetching legal entities:', err);
