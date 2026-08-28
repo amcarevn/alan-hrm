@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { employeesAPI, departmentsAPI, Employee, sendAccountEmailsAPI, managementApi } from '../utils/api';
+import { employeesAPI, departmentsAPI, companyUnitsAPI, Employee, sendAccountEmailsAPI } from '../utils/api';
 import { WORK_LOCATION_OPTIONS } from '../constants/onboarding';
 
 const WORK_LOCATION_LABELS: Record<string, string> = Object.fromEntries(
@@ -274,10 +274,14 @@ const EmployeeList: React.FC = () => {
 
   const fetchLegalEntities = async () => {
     try {
-      const response = await managementApi.get<{ value: string; label: string }[]>(
-        '/api/v1/salary/records/legal-entities/'
-      );
-      const data = Array.isArray(response.data) ? response.data : [];
+      // Trước đây gọi /api/v1/salary/records/legal-entities/ — API này chỉ
+      // liệt kê các giá trị subsidiary_legal_entity (text tự nhập trên NV)
+      // đã từng xuất hiện, nên 1 đơn vị mới tạo trong "Quản lý đơn vị" mà
+      // chưa có NV nào gắn text đó sẽ không hiện ra — nhìn như bị hardcode.
+      // Đổi sang lấy thẳng danh sách đơn vị đang hoạt động từ "Quản lý đơn
+      // vị" (CompanyUnit) để filter luôn khớp với dữ liệu gốc.
+      const response = await companyUnitsAPI.list({ active_only: true, page_size: 200 });
+      const data = (response.results || []).map((unit) => ({ value: unit.name, label: unit.name }));
       setLegalEntities(data);
     } catch (err) {
       console.error('Error fetching legal entities:', err);
