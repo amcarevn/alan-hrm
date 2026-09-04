@@ -13,7 +13,7 @@ import {
   DocumentArrowDownIcon,
   CloudArrowUpIcon,
 } from '@heroicons/react/24/outline';
-import { socialInsuranceAPI } from '../utils/api/hrm.api';
+import { socialInsuranceAPI, companyUnitsAPI } from '../utils/api/hrm.api';
 import { managementApi } from '../utils/api/client';
 import type { SocialInsurance, SocialInsuranceCreateData, SocialInsuranceStatus } from '../utils/api/types';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -195,9 +195,20 @@ const FormModal: React.FC<{
   const empRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    managementApi.get<{ value: string; label: string }[]>('/api/v1/salary/records/legal-entities/')
+    // Trước đây gọi /api/v1/salary/records/legal-entities/ — endpoint này gộp
+    // CHUNG cả tên pháp lý đầy đủ (CompanyUnit.name, VD "Công ty TNHH thương
+    // mại và dịch vụ Elani") LẪN mã ngắn (CompanyUnit.code, VD "Elani") của
+    // MỌI đơn vị, cộng thêm mọi giá trị Employee.subsidiary_legal_entity từng
+    // xuất hiện — cần thiết cho filter "Danh sách BHXH" (phải khớp được dữ
+    // liệu cũ lưu ở nhiều dạng khác nhau) nhưng lại khiến dropdown TẠO MỚI ở
+    // đây trông không nhất quán (1 đơn vị hiện ra 2 dòng: tên đầy đủ + tên
+    // ngắn, không đơn vị nào giống đơn vị nào). Đổi sang lấy thẳng danh sách
+    // đơn vị đang hoạt động từ "Quản lý đơn vị" (CompanyUnit) — mỗi đơn vị
+    // đúng 1 dòng, y hệt cách EmployeeList.tsx đã sửa cho filter "Pháp nhân".
+    companyUnitsAPI.list({ active_only: true, page_size: 200 })
       .then(res => {
-        setLegalEntityOptions(res.data.map(e => ({ value: e.value, label: e.label })));
+        const data = (res.results || []).map(unit => ({ value: unit.name, label: unit.name }));
+        setLegalEntityOptions(data);
       })
       .catch(() => {});
   }, []);
