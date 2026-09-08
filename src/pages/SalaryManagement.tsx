@@ -1496,6 +1496,8 @@ interface PayrollTaxComputation {
   healthInsurance: number;
   unemploymentInsurance: number;
   insuranceTotal: number;
+  /** Thu nhập chịu thuế (backend: tong_thu_nhap_chiu_thue) — đã loại phụ cấp ăn trưa. */
+  grossIncomeForTax: number;
 }
 
 const calculateTaxBreakdown = (
@@ -1718,6 +1720,7 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
       taxDetail: flatTaxDetail,
       taxAmount: flatTaxDetail.totalTax,
       dependentCount,
+      grossIncomeForTax,
       insuranceSalaryBase: Math.round(mucLuongDongBH),
       socialInsurance,
       healthInsurance,
@@ -1758,6 +1761,10 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
     healthInsurance,
     unemploymentInsurance,
     insuranceTotal,
+    // Thu nhập chịu thuế (backend: tong_thu_nhap_chiu_thue). Khác "tổng thu
+    // nhập" ở chỗ đã loại phụ cấp ăn trưa — khoản này vào tổng thu nhập nhưng
+    // không chịu thuế TNCN.
+    grossIncomeForTax,
   };
 };
 
@@ -1830,6 +1837,7 @@ const calculatePayslipNetPayable = (record: SalaryRecord, employee?: Employee, c
     luongThucLinh,
     conPhaiThanhToan,
     payrollTax,
+    tongThuNhapVI,
   };
 };
 
@@ -4813,6 +4821,12 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                         <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Tổng phạt
                         </th>
+                        <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Tổng thu nhập
+                        </th>
+                        <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Thu nhập chịu thuế
+                        </th>
                         <th className="px-3 py-3 text-right text-xs font-medium text-red-600 uppercase tracking-wider bg-red-50">
                           Thuế TNCN
                         </th>
@@ -4850,6 +4864,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           <td className="px-3 py-3 text-right text-gray-700">{formatNumber(record.tong_cong)}</td>
                           <td className="px-3 py-3 text-right text-blue-600">{formatCurrency(record.luong_tang_ca)}</td>
                           <td className="px-3 py-3 text-right text-red-600">{formatCurrency((record.tong_phat ?? 0) + (record.tong_phat_bienban ?? 0))}</td>
+                          <td className="px-3 py-3 text-right text-gray-800 font-medium">{formatCurrency(payslipComputation.tongThuNhapVI)}</td>
+                          <td className="px-3 py-3 text-right text-gray-700">{formatCurrency(recordTaxComputation.grossIncomeForTax)}</td>
                           <td className="px-3 py-3 font-semibold text-red-700 bg-red-50">
                             <div className="flex items-center justify-end gap-1.5">
                               {formatCurrency(recordTax)}
