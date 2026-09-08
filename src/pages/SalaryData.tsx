@@ -12,6 +12,7 @@ import {
   PencilIcon,
   TrashIcon,
   CurrencyDollarIcon,
+  GiftIcon,
 } from '@heroicons/react/24/outline';
 import {
   salaryService,
@@ -23,6 +24,8 @@ import {
   type BulkImportAdvanceRecord,
   type OtherAllowanceRecord,
   type BulkImportOtherAllowanceRecord,
+  type MonthlyBonusRecord,
+  type BulkImportMonthlyBonusRecord,
   type ParkingAllowanceOverrideRecord,
   type BulkImportParkingAllowanceRecord,
   type LunchAllowanceOverrideRecord,
@@ -64,6 +67,14 @@ interface ParsedOtherAllowanceRow {
   parseError?: string;
 }
 
+interface ParsedMonthlyBonusRow {
+  employee_code: string;
+  amount: number;
+  description: string;
+  rowIndex: number;
+  parseError?: string;
+}
+
 interface ParsedParkingAllowanceRow {
   employee_code: string;
   amount: number;
@@ -86,12 +97,13 @@ interface EmployeeOption {
   employee_name: string;
 }
 
-type TabKey = 'commission' | 'penalty' | 'advance' | 'other_allowance' | 'parking_allowance' | 'lunch_allowance';
+type TabKey = 'commission' | 'penalty' | 'advance' | 'bonus' | 'other_allowance' | 'parking_allowance' | 'lunch_allowance';
 
 const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: 'commission',        label: 'Hoa Hồng',        icon: CurrencyDollarIcon },
   { key: 'penalty',           label: 'Phạt Biên Bản',   icon: ExclamationCircleIcon },
   { key: 'advance',           label: 'Tạm Ứng Lương',   icon: CurrencyDollarIcon },
+  { key: 'bonus',             label: 'Thưởng',          icon: GiftIcon },
   { key: 'other_allowance',   label: 'Phụ Cấp Khác',    icon: CurrencyDollarIcon },
   { key: 'parking_allowance', label: 'Phụ Cấp Gửi Xe',  icon: CurrencyDollarIcon },
   { key: 'lunch_allowance',   label: 'Phụ Cấp Ăn Trưa', icon: CurrencyDollarIcon },
@@ -197,6 +209,25 @@ const SalaryData: React.FC = () => {
   const [oPageSize,   setOPageSize]   = useState(20);
   const oFileRef = useRef<HTMLInputElement>(null);
 
+  // ── MonthlyBonus (Thưởng) state ──
+  const [mbRecords,    setMbRecords]    = useState<MonthlyBonusRecord[]>([]);
+  const [loadingMb,    setLoadingMb]    = useState(false);
+  const [mbLoaded,     setMbLoaded]     = useState(false);
+  const [mbParsedRows, setMbParsedRows] = useState<ParsedMonthlyBonusRow[] | null>(null);
+  const [mbFile,       setMbFile]       = useState<File | null>(null);
+  const [mbParsing,    setMbParsing]    = useState(false);
+  const [mbParseError, setMbParseError] = useState<string | null>(null);
+  const [mbImporting,  setMbImporting]  = useState(false);
+  const [mbSearch,     setMbSearch]     = useState('');
+  const [mbEditingId,  setMbEditingId]  = useState<number | null>(null);
+  const [mbEditValues, setMbEditValues] = useState({ amount: '', description: '' });
+  const [mbSaving,     setMbSaving]     = useState(false);
+  const [mbDeletingId, setMbDeletingId] = useState<number | null>(null);
+  const [mbDeleting,   setMbDeleting]   = useState(false);
+  const [mbPage,       setMbPage]       = useState(1);
+  const [mbPageSize,   setMbPageSize]   = useState(20);
+  const mbFileRef = useRef<HTMLInputElement>(null);
+
   // ── ParkingAllowanceOverride state ──
   const [paRecords,    setPaRecords]    = useState<ParkingAllowanceOverrideRecord[]>([]);
   const [loadingPa,    setLoadingPa]    = useState(false);
@@ -287,6 +318,7 @@ const SalaryData: React.FC = () => {
   const [pImportErr, setPImportErr] = useState<{ errors: {employee_code:string;error:string}[]; failedRows: ParsedPenaltyRow[] } | null>(null);
   const [aImportErr, setAImportErr] = useState<{ errors: {employee_code:string;error:string}[]; failedRows: ParsedAdvanceRow[] } | null>(null);
   const [oImportErr, setOImportErr] = useState<{ errors: {employee_code:string;error:string}[]; failedRows: ParsedOtherAllowanceRow[] } | null>(null);
+  const [mbImportErr, setMbImportErr] = useState<{ errors: {employee_code:string;error:string}[]; failedRows: ParsedMonthlyBonusRow[] } | null>(null);
 
   // ── Shared toasts ──
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -317,6 +349,11 @@ const SalaryData: React.FC = () => {
   const [oAdding, setOAdding] = useState(false);
   const [oCreating, setOCreating] = useState(false);
   const [oCreateValues, setOCreateValues] = useState({ employeeId: 0, amount: '', description: '' });
+
+  // ── MonthlyBonus add state ──
+  const [mbAdding, setMbAdding] = useState(false);
+  const [mbCreating, setMbCreating] = useState(false);
+  const [mbCreateValues, setMbCreateValues] = useState({ employeeId: 0, amount: '', description: '' });
 
   // ─── Load functions ────────────────────────────────────────────────────────
 
@@ -362,6 +399,21 @@ const SalaryData: React.FC = () => {
       setErrorMsg('Không thể tải danh sách phụ cấp khác.');
     } finally {
       setLoadingO(false);
+    }
+  }, [selectedMonth, selectedYear]);
+
+  const loadMonthlyBonuses = useCallback(async (month = selectedMonth, year = selectedYear) => {
+    setLoadingMb(true);
+    setMbLoaded(false);
+    try {
+      const data = await salaryService.listMonthlyBonuses({ year, month });
+      setMbRecords(data);
+      setMbPage(1);
+      setMbLoaded(true);
+    } catch {
+      setErrorMsg('Không thể tải danh sách thưởng.');
+    } finally {
+      setLoadingMb(false);
     }
   }, [selectedMonth, selectedYear]);
 
@@ -451,6 +503,7 @@ const SalaryData: React.FC = () => {
     if (activeTab === 'commission') loadCommissions(selectedMonth, selectedYear);
     else if (activeTab === 'penalty') loadPenalties(selectedMonth, selectedYear);
     else if (activeTab === 'advance') loadAdvances(selectedMonth, selectedYear);
+    else if (activeTab === 'bonus') loadMonthlyBonuses(selectedMonth, selectedYear);
     else if (activeTab === 'parking_allowance') loadParkingAllowances(selectedMonth, selectedYear);
     else if (activeTab === 'lunch_allowance') loadLunchAllowances(selectedMonth, selectedYear);
     else loadOtherAllowances(selectedMonth, selectedYear);
@@ -465,6 +518,7 @@ const SalaryData: React.FC = () => {
   useEffect(() => { setPPage(1); }, [pSearch]);
   useEffect(() => { setAPage(1); }, [aSearch]);
   useEffect(() => { setOPage(1); }, [oSearch]);
+  useEffect(() => { setMbPage(1); }, [mbSearch]);
   useEffect(() => { setPaPage(1); }, [paSearch]);
   useEffect(() => { setLaPage(1); }, [laSearch]);
 
@@ -475,6 +529,7 @@ const SalaryData: React.FC = () => {
     setPParsedRows(null); setPFile(null); setPImportErr(null); if (pFileRef.current) pFileRef.current.value = '';
     setAParsedRows(null); setAFile(null); setAImportErr(null); if (aFileRef.current) aFileRef.current.value = '';
     setOParsedRows(null); setOFile(null); setOImportErr(null); if (oFileRef.current) oFileRef.current.value = '';
+    setMbParsedRows(null); setMbFile(null); setMbImportErr(null); if (mbFileRef.current) mbFileRef.current.value = '';
   };
 
   const handleMonthChange = (v: number) => { setSelectedMonth(v); clearImportState(); setReportSummary(null); };
@@ -1130,6 +1185,139 @@ const SalaryData: React.FC = () => {
     }
   };
 
+  // ─── MonthlyBonus: template ───────────────────────────────────────────────
+
+  const handleDownloadMonthlyBonusTemplate = async () => {
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Thưởng');
+    ws.columns = [
+      { header: 'Mã nhân viên',  key: 'employee_code', width: 20 },
+      { header: 'Số tiền thưởng', key: 'amount',       width: 22 },
+      { header: 'Mô tả thưởng',  key: 'description',   width: 34 },
+    ];
+    ws.getRow(1).eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD97706' } };
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 12 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+    ws.getRow(1).height = 28;
+    ws.addRow({ employee_code: 'NV001', amount: 500000, description: 'Thưởng lễ Quốc khánh 02/09' });
+    ws.addRow({ employee_code: 'NV002', amount: 300000, description: 'Thưởng lễ Quốc khánh 02/09' });
+    const buf = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = `template_thuong_T${selectedMonth}_${selectedYear}.xlsx`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ─── MonthlyBonus: parse Excel ────────────────────────────────────────────
+
+  const handleMonthlyBonusFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.name.match(/\.xlsx$/i)) { setMbParseError('Chỉ chấp nhận file Excel (.xlsx)'); return; }
+    setMbFile(f); setMbParseError(null); setMbParsedRows(null); setSuccessMsg(null); setErrorMsg(null); setMbParsing(true);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(await f.arrayBuffer());
+      const ws = wb.worksheets[0];
+      if (!ws) { setMbParseError('File không có sheet nào.'); return; }
+      const rows: ParsedMonthlyBonusRow[] = [];
+      ws.eachRow((row, idx) => {
+        if (idx === 1) return;
+        const code = row.getCell(1).value != null ? String(row.getCell(1).value).trim() : '';
+        if (!code) return;
+        const amount = extractCellNumber(row.getCell(2).value);
+        const description = extractCellString(row.getCell(3).value);
+        rows.push({ employee_code: code, amount, description, rowIndex: idx, parseError: amount < 0 ? 'Số tiền không hợp lệ' : undefined });
+      });
+      if (!rows.length) { setMbParseError('File không có dữ liệu.'); return; }
+      setMbParsedRows(rows);
+    } catch { setMbParseError('Không thể đọc file.'); }
+    finally { setMbParsing(false); }
+  };
+
+  // ─── MonthlyBonus: import ─────────────────────────────────────────────────
+
+  const handleMonthlyBonusImport = async () => {
+    if (!mbParsedRows) return;
+    const valid = mbParsedRows.filter((r) => !r.parseError);
+    if (!valid.length) return;
+    setMbImporting(true);
+    try {
+      const records: BulkImportMonthlyBonusRecord[] = valid.map((r) => ({ employee_code: r.employee_code, amount: r.amount, description: r.description }));
+      const res = await salaryService.bulkImportMonthlyBonuses({ year: selectedYear, month: selectedMonth, records });
+      if (res.success.length > 0) setSuccessMsg(`Import thành công ${res.success.length} khoản thưởng.`);
+      if (res.errors.length > 0) {
+        const errorCodes = new Set(res.errors.map((e) => e.employee_code));
+        const failedRows = (mbParsedRows ?? []).filter((r) => errorCodes.has(r.employee_code));
+        setMbImportErr({ errors: res.errors, failedRows });
+      }
+      setMbParsedRows(null); setMbFile(null); if (mbFileRef.current) mbFileRef.current.value = '';
+      await loadMonthlyBonuses();
+    } catch { setErrorMsg('Lỗi kết nối máy chủ.'); }
+    finally { setMbImporting(false); }
+  };
+
+  // ─── MonthlyBonus: edit/delete/add ────────────────────────────────────────
+
+  const startMbEdit = (rec: MonthlyBonusRecord) => { setMbEditingId(rec.id); setMbEditValues({ amount: String(Number(rec.amount)), description: rec.description }); setMbDeletingId(null); };
+  const cancelMbEdit = () => setMbEditingId(null);
+
+  const handleMbSave = async (id: number) => {
+    const amount = parseFloat(mbEditValues.amount.replace(/,/g, '')) || 0;
+    setMbSaving(true);
+    try {
+      const updated = await salaryService.updateMonthlyBonus(id, { amount, description: mbEditValues.description });
+      setMbRecords((prev) => prev.map((r) => r.id === id ? { ...r, ...updated } : r));
+      setMbEditingId(null); setSuccessMsg('Đã cập nhật thưởng.');
+    } catch { setErrorMsg('Không thể cập nhật.'); }
+    finally { setMbSaving(false); }
+  };
+
+  const handleMbDelete = async (id: number) => {
+    setMbDeleting(true);
+    try {
+      await salaryService.deleteMonthlyBonus(id);
+      setMbRecords((prev) => prev.filter((r) => r.id !== id));
+      setMbDeletingId(null); setSuccessMsg('Đã xoá thưởng.');
+    } catch { setErrorMsg('Không thể xoá.'); }
+    finally { setMbDeleting(false); }
+  };
+
+  const handleMbAdd = async () => {
+    const amount = parseAmountInput(mbCreateValues.amount);
+    if (!mbCreateValues.employeeId) {
+      setErrorMsg('Vui lòng chọn mã nhân viên.');
+      return;
+    }
+    if (amount <= 0) {
+      setErrorMsg('Vui lòng nhập số tiền lớn hơn 0.');
+      return;
+    }
+
+    setMbCreating(true);
+    try {
+      await salaryService.createMonthlyBonus({
+        employee: mbCreateValues.employeeId,
+        year: selectedYear,
+        month: selectedMonth,
+        amount,
+        description: mbCreateValues.description.trim(),
+      });
+      setSuccessMsg('Đã thêm khoản thưởng.');
+      setMbAdding(false);
+      setMbCreateValues({ employeeId: 0, amount: '', description: '' });
+      await loadMonthlyBonuses();
+    } catch (error) {
+      setErrorMsg(getApiErrorMessage(error, 'Không thể thêm khoản thưởng.'));
+    } finally {
+      setMbCreating(false);
+    }
+  };
+
   // ─── ParkingAllowanceOverride: template ────────────────────────────────────
 
   const handleDownloadParkingAllowanceTemplate = async () => {
@@ -1530,6 +1718,26 @@ const SalaryData: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportMonthlyBonusErrors = async () => {
+    if (!mbImportErr?.errors.length) return;
+    const rowMap = new Map(mbImportErr.failedRows.map((r) => [r.employee_code, r]));
+    const cols = [
+      { header: 'Mã nhân viên',   key: 'a', width: 20 },
+      { header: 'Số tiền thưởng', key: 'b', width: 22 },
+      { header: 'Mô tả thưởng',   key: 'c', width: 34 },
+      { header: 'Lý do lỗi',      key: 'd', width: 44 },
+    ];
+    const dataRows = mbImportErr.errors.map((e) => {
+      const orig = rowMap.get(e.employee_code);
+      return [e.employee_code, orig?.amount ?? '', orig?.description ?? '', e.error];
+    });
+    const wb = await buildErrorExcel('Thưởng', 'FFD97706', cols, dataRows);
+    const buf = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const a = document.createElement('a'); a.href = url; a.download = `thuong_loi_T${selectedMonth}_${selectedYear}.xlsx`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleExportOtherAllowanceErrors = async () => {
     if (!oImportErr?.errors.length) return;
     const rowMap = new Map(oImportErr.failedRows.map((r) => [r.employee_code, r]));
@@ -1619,6 +1827,13 @@ const SalaryData: React.FC = () => {
   const oTotalAmount = filteredOtherAllowances.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
   const oTotalPages = Math.max(1, Math.ceil(filteredOtherAllowances.length / oPageSize));
   const paginatedOtherAllowances = filteredOtherAllowances.slice((oPage - 1) * oPageSize, oPage * oPageSize);
+
+  const filteredMonthlyBonuses = mbRecords.filter((r) =>
+    !mbSearch || r.employee_code.toLowerCase().includes(mbSearch.toLowerCase()) || r.employee_name.toLowerCase().includes(mbSearch.toLowerCase())
+  );
+  const mbTotalAmount = filteredMonthlyBonuses.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const mbTotalPages = Math.max(1, Math.ceil(filteredMonthlyBonuses.length / mbPageSize));
+  const paginatedMonthlyBonuses = filteredMonthlyBonuses.slice((mbPage - 1) * mbPageSize, mbPage * mbPageSize);
 
   const filteredParkingAllowances = paRecords.filter((r) =>
     !paSearch || r.employee_code.toLowerCase().includes(paSearch.toLowerCase()) || r.employee_name.toLowerCase().includes(paSearch.toLowerCase())
@@ -1743,7 +1958,7 @@ const SalaryData: React.FC = () => {
             <SelectBox<number> label="Năm" value={selectedYear} options={YEARS.map((y) => ({ value: y, label: String(y) }))} onChange={handleYearChange} />
           </div>
           <button
-            onClick={() => activeTab === 'commission' ? loadCommissions() : activeTab === 'penalty' ? loadPenalties() : activeTab === 'advance' ? loadAdvances() : activeTab === 'parking_allowance' ? loadParkingAllowances() : activeTab === 'lunch_allowance' ? loadLunchAllowances() : loadOtherAllowances()}
+            onClick={() => activeTab === 'commission' ? loadCommissions() : activeTab === 'penalty' ? loadPenalties() : activeTab === 'advance' ? loadAdvances() : activeTab === 'bonus' ? loadMonthlyBonuses() : activeTab === 'parking_allowance' ? loadParkingAllowances() : activeTab === 'lunch_allowance' ? loadLunchAllowances() : loadOtherAllowances()}
             disabled={loadingCommission || loadingPenalty || loadingAdvance || loadingO || loadingPa || loadingLa}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-60 transition-colors"
           >
@@ -2056,6 +2271,255 @@ const SalaryData: React.FC = () => {
           )}
 
           {/* ═══ TAB PHỤ CẤP KHÁC ═══ */}
+          {/* ═══ TAB THƯỞNG ═══ */}
+          {activeTab === 'bonus' && (
+            <>
+              {/* Action bar */}
+              <div className="flex flex-wrap gap-3 items-center">
+                <button onClick={handleDownloadMonthlyBonusTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
+                  <ArrowDownTrayIcon className="h-4 w-4" />Tải file mẫu
+                </button>
+                <button
+                  onClick={() => {
+                    setMbAdding((prev) => !prev);
+                    setErrorMsg(null);
+                    setSuccessMsg(null);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-amber-300 text-amber-700 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  {mbAdding ? 'Đóng thêm mới' : 'Thêm'}
+                </button>
+                <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-amber-300 text-amber-700 bg-amber-50 rounded-xl hover:bg-amber-100 cursor-pointer transition-colors">
+                  <ArrowUpTrayIcon className="h-4 w-4" />
+                  {mbFile ? mbFile.name : 'Chọn file Excel'}
+                  <input ref={mbFileRef} type="file" accept=".xlsx" className="hidden" onChange={handleMonthlyBonusFileChange} />
+                </label>
+                {mbParsedRows && mbParsedRows.filter((r) => !r.parseError).length > 0 && (
+                  <button onClick={handleMonthlyBonusImport} disabled={mbImporting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-xl hover:bg-amber-700 disabled:opacity-60 transition-colors">
+                    {mbImporting ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
+                    {mbImporting ? 'Đang import...' : `Xác nhận import (${mbParsedRows.filter((r) => !r.parseError).length})`}
+                  </button>
+                )}
+                {mbLoaded && (
+                  <div className="flex-1 relative min-w-48">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input type="text" placeholder="Tìm nhân viên..." value={mbSearch} onChange={(e) => setMbSearch(e.target.value)}
+                      className="input-field w-full pl-9" />
+                  </div>
+                )}
+              </div>
+              {mbAdding && (
+                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    <div className="md:col-span-5">
+                      <SelectBox<number>
+                        label="Mã nhân viên"
+                        value={mbCreateValues.employeeId}
+                        options={employeeSelectOptions}
+                        onChange={(value) => setMbCreateValues((prev) => ({ ...prev, employeeId: value }))}
+                        placeholder={loadingEmployees ? 'Đang tải nhân viên...' : 'Tìm mã nhân viên...'}
+                        searchable
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Số tiền</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={mbCreateValues.amount}
+                        onChange={(e) => setMbCreateValues((prev) => ({ ...prev, amount: e.target.value }))}
+                        placeholder="Nhập số tiền"
+                        className="input-field w-full"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Mô tả</label>
+                      <input
+                        type="text"
+                        value={mbCreateValues.description}
+                        onChange={(e) => setMbCreateValues((prev) => ({ ...prev, description: e.target.value }))}
+                        placeholder="VD: Thưởng lễ 02/09"
+                        className="input-field w-full"
+                      />
+                    </div>
+                    <div className="md:col-span-2 flex gap-2">
+                      <button
+                        onClick={handleMbAdd}
+                        disabled={mbCreating || loadingEmployees}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-white bg-amber-600 rounded-xl hover:bg-amber-700 disabled:opacity-60 w-full"
+                      >
+                        {mbCreating ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
+                        Lưu
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMbAdding(false);
+                          setMbCreateValues({ employeeId: 0, amount: '', description: '' });
+                        }}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50"
+                      >
+                        <XMarkIcon className="h-4 w-4" />Huỷ
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {mbParseError && <p className="flex items-center gap-1 text-sm text-red-600"><ExclamationCircleIcon className="h-4 w-4" />{mbParseError}</p>}
+              {renderImportErrors(mbImportErr, handleExportMonthlyBonusErrors, () => setMbImportErr(null))}
+
+              {/* Preview */}
+              {mbParsedRows && !mbParsing && (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex justify-between text-sm">
+                    <span className="font-medium text-gray-700">Xem trước — {mbParsedRows.length} dòng
+                      {mbParsedRows.filter((r) => r.parseError).length > 0 && <span className="text-red-500"> · {mbParsedRows.filter((r) => r.parseError).length} lỗi</span>}
+                    </span>
+                    <span className="text-gray-500">Tháng {selectedMonth}/{selectedYear}</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-100 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="table-header w-10">#</th>
+                          <th className="table-header">Mã NV</th>
+                          <th className="table-header text-right">Số tiền</th>
+                          <th className="table-header">Mô tả thưởng</th>
+                          <th className="table-header">Trạng thái</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {mbParsedRows.map((row, i) => (
+                          <tr key={row.rowIndex} className={row.parseError ? 'bg-red-50' : 'hover:bg-gray-50'}>
+                            <td className="table-cell text-gray-400 text-xs">{i + 1}</td>
+                            <td className="table-cell font-mono font-medium text-gray-800">{row.employee_code}</td>
+                            <td className="table-cell text-right text-amber-700 font-medium">{row.amount > 0 ? row.amount.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
+                            <td className="table-cell text-gray-600 max-w-xs truncate">{row.description || '—'}</td>
+                            <td className="table-cell">
+                              {row.parseError
+                                ? <span className="inline-flex items-center gap-1 text-xs text-red-600"><ExclamationCircleIcon className="h-3.5 w-3.5" />{row.parseError}</span>
+                                : <span className="inline-flex items-center gap-1 text-xs text-emerald-600"><CheckIcon className="h-3.5 w-3.5" />Hợp lệ</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* MonthlyBonus list */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between">
+                  <p className="text-sm font-medium text-gray-700">
+                    Danh sách thưởng — Tháng {selectedMonth}/{selectedYear}
+                    <span className="ml-2 font-normal text-gray-500">{filteredMonthlyBonuses.length} nhân viên</span>
+                  </p>
+                </div>
+                {loadingMb ? renderLoading('primary') :
+                 filteredMonthlyBonuses.length === 0 ? renderEmpty(mbRecords.length === 0 ? 'Chưa có dữ liệu thưởng tháng này.' : 'Không tìm thấy nhân viên.') : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-100 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="table-header w-10">#</th>
+                          <th className="table-header">Nhân viên</th>
+                          <th className="table-header text-right">Số tiền</th>
+                          <th className="table-header">Mô tả thưởng</th>
+                          <th className="table-header text-center">Thao tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {paginatedMonthlyBonuses.map((rec, i) => {
+                          const isEditing  = mbEditingId  === rec.id;
+                          const isDeleting = mbDeletingId === rec.id;
+                          return (
+                            <tr key={rec.id} className={isDeleting ? 'bg-red-50' : 'hover:bg-gray-50 transition-colors'}>
+                              <td className="table-cell text-gray-400 text-xs">{i + 1}</td>
+                              <td className="table-cell">
+                                <div className="flex items-center gap-3">
+                                  {renderAvatar(rec.employee_name, 'bg-amber-50 text-amber-700')}
+                                  <div><p className="font-medium text-gray-900">{rec.employee_name}</p><p className="text-xs text-gray-500 font-mono">{rec.employee_code}</p></div>
+                                </div>
+                              </td>
+                              <td className="table-cell text-right">
+                                {isEditing ? (
+                                  <input type="text" value={mbEditValues.amount} onChange={(e) => setMbEditValues((v) => ({ ...v, amount: e.target.value }))}
+                                    className="input-field w-36 text-right" placeholder="0" />
+                                ) : (
+                                  <span className="font-medium text-amber-700">{fmtMoney(rec.amount)}</span>
+                                )}
+                              </td>
+                              <td className="table-cell">
+                                {isEditing ? (
+                                  <input type="text" value={mbEditValues.description} onChange={(e) => setMbEditValues((v) => ({ ...v, description: e.target.value }))}
+                                    className="input-field w-full" placeholder="Mô tả thưởng..." />
+                                ) : (
+                                  <span className="text-gray-700">{rec.description || '—'}</span>
+                                )}
+                              </td>
+                              <td className="table-cell text-center">
+                                {isDeleting ? (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <span className="text-xs text-red-600">Xác nhận xoá?</span>
+                                    <button onClick={() => handleMbDelete(rec.id)} disabled={mbDeleting} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-60">
+                                      {mbDeleting ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Xoá
+                                    </button>
+                                    <button onClick={() => setMbDeletingId(null)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">
+                                      <XMarkIcon className="h-3 w-3" />Huỷ
+                                    </button>
+                                  </div>
+                                ) : isEditing ? (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button onClick={() => handleMbSave(rec.id)} disabled={mbSaving} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-amber-600 rounded-xl hover:bg-amber-700 disabled:opacity-60">
+                                      {mbSaving ? <ArrowPathIcon className="h-3 w-3 animate-spin" /> : <CheckIcon className="h-3 w-3" />}Lưu
+                                    </button>
+                                    <button onClick={cancelMbEdit} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">
+                                      <XMarkIcon className="h-3 w-3" />Huỷ
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button onClick={() => startMbEdit(rec)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-colors">
+                                      <PencilIcon className="h-3.5 w-3.5" />Sửa
+                                    </button>
+                                    <button onClick={() => { setMbDeletingId(rec.id); setMbEditingId(null); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors">
+                                      <TrashIcon className="h-3.5 w-3.5" />Xoá
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {filteredMonthlyBonuses.length > 0 && (
+                  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-100">
+                    <span className="text-sm font-medium text-gray-600">
+                      Tổng số tiền ({filteredMonthlyBonuses.length} nhân viên)
+                    </span>
+                    <span className="text-base font-semibold text-gray-900">{fmtMoney(mbTotalAmount)}</span>
+                  </div>
+                )}
+              </div>
+              {filteredMonthlyBonuses.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    currentPage={mbPage}
+                    totalPages={mbTotalPages}
+                    totalItems={filteredMonthlyBonuses.length}
+                    itemsPerPage={mbPageSize}
+                    onPageChange={setMbPage}
+                    onItemsPerPageChange={(n) => { setMbPageSize(n); setMbPage(1); }}
+                  />
+                </div>
+              )}
+            </>
+          )}
+
           {activeTab === 'other_allowance' && (
             <>
               {/* Action bar */}

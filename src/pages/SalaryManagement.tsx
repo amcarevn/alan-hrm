@@ -390,6 +390,19 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const thuong       = (record as unknown as Record<string, number>)['thuong'] ?? 0;
   const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
 
+  // Thưởng đã chi trước kỳ lương (VD thưởng lễ trả tay trước 02/09) được ghi
+  // đồng thời ở MonthlyBonus (để vào thu nhập chịu thuế TNCN) và ở SalaryAdvance
+  // (khoản đã trả). Trên PHIẾU LƯƠNG ta ẩn cả hai vế đó đi cho nhân viên khỏi
+  // thắc mắc "sao vừa được thưởng vừa bị trừ" — chỉ hiện phần thưởng thực trả
+  // qua kỳ này và phần tạm ứng thật.
+  // Bảng danh sách bên ngoài và file Excel xuất ra vẫn giữ số gốc đầy đủ.
+  // "Còn phải thanh toán" KHÔNG đổi: hai vế trừ nhau triệt tiêu đúng bằng
+  // thuongDaTraTruoc (xem conPhaiTT bên dưới).
+  const tamUngGoc        = record.tam_ung ?? 0;
+  const thuongDaTraTruoc = Math.min(thuong, tamUngGoc);
+  const thuongHienThi    = thuong - thuongDaTraTruoc;
+  const tamUngHienThi    = tamUngGoc - thuongDaTraTruoc;
+
   // Deductions: use saved payroll config if available, otherwise calculate from standard rates
   const savedAdjustments = employee ? (employee.salary_adjustments as Record<string, unknown> | undefined) : undefined;
   const savedConfig = savedAdjustments?.payroll_config as Record<string, unknown> | undefined;
@@ -436,7 +449,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
     Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0),
   );
   const tongPhuCapIV = phuCapGuiXe + phuCapAnTrua + phuCapTrachNhiem + phuCapKhacRemainder;
-  const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
+  const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuongHienThi;
 
   const bhxh = payrollTax.socialInsurance;
   const bhyt = payrollTax.healthInsurance;
@@ -450,12 +463,14 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   // Phần "giảm trừ khác" (không gồm bảo hiểm) hiển thị riêng ở Section V, trước mục Thưởng.
   const tongGiamTruKhacV = congDoan + phatDiMuon + phatBienBan;
   const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
-  const tamUng = record.tam_ung ?? 0;
+  const tamUng = tamUngHienThi;
   const taxDetail = payrollTax.taxDetail;
   const thue = payrollTax.taxAmount;
   const contractStatusText = record.contract_status === 'THU_VIEC' ? 'Thử việc' : 'Chính thức';
-  const luongThucLinh = payslipComputation.luongThucLinh;
-  const conPhaiTT = payslipComputation.conPhaiThanhToan;
+  // Tính lại tại chỗ theo số đã ẩn thưởng-đã-trả. conPhaiTT ra đúng bằng
+  // payslipComputation.conPhaiThanhToan vì thuongDaTraTruoc bị trừ ở cả hai vế.
+  const luongThucLinh = tongThuNhapVI - tongGiamTruVII + dieuChinhVIII;
+  const conPhaiTT = luongThucLinh - tamUng - thue;
 
   const fmt = (v: number) => v ? Math.round(v).toLocaleString('vi-VN') : '—';
 
@@ -503,7 +518,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
       ...(luongTangCa ? [`  Lương tăng ca      : ${fmtN(luongTangCa)}`] : []),
       ...(luongTrucCa ? [`  Lương trực ca      : ${fmtN(luongTrucCa)}`] : []),
       ...(thuNhapKhac ? [`  Thu nhập khác      : ${fmtN(thuNhapKhac)}`] : []),
-      ...(thuong ? [`  Thưởng             : ${fmtN(thuong)}`] : []),
+      ...(thuongHienThi ? [`  Thưởng             : ${fmtN(thuongHienThi)}`] : []),
       '────────────────────────────────────────',
       '  CÁC KHOẢN PHỤ CẤP',
       '────────────────────────────────────────',
@@ -968,7 +983,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               <tr className="bg-yellow-50">
                 <td className="border border-gray-300 px-3 py-2 text-center font-bold text-yellow-700">VI</td>
                 <td className="border border-gray-300 px-3 py-2 font-bold text-yellow-700">THƯỞNG</td>
-                <td className="border border-gray-300 px-3 py-2 text-right font-medium text-yellow-700">{thuong ? fmt(thuong) : '—'}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right font-medium text-yellow-700">{thuongHienThi ? fmt(thuongHienThi) : '—'}</td>
               </tr>
 
               {/* Section VII */}
