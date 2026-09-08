@@ -227,6 +227,29 @@ export interface BulkImportOtherAllowanceResponse {
   errors:  { employee_code: string; error: string }[];
 }
 
+export interface MonthlyBonusRecord {
+  id: number;
+  employee: number;
+  employee_name: string;
+  employee_code: string;
+  year: number;
+  month: number;
+  amount: number;
+  description: string;
+  notes: string;
+}
+
+export interface BulkImportMonthlyBonusRecord {
+  employee_code: string;
+  amount: number;
+  description: string;
+}
+
+export interface BulkImportMonthlyBonusResponse {
+  success: { employee_code: string; employee_name: string; amount: number; description: string; created: boolean }[];
+  errors:  { employee_code: string; error: string }[];
+}
+
 export interface ParkingAllowanceOverrideRecord {
   id: number;
   employee: number;
@@ -673,6 +696,34 @@ class SalaryService {
     records: BulkImportOtherAllowanceRecord[];
   }): Promise<BulkImportOtherAllowanceResponse> {
     const response = await managementApi.post('/api/v1/salary/other-allowances/bulk-import/', params);
+    return response.data;
+  }
+
+  async listMonthlyBonuses(params: { year: number; month: number }): Promise<MonthlyBonusRecord[]> {
+    const response = await managementApi.get('/api/v1/salary/monthly-bonuses/', { params: { ...params, page_size: 500 } });
+    return response.data.results ?? response.data;
+  }
+
+  async updateMonthlyBonus(id: number, data: { amount: number; description?: string; notes?: string }): Promise<MonthlyBonusRecord> {
+    const response = await managementApi.patch(`/api/v1/salary/monthly-bonuses/${id}/`, data);
+    return response.data;
+  }
+
+  async createMonthlyBonus(data: { employee: number; year: number; month: number; amount: number; description?: string; notes?: string }): Promise<MonthlyBonusRecord> {
+    const response = await managementApi.post('/api/v1/salary/monthly-bonuses/', data);
+    return response.data;
+  }
+
+  async deleteMonthlyBonus(id: number): Promise<void> {
+    await managementApi.delete(`/api/v1/salary/monthly-bonuses/${id}/`);
+  }
+
+  async bulkImportMonthlyBonuses(params: {
+    year: number;
+    month: number;
+    records: BulkImportMonthlyBonusRecord[];
+  }): Promise<BulkImportMonthlyBonusResponse> {
+    const response = await managementApi.post('/api/v1/salary/monthly-bonuses/bulk-import/', params);
     return response.data;
   }
 
