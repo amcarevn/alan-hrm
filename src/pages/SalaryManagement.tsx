@@ -3197,6 +3197,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<number>(defaultPayrollDate.getMonth() + 1);
   const [deptFilterView, setDeptFilterView] = useState<string>('');
   const [legalEntityFilterView, setLegalEntityFilterView] = useState<string>('');
+  // '' = tất cả | working = đang làm việc | left = đã nghỉ
+  const [employmentFilterView, setEmploymentFilterView] = useState<'' | 'working' | 'left'>('');
+  // Người đã nghỉ giữa tháng vẫn còn lương phải trả; giữ lại để cảnh báo khi lọc.
+  const [leftPayable, setLeftPayable] = useState<{ count: number; amount: number }>({ count: 0, amount: 0 });
   const [searchSalary, setSearchSalary] = useState('');
 
   // ── Chốt lương tháng ──
@@ -4025,6 +4029,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           department_id: deptFilterView ? parseInt(deptFilterView, 10) : undefined,
           legal_entity: legalEntityFilterView || undefined,
           refresh: live ? 1 : undefined,
+          employment_filter: employmentFilterView || undefined,
         }),
         salaryService.listCommissions({ year: selectedYear, month: selectedMonth }),
         salaryService.getDepartmentPayslipEmailStatuses({
@@ -4040,6 +4045,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       const res = salaryRes.value;
       setSalaryRecords(res.results ?? []);
       setSalaryIsFinalized(Boolean(res.is_finalized));
+      setLeftPayable({ count: res.left_payable_count ?? 0, amount: res.left_payable_amount ?? 0 });
       setSalaryFinalizedAt(res.finalized_at ?? null);
       setSalaryCommissions(commissionRes.status === 'fulfilled' ? commissionRes.value : []);
 
@@ -4069,7 +4075,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     } finally {
       setLoadingSalary(false);
     }
-  }, [selectedYear, selectedMonth, deptFilterView, legalEntityFilterView, payrollLiveMode]);
+  }, [selectedYear, selectedMonth, deptFilterView, legalEntityFilterView, payrollLiveMode, employmentFilterView]);
 
   useEffect(() => {
     setSalaryPage(1);
@@ -4674,6 +4680,21 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     />
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <FunnelIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <div className="w-44">
+                    <SelectBox<string>
+                      label=""
+                      value={employmentFilterView}
+                      options={[
+                        { value: '', label: 'Tất cả nhân sự' },
+                        { value: 'working', label: 'Đang làm việc' },
+                        { value: 'left', label: 'Đã nghỉ' },
+                      ]}
+                      onChange={(v) => setEmploymentFilterView(v as '' | 'working' | 'left')}
+                    />
+                  </div>
+                </div>
                 <div className="flex-1 relative min-w-48">
                   <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
@@ -4747,6 +4768,39 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   </button>
                 )}
               </div>
+
+              {/* Người đã nghỉ giữa tháng vẫn còn lương phải trả cho những ngày đã làm.
+                  Cảnh báo để HR không vô tình ẩn mất khoản phải thanh toán. */}
+              {employmentFilterView === 'working' && leftPayable.count > 0 && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  <ExclamationCircleIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium">
+                      Đang ẩn {leftPayable.count} người đã nghỉ nhưng vẫn còn phải thanh toán{' '}
+                      {formatCurrency(leftPayable.amount)}
+                    </span>
+                    <div className="mt-1 text-amber-700">
+                      Họ đã đi làm một phần tháng này nên vẫn có lương. Chọn{' '}
+                      <button
+                        type="button"
+                        onClick={() => setEmploymentFilterView('left')}
+                        className="underline underline-offset-2 font-medium"
+                      >
+                        Đã nghỉ
+                      </button>{' '}
+                      để xem, hoặc{' '}
+                      <button
+                        type="button"
+                        onClick={() => setEmploymentFilterView('')}
+                        className="underline underline-offset-2 font-medium"
+                      >
+                        Tất cả nhân sự
+                      </button>{' '}
+                      trước khi chốt lương.
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Trạng thái chốt lương */}
               {!loadingSalary && salaryRecords.length > 0 && (
