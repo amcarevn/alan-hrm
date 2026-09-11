@@ -546,6 +546,30 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
       `  CÒN PHẢI TT        : ${fmtN(conPhaiTT)}`,
       '════════════════════════════════════════',
       '',
+      // Giải thích căn cứ tính thuế. Nêu rõ "trên TOÀN BỘ" vì cách nói quen thuộc
+      // "thuế 10% trên 5 triệu" rất dễ bị hiểu thành 10% của phần vượt 5 triệu.
+      '  CĂN CỨ TÍNH THUẾ TNCN',
+      '────────────────────────────────────────',
+      `  Thu nhập chịu thuế : ${fmtN(payrollTax.grossIncomeForTax)}`,
+      ...(payrollTax.taxDetail.taxMode === 'flat_10'
+        ? (thue
+            ? [
+                '  Cách tính          : khấu trừ 10% trên TOÀN BỘ thu nhập chịu thuế,',
+                '                       áp dụng khi thu nhập từ 5.000.000đ trở lên.',
+              ]
+            : [
+                '  Cách tính          : MIỄN khấu trừ, do thu nhập chịu thuế dưới',
+                '                       ngưỡng 5.000.000đ.',
+              ])
+        : [
+            '  Cách tính          : biểu thuế luỹ tiến từng phần.',
+            `  Giảm trừ bản thân  : ${fmtN(payrollTax.taxDetail.personalDeduction)}`,
+            ...(payrollTax.taxDetail.dependentDeduction
+              ? [`  Giảm trừ NPT       : ${fmtN(payrollTax.taxDetail.dependentDeduction)} (${nptCount} người)`]
+              : []),
+            `  Thu nhập tính thuế : ${fmtN(payrollTax.taxDetail.taxableIncome)}`,
+          ]),
+      '',
       'Nếu có thắc mắc về bảng lương, vui lòng liên hệ phòng Nhân sự.',
       '',
       'Trân trọng,',
@@ -1030,12 +1054,15 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">X</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">
                   THUẾ TNCN{' '}
+                  {/* Nói rõ ngưỡng 5.000.000đ và CĂN CỨ tính, vì "thuế 10% trên 5 triệu"
+                      rất dễ bị hiểu thành "10% trên phần vượt 5 triệu". Thực tế khi thu
+                      nhập chịu thuế đạt 5.000.000đ thì khấu trừ 10% trên TOÀN BỘ. */}
                   <span className="text-xs text-gray-500">
                     {taxDetail.taxMode === 'flat_10'
                       ? (taxDetail.taxableIncome < FLAT_TAX_EXEMPT_THRESHOLD && taxDetail.totalTax <= 0
-                          ? '(Miễn khấu trừ dưới 5 triệu)'
-                          : '(10% trên thu nhập tháng)')
-                      : `(NPT: ${nptCount} người)`}
+                          ? `(Miễn khấu trừ — thu nhập chịu thuế ${fmt(taxDetail.taxableIncome)}đ, dưới ngưỡng 5.000.000đ)`
+                          : `(Khấu trừ 10% trên TOÀN BỘ thu nhập chịu thuế ${fmt(taxDetail.taxableIncome)}đ, do đã từ 5.000.000đ trở lên)`)
+                      : `(Luỹ tiến — NPT: ${nptCount} người)`}
                   </span>
                 </td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-500 flex items-center justify-end gap-2">
