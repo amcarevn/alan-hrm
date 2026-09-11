@@ -462,9 +462,9 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const tongGiamTruVII = tongBH + congDoan + phatDiMuon + phatBienBan;
   // Phần "giảm trừ khác" (không gồm bảo hiểm) hiển thị riêng ở Section V, trước mục Thưởng.
   const tongGiamTruKhacV = congDoan + phatDiMuon + phatBienBan;
+  // dieuChinhVIII (truy tăng − truy thu) vẫn được cộng vào lương thực lĩnh bên dưới,
+  // chỉ không hiển thị thành dòng riêng trên phiếu.
   const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
-  const truyTang = (record as unknown as Record<string, number>)['truy_tang'] ?? 0;
-  const truyThu = (record as unknown as Record<string, number>)['truy_thu'] ?? 0;
   const tamUng = tamUngHienThi;
   const taxDetail = payrollTax.taxDetail;
   const thue = payrollTax.taxAmount;
@@ -520,7 +520,8 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
       ...(luongTangCa ? [`  Lương tăng ca      : ${fmtN(luongTangCa)}`] : []),
       ...(luongTrucCa ? [`  Lương trực ca      : ${fmtN(luongTrucCa)}`] : []),
       ...(thuNhapKhac ? [`  Thu nhập khác      : ${fmtN(thuNhapKhac)}`] : []),
-      ...(thuongHienThi ? [`  Thưởng             : ${fmtN(thuongHienThi)}`] : []),
+      // Thưởng và Điều chỉnh (truy tăng/truy thu) cố ý không liệt kê trên phiếu lương
+      // gửi nhân viên — giá trị vẫn nằm trong "Tổng thu nhập" và "Lương thực lĩnh".
       '────────────────────────────────────────',
       '  CÁC KHOẢN PHỤ CẤP',
       '────────────────────────────────────────',
@@ -981,23 +982,22 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 text-right font-semibold text-red-700">{fmt(tongGiamTruKhacV)}</td>
               </tr>
 
-              {/* Section VI */}
-              <tr className="bg-yellow-50">
-                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-yellow-700">VI</td>
-                <td className="border border-gray-300 px-3 py-2 font-bold text-yellow-700">THƯỞNG</td>
-                <td className="border border-gray-300 px-3 py-2 text-right font-medium text-yellow-700">{thuongHienThi ? fmt(thuongHienThi) : '—'}</td>
-              </tr>
+              {/* Mục "THƯỞNG" và "ĐIỀU CHỈNH LƯƠNG" (truy tăng / truy thu) cố ý KHÔNG
+                  hiển thị trên phiếu lương và các bảng trên giao diện — chỉ còn trong file
+                  Excel xuất ra cho HR. Giá trị của chúng VẪN nằm trong tổng thu nhập và
+                  lương thực lĩnh bên dưới, nên nhãn hai mục đó đã bỏ phần ghi công thức
+                  để không in ra một công thức không khớp với các dòng đang hiện. */}
 
-              {/* Section VII */}
+              {/* Section VI */}
               <tr className="bg-indigo-100">
-                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-indigo-800">VII</td>
-                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">TỔNG THU NHẬP (III+IV+VI)</td>
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-indigo-800">VI</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">TỔNG THU NHẬP</td>
                 <td className="border border-gray-300 px-3 py-2 text-right font-bold text-indigo-800">{fmt(tongThuNhapVI)}</td>
               </tr>
 
-              {/* Section VIII - Các khoản bảo hiểm, vẫn nằm sau Thưởng như bố cục cũ */}
+              {/* Section VII - Các khoản bảo hiểm */}
               <tr className="bg-red-50">
-                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-red-700">VIII</td>
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-red-700">VII</td>
                 <td className="border border-gray-300 px-3 py-2 font-bold text-red-700" colSpan={2}>CÁC KHOẢN BẢO HIỂM</td>
               </tr>
               <tr>
@@ -1011,47 +1011,23 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(tongBH)}</td>
               </tr>
 
-              {/* Section IX */}
-              <tr className="bg-gray-50">
-                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-gray-700">IX</td>
-                <td className="border border-gray-300 px-3 py-2 font-bold text-gray-700">ĐIỀU CHỈNH LƯƠNG</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-gray-500">
-                  {dieuChinhVIII ? fmt(dieuChinhVIII) : '—'}
-                </td>
-              </tr>
-              {/* Hai mục con: truy tăng cộng vào lương, truy thu trừ ra */}
-              <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">9a</td>
-                <td className="border border-gray-300 px-3 py-2 pl-6 text-gray-700">Truy tăng</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-emerald-700">
-                  {truyTang ? fmt(truyTang) : '—'}
-                </td>
-              </tr>
-              <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">9b</td>
-                <td className="border border-gray-300 px-3 py-2 pl-6 text-gray-700">Truy thu</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">
-                  {truyThu ? `-${fmt(truyThu)}` : '—'}
-                </td>
-              </tr>
-
-              {/* Section X */}
+              {/* Section VIII */}
               <tr className="bg-indigo-100">
-                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-indigo-800">X</td>
-                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">LƯƠNG THỰC LĨNH (VII − V − VIII + IX)</td>
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-indigo-800">VIII</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-indigo-800">LƯƠNG THỰC LĨNH</td>
                 <td className="border border-gray-300 px-3 py-2 text-right font-bold text-indigo-800">{fmt(luongThucLinh)}</td>
               </tr>
 
-              {/* Section XI */}
+              {/* Section IX */}
               <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">XI</td>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">IX</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">TẠM ỨNG LƯƠNG</td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{tamUng ? fmt(tamUng) : '—'}</td>
               </tr>
 
-              {/* Section XII */}
+              {/* Section X */}
               <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">XII</td>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">X</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">
                   THUẾ TNCN{' '}
                   <span className="text-xs text-gray-500">
@@ -1067,10 +1043,10 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                   <TaxTooltip taxDetail={taxDetail} otExcluded={!isOtPayTaxableForRecord(record)} />
                 </td>
               </tr>
-              {/* Section XIII */}
+              {/* Section XI */}
               <tr className="bg-green-100">
-                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-green-800">XIII</td>
-                <td className="border border-gray-300 px-3 py-2 font-bold text-green-800">CÒN PHẢI THANH TOÁN (X − XI − XII)</td>
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-green-800">XI</td>
+                <td className="border border-gray-300 px-3 py-2 font-bold text-green-800">CÒN PHẢI THANH TOÁN (VIII − IX − X)</td>
                 <td className="border border-gray-300 px-3 py-2 text-right font-bold text-lg text-green-800">{fmt(conPhaiTT)}</td>
               </tr>
             </tbody>
@@ -5752,7 +5728,6 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">PC trách nhiệm</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">PC khác</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng phụ cấp IV</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Thưởng</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng thu nhập VI</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">BHXH</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">BHYT</th>
@@ -5762,7 +5737,6 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Phạt đi muộn</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Phạt biên bản</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng giảm trừ VII</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Điều chỉnh VIII</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Thuế TNCN X</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tạm ứng XI</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Thực lĩnh IX</th>
@@ -5792,7 +5766,6 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.phu_cap_trach_nhiem)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.phu_cap_khac)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_phu_cap_iv)}</td>
-                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.thuong)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_thu_nhap_vi)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.bhxh)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.bhyt)}</td>
@@ -5802,7 +5775,6 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_phat)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_phat_bienban)}</td>
                       <td className="px-3 py-2 text-right text-red-700">{formatCurrency(row.tong_giam_tru_vii)}</td>
-                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.dieu_chinh)}</td>
                       <td className="px-3 py-2 text-right text-red-700">{formatCurrency(row.thue_tncn)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tam_ung)}</td>
                       <td className="px-3 py-2 text-right text-gray-800 font-medium">{formatCurrency(row.luong_thuc_linh)}</td>
