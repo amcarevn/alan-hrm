@@ -23,6 +23,7 @@ import {
   PhoneIcon,
   PaperClipIcon,
   ArrowLeftIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 // ============================================
@@ -155,6 +156,114 @@ const Field: React.FC<FieldProps> = ({ label, required, children }) => (
     {children}
   </div>
 );
+
+// ============================================
+// CẢNH BÁO MÂU THUẪN NGÀY THÁNG / HỢP ĐỒNG
+// ============================================
+// Màn này có tới 6 trường ngày (vào làm, hết thử việc, lên chính thức, bắt đầu HĐ,
+// kết thúc HĐ, nghỉ việc) nên rất dễ lệch nhau mà không ai nhận ra. Những lệch đó
+// không vô hại: `contract_type` còn ghi thử việc sau khi đã lên chính thức khiến
+// nhân viên bị khoán thuế 10% và mất giảm trừ bản thân 15,5tr; `end_date` đã có mà
+// trạng thái chưa đổi thì mọi báo cáo "ai đang làm việc" đều sai.
+
+const PROBATION_TYPES = ['PROBATION', 'PROBATION_1M', 'PROBATION_2M'];
+const OFFICIAL_TYPES = ['SIX_MONTH', 'ONE_YEAR', 'TWO_YEAR', 'THREE_YEAR', 'INDEFINITE'];
+
+/** "dd/mm/yyyy" -> Date (00:00) hoặc null */
+const parseDisplayDate = (v: string): Date | null => {
+  const m = (v || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const d = new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]));
+  return isNaN(d.getTime()) ? null : d;
+};
+const today0 = () => new Date(new Date().toDateString());
+const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const sameDay = (a: Date, b: Date) => a.getTime() === b.getTime();
+
+export interface ContractWarning {
+  level: 'error' | 'warn';
+  text: string;
+}
+
+export const buildContractWarnings = (f: any): ContractWarning[] => {
+  const w: ContractWarning[] = [];
+  const ct = f.contract_type || '';
+  const status = f.employment_status || '';
+  const start = parseDisplayDate(f.start_date);
+  const probEnd = parseDisplayDate(f.probation_end_date);
+  const official = parseDisplayDate(f.official_start_date);
+  const cStart = parseDisplayDate(f.contract_start_date);
+  const cEnd = parseDisplayDate(f.contract_end_date);
+  const quit = parseDisplayDate(f.end_date);
+  const T = today0();
+  const isProbType = PROBATION_TYPES.includes(ct);
+  const isOfficialType = OFFICIAL_TYPES.includes(ct);
+  const paused = ['INACTIVE', 'PAUSED', 'MATERNITY_LEAVE'].includes(status);
+  // Đã nghỉ việc rồi thì các cảnh báo về thuế/hợp đồng không còn hành động được nữa —
+  // việc cần làm là sửa trạng thái, nên bỏ bớt để cảnh báo đó nổi lên.
+  const hasQuit = !!(quit && quit <= T);
+
+  // ── Nhóm nặng: ảnh hưởng thẳng tới tiền lương / thuế ──
+  if (isProbType && probEnd && probEnd < T && !paused && !hasQuit) {
+    w.push({ level: 'error', text:
+      `Loại hợp đồng vẫn là thử việc nhưng đã hết hạn thử việc từ ${f.probation_end_date}. ` +
+      `Nhân viên sẽ bị khoán thuế 10% và MẤT giảm trừ bản thân 15,5 triệu. ` +
+      `Hãy chọn đúng loại hợp đồng đã ký.` });
+  }
+  if (ct === 'PROBATION') {
+    w.push({ level: 'warn', text:
+      `Hồ sơ đang lưu loại "PROBATION" — giá trị này không có trong danh sách chọn bên dưới, ` +
+      `nên chỉ cần mở ô "Loại hợp đồng" ra là sẽ mất. Hãy chọn lại loại đúng.` });
+  }
+  if (quit && quit <= T && status !== 'INACTIVE') {
+    w.push({ level: 'error', text:
+      `Đã có ngày nghỉ việc ${f.end_date} nhưng trạng thái vẫn là "${status}". ` +
+      `Mọi báo cáo nhân sự và bảng lương sẽ vẫn tính người này là đang làm việc.` });
+  }
+  if (status === 'INACTIVE' && !quit) {
+    w.push({ level: 'error', text:
+      `Trạng thái là "Đã nghỉ" nhưng chưa điền Ngày nghỉ việc. ` +
+      `Thiếu ngày này thì không chốt được kỳ lương cuối và không tính được thâm niên.` });
+  }
+
+  // ── Nhóm ngày tháng mâu thuẫn ──
+  if (start && probEnd && probEnd <= start) {
+    w.push({ level: 'error', text:
+      `Ngày kết thúc thử việc (${f.probation_end_date}) không sau Ngày vào làm (${f.start_date}).` });
+  }
+  if (probEnd && probEnd < T && !official && !paused && !hasQuit) {
+    w.push({ level: 'warn', text:
+      `Đã hết thử việc từ ${f.probation_end_date} nhưng chưa có Ngày lên chính thức.` });
+  }
+  if (official && start && sameDay(official, start) && probEnd && probEnd > start) {
+    w.push({ level: 'warn', text:
+      `Ngày lên chính thức đang trùng Ngày vào làm (${f.start_date}) trong khi thử việc kéo dài ` +
+      `tới ${f.probation_end_date} — nhiều khả năng là giá trị mặc định chưa được sửa.` });
+  }
+  if (official && probEnd && !sameDay(official, addDays(probEnd, 1)) && official > start!) {
+    w.push({ level: 'warn', text:
+      `Ngày lên chính thức (${f.official_start_date}) không phải ngày liền sau Ngày hết thử việc ` +
+      `(${f.probation_end_date}). Kiểm tra lại nếu không có thoả thuận riêng.` });
+  }
+  if (cStart && start && cStart < start) {
+    w.push({ level: 'error', text:
+      `Ngày bắt đầu hợp đồng (${f.contract_start_date}) trước Ngày vào làm (${f.start_date}).` });
+  }
+  if (cStart && cEnd && cEnd <= cStart) {
+    w.push({ level: 'error', text:
+      `Ngày kết thúc hợp đồng (${f.contract_end_date}) không sau Ngày bắt đầu (${f.contract_start_date}).` });
+  }
+  if (isOfficialType && !cStart) {
+    w.push({ level: 'warn', text:
+      `Đã là hợp đồng chính thức nhưng chưa có Ngày bắt đầu hợp đồng.` });
+  }
+  if (cEnd && cEnd < T && !paused && !hasQuit) {
+    w.push({ level: 'error', text:
+      `Hợp đồng đã hết hạn từ ${f.contract_end_date} mà nhân viên vẫn đang làm việc — cần ký phụ lục hoặc hợp đồng mới.` });
+  }
+
+  return w;
+};
 
 const inputClass = "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all";
 const textareaClass = "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none";
@@ -359,18 +468,12 @@ const EmployeeEdit: React.FC = () => {
 
         basic_salary: e.basic_salary != null ? Number(e.basic_salary).toLocaleString('de-DE') : '',
         allowance: e.allowance != null ? Number(e.allowance).toLocaleString('de-DE') : '',
-        contract_type: (() => {
-          const endDate = toDisplayDate(e.probation_end_date);
-          const isProtected = ['INACTIVE', 'PAUSED', 'MATERNITY_LEAVE'].includes(e.employment_status);
-          if (e.contract_type === 'PROBATION' && endDate && !isProtected) {
-            const parts = endDate.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-            if (parts) {
-              const end = new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, parseInt(parts[1]));
-              if (end < new Date(new Date().toDateString())) return 'ONE_YEAR';
-            }
-          }
-          return e.contract_type || '';
-        })(),
+        // Hiển thị ĐÚNG giá trị đang lưu. Trước đây chỗ này tự đổi 'PROBATION' đã
+        // hết hạn thành 'ONE_YEAR' chỉ trên giao diện — HR nhìn tưởng hồ sơ đã đúng
+        // trong khi DB vẫn là PROBATION, nên phần tính lương vẫn khoán thuế 10% và
+        // bỏ giảm trừ. Ca L1HCM137 lọt suốt từ 2023 vì lý do này. Giờ hiện đúng sự
+        // thật và cảnh báo ở buildContractWarnings() để HR tự chọn loại hợp đồng.
+        contract_type: e.contract_type || '',
         probation_months: e.probation_months ?? '',
         probation_end_date: toDisplayDate(e.probation_end_date),
         probation_rate: e.probation_rate || '',
@@ -1111,6 +1214,33 @@ const EmployeeEdit: React.FC = () => {
         {/* ── Lương & Hợp đồng ── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <SectionTitle icon={<DocumentTextIcon className="h-5 w-5" />} iconBg="bg-emerald-100 text-emerald-600" title="Lương & Hợp đồng" />
+
+          {/* Cảnh báo mâu thuẫn ngày tháng / loại hợp đồng — xem buildContractWarnings() */}
+          {(() => {
+            const warnings = buildContractWarnings(formData);
+            if (!warnings.length) return null;
+            const errs = warnings.filter((x) => x.level === 'error');
+            return (
+              <div className={`mb-5 rounded-xl border p-4 ${errs.length ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}`}>
+                <div className={`flex items-center gap-2 mb-2 font-semibold text-sm ${errs.length ? 'text-red-800' : 'text-amber-800'}`}>
+                  <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />
+                  Cần kiểm tra lại {warnings.length} điểm trong hồ sơ hợp đồng
+                </div>
+                <ul className="space-y-1.5">
+                  {warnings.map((x, i) => (
+                    <li key={i} className="flex gap-2 text-sm leading-relaxed">
+                      <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${x.level === 'error' ? 'bg-red-500' : 'bg-amber-500'}`} />
+                      <span className={x.level === 'error' ? 'text-red-800' : 'text-amber-800'}>{x.text}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-xs text-gray-500">
+                  Cảnh báo chỉ để rà soát, không chặn lưu. Sửa xong các ô bên dưới thì cảnh báo tự mất.
+                </p>
+              </div>
+            );
+          })()}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Field label="Lương cơ bản (VNĐ)">
               <input type="text" inputMode="numeric" name="basic_salary" value={formData.basic_salary}
