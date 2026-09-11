@@ -463,6 +463,8 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   // Phần "giảm trừ khác" (không gồm bảo hiểm) hiển thị riêng ở Section V, trước mục Thưởng.
   const tongGiamTruKhacV = congDoan + phatDiMuon + phatBienBan;
   const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
+  const truyTang = (record as unknown as Record<string, number>)['truy_tang'] ?? 0;
+  const truyThu = (record as unknown as Record<string, number>)['truy_thu'] ?? 0;
   const tamUng = tamUngHienThi;
   const taxDetail = payrollTax.taxDetail;
   const thue = payrollTax.taxAmount;
@@ -1013,7 +1015,24 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               <tr className="bg-gray-50">
                 <td className="border border-gray-300 px-3 py-2 text-center font-bold text-gray-700">IX</td>
                 <td className="border border-gray-300 px-3 py-2 font-bold text-gray-700">ĐIỀU CHỈNH LƯƠNG</td>
-                <td className="border border-gray-300 px-3 py-2 text-right text-gray-500">{dieuChinhVIII ? fmt(dieuChinhVIII) : '—'}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-500">
+                  {dieuChinhVIII ? fmt(dieuChinhVIII) : '—'}
+                </td>
+              </tr>
+              {/* Hai mục con: truy tăng cộng vào lương, truy thu trừ ra */}
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">9a</td>
+                <td className="border border-gray-300 px-3 py-2 pl-6 text-gray-700">Truy tăng</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-emerald-700">
+                  {truyTang ? fmt(truyTang) : '—'}
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">9b</td>
+                <td className="border border-gray-300 px-3 py-2 pl-6 text-gray-700">Truy thu</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-red-600">
+                  {truyThu ? `-${fmt(truyThu)}` : '—'}
+                </td>
               </tr>
 
               {/* Section X */}
@@ -1829,6 +1848,8 @@ const calculatePayslipNetPayable = (record: SalaryRecord, employee?: Employee, c
 
   const tongGiamTruVII = payrollTax.insuranceTotal + congDoan + (record.tong_phat ?? 0) + (record.tong_phat_bienban ?? 0);
   const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
+  const truyTang = (record as unknown as Record<string, number>)['truy_tang'] ?? 0;
+  const truyThu = (record as unknown as Record<string, number>)['truy_thu'] ?? 0;
   const tamUng = record.tam_ung ?? 0;
   const luongThucLinh = tongThuNhapVI - tongGiamTruVII + dieuChinhVIII;
   const conPhaiThanhToan = luongThucLinh - tamUng - payrollTax.taxAmount;
@@ -3539,6 +3560,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       const tongPhatBienBan = record.tong_phat_bienban ?? 0;
       const tongGiamTruVII = tongBH + congDoan + tongPhat + tongPhatBienBan;
       const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
+  const truyTang = (record as unknown as Record<string, number>)['truy_tang'] ?? 0;
+  const truyThu = (record as unknown as Record<string, number>)['truy_thu'] ?? 0;
       const tamUng = record.tam_ung ?? 0;
       const thue = payrollTax.taxAmount;
 
@@ -3575,6 +3598,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         tong_phat: Math.round(tongPhat),
         tong_phat_bienban: Math.round(tongPhatBienBan),
         tong_giam_tru_vii: Math.round(tongGiamTruVII),
+        truy_tang: Math.round(truyTang),
+        truy_thu: Math.round(truyThu),
         dieu_chinh: Math.round(dieuChinhVIII),
         thue_tncn: Math.round(thue),
         tam_ung: Math.round(tamUng),
@@ -3632,6 +3657,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         { header: 'Phạt đi muộn', key: 'tong_phat', width: 14, style: MONEY_FMT },
         { header: 'Phạt biên bản', key: 'tong_phat_bienban', width: 14, style: MONEY_FMT },
         { header: 'Tổng giảm trừ (VII)', key: 'tong_giam_tru_vii', width: 18, style: MONEY_FMT },
+        { header: 'Truy tăng', key: 'truy_tang', width: 14, style: MONEY_FMT },
+        { header: 'Truy thu', key: 'truy_thu', width: 14, style: MONEY_FMT },
         { header: 'Điều chỉnh (VIII)', key: 'dieu_chinh', width: 16, style: MONEY_FMT },
         { header: 'Thuế TNCN (X)', key: 'thue_tncn', width: 14, style: MONEY_FMT },
         { header: 'Tạm ứng (XI)', key: 'tam_ung', width: 14, style: MONEY_FMT },
@@ -3701,6 +3728,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         tong_phat: 0,
         tong_phat_bienban: 0,
         tong_giam_tru_vii: 0,
+        truy_tang: 0,
+        truy_thu: 0,
         dieu_chinh: 0,
         thue_tncn: 0,
         tam_ung: 0,
@@ -3779,6 +3808,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         const tongPhatBienBan = record.tong_phat_bienban ?? 0;
         const tongGiamTruVII = tongBH + congDoan + tongPhat + tongPhatBienBan;
         const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
+  const truyTang = (record as unknown as Record<string, number>)['truy_tang'] ?? 0;
+  const truyThu = (record as unknown as Record<string, number>)['truy_thu'] ?? 0;
         const tamUng = record.tam_ung ?? 0;
         const thue = payrollTax.taxAmount;
 
@@ -3813,7 +3844,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           tong_phat: Math.round(tongPhat),
           tong_phat_bienban: Math.round(tongPhatBienBan),
           tong_giam_tru_vii: Math.round(tongGiamTruVII),
-          dieu_chinh: Math.round(dieuChinhVIII),
+          truy_tang: Math.round(truyTang),
+        truy_thu: Math.round(truyThu),
+        dieu_chinh: Math.round(dieuChinhVIII),
           thue_tncn: Math.round(thue),
           tam_ung: Math.round(tamUng),
           luong_thuc_linh: Math.round(payslipComputation.luongThucLinh),
