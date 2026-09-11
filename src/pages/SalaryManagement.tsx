@@ -5863,7 +5863,6 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
                   <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 text-sm text-gray-600">
                     <p>Số lượng nhân viên: <span className="font-semibold text-gray-900">{totalSalaryData.employee_count}</span></p>
-                    <p className="mt-1">Thực lĩnh IX = Tổng thu nhập VI - Tổng giảm trừ VII + Điều chỉnh VIII</p>
                   </div>
                 </>
               ) : null}
