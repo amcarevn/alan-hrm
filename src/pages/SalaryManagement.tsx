@@ -3667,8 +3667,13 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           `${colNumberOf('bhxh')}+${colNumberOf('bhyt')}+${colNumberOf('bhtn')}`),
         tong_giam_tru_vii: formula('tong_giam_tru_vii',
           `${colNumberOf('tong_bh')}+${colNumberOf('cong_doan')}+${colNumberOf('tong_phat')}+${colNumberOf('tong_phat_bienban')}`),
+        dieu_chinh: formula('dieu_chinh',
+          `${colNumberOf('truy_tang')}-${colNumberOf('truy_thu')}`),
+        // Phải cộng cả Điều chỉnh (truy tăng − truy thu) — đúng như công thức phiếu
+        // lương: luongThucLinh = tongThuNhapVI − tongGiamTruVII + dieuChinhVIII.
+        // Thiếu vế này thì Excel tính lại lúc mở file và ghi đè số đúng bằng số sai.
         luong_thuc_linh: formula('luong_thuc_linh',
-          `${colNumberOf('tong_thu_nhap_vi')}-${colNumberOf('tong_giam_tru_vii')}`),
+          `${colNumberOf('tong_thu_nhap_vi')}-${colNumberOf('tong_giam_tru_vii')}+${colNumberOf('dieu_chinh')}`),
         con_phai_thanh_toan: formula('con_phai_thanh_toan',
           `${colNumberOf('luong_thuc_linh')}-${colNumberOf('thue_tncn')}-${colNumberOf('tam_ung')}`),
       };
@@ -3867,8 +3872,13 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           formula: `SUM(${cellRef('tong_bh')}:${cellRef('tong_phat_bienban')})`,
           result: rowData.tong_giam_tru_vii,
         };
+        dataRow.getCell('dieu_chinh').value = {
+          formula: `${cellRef('truy_tang')}-${cellRef('truy_thu')}`,
+          result: rowData.dieu_chinh,
+        };
         dataRow.getCell('luong_thuc_linh').value = {
-          formula: `${cellRef('tong_thu_nhap_vi')}-${cellRef('tong_giam_tru_vii')}`,
+          // Cộng cả Điều chỉnh (truy tăng − truy thu), xem ghi chú ở luồng xuất phía trên.
+          formula: `${cellRef('tong_thu_nhap_vi')}-${cellRef('tong_giam_tru_vii')}+${cellRef('dieu_chinh')}`,
           result: rowData.luong_thuc_linh,
         };
         dataRow.getCell('con_phai_thanh_toan').value = {
