@@ -3134,9 +3134,16 @@ async function parseSalaryConfigExcel(file: File): Promise<{ rows: ParsedSalaryC
       const code = row.getCell(1).value != null ? String(row.getCell(1).value).trim() : '';
       if (!code) return;
       const effectiveDate = normalizeEffectiveDate(row.getCell(2).value);
+      const bs = extractScCellNumber(row.getCell(3).value);
+      const sf = extractScCellNumber(row.getCell(4).value);
+      // "Ngày hiệu lực" chỉ thật sự được backend dùng khi có đổi Lương cơ bản/Hệ số
+      // lương (nó chỉ gắn vào baseSalary.effectiveDate — xem BulkSalaryConfigImportView).
+      // Các cột khác (công đoàn phí, phụ cấp...) không liên quan gì đến ngày này, nên
+      // không bắt buộc phải điền nếu dòng đó không đổi lương cơ bản/hệ số lương.
+      const changingBaseSalary = bs > 0 || sf > 0;
       const errors: string[] = [];
       if (!effectiveDate) {
-        errors.push('Thiếu ngày hiệu lực');
+        if (changingBaseSalary) errors.push('Thiếu ngày hiệu lực (bắt buộc khi đổi Lương cơ bản/Hệ số lương)');
       } else if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) {
         errors.push(`Ngày hiệu lực không hợp lệ: "${effectiveDate}" (dùng YYYY-MM-DD hoặc DD/MM/YYYY)`);
       }
@@ -3154,8 +3161,8 @@ async function parseSalaryConfigExcel(file: File): Promise<{ rows: ParsedSalaryC
         employee_code: code, effective_date: effectiveDate, rowIndex: idx,
         parseError: errors.length ? errors.join('; ') : undefined,
       };
-      const bs = extractScCellNumber(row.getCell(3).value); if (bs > 0) parsed.basic_salary = bs;
-      const sf = extractScCellNumber(row.getCell(4).value); if (sf > 0) parsed.salary_factor = sf;
+      if (bs > 0) parsed.basic_salary = bs;
+      if (sf > 0) parsed.salary_factor = sf;
       if (lunchRaw)  { parsed.lunch_mode = SC_LUNCH_MODE_MAP[lunchRaw] ?? lunchRaw; }
       const la = extractScCellNumber(row.getCell(6).value);  if (la > 0) parsed.lunch_amount = la;
       if (parkRaw)   { parsed.parking_mode = SC_PARKING_MODE_MAP[parkRaw] ?? parkRaw; }
@@ -5670,7 +5677,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   <ul className="list-disc list-inside space-y-1 text-indigo-600">
                     <li>Tải file mẫu, điền thông tin — dropdown đã có danh sách chọn sẵn</li>
                     <li>Chỉ cần điền các cột muốn cập nhật; cột bỏ trống giữ nguyên cấu hình cũ</li>
-                    <li><strong>Mã nhân viên</strong> và <strong>Ngày hiệu lực</strong> là bắt buộc</li>
+                    <li><strong>Mã nhân viên</strong> là bắt buộc; <strong>Ngày hiệu lực</strong> chỉ bắt buộc khi có đổi Lương cơ bản/Hệ số lương (ví dụ chỉ đổi công đoàn phí thì có thể để trống)</li>
                     <li>PC Gửi xe — Giá vé: nhập giá vé ngày (Vé ngày) hoặc giá vé tháng (Vé tháng)</li>
                   </ul>
                 </div>
