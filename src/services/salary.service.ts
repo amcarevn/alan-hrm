@@ -145,6 +145,13 @@ export interface EmployeeSalaryConfig extends EmployeeSalaryConfigValues {
   effective_from: string;
   effective_to: string | null;
   fixed_allowance_total: string;
+  /**
+   * Sửa đè mốc này có an toàn không — true khi chưa bảng lương chốt nào dựa vào nó.
+   * Backend tự quyết định lại khi lưu, đây chỉ để form biết có cần hỏi chuyển mốc.
+   */
+  can_edit_in_place: boolean;
+  /** Các kỳ lương đã chốt mà mốc này đã dùng để tính, dạng ['08/2026'] */
+  finalized_periods: string[];
   notes: string;
   created_at: string;
   updated_at: string;

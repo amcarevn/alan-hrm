@@ -2729,8 +2729,16 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
       return;
     }
 
-    // Đã có cấu hình → luôn hỏi trước khi chuyển mốc, kể cả khi HR không đổi ngày.
-    // Sửa đè mốc cũ sẽ viết lại lương của mọi tháng nó đã phủ.
+    // Mốc hiện tại chưa dùng để tính bảng lương chốt nào → sửa đè thẳng, không hỏi.
+    // Chưa ai phụ thuộc vào nó nên không có lịch sử để viết lại, mà mở mốc mới chỉ
+    // làm rác thêm. Backend kiểm tra lại điều kiện này khi lưu.
+    if (salaryConfig.can_edit_in_place) {
+      await onSave(employee.id, { ...payload, effective_from: salaryConfig.effective_from });
+      return;
+    }
+
+    // Mốc đã dùng để tính bảng lương đã chốt → phải chuyển mốc, sửa đè sẽ viết lại
+    // căn cứ của bảng lương đã phát.
     // Mặc định: đóng mốc cũ cuối tháng này, mốc mới mở ngày 1 tháng sau. Tháng đang
     // chạy thường chưa chốt lương nên đây là mốc gần nhất đặt được mà không đụng vào
     // tháng đã chốt. Không thể kết thúc mốc cũ trước cả ngày nó bắt đầu.
@@ -3180,6 +3188,12 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
                   {' · '}
                   {formatCurrency(Number(salaryConfig?.base_amount ?? 0))}
                 </p>
+                {!!salaryConfig?.finalized_periods?.length && (
+                  <p className="text-xs text-amber-700 mt-1">
+                    Đã dùng để tính bảng lương {salaryConfig.finalized_periods.join(', ')} — đã chốt,
+                    nên phải mở mốc mới thay vì sửa đè.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
