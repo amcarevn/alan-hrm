@@ -1950,6 +1950,21 @@ const addDays = (isoDate: string, days: number): string => {
 
 const maxDate = (a: string, b: string): string => (a >= b ? a : b);
 
+/** 'YYYY-MM-DD' → 'YYYY-MM'. Mốc cấu hình so theo tháng vì luôn mở vào ngày 1. */
+const monthOf = (isoDate: string): string => isoDate.slice(0, 7);
+
+/** 'YYYY-MM-DD' → 'MM/YYYY', khớp cách backend liệt kê kỳ đã chốt. */
+const formatPeriodVN = (isoDate: string): string => {
+  const [y, m] = isoDate.split('-');
+  return `${m}/${y}`;
+};
+
+/** Tháng chứa `isoDate` đã chốt lương chưa. */
+const isFinalizedMonth = (
+  config: Pick<EmployeeSalaryConfig, 'all_finalized_periods'> | null,
+  isoDate: string,
+): boolean => (config?.all_finalized_periods ?? []).includes(formatPeriodVN(isoDate));
+
 /** 'YYYY-MM-DD' → 'DD/MM/YYYY' để hiển thị cho người dùng. */
 const formatDateVN = (isoDate: string): string => {
   const [y, m, d] = isoDate.split('-');
@@ -2728,26 +2743,47 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
       return;
     }
 
-    // Mốc hiện tại chưa dùng để tính bảng lương chốt nào → sửa đè thẳng, không hỏi.
-    // Chưa ai phụ thuộc vào nó nên không có lịch sử để viết lại, mà mở mốc mới chỉ
-    // làm rác thêm. Backend kiểm tra lại điều kiện này khi lưu.
-    if (salaryConfig.can_edit_in_place) {
+    // HR đổi tháng hiệu lực trên form = chủ động chuyển mốc, dù mốc hiện tại có sửa đè
+    // được hay không. So theo tháng vì mốc luôn mở vào ngày 1.
+    const movesMilestone = monthOf(payload.effective_from) !== monthOf(salaryConfig.effective_from);
+
+    // Tháng đã chốt lương là ảnh chụp bất biến — đặt mốc vào đó sẽ tạo ra một cấu hình
+    // chưa từng dùng để tính ra bảng lương ấy. Backend cũng chặn, ở đây chặn sớm để HR
+    // biết ngay thay vì điền xong mới báo lỗi.
+    if (movesMilestone && isFinalizedMonth(salaryConfig, payload.effective_from)) {
+      setValidationError(
+        `Bảng lương tháng ${formatPeriodVN(payload.effective_from)} đã chốt nên không đặt ngày `
+        + 'hiệu lực vào tháng đó được. Chọn một tháng chưa chốt lương.',
+      );
+      return;
+    }
+
+    // Giữ nguyên tháng và mốc hiện tại chưa dùng để tính bảng lương chốt nào → sửa đè
+    // thẳng, không hỏi. Chưa ai phụ thuộc vào nó nên không có lịch sử để viết lại, mà
+    // mở mốc mới chỉ làm rác thêm. Gửi lại đúng ngày của mốc hiện tại để backend không
+    // hiểu nhầm thành chuyển mốc. Backend kiểm tra lại điều kiện này khi lưu.
+    if (!movesMilestone && salaryConfig.can_edit_in_place) {
       await onSave(employee.id, { ...payload, effective_from: salaryConfig.effective_from });
       return;
     }
 
-    // Mốc đã dùng để tính bảng lương đã chốt → phải mở mốc mới, sửa đè sẽ viết lại
-    // căn cứ của bảng lương đã phát.
+    // Còn lại đều là chuyển mốc, phải xác nhận: hoặc HR đổi tháng, hoặc mốc hiện tại đã
+    // dùng để tính bảng lương đã chốt nên sửa đè sẽ viết lại căn cứ của bảng lương đã phát.
     //
-    // HR chỉ chọn **tháng bắt đầu** của mốc mới. Ngày đóng mốc cũ không hỏi nữa: backend
-    // luôn đóng nó vào ngày liền trước mốc mới, nên chuỗi mốc không bao giờ hở. Trước
-    // đây form cho nhập cả hai ngày và đặt lệch nhau là cả một tháng không có cấu hình,
-    // engine lặng lẽ bỏ hết phụ cấp của tháng đó.
+    // HR chỉ chọn **tháng bắt đầu**. Ngày đóng mốc cũ không hỏi nữa: backend luôn đóng
+    // nó vào ngày liền trước mốc mới, nên chuỗi mốc không bao giờ hở. Trước đây form cho
+    // nhập cả hai ngày và đặt lệch nhau là cả một tháng không có cấu hình, engine lặng
+    // lẽ bỏ hết phụ cấp của tháng đó.
     //
-    // Mặc định là tháng sau tháng hiện tại — tháng đang chạy thường chưa chốt lương
-    // nhưng đã tính dở, đổi giữa chừng dễ gây tranh cãi.
+    // Đổi tháng thì lấy đúng tháng HR chọn; không đổi thì đề xuất tháng sau tháng hiện
+    // tại — tháng đang chạy thường chưa chốt lương nhưng đã tính dở, đổi giữa chừng dễ
+    // gây tranh cãi.
     const today = new Date().toISOString().slice(0, 10);
-    setNewEffectiveFrom(maxDate(startOfNextMonth(today), startOfNextMonth(salaryConfig.effective_from)));
+    setNewEffectiveFrom(
+      movesMilestone
+        ? `${monthOf(payload.effective_from)}-01`
+        : maxDate(startOfNextMonth(today), startOfNextMonth(salaryConfig.effective_from)),
+    );
     setPendingPayload(payload);
   };
 
@@ -2760,6 +2796,12 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
     if (!pendingPayload) return;
     if (!newEffectiveFrom) {
       setValidationError('Chọn tháng bắt đầu cho cấu hình mới.');
+      return;
+    }
+    if (isFinalizedMonth(salaryConfig, newEffectiveFrom)) {
+      setValidationError(
+        `Bảng lương tháng ${formatPeriodVN(newEffectiveFrom)} đã chốt nên không đặt mốc vào tháng đó được.`,
+      );
       return;
     }
     // Không gửi close_previous_on: backend tự đóng mốc cũ sát mốc mới.

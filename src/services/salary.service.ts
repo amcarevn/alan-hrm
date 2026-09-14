@@ -152,6 +152,8 @@ export interface EmployeeSalaryConfig extends EmployeeSalaryConfigValues {
   can_edit_in_place: boolean;
   /** Các kỳ lương đã chốt mà mốc này đã dùng để tính, dạng ['08/2026'] */
   finalized_periods: string[];
+  /** Mọi kỳ lương đã chốt, để form chặn HR chọn tháng đó ngay khi nhập */
+  all_finalized_periods: string[];
   notes: string;
   created_at: string;
   updated_at: string;
