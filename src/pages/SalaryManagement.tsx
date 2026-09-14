@@ -1950,19 +1950,19 @@ const addDays = (isoDate: string, days: number): string => {
 
 const maxDate = (a: string, b: string): string => (a >= b ? a : b);
 
-/**
- * Ngày cuối tháng chứa `isoDate`.
- *
- * Mốc cấu hình luôn nằm trên biên tháng để trùng ranh giới kỳ lương: bảng lương tính
- * theo tháng nên một tháng chỉ được rơi vào đúng một mốc. Backend cũng kéo về biên,
- * hai bên phải ra cùng kết quả thì HR mới thấy đúng ngày sẽ lưu.
- */
-const endOfMonth = (isoDate: string): string => {
-  const [y, m] = isoDate.split('-').map(Number);
-  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+/** 'YYYY-MM-DD' → 'DD/MM/YYYY' để hiển thị cho người dùng. */
+const formatDateVN = (isoDate: string): string => {
+  const [y, m, d] = isoDate.split('-');
+  return `${d}/${m}/${y}`;
 };
 
-/** Ngày đầu tháng liền sau tháng chứa `isoDate` — cặp với `endOfMonth`. */
+/**
+ * Ngày đầu tháng liền sau tháng chứa `isoDate`.
+ *
+ * Mốc cấu hình luôn mở vào ngày 1 để trùng ranh giới kỳ lương: bảng lương tính theo
+ * tháng nên một tháng chỉ được rơi vào đúng một mốc. Backend cũng kéo về ngày 1, hai
+ * bên phải ra cùng kết quả thì HR mới thấy đúng ngày sẽ lưu.
+ */
 const startOfNextMonth = (isoDate: string): string => {
   const [y, m] = isoDate.split('-').map(Number);
   return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
@@ -2641,7 +2641,6 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
   const [unionFeeExempt, setUnionFeeExempt] = useState<boolean>(salaryConfig?.union_fee_exempt ?? false);
   // Payload chờ xác nhận: mở modal "kết thúc cấu hình cũ" trước khi thực sự lưu.
   const [pendingPayload, setPendingPayload] = useState<EmployeeSalaryConfigPayload | null>(null);
-  const [closePreviousOn, setClosePreviousOn] = useState<string>('');
   const [newEffectiveFrom, setNewEffectiveFrom] = useState<string>('');
 
   useEffect(() => {
@@ -2737,39 +2736,36 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
       return;
     }
 
-    // Mốc đã dùng để tính bảng lương đã chốt → phải chuyển mốc, sửa đè sẽ viết lại
+    // Mốc đã dùng để tính bảng lương đã chốt → phải mở mốc mới, sửa đè sẽ viết lại
     // căn cứ của bảng lương đã phát.
-    // Mặc định: đóng mốc cũ cuối tháng này, mốc mới mở ngày 1 tháng sau. Tháng đang
-    // chạy thường chưa chốt lương nên đây là mốc gần nhất đặt được mà không đụng vào
-    // tháng đã chốt. Không thể kết thúc mốc cũ trước cả ngày nó bắt đầu.
+    //
+    // HR chỉ chọn **tháng bắt đầu** của mốc mới. Ngày đóng mốc cũ không hỏi nữa: backend
+    // luôn đóng nó vào ngày liền trước mốc mới, nên chuỗi mốc không bao giờ hở. Trước
+    // đây form cho nhập cả hai ngày và đặt lệch nhau là cả một tháng không có cấu hình,
+    // engine lặng lẽ bỏ hết phụ cấp của tháng đó.
+    //
+    // Mặc định là tháng sau tháng hiện tại — tháng đang chạy thường chưa chốt lương
+    // nhưng đã tính dở, đổi giữa chừng dễ gây tranh cãi.
     const today = new Date().toISOString().slice(0, 10);
-    const close = maxDate(endOfMonth(today), endOfMonth(salaryConfig.effective_from));
-    setClosePreviousOn(close);
-    setNewEffectiveFrom(startOfNextMonth(close));
+    setNewEffectiveFrom(maxDate(startOfNextMonth(today), startOfNextMonth(salaryConfig.effective_from)));
     setPendingPayload(payload);
   };
 
-  const handleCloseDateChange = (value: string) => {
-    if (!value) {
-      setClosePreviousOn(value);
-      return;
-    }
-    // Chọn ngày nào trong tháng cũng kéo về cuối tháng đó, mốc mới mở ngày 1 tháng sau.
-    const close = endOfMonth(value);
-    setClosePreviousOn(close);
-    setNewEffectiveFrom(startOfNextMonth(close));
+  /** Ô chọn tháng trả về 'YYYY-MM'; mốc luôn mở vào ngày 1 nên gắn thêm '-01'. */
+  const handleEffectiveMonthChange = (value: string) => {
+    setNewEffectiveFrom(value ? `${value}-01` : '');
   };
 
   const handleConfirmClose = async () => {
     if (!pendingPayload) return;
-    if (closePreviousOn && newEffectiveFrom && closePreviousOn >= newEffectiveFrom) {
-      setValidationError('Ngày kết thúc cấu hình cũ phải trước ngày hiệu lực của cấu hình mới.');
+    if (!newEffectiveFrom) {
+      setValidationError('Chọn tháng bắt đầu cho cấu hình mới.');
       return;
     }
+    // Không gửi close_previous_on: backend tự đóng mốc cũ sát mốc mới.
     const payload: EmployeeSalaryConfigPayload = {
       ...pendingPayload,
-      effective_from: newEffectiveFrom || pendingPayload.effective_from,
-      close_previous_on: closePreviousOn || null,
+      effective_from: newEffectiveFrom,
     };
     setPendingPayload(null);
     await onSave(employee.id, payload);
@@ -3196,38 +3192,27 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Kết thúc cấu hình cũ
-                  </label>
-                  <input
-                    type="date"
-                    value={closePreviousOn}
-                    min={salaryConfig?.effective_from}
-                    onChange={(event) => handleCloseDateChange(event.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cấu hình mới hiệu lực từ
-                  </label>
-                  <input
-                    type="date"
-                    value={newEffectiveFrom}
-                    min={closePreviousOn ? startOfNextMonth(closePreviousOn) : undefined}
-                    onChange={(event) => setNewEffectiveFrom(
-                      event.target.value ? startOfNextMonth(addDays(event.target.value, -1)) : '',
-                    )}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Cấu hình mới áp dụng từ tháng
+                </label>
+                <input
+                  type="month"
+                  value={newEffectiveFrom ? newEffectiveFrom.slice(0, 7) : ''}
+                  min={salaryConfig ? startOfNextMonth(salaryConfig.effective_from).slice(0, 7) : undefined}
+                  onChange={(event) => handleEffectiveMonthChange(event.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                {!!newEffectiveFrom && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    Cấu hình cũ kết thúc {formatDateVN(addDays(newEffectiveFrom, -1))}, cấu hình mới
+                    áp dụng từ {formatDateVN(newEffectiveFrom)}.
+                  </p>
+                )}
               </div>
               <p className="text-xs text-gray-500 -mt-2">
-                Mốc cấu hình luôn nằm trên biên tháng để trùng kỳ lương: chọn ngày nào trong tháng
-                cũng tự kéo về cuối tháng đó, và cấu hình mới mở ngày 1 tháng kế tiếp. Không đặt
-                được vào tháng đã chốt lương.
+                Chỉ chọn tháng vì kỳ lương tính theo tháng — mốc cũ tự kết thúc sát ngày mốc mới bắt
+                đầu nên không có tháng nào thiếu cấu hình. Không chọn được tháng đã chốt lương.
               </p>
 
               <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm">
