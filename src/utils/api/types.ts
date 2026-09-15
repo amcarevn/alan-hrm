@@ -1073,6 +1073,11 @@ export interface SocialInsurance {
   insurance_book_number: string | null;
   insurance_number: string | null;
   legal_entity: string | null;
+  // Mã pháp nhân ngắn gọn (khớp CompanyUnit.code, vd "Elani") — do backend
+  // chuẩn hoá từ legal_entity (text tự do, có thể đang lưu tên đầy đủ ở các
+  // bản ghi cũ). Dùng field này để hiển thị, fallback về legal_entity nếu
+  // không khớp được CompanyUnit nào (đơn vị đã đổi tên/xoá).
+  legal_entity_code?: string;
   start_date: string | null;
   end_date: string | null;
   salary_base: string | null;

@@ -46,25 +46,15 @@ const RoleCreate: React.FC = () => {
 
   const loadEmployees = async () => {
     try {
-      // Only load employees from HR department (Hành chính nhân sự)
-      // We need to filter by department. First, let's get all employees and filter client-side
-      // or we could add department filter to API call if supported
-      const response = await employeesAPI.list({ page_size: 100 });
-      
-      // Filter employees to only include those from HR department
-      // Assuming HR department has name containing "Hành chính" or "Nhân sự"
-      const hrEmployees = response.results.filter(employee => {
-        const deptName = employee.department?.name?.toLowerCase() || '';
-        return deptName.includes('hành chính') || 
-               deptName.includes('nhân sự') || 
-               deptName.includes('hr') ||
-               deptName.includes('human resource');
-      });
-      
-      setEmployees(hrEmployees);
-      
-      if (hrEmployees.length === 0) {
-        setError('Không tìm thấy nhân viên nào thuộc phòng Hành chính Nhân sự');
+      // Tải toàn bộ nhân viên (không giới hạn phòng ban) để admin có thể gán
+      // phân quyền cho bất kỳ nhân viên nào, không chỉ nhân viên phòng Hành
+      // chính Nhân sự — quyền như "Phê duyệt công"/"Quản lý tài sản" thường
+      // cần cấp cho quản lý các phòng ban khác, không riêng gì HR.
+      const response = await employeesAPI.list({ page_size: 1000, is_active: true });
+      setEmployees(response.results);
+
+      if (response.results.length === 0) {
+        setError('Không tìm thấy nhân viên nào');
       }
     } catch (err) {
       console.error('Failed to load employees:', err);
