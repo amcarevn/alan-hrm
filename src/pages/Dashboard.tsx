@@ -547,7 +547,7 @@ const Dashboard = () => {
         const grouped = entities.map((le) => ({
           label: le.label,
           value: le.value,
-          employees: allEmployees.filter((e) => e.subsidiary_legal_entity === le.value),
+          employees: allEmployees.filter((e) => e.company_unit?.code === le.value),
         }));
         const assignedIds = new Set(grouped.flatMap((g) => g.employees.map((e) => e.id)));
         const unassigned = allEmployees.filter((e) => !assignedIds.has(e.id));

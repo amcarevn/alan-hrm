@@ -332,7 +332,6 @@ export interface Employee {
   // Thông tin tổ chức
   region?: string;
   block?: string;
-  subsidiary_legal_entity?: string | null;
   section?: string;
   rank?: string;
   work_location?: string;
@@ -607,6 +606,7 @@ export interface EmployeeUpdateData {
   position_id?: number;
   department_id?: number;
   manager_id?: number;
+  company_unit_id?: number | null;
   is_hr?: boolean;
   is_bod?: boolean;
   marital_status?: string | null;
