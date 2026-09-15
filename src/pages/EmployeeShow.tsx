@@ -409,7 +409,7 @@ const EmployeeShow: React.FC = () => {
             <InfoField label="Vùng/Miền" value={emp.region} />
             <InfoField label="Khối" value={emp.block} />
             {/* Đơn vị = Pháp nhân — đã hợp nhất, không còn field/dòng riêng nữa */}
-            <InfoField label="Đơn vị" value={emp.company_unit?.name} />
+            <InfoField label="Pháp nhân" value={emp.company_unit?.name} />
             <InfoField label="Trạng thái" value={
               emp.employment_status === 'PAUSED' ? 'Tạm dừng' :
               emp.employment_status === 'MATERNITY_LEAVE' ? 'Nghỉ thai sản' :

@@ -920,9 +920,9 @@ const EmployeeEdit: React.FC = () => {
                 niệm. Đã hợp nhất: company_unit (đơn vị) là DUY NHẤT field
                 pháp nhân của nhân viên. */}
             <SelectBox
-              label="Đơn vị"
+              label="Pháp nhân"
               value={formData.company_unit_id?.toString() ?? ''}
-              placeholder="Chọn đơn vị"
+              placeholder="Chọn pháp nhân"
               options={[
                 { value: '', label: 'Không có' },
                 ...(companyUnits || []).map((u) => ({ value: String(u.id), label: u.name })),
