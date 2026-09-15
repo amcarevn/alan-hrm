@@ -6,7 +6,6 @@ import {
   sectionsAPI,
   positionsAPI,
   companyUnitsAPI,
-  managementApi,
 } from '../utils/api';
 import { SelectBox } from '@/components/LandingLayout/SelectBox';
 import { WORK_LOCATION_OPTIONS } from '../constants/onboarding';
@@ -289,7 +288,6 @@ const EmployeeEdit: React.FC = () => {
   const [positions, setPositions] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [companyUnits, setCompanyUnits] = useState<any[]>([]);
-  const [legalEntities, setLegalEntities] = useState<{ value: string; label: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -323,7 +321,6 @@ const EmployeeEdit: React.FC = () => {
     region: '',
     block: '',
     company_unit_id: undefined,
-    subsidiary_legal_entity: '',
     is_hr: false,
     is_bod: false,
     education_level: '',
@@ -394,7 +391,6 @@ const EmployeeEdit: React.FC = () => {
       loadPositions();
       loadEmployees();
       loadCompanyUnits();
-      loadLegalEntities();
     }
   }, [id]);
 
@@ -440,7 +436,6 @@ const EmployeeEdit: React.FC = () => {
         region: e.region || '',
         block: e.block || '',
         company_unit_id: e.company_unit?.id ?? undefined,
-        subsidiary_legal_entity: e.subsidiary_legal_entity || '',
         is_hr: e.is_hr || false,
         is_bod: e.is_bod || false,
         education_level: e.education_level || '',
@@ -551,16 +546,6 @@ const EmployeeEdit: React.FC = () => {
       const response = await companyUnitsAPI.list({ page_size: 100 });
       setCompanyUnits(Array.isArray(response) ? response : (response.results || []));
     } catch (err) { console.error('Failed to load company units:', err); }
-  };
-
-  const loadLegalEntities = async () => {
-    try {
-      const response = await managementApi.get<{ value: string; label: string }[]>(
-        '/api/v1/salary/records/legal-entities/'
-      );
-      const data = Array.isArray(response.data) ? response.data : [];
-      setLegalEntities(data);
-    } catch (err) { console.error('Failed to load legal entities:', err); }
   };
 
   const calcProbationEndDate = (startDateDisplay: string, months: string): string => {
@@ -717,8 +702,9 @@ const EmployeeEdit: React.FC = () => {
       add('work_location', formData.work_location);
       add('region', formData.region);
       add('block', formData.block);
-      add('company_unit_id', formData.company_unit_id);
-      payload['subsidiary_legal_entity'] = formData.subsidiary_legal_entity || null;
+      // company_unit_id giờ là DUY NHẤT field pháp nhân — phải gửi cả khi
+      // null (chọn "Không có") để xoá được, không dùng add() (bỏ qua null).
+      if (formData.company_unit_id !== undefined) payload['company_unit_id'] = formData.company_unit_id;
 
       // Merge extra_info — lưu work_type, đồng thời xóa facebook_link (đã PATCH trực tiếp)
       // để tránh lệch giữa direct field và extra_info
@@ -1031,26 +1017,20 @@ const EmployeeEdit: React.FC = () => {
               onChange={(v) => handleSelect('block', v)}
             />
 
+            {/* Đơn vị = Pháp nhân — trước đây có thêm 1 dropdown "Pháp nhân"
+                (subsidiary_legal_entity, text tự do độc lập không đồng bộ)
+                đứng cạnh đây, tách 2 field không cần thiết cho cùng 1 khái
+                niệm. Đã hợp nhất: company_unit (đơn vị) là DUY NHẤT field
+                pháp nhân của nhân viên. */}
             <SelectBox
-              label="Đơn vị"
+              label="Pháp nhân"
               value={formData.company_unit_id?.toString() ?? ''}
-              placeholder="Chọn đơn vị"
+              placeholder="Chọn pháp nhân"
               options={[
                 { value: '', label: 'Không có' },
                 ...(companyUnits || []).map((u) => ({ value: String(u.id), label: u.name })),
               ]}
-              onChange={(v) => handleSelect('company_unit_id', v ? Number(v) : undefined)}
-            />
-
-            <SelectBox
-              label="Pháp nhân"
-              value={formData.subsidiary_legal_entity ?? ''}
-              placeholder="Chọn pháp nhân"
-              options={[
-                { value: '', label: 'Không có' },
-                ...legalEntities.map((e) => ({ value: e.value, label: e.label })),
-              ]}
-              onChange={(v) => handleSelect('subsidiary_legal_entity', v || '')}
+              onChange={(v) => handleSelect('company_unit_id', v ? Number(v) : null)}
             />
 
             <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">

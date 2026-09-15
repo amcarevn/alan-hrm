@@ -88,10 +88,7 @@ const EXPORT_FIELD_DEFS: ExportFieldDef[] = [
   { key: 'nationality', header: 'Quốc tịch', width: 14, group: 'CCCD / VNEID', getValue: (emp) => emp.nationality || '' },
   // Tổ chức
   { key: 'department', header: 'Phòng ban', width: 20, group: 'Tổ chức', getValue: (emp) => emp.department?.name || '' },
-  // Cùng logic fallback với cột "Pháp nhân" ở bảng danh sách: ưu tiên
-  // subsidiary_legal_entity (NV cũ/nhập thủ công), fallback company_unit.code
-  // (NV mới qua onboarding).
-  { key: 'legal_entity', header: 'Pháp nhân (Đơn vị)', width: 18, group: 'Tổ chức', getValue: (emp) => (emp as any).subsidiary_legal_entity || emp.company_unit?.code || '' },
+  { key: 'legal_entity', header: 'Pháp nhân', width: 18, group: 'Tổ chức', getValue: (emp) => emp.company_unit?.code || '' },
   { key: 'position', header: 'Chức vụ', width: 20, group: 'Tổ chức', getValue: (emp) => emp.position?.title || '' },
   { key: 'region', header: 'Vùng/Miền', width: 14, group: 'Tổ chức', getValue: (emp) => emp.region || '' },
   { key: 'block', header: 'Khối', width: 14, group: 'Tổ chức', getValue: (emp) => emp.block || '' },
@@ -225,14 +222,9 @@ const EmployeeList: React.FC = () => {
       if (contractType !== 'all') params.contract_type = contractType;
       if (month) params.month = month;
       // legalEntity là '__none__' (chưa gắn pháp nhân) hoặc id của 1 đơn vị
-      // trong "Quản lý đơn vị" (CompanyUnit). '__none__' vẫn gửi qua field
-      // text cũ subsidiary_legal_entity; còn lại gửi company_unit_id để
-      // backend tự đối chiếu công ty đó qua company_unit FK LẪN text
-      // subsidiary_legal_entity (tên/mã) — không phụ thuộc NV đang gắn theo
-      // cách nào.
-      if (legalEntity === '__none__') {
-        params.subsidiary_legal_entity = legalEntity;
-      } else if (legalEntity !== 'all') {
+      // trong "Quản lý đơn vị" (CompanyUnit) — company_unit giờ là DUY NHẤT
+      // field pháp nhân của NV, backend hiểu cả 2 giá trị qua cùng 1 param.
+      if (legalEntity !== 'all') {
         params.company_unit_id = legalEntity;
       }
 
@@ -742,7 +734,7 @@ const EmployeeList: React.FC = () => {
       { header: 'Ghi chú công việc', key: 'employment_status_notes', width: 28 },
       { header: 'Ngày kết thúc thử việc', key: 'probation_end_date', width: 22 },
       { header: 'Ngày chính thức', key: 'official_start_date', width: 18 },
-      { header: 'Đơn vị', key: 'company_unit', width: 20 },
+      { header: 'Pháp nhân', key: 'company_unit', width: 20 },
       { header: 'Loại hợp đồng', key: 'contract_type', width: 28 },
       { header: 'Ngày bắt đầu hợp đồng', key: 'contract_start_date', width: 22 },
       { header: 'Ngày kết thúc hợp đồng', key: 'contract_end_date', width: 22 },
@@ -1470,11 +1462,8 @@ const EmployeeList: React.FC = () => {
                         <div className="text-sm text-gray-900">{employee.position?.title || <span className="text-gray-400 italic">Chưa có dữ liệu</span>}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {/* Ưu tiên subsidiary_legal_entity (HR tự điền qua CSV upload — bao phủ cả
-                            nhân viên cũ/nhập thủ công không có onboarding), fallback company_unit.code
-                            (bao phủ nhân viên mới đi qua form onboarding nhưng chưa được gắn pháp nhân riêng). */}
                         <div className="text-sm text-gray-900">
-                          {(employee as any).subsidiary_legal_entity || employee.company_unit?.code || <span className="text-gray-400 italic">Chưa có dữ liệu</span>}
+                          {employee.company_unit?.code || <span className="text-gray-400 italic">Chưa có dữ liệu</span>}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
