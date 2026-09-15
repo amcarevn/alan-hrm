@@ -104,7 +104,7 @@ const DetailModal: React.FC<{
           <Row label="Mã nhân viên"     value={item.employee_code} />
           <Row label="Tên nhân viên"    value={item.employee_name} />
           <Row label="Mã số BHXH"       value={item.insurance_number} />
-          <Row label="Pháp nhân đóng BHXH" value={item.legal_entity} />
+          <Row label="Pháp nhân đóng BHXH" value={item.legal_entity_code || item.legal_entity} />
           <Row label="Ngày bắt đầu"     value={formatDate(item.start_date)} />
           <Row label="Ngày dừng"        value={formatDate(item.end_date)} />
           <Row label="Lương đóng BHXH"       value={formatCurrency(item.salary_base)} />
@@ -195,19 +195,17 @@ const FormModal: React.FC<{
   const empRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Trước đây gọi /api/v1/salary/records/legal-entities/ — endpoint này gộp
-    // CHUNG cả tên pháp lý đầy đủ (CompanyUnit.name, VD "Công ty TNHH thương
-    // mại và dịch vụ Elani") LẪN mã ngắn (CompanyUnit.code, VD "Elani") của
-    // MỌI đơn vị, cộng thêm mọi giá trị Employee.subsidiary_legal_entity từng
-    // xuất hiện — cần thiết cho filter "Danh sách BHXH" (phải khớp được dữ
-    // liệu cũ lưu ở nhiều dạng khác nhau) nhưng lại khiến dropdown TẠO MỚI ở
-    // đây trông không nhất quán (1 đơn vị hiện ra 2 dòng: tên đầy đủ + tên
-    // ngắn, không đơn vị nào giống đơn vị nào). Đổi sang lấy thẳng danh sách
-    // đơn vị đang hoạt động từ "Quản lý đơn vị" (CompanyUnit) — mỗi đơn vị
-    // đúng 1 dòng, y hệt cách EmployeeList.tsx đã sửa cho filter "Pháp nhân".
+    // Lấy danh sách đơn vị đang hoạt động từ "Quản lý đơn vị" (CompanyUnit) —
+    // mỗi đơn vị đúng 1 dòng, y hệt cách EmployeeList.tsx đã sửa cho filter
+    // "Pháp nhân". Value = unit.code (mã ngắn, VD "Elani") — KHÔNG dùng
+    // unit.name (tên đầy đủ "Công ty TNHH thương mại và dịch vụ Elani") như
+    // trước đây: field SocialInsurance.legal_entity chỉ là text tự do, lưu
+    // gì hiện đó, và cột "PHÁP NHÂN" trên bảng chỉ nên hiển thị mã ngắn gọn.
+    // Dữ liệu cũ đã lưu tên đầy đủ vẫn hiển thị/lọc đúng nhờ backend chuẩn
+    // hoá qua CompanyUnit.resolve_by_name_or_code() (chấp nhận cả 2 dạng).
     companyUnitsAPI.list({ active_only: true, page_size: 200 })
       .then(res => {
-        const data = (res.results || []).map(unit => ({ value: unit.name, label: unit.name }));
+        const data = (res.results || []).map(unit => ({ value: unit.code, label: unit.name }));
         setLegalEntityOptions(data);
       })
       .catch(() => {});
@@ -680,10 +678,18 @@ const SocialInsuranceList: React.FC = () => {
   const searchRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    managementApi.get<{ value: string; label: string }[]>('/api/v1/salary/records/legal-entities/')
+    // Trước đây gọi /api/v1/salary/records/legal-entities/ — endpoint này trả
+    // về CẢ tên đầy đủ (CompanyUnit.name) LẪN mã ngắn (CompanyUnit.code) của
+    // MỖI đơn vị làm việc thành 2 option riêng biệt. Chọn option mã ngắn (vd
+    // "Elani") thì gửi lên BE giá trị "Elani", nhưng mọi bản ghi BHXH đang
+    // lưu tên đầy đủ ("Công ty TNHH thương mại và dịch vụ Elani") -> so khớp
+    // exact luôn ra 0 kết quả. Đổi sang lấy thẳng CompanyUnit — mỗi đơn vị
+    // đúng 1 option, value = code (khớp value gửi lên từ modal Thêm BHXH đã
+    // sửa cùng lúc; BE tự chuẩn hoá để khớp cả dữ liệu cũ lưu dạng tên đầy đủ).
+    companyUnitsAPI.list({ active_only: true, page_size: 200 })
       .then(res => setLegalFilterOptions([
         { value: '', label: 'Tất cả' },
-        ...res.data.map(e => ({ value: e.value, label: e.label })),
+        ...(res.results || []).map(unit => ({ value: unit.code, label: unit.name })),
       ]))
       .catch(() => {});
   }, []);
@@ -926,7 +932,7 @@ const SocialInsuranceList: React.FC = () => {
                         <td className="table-cell font-semibold text-gray-900">{item.employee_code || <EmptyCell />}</td>
                         <td className="table-cell font-medium text-gray-900">{item.employee_name || <EmptyCell />}</td>
                         <td className="table-cell">{item.insurance_number || <EmptyCell />}</td>
-                        <td className="table-cell max-w-[160px] truncate">{item.legal_entity || <EmptyCell />}</td>
+                        <td className="table-cell max-w-[160px] truncate">{item.legal_entity_code || item.legal_entity || <EmptyCell />}</td>
                         <td className="table-cell whitespace-nowrap">{formatDate(item.start_date)}</td>
                         <td className="table-cell whitespace-nowrap">{formatDate(item.end_date)}</td>
                         <td className="table-cell whitespace-nowrap">{formatCurrency(item.salary_base)}</td>
