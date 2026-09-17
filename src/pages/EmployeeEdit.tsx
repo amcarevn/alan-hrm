@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   employeesAPI,
   departmentsAPI,
-  sectionsAPI,
   positionsAPI,
   companyUnitsAPI,
 } from '../utils/api';
@@ -55,11 +54,6 @@ const WORK_FORM_OPTIONS = [
   { label: 'Hợp đồng', value: 'CONTRACT' },
   { label: 'Thực tập', value: 'INTERN' },
   { label: 'Cộng tác viên', value: 'COLLABORATOR' },
-];
-
-const REGION_OPTIONS = [
-  { label: 'Miền Bắc', value: 'Miền Bắc' },
-  { label: 'Miền Nam', value: 'Miền Nam' },
 ];
 
 const BLOCK_OPTIONS = [
@@ -284,7 +278,6 @@ const EmployeeEdit: React.FC = () => {
   const [citizenIdFile, setCitizenIdFile] = useState<File | null>(null);
   const [citizenIdCurrentUrl, setCitizenIdCurrentUrl] = useState<string | null>(null);
   const [departments, setDepartments] = useState<any[]>([]);
-  const [sections, setSections] = useState<any[]>([]);
   const [positions, setPositions] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [companyUnits, setCompanyUnits] = useState<any[]>([]);
@@ -387,7 +380,6 @@ const EmployeeEdit: React.FC = () => {
     if (id) {
       loadEmployee(parseInt(id));
       loadDepartments();
-      loadSections();
       loadPositions();
       loadEmployees();
       loadCompanyUnits();
@@ -520,13 +512,6 @@ const EmployeeEdit: React.FC = () => {
     } catch (err) { console.error('Failed to load departments:', err); }
   };
   
-  const loadSections = async () => {
-    try {
-      const response = await sectionsAPI.list();
-      setSections(response.results);
-    } catch (err) { console.error('Failed to load sections:', err); }
-  };
-
   const loadPositions = async () => {
     try {
       const response = await positionsAPI.list();
@@ -970,19 +955,8 @@ const EmployeeEdit: React.FC = () => {
               onChange={(v) => handleSelect('rank', v)}
             />
 
-            <SelectBox
-              label="Bộ phận"
-              value={formData.section}
-              placeholder="Chọn bộ phận"
-              searchable={true}
-              options={sections.map((s) => ({ label: s.name, value: s.name }))}
-              onChange={(v) => handleSelect('section', v)}
-            />
-
-            <Field label="Team Bác sĩ">
-              <input type="text" name="doctor_team" value={formData.doctor_team}
-                onChange={handleInput} placeholder="Team Dr. Nguyễn..." className={inputClass} />
-            </Field>
+            {/* Bộ phận / Team Bác sĩ: Alan không dùng — ẩn khỏi form Sửa nhân viên
+                (formData.section/doctor_team vẫn giữ nguyên giá trị cũ khi lưu, chỉ ẩn ô nhập) */}
 
             <SelectBox
               label="Hình thức làm việc"
@@ -1001,13 +975,8 @@ const EmployeeEdit: React.FC = () => {
               onChange={(v) => handleSelect('work_location', v)}
             />
 
-            <SelectBox
-              label="Vùng/Miền"
-              value={formData.region}
-              placeholder="Chọn vùng/miền"
-              options={REGION_OPTIONS}
-              onChange={(v) => handleSelect('region', v)}
-            />
+            {/* Vùng/Miền: Alan không dùng — ẩn khỏi form Sửa nhân viên
+                (formData.region vẫn giữ nguyên giá trị cũ khi lưu, chỉ ẩn ô nhập) */}
 
             <SelectBox
               label="Khối"
