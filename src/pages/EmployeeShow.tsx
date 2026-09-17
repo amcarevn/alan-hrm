@@ -401,12 +401,10 @@ const EmployeeShow: React.FC = () => {
             <InfoField label="Phòng ban" value={employee.department?.name} />
             <InfoField label="Vị trí" value={employee.position?.title} />
             <InfoField label="Cấp bậc" value={emp.rank ? (RANK_LABELS[emp.rank] ?? emp.rank) : undefined} />
-            <InfoField label="Bộ phận" value={emp.section} />
+            {/* Bộ phận / Team Bác sĩ / Vùng-Miền: Alan không dùng — ẩn khỏi trang Thông tin nhân viên */}
             <InfoField label="Quản lý trực tiếp" value={employee.manager_name} />
-            <InfoField label="Team Bác sĩ" value={emp.doctor_team} />
             <InfoField label="Hình thức làm việc" value={emp.work_form ? (WORK_FORM_LABELS[emp.work_form] || emp.work_form) : null} />
             <InfoField label="Địa điểm làm việc" value={emp.work_location ? (WORK_LOCATION_LABELS[emp.work_location] || emp.work_location) : null} />
-            <InfoField label="Vùng/Miền" value={emp.region} />
             <InfoField label="Khối" value={emp.block} />
             {/* Đơn vị = Pháp nhân — đã hợp nhất, không còn field/dòng riêng nữa */}
             <InfoField label="Pháp nhân" value={emp.company_unit?.name} />

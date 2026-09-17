@@ -90,12 +90,9 @@ const EXPORT_FIELD_DEFS: ExportFieldDef[] = [
   { key: 'department', header: 'Phòng ban', width: 20, group: 'Tổ chức', getValue: (emp) => emp.department?.name || '' },
   { key: 'legal_entity', header: 'Pháp nhân', width: 18, group: 'Tổ chức', getValue: (emp) => emp.company_unit?.code || '' },
   { key: 'position', header: 'Chức vụ', width: 20, group: 'Tổ chức', getValue: (emp) => emp.position?.title || '' },
-  { key: 'region', header: 'Vùng/Miền', width: 14, group: 'Tổ chức', getValue: (emp) => emp.region || '' },
   { key: 'block', header: 'Khối', width: 14, group: 'Tổ chức', getValue: (emp) => emp.block || '' },
-  { key: 'section', header: 'Bộ phận', width: 16, group: 'Tổ chức', getValue: (emp) => emp.section || '' },
   { key: 'rank', header: 'Cấp bậc', width: 14, group: 'Tổ chức', getValue: (emp) => emp.rank || '' },
   { key: 'work_location', header: 'Địa điểm làm việc', width: 20, group: 'Tổ chức', getValue: (emp) => emp.work_location ? (WORK_LOCATION_LABELS[emp.work_location] || emp.work_location) : '' },
-  { key: 'doctor_team', header: 'Team Bác sĩ', width: 16, group: 'Tổ chức', getValue: (emp) => emp.doctor_team || '' },
   { key: 'work_form', header: 'Hình thức làm việc', width: 20, group: 'Tổ chức', getValue: (emp) => emp.work_form || '' },
   {
     key: 'work_type', header: 'Loại hình làm việc', width: 18, group: 'Tổ chức', getValue: (emp) => {
