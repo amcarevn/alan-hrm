@@ -1902,6 +1902,42 @@ const CONTRACT_TYPE_LABELS: Record<string, string> = {
   NURSING_COMMITMENT: 'Cam kết của CBNV Điều dưỡng',
 };
 
+/**
+ * Loại hợp đồng + trạng thái (Chính thức / Thử việc) của một dòng bảng lương.
+ *
+ * Ưu tiên số liệu trong dòng lương chứ không phải hồ sơ nhân viên hiện tại: bảng
+ * lương tháng đã chốt phải giữ đúng loại hợp đồng tại thời điểm chốt, kể cả khi
+ * sau đó nhân viên đã lên chính thức.
+ *
+ * Trả chuỗi rỗng khi không có dữ liệu — không đoán "Chính thức", vì hiện còn
+ * nhiều hồ sơ bỏ trống `contract_type`.
+ */
+const getContractInfo = (record: SalaryRecord, employee?: Employee) => {
+  const raw = record as unknown as Record<string, unknown>;
+  const ma = String(raw['contract_type'] ?? employee?.contract_type ?? '');
+  const trangThaiMa = raw['contract_status'];
+  return {
+    loai: ma ? (CONTRACT_TYPE_LABELS[ma] ?? ma) : '',
+    trangThai:
+      trangThaiMa === 'THU_VIEC' ? 'Thử việc'
+      : trangThaiMa === 'CHINH_THUC' ? 'Chính thức'
+      : '',
+  };
+};
+
+/**
+ * Thu nhập tính thuế — chỉ tiêu [21] của tờ khai quyết toán thuế TNCN, tức là
+ * phần còn lại sau khi trừ giảm trừ gia cảnh và người phụ thuộc.
+ *
+ * Lấy thẳng `thu_nhap_tinh_thue` của backend; chỉ khi thiếu (bảng lương chốt từ
+ * trước khi có trường này) mới dùng số tính lại ở frontend.
+ */
+const getThuNhapTinhThue = (record: SalaryRecord, payrollTax: PayrollTaxComputation) => {
+  const duPhong = Math.max(payrollTax.taxDetail.taxableIncome, 0);
+  const raw = (record as unknown as Record<string, unknown>)['thu_nhap_tinh_thue'];
+  return Math.round(Math.max(toNumber(raw, duPhong), 0));
+};
+
 const WORK_LOCATION_LABELS: Record<string, string> = {
   '789_LE_HONG_PHONG': '789/C9 Lê Hồng Phong, Q.10, TP.HCM',
   '16_NGUYEN_NHU_DO': '16 Nguyễn Như Đổ, Đống Đa, Hà Nội',
@@ -3551,12 +3587,17 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const truyThu = (record as unknown as Record<string, number>)['truy_thu'] ?? 0;
       const tamUng = record.tam_ung ?? 0;
       const thue = payrollTax.taxAmount;
+      const contractInfo = getContractInfo(record, employee);
 
       return {
         ma_nv: record.ma_nv,
         ho_va_ten: record.ho_va_ten,
         phong_ban: record.phong_ban ?? '',
         phap_nhan_con: record.phap_nhan_con ?? '',
+        loai_hop_dong: contractInfo.loai,
+        trang_thai_hop_dong: contractInfo.trangThai,
+        tong_thu_nhap_chiu_thue: Math.round(payrollTax.grossIncomeForTax),
+        thu_nhap_tinh_thue: getThuNhapTinhThue(record, payrollTax),
         year: record.year,
         month: record.month,
         luong_co_ban: Math.round(luongCoBan),
@@ -3615,6 +3656,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         { header: 'Họ và tên', key: 'ho_va_ten', width: 24 },
         { header: 'Phòng ban', key: 'phong_ban', width: 18 },
         { header: 'Pháp nhân con', key: 'phap_nhan_con', width: 22 },
+        { header: 'Loại hợp đồng', key: 'loai_hop_dong', width: 26 },
+        { header: 'Trạng thái HĐ', key: 'trang_thai_hop_dong', width: 14 },
         { header: 'Năm', key: 'year', width: 8 },
         { header: 'Tháng', key: 'month', width: 8 },
         { header: 'Lương cơ bản', key: 'luong_co_ban', width: 16, style: MONEY_FMT },
@@ -3647,6 +3690,14 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         { header: 'Truy tăng', key: 'truy_tang', width: 14, style: MONEY_FMT },
         { header: 'Truy thu', key: 'truy_thu', width: 14, style: MONEY_FMT },
         { header: 'Điều chỉnh (VIII)', key: 'dieu_chinh', width: 16, style: MONEY_FMT },
+        // Cột chữ, đặt ngay sau số tiền điều chỉnh để kế toán đọc bảng là biết khoản
+        // truy tăng/truy thu đó vì sao (vd "Truy thu BHYT"), không phải mở lại bản ghi.
+        { header: 'Lý do điều chỉnh', key: 'ly_do_dieu_chinh', width: 28 },
+        // Hai cột để khớp tờ khai quyết toán thuế TNCN: "Tổng thu nhập chịu thuế"
+        // là chỉ tiêu [12] (tổng số), "Thu nhập tính thuế" là [21] (sau giảm trừ
+        // gia cảnh và người phụ thuộc). Đặt ngay trước số thuế cho dễ đối chiếu.
+        { header: 'Tổng thu nhập chịu thuế', key: 'tong_thu_nhap_chiu_thue', width: 22, style: MONEY_FMT },
+        { header: 'Thu nhập tính thuế', key: 'thu_nhap_tinh_thue', width: 20, style: MONEY_FMT },
         { header: 'Thuế TNCN (X)', key: 'thue_tncn', width: 14, style: MONEY_FMT },
         { header: 'Tạm ứng (XI)', key: 'tam_ung', width: 14, style: MONEY_FMT },
         { header: 'Lương thực lĩnh (IX)', key: 'luong_thuc_linh', width: 18, style: MONEY_FMT },
@@ -3723,6 +3774,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         truy_tang: 0,
         truy_thu: 0,
         dieu_chinh: 0,
+        tong_thu_nhap_chiu_thue: 0,
+        thu_nhap_tinh_thue: 0,
         thue_tncn: 0,
         tam_ung: 0,
         luong_thuc_linh: 0,
@@ -3802,6 +3855,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
   const truyTang = (record as unknown as Record<string, number>)['truy_tang'] ?? 0;
   const truyThu = (record as unknown as Record<string, number>)['truy_thu'] ?? 0;
+        // Bảng lương các tháng đã chốt TRƯỚC khi có trường này thì snapshot không có
+        // khoá `ly_do_dieu_chinh` — để rỗng chứ không hiện "undefined".
+        const lyDoDieuChinh = String((record as unknown as Record<string, unknown>)['ly_do_dieu_chinh'] ?? '');
+        const contractInfo = getContractInfo(record, employee);
         const tamUng = record.tam_ung ?? 0;
         const thue = payrollTax.taxAmount;
 
@@ -3810,6 +3867,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           ho_va_ten: record.ho_va_ten,
           phong_ban: record.phong_ban ?? '',
           phap_nhan_con: record.phap_nhan_con ?? '',
+          loai_hop_dong: contractInfo.loai,
+          trang_thai_hop_dong: contractInfo.trangThai,
           year: record.year,
           month: record.month,
           luong_co_ban: Math.round(luongCoBan),
@@ -3839,6 +3898,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           truy_tang: Math.round(truyTang),
         truy_thu: Math.round(truyThu),
         dieu_chinh: Math.round(dieuChinhVIII),
+        ly_do_dieu_chinh: lyDoDieuChinh,
+          tong_thu_nhap_chiu_thue: Math.round(payrollTax.grossIncomeForTax),
+          thu_nhap_tinh_thue: getThuNhapTinhThue(record, payrollTax),
           thue_tncn: Math.round(thue),
           tam_ung: Math.round(tamUng),
           luong_thuc_linh: Math.round(payslipComputation.luongThucLinh),
@@ -3913,6 +3975,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         totals.tong_phat_bienban += rowData.tong_phat_bienban;
         totals.tong_giam_tru_vii += rowData.tong_giam_tru_vii;
         totals.dieu_chinh += rowData.dieu_chinh;
+        totals.tong_thu_nhap_chiu_thue += rowData.tong_thu_nhap_chiu_thue;
+        totals.thu_nhap_tinh_thue += rowData.thu_nhap_tinh_thue;
         totals.thue_tncn += rowData.thue_tncn;
         totals.tam_ung += rowData.tam_ung;
         totals.luong_thuc_linh += rowData.luong_thuc_linh;
@@ -3945,6 +4009,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         tong_phat_bienban: totals.tong_phat_bienban,
         tong_giam_tru_vii: totals.tong_giam_tru_vii,
         dieu_chinh: totals.dieu_chinh,
+        tong_thu_nhap_chiu_thue: totals.tong_thu_nhap_chiu_thue,
+        thu_nhap_tinh_thue: totals.thu_nhap_tinh_thue,
         thue_tncn: totals.thue_tncn,
         tam_ung: totals.tam_ung,
         luong_thuc_linh: totals.luong_thuc_linh,
@@ -5776,6 +5842,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase sticky left-[120px] z-20 bg-gray-50 min-w-[220px]">Họ tên</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase sticky left-[340px] z-20 bg-gray-50 min-w-[180px]">Phòng ban</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pháp nhân con</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase min-w-[200px]">Loại hợp đồng</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái HĐ</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Năm</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tháng</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lương CB</th>
@@ -5801,6 +5869,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Phạt đi muộn</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Phạt biên bản</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng giảm trừ VII</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng thu nhập chịu thuế</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Thu nhập tính thuế</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Thuế TNCN X</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tạm ứng XI</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Thực lĩnh IX</th>
@@ -5814,6 +5884,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       <td className={`px-3 py-2 text-gray-900 sticky left-[120px] z-10 group-hover:!bg-indigo-100 min-w-[220px] ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}`}>{row.ho_va_ten}</td>
                       <td className={`px-3 py-2 text-gray-700 sticky left-[340px] z-10 group-hover:!bg-indigo-100 min-w-[180px] ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}`}>{row.phong_ban || '—'}</td>
                       <td className="px-3 py-2 text-gray-700">{row.phap_nhan_con || '—'}</td>
+                      <td className="px-3 py-2 text-gray-700">{row.loai_hop_dong || '—'}</td>
+                      <td className="px-3 py-2 text-gray-700">{row.trang_thai_hop_dong || '—'}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{row.year}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{row.month}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.luong_co_ban)}</td>
@@ -5839,6 +5911,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_phat)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_phat_bienban)}</td>
                       <td className="px-3 py-2 text-right text-red-700">{formatCurrency(row.tong_giam_tru_vii)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_thu_nhap_chiu_thue)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.thu_nhap_tinh_thue)}</td>
                       <td className="px-3 py-2 text-right text-red-700">{formatCurrency(row.thue_tncn)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tam_ung)}</td>
                       <td className="px-3 py-2 text-right text-gray-800 font-medium">{formatCurrency(row.luong_thuc_linh)}</td>
