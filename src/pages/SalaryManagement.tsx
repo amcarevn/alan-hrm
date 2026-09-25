@@ -416,7 +416,8 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
         monthly_rate: toNumber(savedParkingPolicyRaw.monthly_rate, 0),
       }
     : null;
-  const phuCapGuiXe = parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : (record.phu_cap_gui_xe ?? 0);
+  const phuCapGuiXe = soTheoBackend(record, 'phu_cap_gui_xe',
+    parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : 0);
 
   // Lunch allowance: recalculate from policy + actual work days
   const savedLunchPolicyRaw = (savedConfig?.lunchAllowancePolicy as Record<string, unknown> | undefined);
@@ -441,13 +442,19 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
         monthly_max: toNumber(savedRespPolicyRaw.monthly_max),
       }
     : null;
-  const phuCapTrachNhiem = respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0;
-
-  const phuCapKhacFromRecord = (record as unknown as Record<string, number>)['phu_cap_khac'] ?? 0;
-  const phuCapKhacRemainder = Math.max(
-    phuCapKhacFromRecord,
-    Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0),
-  );
+  // Tổng phụ cấp (IV) phải bằng đúng số backend đã chốt. Ba cột gửi xe / ăn trưa /
+  // khác lấy thẳng từ dòng lương, còn trách nhiệm là PHẦN DƯ — backend gộp nó vào
+  // tổng chứ không trả riêng.
+  //
+  // Trước đây trách nhiệm được dựng lại từ chính sách trong hồ sơ, còn "PC khác" chỉ
+  // hấp thụ được phần thiếu (Math.max). Khi ba khoản kia cộng lại VƯỢT tổng đã chốt
+  // thì IV phình ra, kéo công thức IX và XII trong file Excel sai theo — tháng 6/2026
+  // có 2 ca, BS.Võ Thị Thu Sương lệch tới 40 triệu.
+  const tongPhuCapIVDaChot = soTheoBackend(record, 'phu_cap', NaN);
+  const phuCapKhacRemainder = soTheoBackend(record, 'phu_cap_khac', 0);
+  const phuCapTrachNhiem = Number.isFinite(tongPhuCapIVDaChot)
+    ? Math.max(tongPhuCapIVDaChot - phuCapGuiXe - phuCapAnTrua - phuCapKhacRemainder, 0)
+    : (respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0);
   const tongPhuCapIV = phuCapGuiXe + phuCapAnTrua + phuCapTrachNhiem + phuCapKhacRemainder;
   const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuongHienThi;
 
@@ -1800,7 +1807,8 @@ const calculatePayslipNetPayable = (record: SalaryRecord, employee?: Employee, c
         monthly_rate: toNumber(savedParkingPolicyRaw.monthly_rate, 0),
       }
     : null;
-  const phuCapGuiXe = parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : (record.phu_cap_gui_xe ?? 0);
+  const phuCapGuiXe = soTheoBackend(record, 'phu_cap_gui_xe',
+    parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : 0);
 
   const savedLunchPolicyRaw = (savedConfig?.lunchAllowancePolicy as Record<string, unknown> | undefined);
   const lunchPolicy: LunchAllowancePolicy | null = savedLunchPolicyRaw
@@ -1823,13 +1831,19 @@ const calculatePayslipNetPayable = (record: SalaryRecord, employee?: Employee, c
         monthly_max: toNumber(savedRespPolicyRaw.monthly_max),
       }
     : null;
-  const phuCapTrachNhiem = respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0;
-
-  const phuCapKhacFromRecord = (record as unknown as Record<string, number>)['phu_cap_khac'] ?? 0;
-  const phuCapKhacRemainder = Math.max(
-    phuCapKhacFromRecord,
-    Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0),
-  );
+  // Tổng phụ cấp (IV) phải bằng đúng số backend đã chốt. Ba cột gửi xe / ăn trưa /
+  // khác lấy thẳng từ dòng lương, còn trách nhiệm là PHẦN DƯ — backend gộp nó vào
+  // tổng chứ không trả riêng.
+  //
+  // Trước đây trách nhiệm được dựng lại từ chính sách trong hồ sơ, còn "PC khác" chỉ
+  // hấp thụ được phần thiếu (Math.max). Khi ba khoản kia cộng lại VƯỢT tổng đã chốt
+  // thì IV phình ra, kéo công thức IX và XII trong file Excel sai theo — tháng 6/2026
+  // có 2 ca, BS.Võ Thị Thu Sương lệch tới 40 triệu.
+  const tongPhuCapIVDaChot = soTheoBackend(record, 'phu_cap', NaN);
+  const phuCapKhacRemainder = soTheoBackend(record, 'phu_cap_khac', 0);
+  const phuCapTrachNhiem = Number.isFinite(tongPhuCapIVDaChot)
+    ? Math.max(tongPhuCapIVDaChot - phuCapGuiXe - phuCapAnTrua - phuCapKhacRemainder, 0)
+    : (respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0);
   const tongPhuCapIV = phuCapGuiXe + phuCapAnTrua + phuCapTrachNhiem + phuCapKhacRemainder;
   const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
 
@@ -3558,7 +3572,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             monthly_rate: toNumber(savedParkingPolicyRaw.monthly_rate, 0),
           }
         : null;
-      const phuCapGuiXe = parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : (record.phu_cap_gui_xe ?? 0);
+      const phuCapGuiXe = soTheoBackend(record, 'phu_cap_gui_xe',
+    parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : 0);
 
       const savedLunchPolicyRaw = (savedConfig?.lunchAllowancePolicy as Record<string, unknown> | undefined);
       const lunchPolicy: LunchAllowancePolicy | null = savedLunchPolicyRaw
@@ -3581,13 +3596,19 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             monthly_max: toNumber(savedRespPolicyRaw.monthly_max),
           }
         : null;
-      const phuCapTrachNhiem = respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0;
-
-      const phuCapKhacFromRecord = (record as unknown as Record<string, number>)['phu_cap_khac'] ?? 0;
-      const phuCapKhacRemainder = Math.max(
-        phuCapKhacFromRecord,
-        Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0),
-      );
+      // Tổng phụ cấp (IV) phải bằng đúng số backend đã chốt. Ba cột gửi xe / ăn trưa /
+      // khác lấy thẳng từ dòng lương, còn trách nhiệm là PHẦN DƯ — backend gộp nó vào
+      // tổng chứ không trả riêng.
+      //
+      // Trước đây trách nhiệm được dựng lại từ chính sách trong hồ sơ, còn "PC khác" chỉ
+      // hấp thụ được phần thiếu (Math.max). Khi ba khoản kia cộng lại VƯỢT tổng đã chốt
+      // thì IV phình ra, kéo công thức IX và XII trong file Excel sai theo — tháng 6/2026
+      // có 2 ca, BS.Võ Thị Thu Sương lệch tới 40 triệu.
+      const tongPhuCapIVDaChot = soTheoBackend(record, 'phu_cap', NaN);
+      const phuCapKhacRemainder = soTheoBackend(record, 'phu_cap_khac', 0);
+      const phuCapTrachNhiem = Number.isFinite(tongPhuCapIVDaChot)
+        ? Math.max(tongPhuCapIVDaChot - phuCapGuiXe - phuCapAnTrua - phuCapKhacRemainder, 0)
+        : (respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0);
       const tongPhuCapIV = phuCapGuiXe + phuCapAnTrua + phuCapTrachNhiem + phuCapKhacRemainder;
       const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
 
@@ -3840,7 +3861,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               monthly_rate: toNumber(savedParkingPolicyRaw.monthly_rate, 0),
             }
           : null;
-        const phuCapGuiXe = parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : (record.phu_cap_gui_xe ?? 0);
+        const phuCapGuiXe = soTheoBackend(record, 'phu_cap_gui_xe',
+    parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : 0);
 
         const savedLunchPolicyRaw = (savedConfig?.lunchAllowancePolicy as Record<string, unknown> | undefined);
         const lunchPolicy: LunchAllowancePolicy | null = savedLunchPolicyRaw
@@ -3863,13 +3885,19 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
               monthly_max: toNumber(savedRespPolicyRaw.monthly_max),
             }
           : null;
-        const phuCapTrachNhiem = respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0;
-
-        const phuCapKhacFromRecord = (record as unknown as Record<string, number>)['phu_cap_khac'] ?? 0;
-        const phuCapKhacRemainder = Math.max(
-          phuCapKhacFromRecord,
-          Math.max((record.phu_cap ?? 0) - phuCapGuiXe - phuCapAnTrua - phuCapTrachNhiem, 0),
-        );
+        // Tổng phụ cấp (IV) phải bằng đúng số backend đã chốt. Ba cột gửi xe / ăn trưa /
+        // khác lấy thẳng từ dòng lương, còn trách nhiệm là PHẦN DƯ — backend gộp nó vào
+        // tổng chứ không trả riêng.
+        //
+        // Trước đây trách nhiệm được dựng lại từ chính sách trong hồ sơ, còn "PC khác" chỉ
+        // hấp thụ được phần thiếu (Math.max). Khi ba khoản kia cộng lại VƯỢT tổng đã chốt
+        // thì IV phình ra, kéo công thức IX và XII trong file Excel sai theo — tháng 6/2026
+        // có 2 ca, BS.Võ Thị Thu Sương lệch tới 40 triệu.
+        const tongPhuCapIVDaChot = soTheoBackend(record, 'phu_cap', NaN);
+        const phuCapKhacRemainder = soTheoBackend(record, 'phu_cap_khac', 0);
+        const phuCapTrachNhiem = Number.isFinite(tongPhuCapIVDaChot)
+          ? Math.max(tongPhuCapIVDaChot - phuCapGuiXe - phuCapAnTrua - phuCapKhacRemainder, 0)
+          : (respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0);
         const tongPhuCapIV = phuCapGuiXe + phuCapAnTrua + phuCapTrachNhiem + phuCapKhacRemainder;
         const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
 
