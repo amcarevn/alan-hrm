@@ -3647,6 +3647,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         { header: 'Truy tăng', key: 'truy_tang', width: 14, style: MONEY_FMT },
         { header: 'Truy thu', key: 'truy_thu', width: 14, style: MONEY_FMT },
         { header: 'Điều chỉnh (VIII)', key: 'dieu_chinh', width: 16, style: MONEY_FMT },
+        // Cột chữ, đặt ngay sau số tiền điều chỉnh để kế toán đọc bảng là biết khoản
+        // truy tăng/truy thu đó vì sao (vd "Truy thu BHYT"), không phải mở lại bản ghi.
+        { header: 'Lý do điều chỉnh', key: 'ly_do_dieu_chinh', width: 28 },
         { header: 'Thuế TNCN (X)', key: 'thue_tncn', width: 14, style: MONEY_FMT },
         { header: 'Tạm ứng (XI)', key: 'tam_ung', width: 14, style: MONEY_FMT },
         { header: 'Lương thực lĩnh (IX)', key: 'luong_thuc_linh', width: 18, style: MONEY_FMT },
@@ -3802,6 +3805,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
   const truyTang = (record as unknown as Record<string, number>)['truy_tang'] ?? 0;
   const truyThu = (record as unknown as Record<string, number>)['truy_thu'] ?? 0;
+        // Bảng lương các tháng đã chốt TRƯỚC khi có trường này thì snapshot không có
+        // khoá `ly_do_dieu_chinh` — để rỗng chứ không hiện "undefined".
+        const lyDoDieuChinh = String((record as unknown as Record<string, unknown>)['ly_do_dieu_chinh'] ?? '');
         const tamUng = record.tam_ung ?? 0;
         const thue = payrollTax.taxAmount;
 
@@ -3839,6 +3845,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           truy_tang: Math.round(truyTang),
         truy_thu: Math.round(truyThu),
         dieu_chinh: Math.round(dieuChinhVIII),
+        ly_do_dieu_chinh: lyDoDieuChinh,
           thue_tncn: Math.round(thue),
           tam_ung: Math.round(tamUng),
           luong_thuc_linh: Math.round(payslipComputation.luongThucLinh),
