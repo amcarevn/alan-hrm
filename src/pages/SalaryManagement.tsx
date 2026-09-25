@@ -376,7 +376,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
 
   // Section III
-  const luongNgayCongThucTe = workdayBreakdown.tongLuongNgayCong;
+  const luongNgayCongThucTe = soTheoBackend(record, 'luong_ngay_cong', workdayBreakdown.tongLuongNgayCong);
   const luongCongThuViec = workdayBreakdown.luongCongThuViec;
   const luongCongChinhThuc = workdayBreakdown.luongCongChinhThuc;
   const congThuViec = workdayBreakdown.congThuViec;
@@ -1642,7 +1642,7 @@ const getWorkdaySalaryBreakdown = (record: SalaryRecord, employee?: Employee): W
 
 const getGrossIncomeForTaxFromRecord = (record: SalaryRecord, employee?: Employee) => {
   const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
-  const luongNgayCongThucTe = workdayBreakdown.tongLuongNgayCong;
+  const luongNgayCongThucTe = soTheoBackend(record, 'luong_ngay_cong', workdayBreakdown.tongLuongNgayCong);
   const luongTangCa = record.luong_tang_ca ?? 0;
   const luongTrucCa = record.truc_toi ?? 0;
   const luongDoanhSo = (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
@@ -1652,6 +1652,20 @@ const getGrossIncomeForTaxFromRecord = (record: SalaryRecord, employee?: Employe
   const taxableLuongTangCa = isOtPayTaxableForRecord(record) ? luongTangCa : 0;
   return luongNgayCongThucTe + taxableAllowance + luongDoanhSo + thuNhapKhac + luongTrucCa + taxableLuongTangCa;
 };
+
+/**
+ * Lấy một khoản tiền của dòng bảng lương: LUÔN ưu tiên số backend trả về, chỉ
+ * tính lại ở frontend khi backend không có khoá đó.
+ *
+ * Trước đây màn lương tự dựng lại lương ngày công từ hồ sơ nhân viên HIỆN TẠI.
+ * Với tháng ĐÃ CHỐT thì sai: sửa hồ sơ sau khi chốt (tỷ lệ thử việc, loại hợp
+ * đồng, chính sách phụ cấp...) làm bảng và file Excel tải về hiện số khác hẳn
+ * số đã chốt. Tháng 6/2026 lệch đúng kiểu này: 41 người, 17.356.118đ.
+ *
+ * Với tháng chưa chốt thì backend trả về chính số tính live, nên không đổi gì.
+ */
+const soTheoBackend = (record: SalaryRecord, key: string, tinhLaiOFrontend: number) =>
+  toNumber((record as unknown as Record<string, unknown>)[key], tinhLaiOFrontend);
 
 const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee): PayrollTaxComputation => {
   const savedAdjustments = employee ? (employee.salary_adjustments as Record<string, unknown> | undefined) : undefined;
@@ -1766,7 +1780,7 @@ const calculatePayrollTaxFromRecord = (record: SalaryRecord, employee?: Employee
 const calculatePayslipNetPayable = (record: SalaryRecord, employee?: Employee, commissions?: CommissionRecord[]) => {
   const stdDays = getResolvedStandardWorkDays(record, employee ?? null);
   const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
-  const luongNgayCongThucTe = workdayBreakdown.tongLuongNgayCong;
+  const luongNgayCongThucTe = soTheoBackend(record, 'luong_ngay_cong', workdayBreakdown.tongLuongNgayCong);
   const luongTangCa = record.luong_tang_ca ?? 0;
   const luongTrucCa = record.truc_toi ?? 0;
   const luongDoanhSo = getSalesCommissionAmount(record, commissions);
@@ -1827,8 +1841,12 @@ const calculatePayslipNetPayable = (record: SalaryRecord, employee?: Employee, c
   const truyTang = (record as unknown as Record<string, number>)['truy_tang'] ?? 0;
   const truyThu = (record as unknown as Record<string, number>)['truy_thu'] ?? 0;
   const tamUng = record.tam_ung ?? 0;
-  const luongThucLinh = tongThuNhapVI - tongGiamTruVII + dieuChinhVIII;
-  const conPhaiThanhToan = luongThucLinh - tamUng - payrollTax.taxAmount;
+  // Ưu tiên số backend: tháng đã chốt phải hiện đúng số đã chốt, không phải số
+  // frontend dựng lại từ hồ sơ hiện tại.
+  const luongThucLinh = soTheoBackend(record, 'luong_thuc_linh',
+    tongThuNhapVI - tongGiamTruVII + dieuChinhVIII);
+  const conPhaiThanhToan = soTheoBackend(record, 'con_phai_thanh_toan',
+    luongThucLinh - tamUng - payrollTax.taxAmount);
 
   return {
     luongThucLinh,
@@ -3521,7 +3539,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       const stdDays = getResolvedStandardWorkDays(record, employee ?? null);
       const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
       const luongCoBan = record.luong_co_ban ?? 0;
-      const luongNgayCongThucTe = workdayBreakdown.tongLuongNgayCong;
+      const luongNgayCongThucTe = soTheoBackend(record, 'luong_ngay_cong', workdayBreakdown.tongLuongNgayCong);
       const luongTangCa = record.luong_tang_ca ?? 0;
       const luongTrucCa = record.truc_toi ?? 0;
       const luongDoanhSo = getSalesCommissionAmount(record, recordCommissions);
@@ -3693,10 +3711,17 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         // Cột chữ, đặt ngay sau số tiền điều chỉnh để kế toán đọc bảng là biết khoản
         // truy tăng/truy thu đó vì sao (vd "Truy thu BHYT"), không phải mở lại bản ghi.
         { header: 'Lý do điều chỉnh', key: 'ly_do_dieu_chinh', width: 28 },
-        // Hai cột để khớp tờ khai quyết toán thuế TNCN: "Tổng thu nhập chịu thuế"
-        // là chỉ tiêu [12] (tổng số), "Thu nhập tính thuế" là [21] (sau giảm trừ
-        // gia cảnh và người phụ thuộc). Đặt ngay trước số thuế cho dễ đối chiếu.
+        // Khối cột để khớp tờ khai quyết toán thuế TNCN, xếp đúng thứ tự kế toán
+        // đang dùng: tổng lương được trả -> thu nhập chịu thuế [12] -> các khoản
+        // giảm trừ -> thu nhập tính thuế [21] -> số thuế.
+        //
+        // "Tổng lương phải trả" CỐ Ý không trừ bảo hiểm — chỉ trừ công đoàn và hai
+        // khoản phạt. Đây là số kế toán dùng, khác "Lương thực lĩnh (IX)".
+        { header: 'Tổng lương phải trả', key: 'tong_luong_phai_tra', width: 20, style: MONEY_FMT },
         { header: 'Tổng thu nhập chịu thuế', key: 'tong_thu_nhap_chiu_thue', width: 22, style: MONEY_FMT },
+        { header: 'Giảm trừ gia cảnh (bản thân)', key: 'giam_tru_ban_than', width: 24, style: MONEY_FMT },
+        { header: 'Số người phụ thuộc', key: 'so_nguoi_phu_thuoc', width: 16, style: { numFmt: '0' } },
+        { header: 'Giảm trừ người phụ thuộc', key: 'giam_tru_nguoi_phu_thuoc', width: 24, style: MONEY_FMT },
         { header: 'Thu nhập tính thuế', key: 'thu_nhap_tinh_thue', width: 20, style: MONEY_FMT },
         { header: 'Thuế TNCN (X)', key: 'thue_tncn', width: 14, style: MONEY_FMT },
         { header: 'Tạm ứng (XI)', key: 'tam_ung', width: 14, style: MONEY_FMT },
@@ -3724,6 +3749,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           `${colNumberOf('tong_bh')}+${colNumberOf('cong_doan')}+${colNumberOf('tong_phat')}+${colNumberOf('tong_phat_bienban')}`),
         dieu_chinh: formula('dieu_chinh',
           `${colNumberOf('truy_tang')}-${colNumberOf('truy_thu')}`),
+        tong_luong_phai_tra: formula('tong_luong_phai_tra',
+          `${colNumberOf('tong_thu_nhap_vi')}-${colNumberOf('cong_doan')}-${colNumberOf('tong_phat')}-${colNumberOf('tong_phat_bienban')}`),
         // Phải cộng cả Điều chỉnh (truy tăng − truy thu) — đúng như công thức phiếu
         // lương: luongThucLinh = tongThuNhapVI − tongGiamTruVII + dieuChinhVIII.
         // Thiếu vế này thì Excel tính lại lúc mở file và ghi đè số đúng bằng số sai.
@@ -3774,7 +3801,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         truy_tang: 0,
         truy_thu: 0,
         dieu_chinh: 0,
+        tong_luong_phai_tra: 0,
         tong_thu_nhap_chiu_thue: 0,
+        giam_tru_ban_than: 0,
+        giam_tru_nguoi_phu_thuoc: 0,
         thu_nhap_tinh_thue: 0,
         thue_tncn: 0,
         tam_ung: 0,
@@ -3791,7 +3821,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         const stdDays = getResolvedStandardWorkDays(record, employee ?? null);
         const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
         const luongCoBan = record.luong_co_ban ?? 0;
-        const luongNgayCongThucTe = workdayBreakdown.tongLuongNgayCong;
+        const luongNgayCongThucTe = soTheoBackend(record, 'luong_ngay_cong', workdayBreakdown.tongLuongNgayCong);
         const luongTangCa = record.luong_tang_ca ?? 0;
         const luongTrucCa = record.truc_toi ?? 0;
         const luongDoanhSo = getSalesCommissionAmount(record, recordCommissions);
@@ -3899,7 +3929,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         truy_thu: Math.round(truyThu),
         dieu_chinh: Math.round(dieuChinhVIII),
         ly_do_dieu_chinh: lyDoDieuChinh,
+          tong_luong_phai_tra: Math.round(tongThuNhapVI - congDoan - tongPhat - tongPhatBienBan),
           tong_thu_nhap_chiu_thue: Math.round(payrollTax.grossIncomeForTax),
+          giam_tru_ban_than: Math.round(payrollTax.taxDetail.personalDeduction),
+          so_nguoi_phu_thuoc: payrollTax.dependentCount,
+          giam_tru_nguoi_phu_thuoc: Math.round(payrollTax.taxDetail.dependentDeduction),
           thu_nhap_tinh_thue: getThuNhapTinhThue(record, payrollTax),
           thue_tncn: Math.round(thue),
           tam_ung: Math.round(tamUng),
@@ -3942,6 +3976,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           formula: `${cellRef('truy_tang')}-${cellRef('truy_thu')}`,
           result: rowData.dieu_chinh,
         };
+        dataRow.getCell('tong_luong_phai_tra').value = {
+          formula: `${cellRef('tong_thu_nhap_vi')}-${cellRef('cong_doan')}-${cellRef('tong_phat')}-${cellRef('tong_phat_bienban')}`,
+          result: rowData.tong_luong_phai_tra,
+        };
         dataRow.getCell('luong_thuc_linh').value = {
           // Cộng cả Điều chỉnh (truy tăng − truy thu), xem ghi chú ở luồng xuất phía trên.
           formula: `${cellRef('tong_thu_nhap_vi')}-${cellRef('tong_giam_tru_vii')}+${cellRef('dieu_chinh')}`,
@@ -3975,7 +4013,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         totals.tong_phat_bienban += rowData.tong_phat_bienban;
         totals.tong_giam_tru_vii += rowData.tong_giam_tru_vii;
         totals.dieu_chinh += rowData.dieu_chinh;
+        totals.tong_luong_phai_tra += rowData.tong_luong_phai_tra;
         totals.tong_thu_nhap_chiu_thue += rowData.tong_thu_nhap_chiu_thue;
+        totals.giam_tru_ban_than += rowData.giam_tru_ban_than;
+        totals.giam_tru_nguoi_phu_thuoc += rowData.giam_tru_nguoi_phu_thuoc;
         totals.thu_nhap_tinh_thue += rowData.thu_nhap_tinh_thue;
         totals.thue_tncn += rowData.thue_tncn;
         totals.tam_ung += rowData.tam_ung;
@@ -4009,7 +4050,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         tong_phat_bienban: totals.tong_phat_bienban,
         tong_giam_tru_vii: totals.tong_giam_tru_vii,
         dieu_chinh: totals.dieu_chinh,
+        tong_luong_phai_tra: totals.tong_luong_phai_tra,
         tong_thu_nhap_chiu_thue: totals.tong_thu_nhap_chiu_thue,
+        giam_tru_ban_than: totals.giam_tru_ban_than,
+        giam_tru_nguoi_phu_thuoc: totals.giam_tru_nguoi_phu_thuoc,
         thu_nhap_tinh_thue: totals.thu_nhap_tinh_thue,
         thue_tncn: totals.thue_tncn,
         tam_ung: totals.tam_ung,
