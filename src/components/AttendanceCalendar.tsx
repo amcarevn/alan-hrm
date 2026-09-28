@@ -32,6 +32,9 @@ export interface AttendanceDay {
     is_absent: boolean;
     is_incomplete: boolean;
     work_credit: number;
+    // Phần công lễ đã cộng riêng vào work_credit ở trên (0 nếu không phải
+    // ngày lễ hoặc NV không active ngày đó) — dùng để hiển thị "X công lễ".
+    holiday_credit?: number;
     penalty_amount: number;
     overtime_hours: number;
     extra_hours: number;
@@ -620,6 +623,15 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
     return 'bg-gray-50 text-gray-500 border-gray-200';
   };
 
+  // Helper: nhãn "X công" / "X công lễ" — phân biệt công lễ với công thường
+  const getWorkCreditLabel = (day: AttendanceDay): string => {
+    const credit = Number(day.engine_context?.work_credit || 0);
+    if (!credit) return '0 công';
+    return day.is_holiday || Number(day.engine_context?.holiday_credit || 0) > 0
+      ? `${credit} công lễ`
+      : `${credit} công`;
+  };
+
   // Helper: Get badge text for a day
   const getDayBadgeText = (day: AttendanceDay): string => {
     if (day.dayStatusSummary?.has_pending_request) {
@@ -964,7 +976,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                 </p>
                 {day.engine_context?.work_credit !== undefined && (
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Hệ số công: <span className="font-bold text-green-600">{day.engine_context.work_credit} công</span>
+                    Hệ số công: <span className="font-bold text-green-600">{getWorkCreditLabel(day)}</span>
                   </p>
                 )}
               </div>
@@ -1355,7 +1367,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                           ? 'text-green-600 bg-green-50 border-green-100/50' 
                           : 'text-orange-600 bg-orange-50 border-orange-100/50'
                       }`}>
-                        {day.engine_context.work_credit} công
+                        {getWorkCreditLabel(day)}
                       </span>
                     )}
                   </div>
@@ -1537,7 +1549,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                           <div className={`w-1.5 h-1.5 rounded-full animate-blink ${
                             day.engine_context.work_credit >= 1.0 ? 'bg-green-500' : 'bg-orange-500'
                           }`} />
-                          {day.engine_context.work_credit} công
+                          {getWorkCreditLabel(day)}
                         </div>
                       )}
                     </div>
