@@ -92,7 +92,7 @@ import ContractTemplates from './pages/ContractTemplates';
 import BulkContracts from './pages/BulkContracts';
 import DocumentTemplates from './pages/DocumentTemplates';
 import PasswordReset from './pages/PasswordReset';
-import ShiftConfiguration from './pages/ShiftConfiguration';
+import AttendanceConfiguration from './pages/AttendanceConfiguration';
 import AIChat from './pages/AIChat';
 import SalaryPayroll from './pages/SalaryPayroll';
 import SalaryEmployeeConfig from './pages/SalaryEmployeeConfig';
@@ -829,13 +829,13 @@ function App() {
               </ProtectedRoute>
             }
           />
-          {/* Shift Configuration Route */}
+          {/* Attendance Configuration Route (Cấu hình ca làm + Quản lý công lễ) */}
           <Route
             path="/dashboard/shift-configuration"
             element={
               <ProtectedRoute>
                 <Layout>
-                  <ShiftConfiguration />
+                  <AttendanceConfiguration />
                 </Layout>
               </ProtectedRoute>
             }
