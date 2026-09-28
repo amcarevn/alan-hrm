@@ -143,7 +143,7 @@ const HolidayManagement: React.FC = () => {
         is_recurring: holiday.is_recurring,
         is_working_day: holiday.is_working_day,
         allow_voluntary_work: holiday.allow_voluntary_work,
-        overtime_multiplier: holiday.overtime_multiplier,
+        overtime_multiplier: holiday.overtime_multiplier ?? 3.0,
         apply_to_all: holiday.apply_to_all,
         notes: holiday.notes || '',
       });
@@ -497,6 +497,14 @@ const HolidayManagement: React.FC = () => {
 
             {/* Modal body */}
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Lỗi khi submit — hiện ngay trong modal vì banner ở ngoài trang bị modal che mất */}
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-lg flex items-start gap-2">
+                  <ExclamationCircleIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
+              )}
+
               {/* Ngày lễ */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
