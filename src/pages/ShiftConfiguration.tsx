@@ -43,24 +43,15 @@ const ShiftConfiguration: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        {mode !== 'landing' && (
-          <button
-            onClick={goBack}
-            className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 mb-3"
-          >
-            <ArrowLeftIcon className="h-4 w-4" />
-            Quay lại
-          </button>
-        )}
-        <div className="flex items-center">
-          <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Cấu hình ca làm</h1>
-            <p className="text-sm text-gray-900 mt-0.5">Gán ca làm theo cá nhân, vị trí hoặc phòng ban.</p>
-          </div>
-        </div>
-      </div>
+      {mode !== 'landing' && (
+        <button
+          onClick={goBack}
+          className="flex items-center gap-1.5 text-sm font-semibold text-gray-900"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          Quay lại
+        </button>
+      )}
 
       {/* Priority Rules Banner */}
       <div className="rounded-2xl bg-primary-50 border border-primary-200 p-4">

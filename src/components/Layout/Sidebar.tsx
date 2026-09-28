@@ -204,7 +204,7 @@ const navigationItems: NavigationItem[] = [
         departments: ['HCNS'],
       },
       {
-        name: 'Cấu hình ca làm',
+        name: 'Quản lý công',
         href: '/dashboard/shift-configuration',
         icon: ClockIcon,
         roles: ['ADMIN', 'HR'],
