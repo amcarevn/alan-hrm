@@ -2435,7 +2435,10 @@ const Approvals: React.FC = () => {
                       </div>
                     </button>
 
-                    <div className="flex items-center gap-2 sm:gap-4">
+                    {/* shrink-0 + nhãn rút gọn trên mobile: trước đây cụm nút
+                        này chiếm hết chiều ngang, tên phòng ban bị nuốt chỉ còn
+                        1 mẩu icon. */}
+                    <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
                       {hasBulkApprovePermission && activeTab === 'pending' && pendingInDept > 0 && (
                         <button
                           disabled={isBulkProcessing}
@@ -2443,11 +2446,12 @@ const Approvals: React.FC = () => {
                             e.stopPropagation();
                             handleBulkApproveItems(allItemsInDept, `phòng ${deptName}`);
                           }}
-                          className="flex items-center gap-2 h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-md transition-colors disabled:opacity-50"
+                          className="flex items-center gap-1.5 h-9 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-md transition-colors disabled:opacity-50 whitespace-nowrap shrink-0"
                           title={`Duyệt nhanh tất cả đơn của phòng ${deptName}`}
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                          <span>Duyệt nhanh</span>
+                          <span className="hidden sm:inline">Duyệt nhanh</span>
+                          <span className="sm:hidden">Duyệt</span>
                         </button>
                       )}
 
