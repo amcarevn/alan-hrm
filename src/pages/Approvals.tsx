@@ -344,8 +344,14 @@ const Approvals: React.FC = () => {
         }));
       };
 
+      // CỐ Ý KHÔNG gửi month/year: "chờ duyệt" là chờ duyệt bất kể đơn thuộc
+      // ngày nào. Nhân viên thường xin nghỉ/đăng ký trước cả tháng, mà trang
+      // mặc định lọc theo 1 tháng nên những đơn đó vô hình cho tới khi sang
+      // tháng — người duyệt không biết mà xử lý (HCNS TA chốt 2026-09-28).
+      // Tab Đã duyệt/Từ chối vẫn lọc theo tháng để tra cứu. Backend Alan
+      // (hrm/duyet_don_views.py::_apply_filters) bỏ trống month/year là trả tất cả.
       const result = await (approvalService as any).getAllPendingRequests(
-        { day: 0, month: filterMonth, year: filterYear },
+        { day: 0 },
         (loaded: number, total: number | null) => { if (!signal?.aborted) setFetchProgress({ loaded, total }); },
         applyPendingResult,
         signal
@@ -1893,8 +1899,16 @@ const Approvals: React.FC = () => {
     if (tab === 'pending') return pending;
     if (tab === 'rejected') return rejected;
     if (isAdmin || isHR) return approved;
+    // Mảng pending KHÔNG lọc theo tháng (xem fetchPendingRequests) nên phải
+    // lọc lại ở đây, nếu không tab này sẽ trộn đơn của mọi tháng vào danh
+    // sách vốn đang hiển thị theo tháng đã chọn.
+    const inSelectedMonth = (x: any): boolean => {
+      const raw = x?.attendance_date || x?.start_date || x?.work_date || x?.event_date;
+      const m = String(raw || '').match(/^(\d{4})-(\d{2})/);
+      return !!m && Number(m[1]) === filterYear && Number(m[2]) === filterMonth;
+    };
     return approved.map((arr, i) =>
-      [...(arr || []), ...((pending[i] || []).filter((x: any) => x?.direct_manager_approved))]);
+      [...(arr || []), ...((pending[i] || []).filter((x: any) => x?.direct_manager_approved && inSelectedMonth(x)))]);
   };
 
   const memoizedGroupedRequests = useMemo(() => {
@@ -2219,28 +2233,44 @@ const Approvals: React.FC = () => {
               </div>
             )}
 
-            <div className="w-[104px]">
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Tháng</label>
-              <SelectBox
-                label=""
-                value={filterMonth.toString()}
-                options={Array.from({ length: 12 }, (_, i) => ({ value: (i + 1).toString(), label: `Tháng ${i + 1}` }))}
-                onChange={(val) => setFilterMonth(parseInt(val))}
-              />
-            </div>
+            {/* Tab "Chờ duyệt" cố ý KHÔNG lọc theo tháng — xem
+                fetchPendingRequests(). Ẩn hẳn 2 ô này ở tab đó thay vì để
+                chúng nằm im không tác dụng, kèm 1 dòng giải thích. */}
+            {activeTab === 'pending' ? (
+              <div className="h-[42px] flex items-end">
+                <span className="inline-flex items-center gap-1.5 h-[42px] px-3 rounded-lg bg-blue-50 border border-blue-100 text-xs font-medium text-blue-700">
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Hiển thị đơn chờ duyệt của mọi tháng
+                </span>
+              </div>
+            ) : (
+              <>
+                <div className="w-[104px]">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Tháng</label>
+                  <SelectBox
+                    label=""
+                    value={filterMonth.toString()}
+                    options={Array.from({ length: 12 }, (_, i) => ({ value: (i + 1).toString(), label: `Tháng ${i + 1}` }))}
+                    onChange={(val) => setFilterMonth(parseInt(val))}
+                  />
+                </div>
 
-            <div className="w-[100px]">
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Năm</label>
-              <SelectBox
-                label=""
-                value={filterYear.toString()}
-                options={Array.from({ length: 5 }, (_, i) => {
-                  const y = 2026 + i;
-                  return { value: y.toString(), label: y.toString() };
-                })}
-                onChange={(val) => setFilterYear(parseInt(val))}
-              />
-            </div>
+                <div className="w-[100px]">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Năm</label>
+                  <SelectBox
+                    label=""
+                    value={filterYear.toString()}
+                    options={Array.from({ length: 5 }, (_, i) => {
+                      const y = 2026 + i;
+                      return { value: y.toString(), label: y.toString() };
+                    })}
+                    onChange={(val) => setFilterYear(parseInt(val))}
+                  />
+                </div>
+              </>
+            )}
 
             <button
               onClick={() => setFilterOnlyMine(!filterOnlyMine)}
