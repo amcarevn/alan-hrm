@@ -1449,6 +1449,17 @@ const Approvals: React.FC = () => {
     });
   };
 
+  /** "HH:MM · dd/MM" — dùng cho thẻ đơn trên mobile. formatDate() dùng
+   *  toLocaleDateString('vi-VN') nên ra "23/9/2026" (tháng KHÔNG pad 0), cắt
+   *  chuỗi sẽ hỏng, phải tự dựng. */
+  const formatShortDateTime = (dateString: string) => {
+    if (!dateString) return '';
+    const dt = new Date(dateString);
+    if (Number.isNaN(dt.getTime())) return '';
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${p(dt.getHours())}:${p(dt.getMinutes())} · ${p(dt.getDate())}/${p(dt.getMonth() + 1)}`;
+  };
+
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -1858,13 +1869,28 @@ const Approvals: React.FC = () => {
     return finalGroups;
   };
 
+  /**
+   * Chọn mảng dữ liệu nguồn theo tab.
+   * QLTT (không phải HCNS/Admin): tab "Đã duyệt" phải gồm CẢ đơn họ đã duyệt
+   * nhưng HCNS chưa duyệt (yêu cầu HCNS TA 2026-09-23) — những đơn này vẫn ở
+   * trạng thái PENDING nên nằm trong mảng pending, phải gộp thêm vào; nếu
+   * không, sau khi ẩn chúng khỏi tab Chờ duyệt thì chúng biến mất khỏi cả 2
+   * tab. Với HCNS/Admin thì "đã duyệt" vẫn là duyệt xong hẳn như cũ.
+   */
+  const pickTabSources = (tab: 'pending' | 'approved' | 'rejected'): any[][] => {
+    const pending = [attendanceExplanations, pendingRegistrations, pendingLeaveRequests, pendingOvertimeRequests, pendingOnlineWorkRequests];
+    const approved = [approvedExplanations, approvedRegistrations, approvedLeaveRequests, approvedOvertimeRequests, approvedOnlineWorkRequests];
+    const rejected = [rejectedExplanations, rejectedRegistrations, rejectedLeaveRequests, rejectedOvertimeRequests, rejectedOnlineWorkRequests];
+    if (tab === 'pending') return pending;
+    if (tab === 'rejected') return rejected;
+    if (isAdmin || isHR) return approved;
+    return approved.map((arr, i) =>
+      [...(arr || []), ...((pending[i] || []).filter((x: any) => x?.direct_manager_approved))]);
+  };
+
   const memoizedGroupedRequests = useMemo(() => {
     // 1. Get base data based on active tab
-    const explanations = activeTab === 'pending' ? attendanceExplanations : activeTab === 'approved' ? approvedExplanations : rejectedExplanations;
-    const registrations = activeTab === 'pending' ? pendingRegistrations : activeTab === 'approved' ? approvedRegistrations : rejectedRegistrations;
-    const leaveRequests = activeTab === 'pending' ? pendingLeaveRequests : activeTab === 'approved' ? approvedLeaveRequests : rejectedLeaveRequests;
-    const overtimeRequests = activeTab === 'pending' ? pendingOvertimeRequests : activeTab === 'approved' ? approvedOvertimeRequests : rejectedOvertimeRequests;
-    const onlineWorks = activeTab === 'pending' ? pendingOnlineWorkRequests : activeTab === 'approved' ? approvedOnlineWorkRequests : rejectedOnlineWorkRequests;
+    const [explanations, registrations, leaveRequests, overtimeRequests, onlineWorks] = pickTabSources(activeTab);
 
     const all = buildFilteredCombinedList(explanations, registrations, leaveRequests, overtimeRequests, onlineWorks);
     return buildDeptPosEmpGroups(sortByCreatedAtAsc(all));
@@ -2447,17 +2473,19 @@ const Approvals: React.FC = () => {
                         return (
                           <div key={posName} className="bg-white border border-gray-100 rounded-lg shadow-sm overflow-hidden border-l-4 border-l-primary-500">
                             {/* Position Sub-Header */}
-                            <div className="flex items-center justify-between px-5 py-4 bg-gray-50/50 border-b border-gray-100">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 bg-primary-50 text-primary-600 rounded-lg">
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            {/* Mobile: nút "Duyệt nhanh" không được co phần chữ bên
+                                trái (min-w-0 + truncate + shrink-0), nếu không trên
+                                điện thoại chữ "Vị trí: ..." bị ép xuống dòng từng
+                                chữ một. Nút cũng rút gọn nhãn trên màn hẹp. */}
+                            <div className="flex items-center justify-between gap-2 px-3 sm:px-5 py-3 sm:py-4 bg-gray-50/50 border-b border-gray-100">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="p-2 bg-primary-50 text-primary-600 rounded-lg shrink-0">
+                                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                                 </div>
-                                <div>
-                                  <h4 className="text-sm font-semibold text-gray-800">
-                                    Vị trí: {posName}
-                                  </h4>
-                                  <span className="text-xs font-bold text-gray-400">
-                                    Tổng: {allItemsInPos.length} đơn đang xử lý
+                                <div className="min-w-0">
+                                  <h4 className="text-sm font-semibold text-gray-800 truncate">{posName}</h4>
+                                  <span className="text-xs font-medium text-gray-400 whitespace-nowrap">
+                                    {allItemsInPos.length} đơn đang xử lý
                                   </span>
                                 </div>
                               </div>
@@ -2469,11 +2497,12 @@ const Approvals: React.FC = () => {
                                     e.stopPropagation();
                                     handleBulkApproveItems(allItemsInPos, `vị trí ${posName}`);
                                   }}
-                                  className="flex items-center gap-2 h-8 px-4 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white text-xs font-medium rounded-md border border-emerald-200 transition-colors disabled:opacity-50"
+                                  className="shrink-0 flex items-center gap-1.5 h-8 px-3 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white text-xs font-medium rounded-md border border-emerald-200 transition-colors disabled:opacity-50 whitespace-nowrap"
                                   title={`Duyệt nhanh tất cả đơn của vị trí ${posName}`}
                                 >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                  <span>Duyệt nhanh {pendingInPos} đơn</span>
+                                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                  <span className="hidden sm:inline">Duyệt nhanh {pendingInPos} đơn</span>
+                                  <span className="sm:hidden">Duyệt {pendingInPos}</span>
                                 </button>
                               )}
                             </div>
@@ -2509,11 +2538,15 @@ const Approvals: React.FC = () => {
                                         }
                                       }}
                                     >
-                                      {/* Row 1: Info and Actions */}
-                                      <div className="flex items-start justify-between w-full">
-                                        <div className="flex items-center gap-3">
-                                          <div className="relative">
-                                            <div className="w-10 h-10 rounded-lg bg-gray-700 flex items-center justify-center text-white text-xs font-semibold">
+                                      {/* Row 1: Info and Actions. Mobile: min-w-0 + truncate
+                                          cho khối tên, nếu không tên dài và "Mã nhân viên: ..."
+                                          bị ép xuống dòng từng chữ. Badge vị trí bỏ trên mobile
+                                          vì đã có ở tiêu đề cấp trên ngay phía trên; mã NV rút
+                                          gọn còn mã. */}
+                                      <div className="flex items-start justify-between w-full gap-2 min-w-0">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <div className="relative shrink-0">
+                                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gray-700 flex items-center justify-center text-white text-xs font-semibold">
                                               {empName.charAt(0)}
                                             </div>
                                             {pendingInEmp > 0 && activeTab === 'pending' && (
@@ -2522,18 +2555,18 @@ const Approvals: React.FC = () => {
                                               </span>
                                             )}
                                           </div>
-                                          <div className="flex flex-col">
-                                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                                              <div className="text-base font-semibold text-gray-800 leading-tight">
+                                          <div className="flex flex-col min-w-0">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <div className="text-sm sm:text-base font-semibold text-gray-800 leading-tight truncate">
                                                 {empName}
                                               </div>
-                                              <span className="w-fit px-2 py-0.5 bg-primary-50 text-primary-600 rounded-lg text-xs font-semibold border border-primary-100 uppercase tracking-widest leading-none">
+                                              <span className="hidden sm:inline shrink-0 px-2 py-0.5 bg-primary-50 text-primary-600 rounded-lg text-xs font-semibold border border-primary-100 uppercase tracking-widest leading-none">
                                                 {posName}
                                               </span>
                                             </div>
-                                            <div className="mt-1">
-                                              <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-lg border border-gray-200/50">Mã nhân viên: {firstItem?.employee_code}</span>
-                                            </div>
+                                            <span className="mt-0.5 text-xs font-medium text-gray-400 truncate">
+                                              {firstItem?.employee_code}
+                                            </span>
                                           </div>
                                         </div>
 
@@ -2559,9 +2592,11 @@ const Approvals: React.FC = () => {
                                         </div>
                                       </div>
 
-                                      {/* Row 2: Full Width Quotas */}
-                                      <div className="mt-2.5 w-full">
-                                        <div className="grid grid-cols-2 xs:grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full">
+                                      {/* Row 2: Hạn mức trong tháng. Mobile: bỏ lưới 2x2
+                                          (chiếm gần nửa màn hình cho 4 ô thông tin phụ),
+                                          đổi thành 1 hàng pill nhỏ. */}
+                                      <div className="mt-2 w-full">
+                                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full">
                                           {(() => {
                                             const empId = firstItem?.employee_id || (typeof firstItem?.employee === 'object' ? firstItem?.employee?.id : firstItem?.employee);
 
@@ -2593,9 +2628,9 @@ const Approvals: React.FC = () => {
                                             ];
 
                                             return quotas.map(q => (
-                                              <div key={q.id} className={`flex flex-col items-center justify-center p-1.5 rounded-lg border ${q.border} ${q.bg} min-w-[75px] flex-1 sm:flex-none transition-all shadow-sm`}>
-                                                <span className={`text-[8px] font-semibold ${q.text} mb-0.5 text-center leading-none`}>{q.label}</span>
-                                                <span className={`text-xs font-semibold ${q.text} leading-none truncate`}>
+                                              <div key={q.id} className={`flex items-center gap-1 px-2 py-1 rounded-md border ${q.border} ${q.bg} shrink-0`}>
+                                                <span className={`text-[10px] font-medium ${q.text} leading-none whitespace-nowrap`}>{q.label}</span>
+                                                <span className={`text-[11px] font-bold ${q.text} leading-none whitespace-nowrap`}>
                                                   {q.value || 0}{q.max ? `/${q.max}` : ''}
                                                 </span>
                                               </div>
@@ -2806,10 +2841,12 @@ const Approvals: React.FC = () => {
 
                                                 {/* Tiến độ duyệt + thời điểm gửi trên CÙNG 1 dòng, thay
                                                     cho 2 hộp viền riêng trước đây. */}
-                                                <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between gap-2">
-                                                  {getStatusBadge(item, false, 'stepper')}
-                                                  <span className="text-[11px] text-gray-400 shrink-0">
-                                                    Gửi {formatTimeOnly(item.created_at)} · {formatDate(item.created_at)}
+                                                <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between gap-2 min-w-0">
+                                                  <div className="min-w-0 shrink">{getStatusBadge(item, false, 'stepper')}</div>
+                                                  {/* Rút gọn còn giờ:phút + ngày/tháng — bản đầy đủ
+                                                      (kèm giây và năm) tràn khỏi thẻ trên điện thoại. */}
+                                                  <span className="text-[11px] text-gray-400 shrink-0 whitespace-nowrap">
+                                                    {formatShortDateTime(item.created_at)}
                                                   </span>
                                                 </div>
 
