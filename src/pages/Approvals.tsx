@@ -135,6 +135,9 @@ const Approvals: React.FC = () => {
   // Khối "Đang chờ quản lý trực tiếp" ở tab Chờ duyệt của HCNS — thu gọn sẵn vì
   // đó là việc của QLTT, HCNS chưa thao tác gì được.
   const [showWaitingManagerSection, setShowWaitingManagerSection] = useState(false);
+  // Khối "Bạn đã duyệt · đang chờ HCNS" ở tab Chờ duyệt (QLTT) — đóng sẵn vì
+  // không phải việc cần làm, chỉ để QLTT theo dõi tiến độ.
+  const [showManagerApprovedSection, setShowManagerApprovedSection] = useState(false);
   const [calendarModalEmployee, setCalendarModalEmployee] = useState<{ id: number; name: string; month: number; year: number } | null>(null);
 
   // Debug log cho Quota và dữ liệu được chọn
@@ -1750,6 +1753,10 @@ const Approvals: React.FC = () => {
   // việc tách 2 dải duyệt (memoizedApprovalLevelSplit).
   const buildFilteredCombinedList = (
     explanations: any[], registrations: any[], leaveRequests: any[], overtimeRequests: any[], onlineWorks: any[],
+    // keepManagerApproved: GIỮ lại đơn QLTT đã duyệt (đang chờ HCNS) thay vì
+    // lọc bỏ — dùng cho khối thu gọn "Bạn đã duyệt · đang chờ HCNS" ở tab
+    // Chờ duyệt, xem memoizedManagerApprovedPending.
+    opts: { keepManagerApproved?: boolean } = {},
   ) => {
     // 2. Map and filter
     const mappedExplanations = (explanations || [])
@@ -1788,7 +1795,7 @@ const Approvals: React.FC = () => {
     // Đơn đã qua QLTT duyệt (đang chờ HCNS) là việc của HCNS/Admin — QLTT
     // thuần tuý không cần thấy nữa ở tab Chờ duyệt (yêu cầu HCNS TA
     // 2026-09-23). Tab Đã duyệt/Từ chối vẫn hiện đủ để họ tra cứu lại.
-    if (activeTab === 'pending' && !isAdmin && !isHR) {
+    if (activeTab === 'pending' && !isAdmin && !isHR && !opts.keepManagerApproved) {
       all = all.filter(item => !item.direct_manager_approved);
     }
 
@@ -1930,6 +1937,30 @@ const Approvals: React.FC = () => {
     debouncedFilterName, filterDepartment,
     currentEmployee,
     user, isAdmin, isHR,
+  ]);
+
+  // Đơn QLTT ĐÃ duyệt nhưng HCNS chưa duyệt nốt. Chúng bị ẩn khỏi danh sách
+  // "Chờ duyệt" (việc của QLTT xong rồi) và nằm ở tab "Đã duyệt" — đúng về
+  // logic nhưng gây hiểu nhầm nặng: QLTT mở tab Chờ duyệt thấy gần như trống
+  // rồi kết luận "không nhìn thấy đơn của cấp dưới" (sự cố thật ở TA
+  // 27-28/09). Nay hiện lại ngay trong tab Chờ duyệt dưới 1 khối THU GỌN,
+  // tách bạch với việc cần làm.
+  const memoizedManagerApprovedPending = useMemo(() => {
+    if (activeTab !== 'pending' || isAdmin || isHR) return null;
+    const all = buildFilteredCombinedList(
+      attendanceExplanations, pendingRegistrations, pendingLeaveRequests,
+      pendingOvertimeRequests, pendingOnlineWorkRequests,
+      { keepManagerApproved: true },
+    ).filter((item: any) => item.direct_manager_approved);
+    if (all.length === 0) return null;
+    return { groups: buildDeptPosEmpGroups(sortByCreatedAtAsc(all)), count: all.length };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeTab, isAdmin, isHR,
+    attendanceExplanations, pendingRegistrations, pendingLeaveRequests,
+    pendingOvertimeRequests, pendingOnlineWorkRequests,
+    filterOnlyMine, filterOnlyMyDirectReports, filterTypes, filterExplanationSubTypes,
+    filterRegistrationSubTypes, debouncedFilterName, filterDepartment, currentEmployee, user,
   ]);
 
   // Tách đơn chờ duyệt thành 2 dải theo việc-cần-làm (port từ TA 594010b +
@@ -2389,7 +2420,7 @@ const Approvals: React.FC = () => {
               <SkeletonItem />
               <SkeletonItem />
             </div>
-          ) : Object.keys(getGroupedRequests()).length === 0 ? (
+          ) : (Object.keys(getGroupedRequests()).length === 0 && !memoizedManagerApprovedPending) ? (
             <div className="bg-white border rounded-lg overflow-hidden p-12 text-center shadow-sm">
               <div className="flex flex-col items-center justify-center">
                 <svg
@@ -2424,6 +2455,7 @@ const Approvals: React.FC = () => {
             const deptEntries = Object.entries(groupedRequests);
             const totalDepts = deptEntries.length;
             const approvalLevelSplit = memoizedApprovalLevelSplit;
+            const managerApprovedPending = memoizedManagerApprovedPending;
 
             // `levelKey` tách khoá đóng/mở của 2 dải Cấp 1 / Cấp 2: cùng 1
             // phòng ban có thể xuất hiện ở CẢ 2 dải, nếu dùng chung deptName
@@ -3027,7 +3059,43 @@ const Approvals: React.FC = () => {
               );
             }
 
-            return deptEntries.map(renderDeptCard(''));
+            return (
+              <>
+                {deptEntries.length > 0
+                  ? deptEntries.map(renderDeptCard(''))
+                  : (
+                    // Chỉ còn khối "Bạn đã duyệt" bên dưới — vẫn báo rõ là
+                    // không còn đơn nào cần làm thay vì để trống trơn.
+                    <div className="bg-white border rounded-lg p-8 text-center shadow-sm">
+                      <p className="text-base font-medium text-gray-900">Không còn đơn nào cần bạn duyệt</p>
+                      <p className="text-gray-500 mt-1 text-sm">Các đơn bạn đã duyệt đang chờ HCNS duyệt nốt — xem ở khối bên dưới.</p>
+                    </div>
+                  )}
+                {/* Khối thu gọn: đơn CHÍNH MÌNH đã duyệt, đang chờ HCNS duyệt
+                    nốt. Không phải việc cần làm nữa nên để cuối và đóng sẵn,
+                    nhưng phải hiện ở đây — xem memoizedManagerApprovedPending. */}
+                {managerApprovedPending && (
+                  <>
+                    <div className="flex items-center gap-3 mb-3 mt-8">
+                      <button
+                        onClick={() => setShowManagerApprovedSection(v => !v)}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-white text-gray-500 border border-gray-200 text-xs font-bold rounded-lg uppercase tracking-wide hover:text-gray-700 hover:border-gray-300 transition-colors shrink-0"
+                        title="Bạn đã duyệt xong các đơn này, đang chờ Hành chính nhân sự duyệt nốt — bạn không cần làm gì thêm"
+                      >
+                        <svg className={`w-3.5 h-3.5 transition-transform ${showManagerApprovedSection ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                        </svg>
+                        Bạn đã duyệt · đang chờ HCNS
+                      </button>
+                      <span className="text-xs text-gray-400 font-semibold shrink-0">{managerApprovedPending.count} đơn</span>
+                      <span className="h-[1px] flex-1 bg-gray-200"></span>
+                    </div>
+                    {showManagerApprovedSection
+                      && Object.entries(managerApprovedPending.groups).map(renderDeptCard('MA'))}
+                  </>
+                )}
+              </>
+            );
           })()
           }
         </div>
