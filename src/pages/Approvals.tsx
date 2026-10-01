@@ -14,6 +14,47 @@ import WorkFinalizationApprovalPanel from '../components/approvals/WorkFinalizat
 // không phải tên phòng ban thật nên không bao giờ trùng.
 const MY_DIRECT_REPORTS_SENTINEL = '__MY_DIRECT_REPORTS__';
 
+// Danh sách sub-filter — tách ra hằng số để dùng chung cho hàng chip "Chi tiết"
+// (trước đây 2 mảng này viết inline trong JSX của 2 khối riêng). Giữ đúng các
+// loại Alan đang có (Alan không có Nghỉ không phép / Đổi ca / Ca 2 như TA).
+const EXPLANATION_SUB_TYPES = [
+  { value: 'LATE', label: 'Đi muộn' },
+  { value: 'EARLY_LEAVE', label: 'Về sớm' },
+  { value: 'LATE_EARLY', label: 'Đi muộn/Về sớm' },
+  { value: 'INCOMPLETE_ATTENDANCE', label: 'Quên chấm công' },
+  { value: 'BUSINESS_TRIP', label: 'Đi công tác' },
+  { value: 'FIRST_DAY', label: 'Ngày đầu đi làm' },
+];
+
+const REGISTRATION_SUB_TYPES = [
+  { value: 'OVERTIME', label: 'Tăng ca' },
+  { value: 'NIGHT_SHIFT', label: 'Trực tối' },
+  { value: 'LIVE', label: 'Live stream' },
+  { value: 'OFF_DUTY', label: 'Vào/Ra trực' },
+];
+
+// Màu cho chip lọc loại đơn. PHẢI viết đủ chuỗi class tĩnh — trước đây dùng
+// `bg-${opt.color}-600` và Tailwind JIT không quét được chuỗi ghép động (dự án
+// cũng không có safelist), nên các chip này thực tế ĐANG MẤT MÀU trên bản
+// build. Cùng cách làm với VARIANT_STYLES ở ConfirmDialog.tsx.
+const TYPE_CHIP_STYLES: Record<string, { active: string; idle: string; badge: string }> = {
+  amber: {
+    active: 'bg-amber-600 text-white border-transparent',
+    idle: 'bg-white text-gray-600 border-gray-200 hover:border-amber-300',
+    badge: 'bg-amber-50 text-amber-600',
+  },
+  primary: {
+    active: 'bg-primary-600 text-white border-transparent',
+    idle: 'bg-white text-gray-600 border-gray-200 hover:border-primary-300',
+    badge: 'bg-primary-50 text-primary-600',
+  },
+  emerald: {
+    active: 'bg-emerald-600 text-white border-transparent',
+    idle: 'bg-white text-gray-600 border-gray-200 hover:border-emerald-300',
+    badge: 'bg-emerald-50 text-emerald-600',
+  },
+};
+
 const Approvals: React.FC = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -2124,7 +2165,19 @@ const Approvals: React.FC = () => {
                         <svg className="w-2.5 h-2.5 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        Xoá bộ lọc
+                        Xoá loại đơn
+                      </button>
+                    )}
+                    {/* Xoá SẠCH mọi bộ lọc (kể cả tên/phòng ban/tháng/năm) —
+                        clearAllFilters() vốn đã có nhưng trước đây chỉ gọi
+                        được từ empty state, không ai thấy khi đang có kết quả. */}
+                    {hasActiveFilters && (
+                      <button
+                        onClick={clearAllFilters}
+                        className="ml-1 px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-xs font-semibold uppercase tracking-widest transition-colors"
+                        title="Đặt lại toàn bộ bộ lọc về mặc định"
+                      >
+                        Đặt lại tất cả
                       </button>
                     )}
                   </div>
@@ -2142,15 +2195,8 @@ const Approvals: React.FC = () => {
                       Đơn của tôi
                     </button>
 
-                    {/* Refresh Button */}
-                    <button
-                      onClick={() => {
-                        fetchAllData(true);
-                      }}
-                      className="p-2 bg-white text-gray-400 border border-gray-200 rounded-md hover:text-primary-600 transition-colors"
-                    >
-                      <svg className="w-4 h-4 group-active:scale-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    </button>
+                    {/* Nút Làm mới ở đây đã bỏ — trùng với nút "Làm mới" ở
+                        header trang và nút tròn nổi trên mobile. */}
                   </div>
                 </div>
 
@@ -2168,14 +2214,14 @@ const Approvals: React.FC = () => {
                       <button
                         key={opt.value}
                         onClick={() => toggleFilter(opt.value)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${isActive ? `bg-${opt.color}-600 text-white border-transparent` : `bg-white text-gray-600 border-gray-200 hover:border-${opt.color}-300`}`}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${isActive ? TYPE_CHIP_STYLES[opt.color].active : TYPE_CHIP_STYLES[opt.color].idle}`}
                       >
                         <svg className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white/90' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={opt.icon} />
                         </svg>
                         {opt.label}
                         {opt.count > 0 && (
-                          <span className={`ml-1 px-1.5 py-0.5 rounded text-xs font-medium ${isActive ? 'bg-white/20 text-white' : `bg-${opt.color}-50 text-${opt.color}-600`}`}>
+                          <span className={`ml-1 px-1.5 py-0.5 rounded text-xs font-medium ${isActive ? 'bg-white/20 text-white' : TYPE_CHIP_STYLES[opt.color].badge}`}>
                             {opt.count}
                           </span>
                         )}
@@ -2188,82 +2234,48 @@ const Approvals: React.FC = () => {
 
 
 
-            {/* Sub-filters for Explanations - Modern Style & Even Display */}
-            {filterTypes.includes('EXPLANATION') && (
-              <div className="border-t border-gray-50 mt-4 pt-4 animate-in fade-in slide-in-from-top-4 duration-500">
-                <div className="flex flex-col gap-3">
-                  <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
-                    Chi tiết giải trình:
+            {/* Chi tiết loại đơn — gộp 2 khối sub-filter cũ (Giải trình +
+                Đăng ký, mỗi khối 1 đường kẻ + 1 dòng tiêu đề riêng) thành 1
+                hàng chip gọn. Vẫn là chọn NHIỀU như cũ, giữ nguyên
+                toggleSubTypeFilter/toggleRegSubTypeFilter. */}
+            {(filterTypes.includes('EXPLANATION') || filterTypes.includes('REGISTRATION')) && (
+              <div className="border-t border-gray-100 mt-4 pt-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mr-1">
+                    Chi tiết:
                   </span>
-                  <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2">
-
-                    {[
-                      { value: 'LATE', label: 'Đi muộn', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-                      { value: 'EARLY_LEAVE', label: 'Về sớm', icon: 'M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1' },
-                      { value: 'LATE_EARLY', label: 'Đi muộn/Về sớm', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4' },
-                      { value: 'INCOMPLETE_ATTENDANCE', label: 'Quên chấm công', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' },
-                      { value: 'BUSINESS_TRIP', label: 'Đi công tác', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-                      { value: 'FIRST_DAY', label: 'Ngày đầu đi làm', icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z' },
-                    ].map(sub => {
-                      const isSubActive = filterExplanationSubTypes.includes(sub.value);
-                      return (
-                        <button
-                          key={sub.value}
-                          onClick={() => toggleSubTypeFilter(sub.value)}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${isSubActive
+                  {filterTypes.includes('EXPLANATION') && EXPLANATION_SUB_TYPES.map((sub) => {
+                    const isSubActive = filterExplanationSubTypes.includes(sub.value);
+                    return (
+                      <button
+                        key={sub.value}
+                        onClick={() => toggleSubTypeFilter(sub.value)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors border ${
+                          isSubActive
                             ? 'bg-amber-50 text-amber-700 border-amber-300'
                             : 'bg-white text-gray-600 border-gray-200 hover:border-amber-200'
-                            }`}
-                        >
-                          <svg className={`w-3 h-3 ${isSubActive ? 'animate-pulse' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={isSubActive ? 3 : 2} d={sub.icon} />
-                          </svg>
-                          <span className="truncate">{sub.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-
-
-            {/* Sub-filters for Registrations - Modern Style & Even Display */}
-            {filterTypes.includes('REGISTRATION') && (
-              <div className="border-t border-gray-50 mt-4 pt-4 animate-in fade-in slide-in-from-top-4 duration-500">
-                <div className="flex flex-col gap-3">
-                  <div className="text-xs font-semibold text-gray-300 uppercase tracking-wide flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary-500"></div>
-                    Chi tiết đăng ký:
-                  </div>
-                  <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2">
-
-                    {[
-                      { value: 'OVERTIME', label: 'Tăng ca', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-                      { value: 'NIGHT_SHIFT', label: 'Trực tối', icon: 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z' },
-                      { value: 'LIVE', label: 'Live stream', icon: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z' },
-                      { value: 'OFF_DUTY', label: 'Vào/Ra trực', icon: 'M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1' },
-                    ].map(sub => {
-                      const isSubActive = filterRegistrationSubTypes.includes(sub.value);
-                      return (
-                        <button
-                          key={sub.value}
-                          onClick={() => toggleRegSubTypeFilter(sub.value)}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${isSubActive
+                        }`}
+                      >
+                        {sub.label}
+                      </button>
+                    );
+                  })}
+                  {filterTypes.includes('REGISTRATION') && REGISTRATION_SUB_TYPES.map((sub) => {
+                    const isSubActive = filterRegistrationSubTypes.includes(sub.value);
+                    return (
+                      <button
+                        key={sub.value}
+                        onClick={() => toggleRegSubTypeFilter(sub.value)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors border ${
+                          isSubActive
                             ? 'bg-primary-50 text-primary-700 border-primary-300'
                             : 'bg-white text-gray-600 border-gray-200 hover:border-primary-200'
-                            }`}
-                        >
-                          <svg className={`w-3 h-3 ${isSubActive ? 'animate-pulse' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={isSubActive ? 3 : 2} d={sub.icon} />
-                          </svg>
-                          <span className="truncate">{sub.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                        }`}
+                      >
+                        {sub.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
