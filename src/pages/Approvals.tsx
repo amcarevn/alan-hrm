@@ -105,8 +105,31 @@ const Approvals: React.FC = () => {
     ? nowForInit.getFullYear() - 1
     : nowForInit.getFullYear();
 
-  const [filterMonth, setFilterMonth] = useState<number>(initialMonth);
+  // Bộ lọc tháng tách riêng 2 nhóm tab, vì mặc định HỢP LÝ của chúng khác nhau:
+  //  - "Chờ duyệt": mặc định TẤT CẢ (0) — đơn chờ duyệt cho ngày tháng khác
+  //    phải thấy được ngay, không thì bị bỏ quên (xem fetchPendingRequests).
+  //  - "Đã duyệt"/"Từ chối": mặc định theo initialMonth của Alan (lùi về tháng
+  //    trước khi đang ở ngày <= 15) — chọn "Tất cả" ở đây có thể là hàng chục
+  //    nghìn đơn (nhiều lượt gọi API 200 đơn/trang liên tiếp). Vẫn chọn được
+  //    nếu cần, chỉ là không mặc định.
+  // filterMonth/setFilterMonth là lớp đọc-ghi theo activeTab nên mọi chỗ đang
+  // dùng filterMonth giữ nguyên.
+  const MONTH_ALL = 0;
+  const [pendingMonth, setPendingMonth] = useState<number>(MONTH_ALL);
+  const [historyMonth, setHistoryMonth] = useState<number>(initialMonth);
+  const filterMonth = activeTab === 'pending' ? pendingMonth : historyMonth;
+  const setFilterMonth = (m: number) =>
+    (activeTab === 'pending' ? setPendingMonth : setHistoryMonth)(m);
   const [filterYear, setFilterYear] = useState<number>(initialYear);
+  /** Tham số tháng gửi lên API — bỏ trống khi đang chọn "Tất cả" (backend
+   *  Alan chỉ lọc tháng khi có cả month lẫn year). */
+  const monthParams = () =>
+    filterMonth === MONTH_ALL ? { day: 0 } : { day: 0, month: filterMonth, year: filterYear };
+  /** Tháng/năm "cụ thể" cho những chỗ bắt buộc phải có 1 tháng (banner hạn
+   *  chốt công, bảng công tháng, lịch công nhân viên) khi đang chọn "Tất cả":
+   *  rơi về tháng mặc định của Alan. */
+  const effectiveMonth = filterMonth === MONTH_ALL ? initialMonth : filterMonth;
+  const effectiveYear = filterMonth === MONTH_ALL ? initialYear : filterYear;
   const [filterOnlyMine, setFilterOnlyMine] = useState(false);
   // "Tôi là QLTT" — chỉ hiện đơn của cấp dưới trực tiếp của mình. Khác
   // filterOnlyMine (đơn CỦA chính mình). Chủ yếu hữu ích cho HR/Admin — nhân
@@ -347,14 +370,14 @@ const Approvals: React.FC = () => {
         }));
       };
 
-      // CỐ Ý KHÔNG gửi month/year: "chờ duyệt" là chờ duyệt bất kể đơn thuộc
-      // ngày nào. Nhân viên thường xin nghỉ/đăng ký trước cả tháng, mà trang
-      // mặc định lọc theo 1 tháng nên những đơn đó vô hình cho tới khi sang
-      // tháng — người duyệt không biết mà xử lý (HCNS TA chốt 2026-09-28).
-      // Tab Đã duyệt/Từ chối vẫn lọc theo tháng để tra cứu. Backend Alan
+      // filterMonth = 0 ("Tất cả") -> KHÔNG gửi month/year, backend trả hết.
+      // Đây là mặc định của tab Chờ duyệt: đơn cho ngày tháng khác phải thấy
+      // được ngay, không thì bị bỏ quên (HCNS TA chốt 2026-09-28). Backend Alan
       // (hrm/duyet_don_views.py::_apply_filters) bỏ trống month/year là trả tất cả.
+      // LƯU Ý: khi gọi từ tab "Đã duyệt" (QLTT, xem fetchAllData) filterMonth là
+      // tháng của tab đó; pickTabSources() lọc lại theo tháng nên vẫn đúng.
       const result = await (approvalService as any).getAllPendingRequests(
-        { day: 0 },
+        monthParams(),
         (loaded: number, total: number | null) => { if (!signal?.aborted) setFetchProgress({ loaded, total }); },
         applyPendingResult,
         signal
@@ -382,7 +405,7 @@ const Approvals: React.FC = () => {
       };
 
       const result = await (approvalService as any).getAllApprovedRequests(
-        { day: 0, month: filterMonth, year: filterYear },
+        monthParams(),
         (loaded: number, total: number | null) => { if (!signal?.aborted) setFetchProgress({ loaded, total }); },
         applyApprovedResult,
         signal
@@ -410,7 +433,7 @@ const Approvals: React.FC = () => {
       };
 
       const result = await (approvalService as any).getAllRejectedRequests(
-        { day: 0, month: filterMonth, year: filterYear },
+        monthParams(),
         (loaded: number, total: number | null) => { if (!signal?.aborted) setFetchProgress({ loaded, total }); },
         applyRejectedResult,
         signal
@@ -436,8 +459,10 @@ const Approvals: React.FC = () => {
         }
       };
 
-      const m0 = filterMonth;
-      const y0 = filterYear;
+      // Bảng công tháng luôn phải theo 1 tháng cụ thể — "Tất cả" rơi về tháng
+      // mặc định của Alan.
+      const m0 = effectiveMonth;
+      const y0 = effectiveYear;
       const res0 = await fetchMonth(m0, y0);
       const combined = res0;
 
@@ -1911,6 +1936,7 @@ const Approvals: React.FC = () => {
     // sách vốn đang hiển thị theo tháng đã chọn.
     const inSelectedMonth = (x: any): boolean => {
       const raw = x?.attendance_date || x?.start_date || x?.work_date || x?.event_date;
+      if (filterMonth === MONTH_ALL) return true;
       const m = String(raw || '').match(/^(\d{4})-(\d{2})/);
       return !!m && Number(m[1]) === filterYear && Number(m[2]) === filterMonth;
     };
@@ -2055,7 +2081,12 @@ const Approvals: React.FC = () => {
     ? now.getFullYear() - 1
     : now.getFullYear();
 
-  const hasActiveFilters = filterTypes.length > 0 || filterName !== '' || filterDepartment !== '' || filterOnlyMine || filterOnlyMyDirectReports || filterMonth !== currentMonth || filterYear !== currentYear;
+  const hasActiveFilters = filterTypes.length > 0 || filterName !== '' || filterDepartment !== '' || filterOnlyMine || filterOnlyMyDirectReports
+    // So với mặc định ĐÚNG của tab đang xem: Chờ duyệt mặc định "Tất cả",
+    // 2 tab còn lại mặc định tháng của Alan. Nếu so cứng với currentMonth thì
+    // tab Chờ duyệt lúc nào cũng bị coi là "đang có bộ lọc".
+    || filterMonth !== (activeTab === 'pending' ? MONTH_ALL : currentMonth)
+    || (filterMonth !== MONTH_ALL && filterYear !== currentYear);
 
   const clearAllFilters = () => {
     setFilterTypes([]);
@@ -2065,7 +2096,9 @@ const Approvals: React.FC = () => {
     setFilterDepartment('');
     setFilterOnlyMine(false);
     setFilterOnlyMyDirectReports(false);
-    setFilterMonth(currentMonth);
+    // Trả về mặc định ĐÚNG của từng nhóm tab: tab Chờ duyệt mặc định "Tất cả".
+    setPendingMonth(MONTH_ALL);
+    setHistoryMonth(currentMonth);
     setFilterYear(currentYear);
   };
 
@@ -2153,7 +2186,8 @@ const Approvals: React.FC = () => {
 
       {/* Banner hạn chốt công */}
       <div className="mb-4">
-        <FinalizationLockBanner year={filterYear} month={filterMonth} bypassRoles={['ADMIN', 'HR']} />
+        {/* "Tất cả" tháng -> banner theo tháng mặc định (effectiveMonth). */}
+        <FinalizationLockBanner year={effectiveYear} month={effectiveMonth} bypassRoles={['ADMIN', 'HR']} />
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -2264,43 +2298,34 @@ const Approvals: React.FC = () => {
               </div>
             )}
 
-            {/* Tab "Chờ duyệt" cố ý KHÔNG lọc theo tháng — xem
-                fetchPendingRequests(). Ẩn hẳn 2 ô này ở tab đó thay vì để
-                chúng nằm im không tác dụng, kèm 1 dòng giải thích. */}
-            {activeTab === 'pending' ? (
-              <div className="h-[42px] flex items-end">
-                <span className="inline-flex items-center gap-1.5 h-[42px] px-3 rounded-lg bg-blue-50 border border-blue-100 text-xs font-medium text-blue-700">
-                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Hiển thị đơn chờ duyệt của mọi tháng
-                </span>
-              </div>
-            ) : (
-              <>
-                <div className="w-[104px]">
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Tháng</label>
-                  <SelectBox
-                    label=""
-                    value={filterMonth.toString()}
-                    options={Array.from({ length: 12 }, (_, i) => ({ value: (i + 1).toString(), label: `Tháng ${i + 1}` }))}
-                    onChange={(val) => setFilterMonth(parseInt(val))}
-                  />
-                </div>
+            <div className="w-[120px]">
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Tháng</label>
+              <SelectBox
+                label=""
+                value={filterMonth.toString()}
+                options={[
+                  // "Tất cả" là mặc định của tab Chờ duyệt — xem khai báo
+                  // pendingMonth/historyMonth.
+                  { value: '0', label: 'Tất cả' },
+                  ...Array.from({ length: 12 }, (_, i) => ({ value: (i + 1).toString(), label: `Tháng ${i + 1}` })),
+                ]}
+                onChange={(val) => setFilterMonth(parseInt(val))}
+              />
+            </div>
 
-                <div className="w-[100px]">
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Năm</label>
-                  <SelectBox
-                    label=""
-                    value={filterYear.toString()}
-                    options={Array.from({ length: 5 }, (_, i) => {
-                      const y = 2026 + i;
-                      return { value: y.toString(), label: y.toString() };
-                    })}
-                    onChange={(val) => setFilterYear(parseInt(val))}
-                  />
-                </div>
-              </>
+            {filterMonth !== MONTH_ALL && (
+              <div className="w-[100px]">
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Năm</label>
+                <SelectBox
+                  label=""
+                  value={filterYear.toString()}
+                  options={Array.from({ length: 5 }, (_, i) => {
+                    const y = 2026 + i;
+                    return { value: y.toString(), label: y.toString() };
+                  })}
+                  onChange={(val) => setFilterYear(parseInt(val))}
+                />
+              </div>
             )}
 
             <button
@@ -2652,7 +2677,16 @@ const Approvals: React.FC = () => {
                                                 e.stopPropagation();
                                                 const empId = firstItem.employee_id || (typeof firstItem.employee === 'object' ? firstItem.employee?.id : firstItem.employee);
                                                 if (empId) {
-                                                  setCalendarModalEmployee({ id: Number(empId), name: empName, month: filterMonth, year: filterYear });
+                                                  // Đang chọn "Tất cả" tháng -> mở lịch công theo
+                                                  // tháng của đơn đầu tiên (thay vì tháng 0 vô nghĩa).
+                                                  let calMonth = filterMonth;
+                                                  let calYear = filterYear;
+                                                  if (filterMonth === MONTH_ALL) {
+                                                    const mm = String(firstItem?.attendance_date || firstItem?.start_date || firstItem?.work_date || '').match(/^(\d{4})-(\d{2})/);
+                                                    calMonth = mm ? Number(mm[2]) : effectiveMonth;
+                                                    calYear = mm ? Number(mm[1]) : effectiveYear;
+                                                  }
+                                                  setCalendarModalEmployee({ id: Number(empId), name: empName, month: calMonth, year: calYear });
                                                 }
                                               }}
                                               className="flex items-center justify-center w-9 h-9 rounded-lg border border-primary-100 bg-white hover:bg-primary-50 text-primary-500 hover:text-primary-700 transition-all shadow-sm"
