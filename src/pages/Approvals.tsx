@@ -132,6 +132,9 @@ const Approvals: React.FC = () => {
   // nhớ riêng, nếu không thì bấm đóng xong nó tự mở lại ngay.
   const [collapsedDepartments, setCollapsedDepartments] = useState<string[]>([]);
   const [collapsedEmployees, setCollapsedEmployees] = useState<string[]>([]);
+  // Khối "Đang chờ quản lý trực tiếp" ở tab Chờ duyệt của HCNS — thu gọn sẵn vì
+  // đó là việc của QLTT, HCNS chưa thao tác gì được.
+  const [showWaitingManagerSection, setShowWaitingManagerSection] = useState(false);
   const [calendarModalEmployee, setCalendarModalEmployee] = useState<{ id: number; name: string; month: number; year: number } | null>(null);
 
   // Debug log cho Quota và dữ liệu được chọn
@@ -2926,25 +2929,37 @@ const Approvals: React.FC = () => {
             // loại đơn khác bản chất hành động cần làm.
             if (approvalLevelSplit) {
               const { level1Groups, level2Groups, level1Count, level2Count } = approvalLevelSplit;
+              // Đơn ĐÃ qua QLTT mới là việc của HCNS nên đưa lên TRƯỚC; đơn
+              // đang chờ QLTT duyệt (HCNS chưa làm gì được) xuống dưới và THU
+              // GỌN sẵn. Đặt tên theo việc-cần-làm thay vì "Cấp 1/Cấp 2" (ngôn
+              // ngữ quy trình, người dùng phải tự dịch). Dải này chỉ HCNS/Admin
+              // thấy — với QLTT approvalLevelSplit luôn null.
               return (
                 <>
                   <div className="flex items-center gap-3 mb-3">
-                    <span className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg uppercase tracking-wide shadow-sm shrink-0">
-                      Cấp 1 · Quản lý trực tiếp duyệt
-                    </span>
-                    <span className="text-xs text-gray-400 font-semibold shrink-0">{level1Count} đơn</span>
-                    <span className="h-[1px] flex-1 bg-gray-200"></span>
-                  </div>
-                  {Object.entries(level1Groups).map(renderDeptCard('L1'))}
-
-                  <div className="flex items-center gap-3 mb-3 mt-8">
                     <span className="px-3 py-1.5 bg-violet-600 text-white text-xs font-bold rounded-lg uppercase tracking-wide shadow-sm shrink-0">
-                      Cấp 2 · Nhân sự duyệt (đã qua QLTT)
+                      Cần bạn duyệt · đã qua quản lý trực tiếp
                     </span>
                     <span className="text-xs text-gray-400 font-semibold shrink-0">{level2Count} đơn</span>
                     <span className="h-[1px] flex-1 bg-gray-200"></span>
                   </div>
                   {Object.entries(level2Groups).map(renderDeptCard('L2'))}
+
+                  <div className="flex items-center gap-3 mb-3 mt-8">
+                    <button
+                      onClick={() => setShowWaitingManagerSection(v => !v)}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-white text-gray-500 border border-gray-200 text-xs font-bold rounded-lg uppercase tracking-wide hover:text-gray-700 hover:border-gray-300 transition-colors shrink-0"
+                      title="Các đơn này đang chờ quản lý trực tiếp duyệt bước 1 — bạn chưa cần làm gì"
+                    >
+                      <svg className={`w-3.5 h-3.5 transition-transform ${showWaitingManagerSection ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                      </svg>
+                      Đang chờ quản lý trực tiếp
+                    </button>
+                    <span className="text-xs text-gray-400 font-semibold shrink-0">{level1Count} đơn</span>
+                    <span className="h-[1px] flex-1 bg-gray-200"></span>
+                  </div>
+                  {showWaitingManagerSection && Object.entries(level1Groups).map(renderDeptCard('L1'))}
                 </>
               );
             }
