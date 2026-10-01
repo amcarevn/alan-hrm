@@ -1707,32 +1707,30 @@ const Approvals: React.FC = () => {
   };
 
 
-  const memoizedGroupedRequests = useMemo(() => {
-    // 1. Get base data based on active tab
-    const explanations = activeTab === 'pending' ? attendanceExplanations : activeTab === 'approved' ? approvedExplanations : rejectedExplanations;
-    const registrations = activeTab === 'pending' ? pendingRegistrations : activeTab === 'approved' ? approvedRegistrations : rejectedRegistrations;
-    const leaveRequests = activeTab === 'pending' ? pendingLeaveRequests : activeTab === 'approved' ? approvedLeaveRequests : rejectedLeaveRequests;
-    const overtimeRequests = activeTab === 'pending' ? pendingOvertimeRequests : activeTab === 'approved' ? approvedOvertimeRequests : rejectedOvertimeRequests;
-    const onlineWorks = activeTab === 'pending' ? pendingOnlineWorkRequests : activeTab === 'approved' ? approvedOnlineWorkRequests : rejectedOnlineWorkRequests;
-
+  // Áp TOÀN BỘ bộ lọc (tên, phòng ban, "Tôi là QLTT", phạm vi QLTT, loại đơn,
+  // đơn của tôi...) lên 5 mảng nguồn — dùng chung cho danh sách hiển thị lẫn
+  // việc tách 2 dải duyệt (memoizedApprovalLevelSplit).
+  const buildFilteredCombinedList = (
+    explanations: any[], registrations: any[], leaveRequests: any[], overtimeRequests: any[], onlineWorks: any[],
+  ) => {
     // 2. Map and filter
-    const mappedExplanations = explanations
+    const mappedExplanations = (explanations || [])
       .filter(matchesTextFilters)
       .map(e => ({ ...e, _itemType: 'EXPLANATION' }));
 
-    const mappedRegistrations = registrations
+    const mappedRegistrations = (registrations || [])
       .filter(matchesTextFilters)
       .map(r => ({ ...r, _itemType: 'REGISTRATION' }));
 
-    const mappedOnlineWorks = onlineWorks
+    const mappedOnlineWorks = (onlineWorks || [])
       .filter(matchesTextFilters)
       .map(o => ({ ...o, _itemType: 'ONLINE_WORK' }));
 
-    const mappedLeaves = leaveRequests
+    const mappedLeaves = (leaveRequests || [])
       .filter(matchesTextFilters)
       .map(l => ({ ...l, _itemType: 'LEAVE' }));
 
-    const mappedOvertimes = overtimeRequests
+    const mappedOvertimes = (overtimeRequests || [])
       .filter(matchesTextFilters)
       .map(ov => ({
         ...ov,
@@ -1748,6 +1746,13 @@ const Approvals: React.FC = () => {
       ...mappedLeaves,
       ...mappedOvertimes
     ];
+
+    // Đơn đã qua QLTT duyệt (đang chờ HCNS) là việc của HCNS/Admin — QLTT
+    // thuần tuý không cần thấy nữa ở tab Chờ duyệt (yêu cầu HCNS TA
+    // 2026-09-23). Tab Đã duyệt/Từ chối vẫn hiện đủ để họ tra cứu lại.
+    if (activeTab === 'pending' && !isAdmin && !isHR) {
+      all = all.filter(item => !item.direct_manager_approved);
+    }
 
     if (filterOnlyMine) {
       all = all.filter(item => {
@@ -1798,16 +1803,21 @@ const Approvals: React.FC = () => {
       });
     }
 
-    // 4. Sort by created_at ascending (FCFS: đơn gửi trước hiện trước)
-    const sorted = all.sort((a, b) => {
-      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return dateA - dateB;
-    });
+    return all;
+  };
 
-    // 5. Group by Department -> Position -> Employee for Accordion view
+  // 4. Sort by created_at ascending (FCFS: đơn gửi trước hiện trước)
+  const sortByCreatedAtAsc = (items: any[]) => [...items].sort((a, b) => {
+    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return dateA - dateB;
+  });
+
+  // 5. Group by Department -> Position -> Employee for Accordion view.
+  // Factor riêng để dùng lại cho việc tách 2 dải duyệt.
+  const buildDeptPosEmpGroups = (items: any[]) => {
     const groups: Record<string, Record<string, Record<string, any[]>>> = {};
-    sorted.forEach(item => {
+    items.forEach(item => {
       const itemEmpId = item.employee_id || (typeof item.employee === 'object' ? item.employee?.id : item.employee);
       const isMine = itemEmpId === currentEmployee?.id;
 
@@ -1834,6 +1844,19 @@ const Approvals: React.FC = () => {
     });
 
     return finalGroups;
+  };
+
+  const memoizedGroupedRequests = useMemo(() => {
+    // 1. Get base data based on active tab
+    const explanations = activeTab === 'pending' ? attendanceExplanations : activeTab === 'approved' ? approvedExplanations : rejectedExplanations;
+    const registrations = activeTab === 'pending' ? pendingRegistrations : activeTab === 'approved' ? approvedRegistrations : rejectedRegistrations;
+    const leaveRequests = activeTab === 'pending' ? pendingLeaveRequests : activeTab === 'approved' ? approvedLeaveRequests : rejectedLeaveRequests;
+    const overtimeRequests = activeTab === 'pending' ? pendingOvertimeRequests : activeTab === 'approved' ? approvedOvertimeRequests : rejectedOvertimeRequests;
+    const onlineWorks = activeTab === 'pending' ? pendingOnlineWorkRequests : activeTab === 'approved' ? approvedOnlineWorkRequests : rejectedOnlineWorkRequests;
+
+    const all = buildFilteredCombinedList(explanations, registrations, leaveRequests, overtimeRequests, onlineWorks);
+    return buildDeptPosEmpGroups(sortByCreatedAtAsc(all));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
     attendanceExplanations, approvedExplanations, rejectedExplanations,
@@ -1845,7 +1868,47 @@ const Approvals: React.FC = () => {
     filterTypes, filterExplanationSubTypes, filterRegistrationSubTypes,
     debouncedFilterName, filterDepartment,
     currentEmployee,
-    user
+    user, isAdmin, isHR,
+  ]);
+
+  // Tách đơn chờ duyệt thành 2 dải theo việc-cần-làm (port từ TA 594010b +
+  // cbba949): "Cấp 1" = direct_manager_approved chưa có (đang chờ QLTT duyệt),
+  // "Cấp 2" = QLTT đã duyệt, đang chờ Nhân sự duyệt nốt. Field
+  // direct_manager_approved có ở MỌI loại đơn hiện trong trang này nên tách
+  // được đồng nhất, không cần biết loại đơn.
+  //
+  // Chỉ tách khi đang ở tab "Chờ duyệt" VÀ người xem thực sự thấy CẢ 2 cấp
+  // cùng lúc. Cấp 2 chỉ HCNS/Admin thấy (yêu cầu HCNS TA 2026-09-23: "để cho
+  // QLTT nhìn thấy cấp 1 thôi") — với QLTT thuần tuý hàm này luôn null nên họ
+  // xem danh sách phẳng như cũ.
+  const memoizedApprovalLevelSplit = useMemo(() => {
+    if (activeTab !== 'pending') return null;
+
+    const sorted = sortByCreatedAtAsc(buildFilteredCombinedList(
+      attendanceExplanations, pendingRegistrations, pendingLeaveRequests, pendingOvertimeRequests, pendingOnlineWorkRequests
+    ));
+
+    const level1Items = sorted.filter(item => !item.direct_manager_approved);
+    // Cấp 2 = đơn đã qua QLTT, đang chờ HCNS duyệt -> việc của HCNS/Admin.
+    const canSeeLevel2 = isAdmin || isHR;
+    const level2Items = canSeeLevel2 ? sorted.filter(item => !!item.direct_manager_approved) : [];
+
+    if (level1Items.length === 0 || level2Items.length === 0) return null;
+
+    return {
+      level1Groups: buildDeptPosEmpGroups(level1Items),
+      level2Groups: buildDeptPosEmpGroups(level2Items),
+      level1Count: level1Items.length,
+      level2Count: level2Items.length,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeTab,
+    attendanceExplanations, pendingRegistrations, pendingLeaveRequests, pendingOvertimeRequests, pendingOnlineWorkRequests,
+    filterOnlyMine, filterOnlyMyDirectReports, filterTypes, filterExplanationSubTypes, filterRegistrationSubTypes,
+    debouncedFilterName, filterDepartment,
+    currentEmployee,
+    user, isAdmin, isHR,
   ]);
 
   const getGroupedRequests = () => memoizedGroupedRequests;
@@ -2354,15 +2417,20 @@ const Approvals: React.FC = () => {
             const groupedRequests = getGroupedRequests();
             const deptEntries = Object.entries(groupedRequests);
             const totalDepts = deptEntries.length;
+            const approvalLevelSplit = memoizedApprovalLevelSplit;
 
-            return deptEntries.map(([deptName, posGroups]: [string, any]) => {
+            // `levelKey` tách khoá đóng/mở của 2 dải Cấp 1 / Cấp 2: cùng 1
+            // phòng ban có thể xuất hiện ở CẢ 2 dải, nếu dùng chung deptName
+            // làm khoá thì đóng phòng ở dải này là đóng luôn ở dải kia.
+            const renderDeptCard = (levelKey: string) => ([deptName, posGroups]: [string, any]) => {
+              const deptKey = levelKey ? `${levelKey}::${deptName}` : deptName;
               // Mặc định mở sẵn khi danh sách ít (<= 3 phòng) thay vì chỉ khi
               // đúng 1 phòng như trước — trước đây cả 3 cấp đều đóng nên vào
               // trang KHÔNG thấy đơn nào, phải bấm 2 lần mới thấy dòng đầu tiên.
               // Người dùng vẫn đóng/mở tay được y như cũ.
               const isDeptExpanded =
-                expandedDepartments.includes(deptName)
-                || (totalDepts <= 3 && !collapsedDepartments.includes(deptName));
+                expandedDepartments.includes(deptKey)
+                || (totalDepts <= 3 && !collapsedDepartments.includes(deptKey));
 
               // Correctly flatten 3-level groups: posGroups -> empGroups -> items
               const allItemsInDept = Object.values(posGroups as Record<string, any>).reduce((acc: any[], empGroup: any) =>
@@ -2373,11 +2441,11 @@ const Approvals: React.FC = () => {
               const pendingInDept = allItemsInDept.filter((r: any) => r.status === 'PENDING' && canApproveRequest(r)).length;
 
               return (
-                <div key={deptName} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm mb-3">
+                <div key={deptKey} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm mb-3">
                   {/* Department Header */}
                   <div className={`w-full flex items-center justify-between p-3 sm:p-4 ${deptName === 'Đơn của Tôi' ? 'bg-rose-50/80 border-rose-100' : 'bg-gray-50 border-gray-200'} border-b`}>
                     <button
-                      onClick={() => toggleDepartmentGroup(deptName)}
+                      onClick={() => toggleDepartmentGroup(deptKey)}
                       className="flex items-center gap-2 sm:gap-3 text-left focus:outline-none flex-1 min-w-0"
                     >
                       <div className={`p-1.5 sm:p-2 rounded-lg ${isDeptExpanded ? 'bg-primary-600 text-white shadow-md' : 'bg-primary-50 text-primary-600'}`}>
@@ -2417,7 +2485,7 @@ const Approvals: React.FC = () => {
                       )}
 
                       <button
-                        onClick={() => toggleDepartmentGroup(deptName)}
+                        onClick={() => toggleDepartmentGroup(deptKey)}
                         className={`p-2 hover:bg-gray-200 rounded-full transition-transform duration-300 ${isDeptExpanded ? 'rotate-180' : ''}`}
                       >
                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2472,7 +2540,7 @@ const Approvals: React.FC = () => {
                             {/* New Level: Employee Accordion */}
                             <div className="p-4 space-y-4">
                               {Object.entries(empGroups as Record<string, any>).map(([empName, items]: [string, any[]]) => {
-                                const accordionKey = `${deptName}-${posName}-${empName}`;
+                                const accordionKey = `${deptKey}-${posName}-${empName}`;
                                 // Mở sẵn nhân viên khi phòng đang mở và ít đơn
                                 // (<= 10) — xem chú thích isDeptExpanded ở trên.
                                 const isEmpExpanded =
@@ -2914,7 +2982,38 @@ const Approvals: React.FC = () => {
                   )}
                 </div>
               );
-            });
+            };
+
+            // Tách 2 dải rõ ràng khi người xem có cả 2 loại quyền cùng lúc
+            // (vừa là QLTT trực tiếp của 1 số nhân viên, vừa có quyền HR/Admin
+            // nên thấy thêm đơn cấp 2 của nhân viên KHÁC) — tránh loạn giữa 2
+            // loại đơn khác bản chất hành động cần làm.
+            if (approvalLevelSplit) {
+              const { level1Groups, level2Groups, level1Count, level2Count } = approvalLevelSplit;
+              return (
+                <>
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg uppercase tracking-wide shadow-sm shrink-0">
+                      Cấp 1 · Quản lý trực tiếp duyệt
+                    </span>
+                    <span className="text-xs text-gray-400 font-semibold shrink-0">{level1Count} đơn</span>
+                    <span className="h-[1px] flex-1 bg-gray-200"></span>
+                  </div>
+                  {Object.entries(level1Groups).map(renderDeptCard('L1'))}
+
+                  <div className="flex items-center gap-3 mb-3 mt-8">
+                    <span className="px-3 py-1.5 bg-violet-600 text-white text-xs font-bold rounded-lg uppercase tracking-wide shadow-sm shrink-0">
+                      Cấp 2 · Nhân sự duyệt (đã qua QLTT)
+                    </span>
+                    <span className="text-xs text-gray-400 font-semibold shrink-0">{level2Count} đơn</span>
+                    <span className="h-[1px] flex-1 bg-gray-200"></span>
+                  </div>
+                  {Object.entries(level2Groups).map(renderDeptCard('L2'))}
+                </>
+              );
+            }
+
+            return deptEntries.map(renderDeptCard(''));
           })()
           }
         </div>
