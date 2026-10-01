@@ -2313,20 +2313,22 @@ const Approvals: React.FC = () => {
               />
             </div>
 
-            {filterMonth !== MONTH_ALL && (
-              <div className="w-[100px]">
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Năm</label>
-                <SelectBox
-                  label=""
-                  value={filterYear.toString()}
-                  options={Array.from({ length: 5 }, (_, i) => {
-                    const y = 2026 + i;
-                    return { value: y.toString(), label: y.toString() };
-                  })}
-                  onChange={(val) => setFilterYear(parseInt(val))}
-                />
-              </div>
-            )}
+            {/* Ô Năm LUÔN hiện, chỉ khoá lại khi đang chọn "Tất cả" (lúc đó
+                năm không còn ý nghĩa). Ẩn hẳn thì chọn tháng là ô này hiện ra,
+                đẩy các nút bên cạnh dịch chỗ. */}
+            <div className="w-[100px]">
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Năm</label>
+              <SelectBox
+                label=""
+                value={filterYear.toString()}
+                disabled={filterMonth === MONTH_ALL}
+                options={Array.from({ length: 5 }, (_, i) => {
+                  const y = 2026 + i;
+                  return { value: y.toString(), label: y.toString() };
+                })}
+                onChange={(val) => setFilterYear(parseInt(val))}
+              />
+            </div>
 
             <button
               onClick={() => setFilterOnlyMine(!filterOnlyMine)}
@@ -2341,16 +2343,22 @@ const Approvals: React.FC = () => {
 
             {/* 1 nút "Xoá lọc" duy nhất (trước có 2 nút "Xoá loại đơn" và
                 "Đặt lại tất cả"). */}
-            {hasActiveFilters && (
-              <button
-                onClick={clearAllFilters}
-                className="h-[42px] ml-auto flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium text-gray-500 bg-white border border-gray-200 hover:text-rose-600 hover:border-rose-200 transition-colors"
-                title="Đặt lại toàn bộ bộ lọc về mặc định"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                Xoá lọc
-              </button>
-            )}
+            {/* LUÔN chiếm chỗ, chỉ mờ đi khi chưa lọc gì — ẩn/hiện theo
+                hasActiveFilters thì vừa chọn bộ lọc là nút nhảy ra, xô lệch
+                hàng nút. */}
+            <button
+              onClick={clearAllFilters}
+              disabled={!hasActiveFilters}
+              className={`h-[42px] ml-auto flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                hasActiveFilters
+                  ? 'text-gray-600 bg-white border-gray-200 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50'
+                  : 'text-gray-300 bg-gray-50 border-gray-100 cursor-not-allowed'
+              }`}
+              title={hasActiveFilters ? 'Đặt lại toàn bộ bộ lọc về mặc định' : 'Chưa có bộ lọc nào đang bật'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              Xoá lọc
+            </button>
           </div>
 
           {/* Hàng 2: chip loại đơn */}
