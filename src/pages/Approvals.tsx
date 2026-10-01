@@ -128,6 +128,10 @@ const Approvals: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [expandedDepartments, setExpandedDepartments] = useState<string[]>([]);
   const [expandedEmployees, setExpandedEmployees] = useState<string[]>([]);
+  // Nhóm được TỰ mở sẵn (danh sách ít) mà người dùng chủ động đóng lại — phải
+  // nhớ riêng, nếu không thì bấm đóng xong nó tự mở lại ngay.
+  const [collapsedDepartments, setCollapsedDepartments] = useState<string[]>([]);
+  const [collapsedEmployees, setCollapsedEmployees] = useState<string[]>([]);
   const [calendarModalEmployee, setCalendarModalEmployee] = useState<{ id: number; name: string; month: number; year: number } | null>(null);
 
   // Debug log cho Quota và dữ liệu được chọn
@@ -1311,12 +1315,19 @@ const Approvals: React.FC = () => {
   };
 
   const toggleDepartmentGroup = (deptName: string) => {
-    setExpandedDepartments(prev =>
-      prev.includes(deptName) ? prev.filter(d => d !== deptName) : [...prev, deptName]
-    );
+    const isOpen = expandedDepartments.includes(deptName) || !collapsedDepartments.includes(deptName);
+    if (isOpen) {
+      setExpandedDepartments(prev => prev.filter(d => d !== deptName));
+      setCollapsedDepartments(prev => (prev.includes(deptName) ? prev : [...prev, deptName]));
+    } else {
+      setExpandedDepartments(prev => (prev.includes(deptName) ? prev : [...prev, deptName]));
+      setCollapsedDepartments(prev => prev.filter(d => d !== deptName));
+    }
   };
 
-  const getStatusBadge = (item: any, onlyBadge?: boolean) => {
+  // mode: 'full' (badge + stepper, dùng ở bảng desktop) | 'stepper' (chỉ
+  // stepper — card mobile đã có badge riêng ở đầu thẻ).
+  const getStatusBadge = (item: any, onlyBadge?: boolean, mode: 'full' | 'stepper' = 'full') => {
     const status = item.status;
     const isApproved = status === 'APPROVED';
     const isRejected = status === 'REJECTED';
@@ -1343,8 +1354,9 @@ const Approvals: React.FC = () => {
     }
 
     return (
-      <div className="flex flex-col gap-2.5 min-w-[140px] group">
+      <div className={mode === 'stepper' ? 'flex items-center' : 'flex flex-col gap-2.5 min-w-[140px] group'}>
         {/* Main Status Badge */}
+        {mode !== 'stepper' && (
         <div className="flex items-center">
           {isApproved ? (
             <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-800">Hoàn tất</span>
@@ -1354,6 +1366,7 @@ const Approvals: React.FC = () => {
             <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-800">Đang duyệt</span>
           )}
         </div>
+        )}
 
         {/* Stepper Timeline UI */}
         <div className="flex items-center gap-0">
@@ -2343,13 +2356,20 @@ const Approvals: React.FC = () => {
             const totalDepts = deptEntries.length;
 
             return deptEntries.map(([deptName, posGroups]: [string, any]) => {
-              const isDeptExpanded = expandedDepartments.includes(deptName) || (totalDepts === 1);
+              // Mặc định mở sẵn khi danh sách ít (<= 3 phòng) thay vì chỉ khi
+              // đúng 1 phòng như trước — trước đây cả 3 cấp đều đóng nên vào
+              // trang KHÔNG thấy đơn nào, phải bấm 2 lần mới thấy dòng đầu tiên.
+              // Người dùng vẫn đóng/mở tay được y như cũ.
+              const isDeptExpanded =
+                expandedDepartments.includes(deptName)
+                || (totalDepts <= 3 && !collapsedDepartments.includes(deptName));
 
               // Correctly flatten 3-level groups: posGroups -> empGroups -> items
               const allItemsInDept = Object.values(posGroups as Record<string, any>).reduce((acc: any[], empGroup: any) =>
                 acc.concat(...Object.values(empGroup as Record<string, any>)), []
               );
 
+              const deptItemCount = allItemsInDept.length;
               const pendingInDept = allItemsInDept.filter((r: any) => r.status === 'PENDING' && canApproveRequest(r)).length;
 
               return (
@@ -2383,11 +2403,12 @@ const Approvals: React.FC = () => {
                     <div className="flex items-center gap-2 sm:gap-4">
                       {hasBulkApprovePermission && activeTab === 'pending' && pendingInDept > 0 && (
                         <button
+                          disabled={isBulkProcessing}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleBulkApproveItems(allItemsInDept, `phòng ${deptName}`);
                           }}
-                          className="hidden sm:flex items-center gap-2 h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-md transition-colors"
+                          className="flex items-center gap-2 h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-md transition-colors disabled:opacity-50"
                           title={`Duyệt nhanh tất cả đơn của phòng ${deptName}`}
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
@@ -2434,11 +2455,12 @@ const Approvals: React.FC = () => {
 
                               {hasBulkApprovePermission && activeTab === 'pending' && pendingInPos > 0 && (
                                 <button
+                                  disabled={isBulkProcessing}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleBulkApproveItems(allItemsInPos, `vị trí ${posName}`);
                                   }}
-                                  className="hidden sm:flex items-center gap-2 h-8 px-4 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white text-xs font-medium rounded-md border border-emerald-200 transition-colors"
+                                  className="flex items-center gap-2 h-8 px-4 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white text-xs font-medium rounded-md border border-emerald-200 transition-colors disabled:opacity-50"
                                   title={`Duyệt nhanh tất cả đơn của vị trí ${posName}`}
                                 >
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
@@ -2451,7 +2473,13 @@ const Approvals: React.FC = () => {
                             <div className="p-4 space-y-4">
                               {Object.entries(empGroups as Record<string, any>).map(([empName, items]: [string, any[]]) => {
                                 const accordionKey = `${deptName}-${posName}-${empName}`;
-                                const isEmpExpanded = expandedEmployees.includes(accordionKey);
+                                // Mở sẵn nhân viên khi phòng đang mở và ít đơn
+                                // (<= 10) — xem chú thích isDeptExpanded ở trên.
+                                const isEmpExpanded =
+                                  expandedEmployees.includes(accordionKey)
+                                  || (isDeptExpanded
+                                      && deptItemCount <= 10
+                                      && !collapsedEmployees.includes(accordionKey));
                                 const pendingInEmp = (items || []).filter((r: any) => r.status === 'PENDING' && canApproveRequest(r)).length;
                                 const firstItem = items[0];
 
@@ -2461,11 +2489,15 @@ const Approvals: React.FC = () => {
                                     <div
                                       className={`flex flex-col px-4 py-3 cursor-pointer transition-colors ${isEmpExpanded ? 'bg-primary-50/40' : 'bg-white hover:bg-gray-50'}`}
                                       onClick={() => {
-                                        setExpandedEmployees((prev: string[]) =>
-                                          prev.includes(accordionKey)
-                                            ? prev.filter(k => k !== accordionKey)
-                                            : [...prev, accordionKey]
-                                        );
+                                        if (!isEmpExpanded) {
+                                          setExpandedEmployees((prev: string[]) =>
+                                            prev.includes(accordionKey) ? prev : [...prev, accordionKey]);
+                                          setCollapsedEmployees((prev: string[]) => prev.filter(k => k !== accordionKey));
+                                        } else {
+                                          setExpandedEmployees((prev: string[]) => prev.filter(k => k !== accordionKey));
+                                          setCollapsedEmployees((prev: string[]) =>
+                                            prev.includes(accordionKey) ? prev : [...prev, accordionKey]);
+                                        }
                                       }}
                                     >
                                       {/* Row 1: Info and Actions */}
@@ -2750,7 +2782,7 @@ const Approvals: React.FC = () => {
                                                       </div>
                                                       <div className="mt-2.5 flex flex-wrap gap-1.5">
                                                         <span className="px-2 py-0.5 bg-white text-gray-400 text-xs font-semibold rounded-lg border border-gray-100 uppercase tracking-tighter">
-                                                          {getDayOfWeek(item.attendance_date || item.registration_date || item.work_date || item.start_date)}, {formatDate(item.attendance_date || item.registration_date || item.work_date || item.start_date)}
+                                                          {getDayOfWeek(item.attendance_date || item.registration_date || item.work_date || item.start_date || item.date)}, {formatDate(item.attendance_date || item.registration_date || item.work_date || item.start_date || item.date)}
                                                         </span>
                                                         {item.late_minutes > 0 && <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-xs font-medium rounded border border-amber-100">Muộn {item.late_minutes}m</span>}
                                                         {item.early_leave_minutes > 0 && <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-xs font-medium rounded border border-amber-100">Về sớm {item.early_leave_minutes}m</span>}
@@ -2773,41 +2805,18 @@ const Approvals: React.FC = () => {
                                                   </div>
                                                 </div>
 
-                                                {/* Mobile Stepper Timeline */}
+                                                {/* Tiến độ duyệt (mobile) — dùng chung getStatusBadge với
+                                                    desktop. Bản viết tay cũ đọc thẳng
+                                                    direct_manager_approved/hr_approved mà KHÔNG xét
+                                                    status==='APPROVED', nên đơn đã duyệt xong vẫn hiện
+                                                    "1  2" xám như chưa ai duyệt; gạch nối cũng nằm ngoài
+                                                    điều kiện employee_is_hr nên bị thừa 1 gạch cụt. */}
                                                 <div className="mt-3 px-3 py-2.5 bg-primary-50/30 rounded-lg border border-primary-100/50 flex items-center justify-between">
                                                   <div className="flex items-center gap-1.5">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-primary-400"></div>
                                                     <span className="text-xs font-semibold text-primary-400 uppercase tracking-widest">Tiến độ</span>
                                                   </div>
-                                                  <div className="flex items-center gap-2.5">
-                                                    {/* Step 1: QLTT */}
-                                                    <div className="flex items-center gap-1.5">
-                                                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold border-2 transition-all ${
-                                                        item.direct_manager_approved ? 'bg-emerald-500 border-emerald-100 text-white' :
-                                                        (item.status === 'REJECTED' && !item.direct_manager_approved) ? 'bg-red-500 border-red-100 text-white' :
-                                                        'bg-white border-gray-200 text-gray-400'
-                                                      }`}>
-                                                        {item.direct_manager_approved ? '✓' : '1'}
-                                                      </div>
-                                                      <span className={`text-xs font-medium ${item.direct_manager_approved ? 'text-emerald-600' : 'text-gray-400'}`}>QLTT</span>
-                                                    </div>
-
-                                                    <div className="w-3 h-[1px] bg-gray-200"></div>
-
-                                                    {/* Step 2: HR */}
-                                                    {!item.employee_is_hr && (
-                                                      <div className="flex items-center gap-1.5">
-                                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold border-2 transition-all ${
-                                                          item.hr_approved ? 'bg-emerald-500 border-emerald-100 text-white' :
-                                                          (item.status === 'REJECTED' && item.direct_manager_approved) ? 'bg-red-500 border-red-100 text-white' :
-                                                          'bg-white border-gray-200 text-gray-400'
-                                                        }`}>
-                                                          {item.hr_approved ? '✓' : '2'}
-                                                        </div>
-                                                        <span className={`text-xs font-medium ${item.hr_approved ? 'text-emerald-600' : 'text-gray-400'}`}>NS</span>
-                                                      </div>
-                                                    )}
-                                                  </div>
+                                                  {getStatusBadge(item, false, 'stepper')}
                                                 </div>
                                                 <div className="mt-4 space-y-2">
                                                   {( (activeTab === 'pending' && canApproveRequest(item)) || canDeleteRequest(item) ) && (
@@ -2878,11 +2887,12 @@ const Approvals: React.FC = () => {
                                         {hasBulkApprovePermission && activeTab === 'pending' && pendingInEmp > 0 && (
                                           <div className="p-4 flex justify-end bg-gray-50/30 border-t border-gray-50">
                                             <button
+                                              disabled={isBulkProcessing}
                                               onClick={(e) => {
                                                 e.stopPropagation();
                                                 handleBulkApproveItems(items, `nhân viên ${empName}`);
                                               }}
-                                              className="flex items-center gap-2 h-10 px-6 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-100 transition-all uppercase tracking-wider"
+                                              className="flex items-center gap-2 h-10 px-6 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-100 transition-all uppercase tracking-wider disabled:opacity-50"
                                             >
 
                                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
