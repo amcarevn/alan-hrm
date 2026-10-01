@@ -8,6 +8,9 @@ import { SelectBox } from '../components/LandingLayout/SelectBox';
 import { useAuth } from '../contexts/AuthContext';
 import AttendanceCalendar from '../components/AttendanceCalendar';
 
+// Giá trị đặc biệt cho lựa chọn "Tôi là QLTT" trong dropdown Phòng ban —
+// không phải tên phòng ban thật nên không bao giờ trùng.
+const MY_DIRECT_REPORTS_SENTINEL = '__MY_DIRECT_REPORTS__';
 
 const Approvals: React.FC = () => {
   const { user } = useAuth();
@@ -52,6 +55,13 @@ const Approvals: React.FC = () => {
   const [filterMonth, setFilterMonth] = useState<number>(initialMonth);
   const [filterYear, setFilterYear] = useState<number>(initialYear);
   const [filterOnlyMine, setFilterOnlyMine] = useState(false);
+  // "Tôi là QLTT" — chỉ hiện đơn của cấp dưới trực tiếp của mình. Khác
+  // filterOnlyMine (đơn CỦA chính mình). Chủ yếu hữu ích cho HR/Admin — nhân
+  // viên/quản lý thường đã tự động bị giới hạn xuống đúng phạm vi này rồi
+  // (xem block "isTrueSuperAdmin/isTrueHR" bên dưới), nên với họ lựa chọn này
+  // không đổi gì thêm — chỉ thật sự cần khi 1 người VỪA là QLTT VỪA là
+  // HR/Admin (mặc định thấy toàn công ty, khó tìm đúng cấp dưới của mình).
+  const [filterOnlyMyDirectReports, setFilterOnlyMyDirectReports] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<any>(null);
   const isFetchingRef = useRef<boolean>(false);
   const lastFetchTimeRef = useRef<number>(0);
@@ -228,6 +238,11 @@ const Approvals: React.FC = () => {
 
   const deptOptions = [
     { value: '', label: 'Tất cả phòng ban' },
+    // Đặt ngay đầu — dành cho người VỪA là QLTT VỪA có quyền HR/Admin (nếu
+    // không thì đã chỉ thấy đúng cấp dưới trực tiếp từ trước, không cần mục
+    // này). Dropdown "Phòng ban" chỉ hiện cho isAdmin/isHR nên tự động đúng
+    // đối tượng, không cần điều kiện riêng ở đây.
+    { value: MY_DIRECT_REPORTS_SENTINEL, label: '★ Tôi là QLTT' },
     ...uniqueDepts.map(dept => ({ value: dept as string, label: dept as string }))
   ];
 
@@ -1598,6 +1613,18 @@ const Approvals: React.FC = () => {
     );
   };
 
+  // "Tôi là QLTT": khớp CẢ quản lý trực tiếp cá nhân (employee_manager_id,
+  // Employee.manager) LẪN trưởng phòng ban (employee_department_manager_id,
+  // Department.manager) — 1 người có thể là QLTT của cả phòng ban mà không
+  // đứng tên manager riêng cho từng nhân viên. LƯU Ý: backend Alan hiện chưa
+  // trả employee_department_manager_id (field luôn undefined) nên thực tế chỉ
+  // khớp theo employee_manager_id cho tới khi backend bổ sung.
+  const isMyDirectReportItem = (item: any): boolean =>
+    !!currentEmployee && (
+      item.employee_manager_id === currentEmployee.id ||
+      (item.employee_department_manager_id != null && item.employee_department_manager_id === currentEmployee.id)
+    );
+
   const matchesTextFilters = (req: any) => {
     const name = (req.employee_name || '').toLowerCase();
     const dept = (req.employee_department || req.department_name || '').toLowerCase();
@@ -1657,6 +1684,13 @@ const Approvals: React.FC = () => {
         const itemEmpId = item.employee_id || (typeof item.employee === 'object' ? item.employee?.id : item.employee);
         return itemEmpId === currentEmployee?.id;
       });
+    }
+
+    // "Tôi là QLTT" — cho phép HR/Admin (vốn mặc định thấy toàn công ty ở
+    // block dưới) tự lọc riêng xuống đúng những đơn của cấp dưới trực tiếp
+    // của chính họ, khi họ VỪA là quản lý VỪA có quyền HR/Admin.
+    if (filterOnlyMyDirectReports && currentEmployee) {
+      all = all.filter(isMyDirectReportItem);
     }
 
     // Nếu không phải superadmin hoặc HR thật sự: chỉ hiển thị đơn của nhân viên mà mình là QLTT trực tiếp
@@ -1737,7 +1771,7 @@ const Approvals: React.FC = () => {
     pendingLeaveRequests, approvedLeaveRequests, rejectedLeaveRequests,
     pendingOvertimeRequests, approvedOvertimeRequests, rejectedOvertimeRequests,
     pendingOnlineWorkRequests, approvedOnlineWorkRequests, rejectedOnlineWorkRequests,
-    filterOnlyMine,
+    filterOnlyMine, filterOnlyMyDirectReports,
     filterTypes, filterExplanationSubTypes, filterRegistrationSubTypes,
     debouncedFilterName, filterDepartment,
     currentEmployee,
@@ -1780,6 +1814,9 @@ const Approvals: React.FC = () => {
         return itemEmpId === currentEmployee?.id;
       });
     }
+    if (filterOnlyMyDirectReports) {
+      filtered = filtered.filter(isMyDirectReportItem);
+    }
     return filtered.length;
   };
 
@@ -1793,7 +1830,7 @@ const Approvals: React.FC = () => {
     ? now.getFullYear() - 1
     : now.getFullYear();
 
-  const hasActiveFilters = filterTypes.length > 0 || filterName !== '' || filterDepartment !== '' || filterOnlyMine || filterMonth !== currentMonth || filterYear !== currentYear;
+  const hasActiveFilters = filterTypes.length > 0 || filterName !== '' || filterDepartment !== '' || filterOnlyMine || filterOnlyMyDirectReports || filterMonth !== currentMonth || filterYear !== currentYear;
 
   const clearAllFilters = () => {
     setFilterTypes([]);
@@ -1802,6 +1839,7 @@ const Approvals: React.FC = () => {
     setFilterName('');
     setFilterDepartment('');
     setFilterOnlyMine(false);
+    setFilterOnlyMyDirectReports(false);
     setFilterMonth(currentMonth);
     setFilterYear(currentYear);
   };
@@ -2042,9 +2080,17 @@ const Approvals: React.FC = () => {
                       <div className="w-full [&>div]:m-0">
                         <SelectBox
                           label=""
-                          value={filterDepartment}
+                          value={filterOnlyMyDirectReports ? MY_DIRECT_REPORTS_SENTINEL : filterDepartment}
                           options={deptOptions}
-                          onChange={setFilterDepartment}
+                          onChange={(v) => {
+                            if (v === MY_DIRECT_REPORTS_SENTINEL) {
+                              setFilterOnlyMyDirectReports(true);
+                              setFilterDepartment('');
+                            } else {
+                              setFilterOnlyMyDirectReports(false);
+                              setFilterDepartment(v);
+                            }
+                          }}
                           placeholder="Tất cả phòng ban"
                         />
                       </div>
