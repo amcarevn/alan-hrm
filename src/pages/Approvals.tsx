@@ -1314,14 +1314,23 @@ const Approvals: React.FC = () => {
     }
   };
 
-  const toggleDepartmentGroup = (deptName: string) => {
-    const isOpen = expandedDepartments.includes(deptName) || !collapsedDepartments.includes(deptName);
-    if (isOpen) {
-      setExpandedDepartments(prev => prev.filter(d => d !== deptName));
-      setCollapsedDepartments(prev => (prev.includes(deptName) ? prev : [...prev, deptName]));
+  /**
+   * @param deptKey  khoá đã kèm cấp duyệt ('L1::Phòng X') — cùng 1 phòng ban
+   *                 có thể xuất hiện ở cả 2 dải, dùng chung tên phòng làm khoá
+   *                 sẽ khiến đóng bên này kéo theo bên kia.
+   * @param isCurrentlyOpen  trạng thái ĐANG HIỂN THỊ, do nơi render truyền
+   *                 vào. Trước đây hàm này tự suy đoán lại bằng 1 công thức
+   *                 KHÁC công thức lúc render (thiếu vế `totalDepts <= 3`),
+   *                 nên khi có trên 3 phòng ban thì 1 phòng đang đóng lại bị
+   *                 coi là đang mở -> bấm lần đầu không có tác dụng gì.
+   */
+  const toggleDepartmentGroup = (deptKey: string, isCurrentlyOpen: boolean) => {
+    if (isCurrentlyOpen) {
+      setExpandedDepartments(prev => prev.filter(d => d !== deptKey));
+      setCollapsedDepartments(prev => (prev.includes(deptKey) ? prev : [...prev, deptKey]));
     } else {
-      setExpandedDepartments(prev => (prev.includes(deptName) ? prev : [...prev, deptName]));
-      setCollapsedDepartments(prev => prev.filter(d => d !== deptName));
+      setExpandedDepartments(prev => (prev.includes(deptKey) ? prev : [...prev, deptKey]));
+      setCollapsedDepartments(prev => prev.filter(d => d !== deptKey));
     }
   };
 
@@ -1977,12 +1986,6 @@ const Approvals: React.FC = () => {
     setFilterYear(currentYear);
   };
 
-  const clearTypeFilters = () => {
-    setFilterTypes([]);
-    setFilterExplanationSubTypes([]);
-    setFilterRegistrationSubTypes([]);
-  };
-
   const getTotalFilteredCount = () => getTotalCount();
 
   // ── Cấu hình 2 nhóm tab (xem chú thích ở state `activeSection`) ──────────
@@ -2131,235 +2134,168 @@ const Approvals: React.FC = () => {
         {activeSection === 'requests' && (
         <>
 
-        {/* Bộ lọc */}
-        <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 mb-6">
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col lg:flex-row lg:items-end gap-6">
-              {/* Cụm Tìm kiếm & Phòng ban */}
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                {/* Tên nhân viên */}
-                {(isAdmin || isHR || isManagement) && (
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700 mb-1">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" /></svg>
-                      Tìm nhân viên
-                    </label>
-                    <input
-                      type="text"
-                      value={filterName}
-                      onChange={e => setFilterName(e.target.value)}
-                      placeholder="Nhập tên hoặc mã nhân viên..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
-                )}
-
-                {/* Phòng ban */}
-                {(isAdmin || isHR) && (
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700 mb-1">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                      Phòng ban
-                    </label>
-                    <div className="h-[46px] flex items-center">
-                      <div className="w-full [&>div]:m-0">
-                        <SelectBox
-                          label=""
-                          value={filterOnlyMyDirectReports ? MY_DIRECT_REPORTS_SENTINEL : filterDepartment}
-                          options={deptOptions}
-                          onChange={(v) => {
-                            if (v === MY_DIRECT_REPORTS_SENTINEL) {
-                              setFilterOnlyMyDirectReports(true);
-                              setFilterDepartment('');
-                            } else {
-                              setFilterOnlyMyDirectReports(false);
-                              setFilterDepartment(v);
-                            }
-                          }}
-                          placeholder="Tất cả phòng ban"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Cụm Ngày, Tháng & Năm */}
-              <div className="w-full lg:w-[320px]">
-                <div className="flex gap-3">
-                  <div className="flex-1 flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700 mb-1">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      Tháng
-                    </label>
-                    <div className="h-[46px] flex items-center">
-                      <div className="w-full">
-                        <SelectBox
-                          label=""
-                          value={filterMonth.toString()}
-                          options={Array.from({ length: 12 }, (_, i) => ({ value: (i + 1).toString(), label: (i + 1).toString() }))}
-                          onChange={(val) => setFilterMonth(parseInt(val))}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex-1 flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700 mb-1">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      Năm
-                    </label>
-                    <div className="h-[46px] flex items-center">
-                      <div className="w-full">
-                        <SelectBox
-                          label=""
-                          value={filterYear.toString()}
-                          options={Array.from({ length: 5 }, (_, i) => {
-                            const y = 2026 + i;
-                            return { value: y.toString(), label: y.toString() };
-                          })}
-                          onChange={(val) => setFilterYear(parseInt(val))}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Loại đơn Chips - Premium Design - Even Display */}
-            <div className="border-t border-gray-50 mt-6 pt-5">
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 text-xs sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" /></svg>
-                    Phân loại đơn:
-                    {(filterTypes.length > 0 || filterExplanationSubTypes.length > 0 || filterRegistrationSubTypes.length > 0) && (
-                      <button
-                        onClick={clearTypeFilters}
-                        className="ml-1 flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 hover:bg-rose-50 text-gray-400 hover:text-rose-500 border border-transparent hover:border-rose-200 text-xs font-semibold uppercase tracking-widest transition-all duration-200 group"
-                      >
-                        <svg className="w-2.5 h-2.5 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        Xoá loại đơn
-                      </button>
-                    )}
-                    {/* Xoá SẠCH mọi bộ lọc (kể cả tên/phòng ban/tháng/năm) —
-                        clearAllFilters() vốn đã có nhưng trước đây chỉ gọi
-                        được từ empty state, không ai thấy khi đang có kết quả. */}
-                    {hasActiveFilters && (
-                      <button
-                        onClick={clearAllFilters}
-                        className="ml-1 px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-xs font-semibold uppercase tracking-widest transition-colors"
-                        title="Đặt lại toàn bộ bộ lọc về mặc định"
-                      >
-                        Đặt lại tất cả
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {/* Đơn của tôi Toggle */}
-                    <button
-                      onClick={() => setFilterOnlyMine(!filterOnlyMine)}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${filterOnlyMine
-                        ? 'bg-primary-600 text-white border-transparent'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300'
-                        }`}
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                      Đơn của tôi
-                    </button>
-
-                    {/* Nút Làm mới ở đây đã bỏ — trùng với nút "Làm mới" ở
-                        header trang và nút tròn nổi trên mobile. */}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 sm:gap-3">
-
-                  {/* Use a fixed height and whitespace-nowrap to ensure equality */}
-                  {[
-                    { value: 'EXPLANATION', label: 'Giải trình', count: getTabCount('EXPLANATION'), color: 'amber', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
-                    { value: 'REGISTRATION', label: 'Đăng ký', count: getTabCount('REGISTRATION'), color: 'primary', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
-                    { value: 'LEAVE', label: 'Nghỉ phép tháng', count: getTabCount('LEAVE'), color: 'primary', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-                    { value: 'ONLINE_WORK', label: 'Làm việc online', count: getTabCount('ONLINE_WORK'), color: 'emerald', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
-                  ].map(opt => {
-                    const isActive = filterTypes.includes(opt.value);
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => toggleFilter(opt.value)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${isActive ? TYPE_CHIP_STYLES[opt.color].active : TYPE_CHIP_STYLES[opt.color].idle}`}
-                      >
-                        <svg className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white/90' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={opt.icon} />
-                        </svg>
-                        {opt.label}
-                        {opt.count > 0 && (
-                          <span className={`ml-1 px-1.5 py-0.5 rounded text-xs font-medium ${isActive ? 'bg-white/20 text-white' : TYPE_CHIP_STYLES[opt.color].badge}`}>
-                            {opt.count}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-
-
-            {/* Chi tiết loại đơn — gộp 2 khối sub-filter cũ (Giải trình +
-                Đăng ký, mỗi khối 1 đường kẻ + 1 dòng tiêu đề riêng) thành 1
-                hàng chip gọn. Vẫn là chọn NHIỀU như cũ, giữ nguyên
-                toggleSubTypeFilter/toggleRegSubTypeFilter. */}
-            {(filterTypes.includes('EXPLANATION') || filterTypes.includes('REGISTRATION')) && (
-              <div className="border-t border-gray-100 mt-4 pt-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mr-1">
-                    Chi tiết:
-                  </span>
-                  {filterTypes.includes('EXPLANATION') && EXPLANATION_SUB_TYPES.map((sub) => {
-                    const isSubActive = filterExplanationSubTypes.includes(sub.value);
-                    return (
-                      <button
-                        key={sub.value}
-                        onClick={() => toggleSubTypeFilter(sub.value)}
-                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors border ${
-                          isSubActive
-                            ? 'bg-amber-50 text-amber-700 border-amber-300'
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-amber-200'
-                        }`}
-                      >
-                        {sub.label}
-                      </button>
-                    );
-                  })}
-                  {filterTypes.includes('REGISTRATION') && REGISTRATION_SUB_TYPES.map((sub) => {
-                    const isSubActive = filterRegistrationSubTypes.includes(sub.value);
-                    return (
-                      <button
-                        key={sub.value}
-                        onClick={() => toggleRegSubTypeFilter(sub.value)}
-                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors border ${
-                          isSubActive
-                            ? 'bg-primary-50 text-primary-700 border-primary-300'
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-primary-200'
-                        }`}
-                      >
-                        {sub.label}
-                      </button>
-                    );
-                  })}
+        {/* Bộ lọc — gom về 1 hàng điều khiển + 2 hàng chip (port từ TA).
+            Bản cũ xếp 5 hàng rời nhau cao ~275px (mobile ~700px): nhãn có icon
+            3x3 gần như vô hình, nút "Đơn của tôi" trôi sang tận mép phải. */}
+        <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 mb-6 space-y-3">
+          {/* Hàng 1: các ô nhập/chọn */}
+          <div className="flex flex-wrap items-end gap-3">
+            {(isAdmin || isHR || isManagement) && (
+              <div className="flex-1 min-w-[220px]">
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Tìm nhân viên</label>
+                <div className="relative">
+                  <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={filterName}
+                    onChange={e => setFilterName(e.target.value)}
+                    placeholder="Tên hoặc mã nhân viên..."
+                    className="h-[42px] w-full pl-9 pr-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400"
+                  />
                 </div>
               </div>
             )}
 
+            {(isAdmin || isHR) && (
+              <div className="w-full sm:w-[220px]">
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Phòng ban</label>
+                <SelectBox
+                  label=""
+                  value={filterOnlyMyDirectReports ? MY_DIRECT_REPORTS_SENTINEL : filterDepartment}
+                  options={deptOptions}
+                  onChange={(v) => {
+                    if (v === MY_DIRECT_REPORTS_SENTINEL) {
+                      setFilterOnlyMyDirectReports(true);
+                      setFilterDepartment('');
+                    } else {
+                      setFilterOnlyMyDirectReports(false);
+                      setFilterDepartment(v);
+                    }
+                  }}
+                  placeholder="Tất cả phòng ban"
+                />
+              </div>
+            )}
 
+            <div className="w-[104px]">
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Tháng</label>
+              <SelectBox
+                label=""
+                value={filterMonth.toString()}
+                options={Array.from({ length: 12 }, (_, i) => ({ value: (i + 1).toString(), label: `Tháng ${i + 1}` }))}
+                onChange={(val) => setFilterMonth(parseInt(val))}
+              />
+            </div>
+
+            <div className="w-[100px]">
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Năm</label>
+              <SelectBox
+                label=""
+                value={filterYear.toString()}
+                options={Array.from({ length: 5 }, (_, i) => {
+                  const y = 2026 + i;
+                  return { value: y.toString(), label: y.toString() };
+                })}
+                onChange={(val) => setFilterYear(parseInt(val))}
+              />
+            </div>
+
+            <button
+              onClick={() => setFilterOnlyMine(!filterOnlyMine)}
+              className={`h-[42px] flex items-center gap-2 px-3 rounded-lg text-sm font-medium border transition-colors ${filterOnlyMine
+                ? 'bg-primary-600 text-white border-transparent'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+              Đơn của tôi
+            </button>
+
+            {/* 1 nút "Xoá lọc" duy nhất (trước có 2 nút "Xoá loại đơn" và
+                "Đặt lại tất cả"). */}
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                className="h-[42px] ml-auto flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium text-gray-500 bg-white border border-gray-200 hover:text-rose-600 hover:border-rose-200 transition-colors"
+                title="Đặt lại toàn bộ bộ lọc về mặc định"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                Xoá lọc
+              </button>
+            )}
           </div>
-        </div>
 
+          {/* Hàng 2: chip loại đơn */}
+          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-200/70">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide w-16 shrink-0">Loại đơn</span>
+            {[
+              { value: 'EXPLANATION', label: 'Giải trình', count: getTabCount('EXPLANATION'), color: 'amber' },
+              { value: 'REGISTRATION', label: 'Đăng ký', count: getTabCount('REGISTRATION'), color: 'primary' },
+              { value: 'LEAVE', label: 'Nghỉ phép tháng', count: getTabCount('LEAVE'), color: 'primary' },
+              { value: 'ONLINE_WORK', label: 'Làm việc online', count: getTabCount('ONLINE_WORK'), color: 'emerald' },
+            ].map(opt => {
+              const isActive = filterTypes.includes(opt.value);
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => toggleFilter(opt.value)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                    isActive ? TYPE_CHIP_STYLES[opt.color].active : TYPE_CHIP_STYLES[opt.color].idle
+                  }`}
+                >
+                  {opt.label}
+                  {opt.count > 0 && (
+                    <span className={`px-1.5 rounded text-[11px] font-bold ${isActive ? 'bg-white/20 text-white' : TYPE_CHIP_STYLES[opt.color].badge}`}>
+                      {opt.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Hàng 3: chip chi tiết — chỉ hiện khi đã chọn nhóm tương ứng.
+              Gộp 2 khối sub-filter cũ, vẫn chọn nhiều như trước. */}
+          {(filterTypes.includes('EXPLANATION') || filterTypes.includes('REGISTRATION')) && (
+            <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-200/70">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide w-16 shrink-0">Chi tiết</span>
+              {filterTypes.includes('EXPLANATION') && EXPLANATION_SUB_TYPES.map((sub) => {
+                const isSubActive = filterExplanationSubTypes.includes(sub.value);
+                return (
+                  <button
+                    key={sub.value}
+                    onClick={() => toggleSubTypeFilter(sub.value)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border ${
+                      isSubActive
+                        ? 'bg-amber-50 text-amber-700 border-amber-300'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-amber-200'
+                    }`}
+                  >
+                    {sub.label}
+                  </button>
+                );
+              })}
+              {filterTypes.includes('REGISTRATION') && REGISTRATION_SUB_TYPES.map((sub) => {
+                const isSubActive = filterRegistrationSubTypes.includes(sub.value);
+                return (
+                  <button
+                    key={sub.value}
+                    onClick={() => toggleRegSubTypeFilter(sub.value)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border ${
+                      isSubActive
+                        ? 'bg-primary-50 text-primary-700 border-primary-300'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-primary-200'
+                    }`}
+                  >
+                    {sub.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <div className="space-y-4">
           {loading && fetchProgress && (
@@ -2445,7 +2381,7 @@ const Approvals: React.FC = () => {
                   {/* Department Header */}
                   <div className={`w-full flex items-center justify-between p-3 sm:p-4 ${deptName === 'Đơn của Tôi' ? 'bg-rose-50/80 border-rose-100' : 'bg-gray-50 border-gray-200'} border-b`}>
                     <button
-                      onClick={() => toggleDepartmentGroup(deptKey)}
+                      onClick={() => toggleDepartmentGroup(deptKey, isDeptExpanded)}
                       className="flex items-center gap-2 sm:gap-3 text-left focus:outline-none flex-1 min-w-0"
                     >
                       <div className={`p-1.5 sm:p-2 rounded-lg ${isDeptExpanded ? 'bg-primary-600 text-white shadow-md' : 'bg-primary-50 text-primary-600'}`}>
@@ -2485,7 +2421,7 @@ const Approvals: React.FC = () => {
                       )}
 
                       <button
-                        onClick={() => toggleDepartmentGroup(deptKey)}
+                        onClick={() => toggleDepartmentGroup(deptKey, isDeptExpanded)}
                         className={`p-2 hover:bg-gray-200 rounded-full transition-transform duration-300 ${isDeptExpanded ? 'rotate-180' : ''}`}
                       >
                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
