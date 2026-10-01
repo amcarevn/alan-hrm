@@ -2081,14 +2081,16 @@ const Approvals: React.FC = () => {
             như cũ), nhóm phải là nghiệp vụ trước đây xếp chồng ngay dưới danh
             sách đơn (bảng công tháng). Badge số để không ai bỏ sót việc khi
             panel không còn tự hiện. */}
-        <div className="flex flex-wrap items-center border-b border-gray-200 mb-6 gap-y-1">
+        {/* Mobile: cuộn ngang thay vì xuống dòng — 4 tab mà wrap thì vỡ
+            thành nhiều hàng trên điện thoại. */}
+        <div className="flex items-center border-b border-gray-200 mb-5 overflow-x-auto scrollbar-hide sm:flex-wrap sm:overflow-visible gap-y-1">
           {REQUEST_TABS.map((t) => {
             const isActive = activeSection === 'requests' && activeTab === t.key;
             return (
               <button
                 key={t.key}
                 onClick={() => { setActiveSection('requests'); setActiveTab(t.key); }}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                className={`flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap shrink-0 transition-colors ${
                   isActive ? t.activeClass : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -2114,7 +2116,7 @@ const Approvals: React.FC = () => {
                 key={t.key}
                 onClick={() => setActiveSection(t.key)}
                 title={t.title}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                className={`flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap shrink-0 transition-colors ${
                   isActive ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -2754,113 +2756,94 @@ const Approvals: React.FC = () => {
                                         </div>
 
                                         {/* Mobile Cards */}
-                                        <div className="lg:hidden p-4 space-y-4 bg-gray-50/50">
+                                        <div className="lg:hidden p-3 space-y-2.5 bg-gray-50/50">
                                           {items.map((item) => {
                                             const itemKey = `${item._itemType}-${item.id}`;
                                             const itemTypeConfig = getItemTypeConfig(item);
                                             return (
-                                              <div key={itemKey} className="p-4 bg-white rounded-lg border border-gray-100 shadow-sm transition-colors">
-                                                <div className="flex justify-between items-start mb-4 gap-2">
-                                                  <div className="flex items-center gap-3 min-w-0">
-                                                    <div className={`p-2.5 rounded-lg shadow-md ${itemTypeConfig.mobileBg} text-white shrink-0`}>
-                                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={itemTypeConfig.iconPath} /></svg>
-                                                    </div>
-                                                    <div className="flex flex-col min-w-0">
-                                                      <h3 className="text-[14px] font-semibold text-gray-900 leading-tight mb-0.5 truncate">{item.employee_name}</h3>
-                                                      <div className="flex items-center gap-2">
-                                                        <span className="text-xs font-medium text-primary-600 bg-primary-50 px-1.5 py-0.5 rounded border border-primary-100 shrink-0">{item.employee_position || item.position_name || 'NV'}</span>
-                                                        <span className="w-1 h-1 rounded-full bg-gray-200 shrink-0"></span>
-                                                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-widest truncate">{getRequestTypeLabel(item)}</h4>
-                                                      </div>
-                                                    </div>
+                                              <div key={itemKey} className="p-3.5 bg-white rounded-xl border border-gray-100 shadow-sm">
+                                                {/* Thiết kế lại cho mobile (port từ TA): bản cũ có 5 khối viền
+                                                    lồng nhau (thẻ > hộp lý do > hộp tiến độ > hộp "gửi lúc") và
+                                                    tối đa 3 HÀNG nút full-width, mỗi thẻ cao gần hết màn hình.
+                                                    Nay gộp còn 1 khối phẳng + tối đa 2 hàng nút. Dữ liệu và
+                                                    thao tác giữ nguyên. */}
+                                                <div className="flex items-start gap-3">
+                                                  <div className={`p-2 rounded-lg ${itemTypeConfig.mobileBg} text-white shrink-0`}>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={itemTypeConfig.iconPath} /></svg>
                                                   </div>
-                                                  <div className="shrink-0 pt-1">
-                                                    {getStatusBadge(item, true)}
-                                                  </div>
-                                                </div>
-
-                                                {/* Reason Box - Thiết kế hiện đại & nổi bật */}
-                                                <div className="relative p-4 bg-gray-50 rounded-lg border border-gray-100 overflow-hidden">
-                                                  <div className="absolute top-0 left-0 w-1 h-full bg-primary-500/20"></div>
-                                                  <div className="flex justify-between items-start gap-4">
-                                                    <div className="flex-1 min-w-0">
-                                                      <div className="text-[12px] font-bold text-gray-700 leading-relaxed italic line-clamp-2">
-                                                        "{cleanReasonText(item.reason || item.work_plan || '', getRequestTypeLabel(item))}"
-                                                      </div>
-                                                      <div className="mt-2.5 flex flex-wrap gap-1.5">
-                                                        <span className="px-2 py-0.5 bg-white text-gray-400 text-xs font-semibold rounded-lg border border-gray-100 uppercase tracking-tighter">
-                                                          {getDayOfWeek(item.attendance_date || item.registration_date || item.work_date || item.start_date || item.date)}, {formatDate(item.attendance_date || item.registration_date || item.work_date || item.start_date || item.date)}
-                                                        </span>
-                                                        {item.late_minutes > 0 && <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-xs font-medium rounded border border-amber-100">Muộn {item.late_minutes}m</span>}
-                                                        {item.early_leave_minutes > 0 && <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-xs font-medium rounded border border-amber-100">Về sớm {item.early_leave_minutes}m</span>}
-                                                        {item.explanation_type === 'INCOMPLETE_ATTENDANCE' && (item.actual_check_in || item.forgot_checkin_time) && <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-xs font-medium rounded border border-amber-100">Vào: {(item.actual_check_in || item.forgot_checkin_time)?.substring(0, 5)}</span>}
-                                                        {item.explanation_type === 'INCOMPLETE_ATTENDANCE' && (item.actual_check_out || item.forgot_checkout_time) && <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-xs font-medium rounded border border-amber-100">Ra: {(item.actual_check_out || item.forgot_checkout_time)?.substring(0, 5)}</span>}
-                                                      </div>
+                                                  <div className="min-w-0 flex-1">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                      <h3 className="text-sm font-semibold text-gray-900 leading-tight capitalize">
+                                                        {getRequestTypeLabel(item)}
+                                                      </h3>
+                                                      <div className="shrink-0">{getStatusBadge(item, true)}</div>
                                                     </div>
-                                                    <div className="flex flex-col items-end gap-1.5 shrink-0">
-                                                      {item.penalty_amount > 0 && (
-                                                        <div className="px-3 py-1 bg-rose-500 text-white rounded-lg shadow-sm">
-                                                          <span className="text-xs font-semibold">-{item.penalty_amount.toLocaleString('vi-VN')}</span>
-                                                        </div>
-                                                      )}
-                                                      {item._itemType === 'REGISTRATION' && calculateDuration(item.start_time, item.end_time) && (
-                                                        <div className="px-2.5 py-1 bg-primary-100 text-primary-700 rounded-lg border border-primary-200">
-                                                          <span className="text-xs font-semibold">{calculateDuration(item.start_time, item.end_time)}</span>
-                                                        </div>
-                                                      )}
-                                                    </div>
+                                                    <p className="mt-0.5 text-xs text-gray-500 truncate">
+                                                      {`${getDayOfWeek(item.attendance_date || item.registration_date || item.work_date || item.start_date || item.date)}, ${formatDate(item.attendance_date || item.registration_date || item.work_date || item.start_date || item.date)}`}
+                                                      {item._itemType === 'REGISTRATION' && calculateDuration(item.start_time, item.end_time)
+                                                        ? ` · ${calculateDuration(item.start_time, item.end_time)}` : ''}
+                                                      {item.employee_name ? ` · ${item.employee_name}` : ''}
+                                                    </p>
                                                   </div>
                                                 </div>
 
-                                                {/* Tiến độ duyệt (mobile) — dùng chung getStatusBadge với
-                                                    desktop. Bản viết tay cũ đọc thẳng
-                                                    direct_manager_approved/hr_approved mà KHÔNG xét
-                                                    status==='APPROVED', nên đơn đã duyệt xong vẫn hiện
-                                                    "1  2" xám như chưa ai duyệt; gạch nối cũng nằm ngoài
-                                                    điều kiện employee_is_hr nên bị thừa 1 gạch cụt. */}
-                                                <div className="mt-3 px-3 py-2.5 bg-primary-50/30 rounded-lg border border-primary-100/50 flex items-center justify-between">
-                                                  <div className="flex items-center gap-1.5">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-primary-400"></div>
-                                                    <span className="text-xs font-semibold text-primary-400 uppercase tracking-widest">Tiến độ</span>
+                                                {cleanReasonText(item.reason || item.work_plan || '', getRequestTypeLabel(item)) && (
+                                                  <p className="mt-2 text-xs text-gray-600 italic line-clamp-2">
+                                                    "{cleanReasonText(item.reason || item.work_plan || '', getRequestTypeLabel(item))}"
+                                                  </p>
+                                                )}
+
+                                                {(item.late_minutes > 0 || item.early_leave_minutes > 0 || item.penalty_amount > 0
+                                                  || (item.explanation_type === 'INCOMPLETE_ATTENDANCE' && (item.actual_check_in || item.forgot_checkin_time || item.actual_check_out || item.forgot_checkout_time))) && (
+                                                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                                    {item.late_minutes > 0 && <span className="px-2 py-0.5 bg-amber-50 text-amber-700 text-[11px] font-medium rounded border border-amber-100">Muộn {item.late_minutes}m</span>}
+                                                    {item.early_leave_minutes > 0 && <span className="px-2 py-0.5 bg-amber-50 text-amber-700 text-[11px] font-medium rounded border border-amber-100">Về sớm {item.early_leave_minutes}m</span>}
+                                                    {item.explanation_type === 'INCOMPLETE_ATTENDANCE' && (item.actual_check_in || item.forgot_checkin_time) && <span className="px-2 py-0.5 bg-gray-50 text-gray-600 text-[11px] font-medium rounded border border-gray-200">Vào {(item.actual_check_in || item.forgot_checkin_time)?.substring(0, 5)}</span>}
+                                                    {item.explanation_type === 'INCOMPLETE_ATTENDANCE' && (item.actual_check_out || item.forgot_checkout_time) && <span className="px-2 py-0.5 bg-gray-50 text-gray-600 text-[11px] font-medium rounded border border-gray-200">Ra {(item.actual_check_out || item.forgot_checkout_time)?.substring(0, 5)}</span>}
+                                                    {item.penalty_amount > 0 && <span className="px-2 py-0.5 bg-rose-500 text-white text-[11px] font-semibold rounded">-{item.penalty_amount.toLocaleString('vi-VN')}</span>}
                                                   </div>
+                                                )}
+
+                                                {/* Tiến độ duyệt + thời điểm gửi trên CÙNG 1 dòng, thay
+                                                    cho 2 hộp viền riêng trước đây. */}
+                                                <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between gap-2">
                                                   {getStatusBadge(item, false, 'stepper')}
+                                                  <span className="text-[11px] text-gray-400 shrink-0">
+                                                    Gửi {formatTimeOnly(item.created_at)} · {formatDate(item.created_at)}
+                                                  </span>
                                                 </div>
-                                                <div className="mt-4 space-y-2">
-                                                  {( (activeTab === 'pending' && canApproveRequest(item)) || canDeleteRequest(item) ) && (
-                                                    <div className="flex gap-2">
-                                                      {activeTab === 'pending' && canApproveRequest(item) && (
-                                                        <>
-                                                          <button onClick={() => openApproveModal(item)} className="flex-[2] py-3 bg-emerald-600 text-white rounded-md transition-colors flex items-center justify-center gap-2" title="Phê duyệt nhanh">
-                                                            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                                            <span className="text-xs font-semibold uppercase tracking-wider">Phê duyệt</span>
-                                                          </button>
-                                                          <button onClick={() => openRejectModal(item)} className="flex-[2] py-3 bg-red-600 text-white rounded-md transition-colors flex items-center justify-center gap-2" title="Từ chối nhanh">
-                                                            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                                                            <span className="text-xs font-semibold uppercase tracking-wider">Từ chối</span>
-                                                          </button>
-                                                        </>
-                                                      )}
-                                                      {canDeleteRequest(item) && (
-                                                        <button
-                                                          onClick={() => openDeleteModal(item)}
-                                                          className="flex-1 py-3.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg active:scale-95 transition-all outline-none flex items-center justify-center gap-2"
-                                                          title="Xóa đơn"
-                                                        >
-                                                          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                          </svg>
-                                                          <span className="text-xs font-semibold uppercase tracking-tight">Xóa đơn</span>
-                                                        </button>
-                                                      )}
-                                                    </div>
-                                                  )}
-                                                  <button onClick={() => (item._itemType === 'ONLINE_WORK' || item._itemType === 'REGISTRATION' || item._itemType === 'OVERTIME') ? handleViewOnlineWorkDetails(item) : handleViewDetails(item)} className="w-full py-3 bg-gray-800 text-white rounded-md text-xs font-medium transition-colors">Chi tiết</button>
-                                                  
-                                                  <div className="flex items-center justify-center gap-2 py-2 bg-gray-50 rounded-lg border border-dashed border-gray-200 mt-3">
-                                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-tight">
-                                                      Gửi lúc: <span className="text-gray-600 font-semibold">{formatTimeOnly(item.created_at)}</span> • {formatDate(item.created_at)}
-                                                    </span>
+
+                                                {activeTab === 'pending' && canApproveRequest(item) && (
+                                                  <div className="mt-2.5 flex gap-2">
+                                                    <button onClick={() => openApproveModal(item)} className="flex-1 h-10 bg-emerald-600 text-white rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                      Phê duyệt
+                                                    </button>
+                                                    <button onClick={() => openRejectModal(item)} className="flex-1 h-10 bg-white text-red-600 border border-red-200 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                      Từ chối
+                                                    </button>
                                                   </div>
+                                                )}
+
+                                                <div className="mt-2 flex gap-2">
+                                                  <button
+                                                    onClick={() => (item._itemType === 'ONLINE_WORK' || item._itemType === 'REGISTRATION' || item._itemType === 'OVERTIME') ? handleViewOnlineWorkDetails(item) : handleViewDetails(item)}
+                                                    className="flex-1 h-9 bg-white text-gray-700 border border-gray-200 rounded-lg text-xs font-semibold active:scale-95 transition-transform"
+                                                  >
+                                                    Chi tiết
+                                                  </button>
+                                                  {canDeleteRequest(item) && (
+                                                    <button
+                                                      onClick={() => openDeleteModal(item)}
+                                                      className="w-10 h-9 shrink-0 bg-white text-rose-500 border border-rose-100 rounded-lg flex items-center justify-center active:scale-95 transition-transform"
+                                                      title="Xoá đơn"
+                                                    >
+                                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                      </svg>
+                                                    </button>
+                                                  )}
                                                 </div>
                                               </div>
                                             );
