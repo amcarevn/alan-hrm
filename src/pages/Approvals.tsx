@@ -500,6 +500,15 @@ const Approvals: React.FC = () => {
         tasks.push(fetchPendingRequests(signal));
       } else if (activeTab === 'approved') {
         tasks.push(fetchApprovedRequests(signal));
+        // QLTT: tab "Đã duyệt" của họ KHÔNG chỉ gồm đơn status=APPROVED — nó
+        // còn phải gộp các đơn họ đã duyệt nhưng HCNS chưa duyệt nốt (vẫn
+        // status=PENDING), xem pickTabSources(). Những đơn đó nằm trong mảng
+        // pending*, nếu tab này KHÔNG tải pending thì vào thẳng/tải lại trang
+        // khi đang ở tab "Đã duyệt" chúng biến mất khỏi CẢ HAI tab (Chờ duyệt
+        // đã lọc chúng đi vì việc của QLTT xong rồi).
+        if (!currentIsAdmin && !currentIsHR) {
+          tasks.push(fetchPendingRequests(signal));
+        }
       } else if (activeTab === 'rejected') {
         tasks.push(fetchRejectedRequests(signal));
       }
