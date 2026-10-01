@@ -20,6 +20,16 @@ const Approvals: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     'pending' | 'approved' | 'rejected'
   >('pending');
+  // Trang này gánh 2 nghiệp vụ khác nhau (duyệt đơn từ + duyệt bảng công
+  // tháng). Trước đây xếp chồng trên CÙNG 1 màn; nay tách thành "khu vực"
+  // riêng chọn bằng thanh tab (yêu cầu HCNS: "tách thành các tab riêng trong
+  // cùng trang").
+  // CHỦ Ý: dùng state RIÊNG chứ không nhét thêm giá trị vào `activeTab` — vì
+  // `activeTab` đang được nhiều useMemo/filter dùng để lọc trạng thái đơn
+  // (PENDING/APPROVED/REJECTED); thêm giá trị lạ vào đó sẽ làm các filter kia
+  // trả kết quả rỗng hoặc sai. Tách state giữ toàn bộ logic cũ nguyên vẹn.
+  type ApprovalSection = 'requests' | 'work_finalization';
+  const [activeSection, setActiveSection] = useState<ApprovalSection>('requests');
   const [attendanceExplanations, setAttendanceExplanations] = useState<any[]>(
     []
   );
@@ -435,10 +445,11 @@ const Approvals: React.FC = () => {
       const tasks = [];
 
       // Only fetch the active tab to optimize performance
+      // Bảng công tháng giờ là 1 tab riêng (activeSection) có badge số chờ
+      // duyệt — tải ở MỌI tab để badge luôn đúng và mở tab là có dữ liệu.
+      tasks.push(fetchWorkFinalizationData(emp, currentIsAdmin, currentIsHR));
       if (activeTab === 'pending') {
         tasks.push(fetchPendingRequests(signal));
-        // Work Finalization data is typically only shown/relevant in the Pending tab
-        tasks.push(fetchWorkFinalizationData(emp, currentIsAdmin, currentIsHR));
       } else if (activeTab === 'approved') {
         tasks.push(fetchApprovedRequests(signal));
       } else if (activeTab === 'rejected') {
@@ -1857,6 +1868,43 @@ const Approvals: React.FC = () => {
 
   const getTotalFilteredCount = () => getTotalCount();
 
+  // ── Cấu hình 2 nhóm tab (xem chú thích ở state `activeSection`) ──────────
+  const REQUEST_TABS: {
+    key: 'pending' | 'approved' | 'rejected';
+    label: string; count: number; activeClass: string; badgeClass: string; icon: JSX.Element;
+  }[] = [
+    {
+      key: 'pending', label: 'Chờ duyệt', count: stats.total_pending,
+      activeClass: 'border-primary-600 text-primary-600', badgeClass: 'bg-red-500',
+      icon: (<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>),
+    },
+    {
+      key: 'approved', label: 'Đã duyệt', count: stats.total_approved,
+      activeClass: 'border-emerald-600 text-emerald-600', badgeClass: 'bg-emerald-500',
+      icon: (<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>),
+    },
+    {
+      key: 'rejected', label: 'Từ chối', count: stats.total_rejected,
+      activeClass: 'border-red-600 text-red-600', badgeClass: 'bg-amber-500',
+      icon: (<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>),
+    },
+  ];
+
+  // Alan chỉ có 1 nghiệp vụ phụ là duyệt bảng công tháng (không có "Chốt
+  // công" kiểu attendance-finalization hay "Ca 2" như TA). Tab chỉ hiện với
+  // đúng đối tượng trước đây nhìn thấy panel (Admin/Quản lý).
+  const SECTION_TABS: {
+    key: 'work_finalization';
+    label: string; title: string; count: number; icon: JSX.Element;
+  }[] = showWorkFinalizationPanel ? [
+    {
+      key: 'work_finalization', label: 'Bảng công tháng',
+      title: 'Phê duyệt chốt công nhân viên (bảng công tháng theo phòng ban)',
+      count: workFinalizationApprovals.filter((i: any) => i?.status === 'PENDING').length,
+      icon: (<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>),
+    },
+  ] : [];
+
   return (
     <div>
       {/* Cập nhật nhanh - Floating indicator */}
@@ -1867,15 +1915,31 @@ const Approvals: React.FC = () => {
         </div>
       </div>
 
+      {/* Header trang — gộp 3 lớp tiêu đề cũ (h1 "Phê duyệt" + đoạn mô tả +
+          h2 "Yêu cầu chờ duyệt/Có N yêu cầu") làm 1 cho gọn, theo pattern
+          MyRequests.tsx. Bỏ nút "Lịch sử duyệt" (không có onClick). */}
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Phê duyệt</h1>
           <p className="text-gray-500 text-sm mt-1">
-            Cập nhật lần cuối: {lastRefreshedAt.toLocaleTimeString('vi-VN')}
+            {activeSection === 'requests'
+              ? `${getCurrentTitle()} · ${getTotalFilteredCount()} yêu cầu`
+              : 'Duyệt đơn từ và bảng công tháng của nhân viên'}
+            {' · '}Cập nhật {lastRefreshedAt.toLocaleTimeString('vi-VN')}
           </p>
         </div>
 
-        {/* Floating Refresh FAB for Mobile */}
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => fetchAllData(true)}
+            className="flex-1 sm:flex-none justify-center border border-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-50 flex items-center gap-2 text-sm font-medium"
+          >
+            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <span>Làm mới</span>
+          </button>
+        </div>
+
+        {/* Nút làm mới nổi trên mobile */}
         <button
           onClick={() => fetchAllData(true)}
           className={`fixed bottom-6 right-6 sm:hidden z-50 w-14 h-14 bg-primary-600 text-white rounded-full shadow-lg flex items-center justify-center border-4 border-white transition-all active:scale-90 ${loading ? 'animate-pulse' : ''}`}
@@ -1884,172 +1948,71 @@ const Approvals: React.FC = () => {
         </button>
       </div>
 
-      <div>
-        <p className="text-sm text-gray-900 mt-1 sm:mt-2">
-          Duyệt các đơn xin nghỉ phép, giải trình chấm công và các
-          yêu cầu khác.
-        </p>
-      </div>
-
       {/* Banner hạn chốt công */}
       <div className="mb-4">
         <FinalizationLockBanner year={filterYear} month={filterMonth} bypassRoles={['ADMIN', 'HR']} />
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              {getCurrentTitle()}
-            </h2>
-            <p className="text-gray-500 text-lg">
-              Có {getTotalFilteredCount()} yêu cầu
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-            <button
-              onClick={() => fetchAllData(true)}
-              className="flex-1 sm:flex-none justify-center border border-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-50 flex items-center space-x-2 text-base"
-            >
-              {loading && <div className="w-4 h-4 border-2 border-primary-600 border-t-transparent rounded-full"></div>}
-              <span>Làm mới</span>
-            </button>
-            <button className="flex-1 sm:flex-none justify-center border border-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-50 transition-colors text-base">
-              Lịch sử duyệt
-            </button>
-          </div>
-        </div>
-
-        {/* Tabs Điều hướng */}
-        <div className="flex border-b border-gray-200 mb-6">
-          <button
-            onClick={() => setActiveTab('pending')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px ${activeTab === 'pending'
-              ? 'border-primary-600 text-primary-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Chờ duyệt
-            {stats.total_pending > 0 && (
-              <span className="ml-1 min-w-[20px] h-5 inline-flex items-center justify-center px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">
-                {stats.total_pending}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('approved')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px ${activeTab === 'approved'
-              ? 'border-emerald-600 text-emerald-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
-            Đã duyệt
-            {stats.total_approved > 0 && (
-              <span className="ml-1 min-w-[20px] h-5 inline-flex items-center justify-center px-1.5 rounded-full text-xs font-bold bg-emerald-500 text-white">
-                {stats.total_approved}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('rejected')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px ${activeTab === 'rejected'
-              ? 'border-red-600 text-red-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            Từ chối
-            {stats.total_rejected > 0 && (
-              <span className="ml-1 min-w-[20px] h-5 inline-flex items-center justify-center px-1.5 rounded-full text-xs font-bold bg-amber-500 text-white">
-                {stats.total_rejected}
-              </span>
-            )}
-          </button>
-        </div>
-
-
-        {/* Thẻ Thống kê - Responsive Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6 mb-8">
-          {[
-            { type: 'EXPLANATION', label: 'Giải trình', fullLabel: 'Giải trình', count: getTabCount('EXPLANATION'), color: 'amber', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
-            { type: 'REGISTRATION', label: 'Đăng ký', fullLabel: 'Đăng ký', count: getTabCount('REGISTRATION'), color: 'primary', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
-            { type: 'LEAVE', label: 'Nghỉ phép', fullLabel: 'Nghỉ phép', count: getTabCount('LEAVE'), color: 'primary', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-            { type: 'ONLINE_WORK', label: 'Làm online', fullLabel: 'Làm online', count: getTabCount('ONLINE_WORK'), color: 'emerald', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' }
-          ].map((item) => (
-            <div
-              key={item.type}
-              className={`p-4 rounded-2xl border text-left shadow-sm ${item.color === 'amber' ? 'bg-amber-50 border-amber-100' :
-                  item.color === 'primary' ? 'bg-primary-50 border-primary-100' :
-                    item.color === 'emerald' ? 'bg-emerald-50 border-emerald-100' :
-                      'bg-gray-50 border-gray-100'
+        {/* Thanh tab 2 nhóm — nhóm trái là 3 trạng thái duyệt đơn từ (giữ y
+            như cũ), nhóm phải là nghiệp vụ trước đây xếp chồng ngay dưới danh
+            sách đơn (bảng công tháng). Badge số để không ai bỏ sót việc khi
+            panel không còn tự hiện. */}
+        <div className="flex flex-wrap items-center border-b border-gray-200 mb-6 gap-y-1">
+          {REQUEST_TABS.map((t) => {
+            const isActive = activeSection === 'requests' && activeTab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => { setActiveSection('requests'); setActiveTab(t.key); }}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  isActive ? t.activeClass : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
-            >
-              <div className="flex justify-between items-start">
-                <div className={`p-2 rounded-lg bg-${item.color}-500 text-white shadow-sm ring-4 ring-${item.color}-500/10`}>
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={item.icon} />
-                  </svg>
-                </div>
-                <div className={`flex items-center gap-1 sm:hidden text-${item.color}-600/60`}>
-                  <span className="text-xs font-semibold uppercase tracking-tighter">
-                    {activeTab === 'pending' ? 'Chờ' : activeTab === 'approved' ? 'Duyệt' : 'Từ chối'}
+              >
+                {t.icon}
+                {t.label}
+                {t.count > 0 && (
+                  <span className={`ml-1 min-w-[20px] h-5 inline-flex items-center justify-center px-1.5 rounded-full text-xs font-bold text-white ${t.badgeClass}`}>
+                    {t.count}
                   </span>
-                </div>
-              </div>
+                )}
+              </button>
+            );
+          })}
 
-              <div className="mt-3 sm:mt-4">
-                <h3 className={`text-xs sm:text-xs font-semibold uppercase tracking-[0.15em] text-${item.color}-600/80`}>
-                  <span className="sm:hidden">{item.label}</span>
-                  <span className="hidden sm:inline">{item.fullLabel}</span>
-                </h3>
-                <div className="flex items-baseline gap-1 mt-1 sm:mt-2">
-                  <span className={`text-2xl sm:text-3xl font-semibold text-${item.color}-900`}>
-                    {item.count}
+          {SECTION_TABS.length > 0 && (
+            <span className="mx-2 hidden h-6 w-px self-center bg-gray-200 sm:block" />
+          )}
+
+          {SECTION_TABS.map((t) => {
+            const isActive = activeSection === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveSection(t.key)}
+                title={t.title}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  isActive ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {t.icon}
+                {t.label}
+                {t.count > 0 && (
+                  <span className="ml-1 min-w-[20px] h-5 inline-flex items-center justify-center px-1.5 rounded-full text-xs font-bold bg-indigo-500 text-white">
+                    {t.count}
                   </span>
-                  <span className={`text-xs font-bold uppercase text-${item.color}-400`}>đơn</span>
-                </div>
-              </div>
-
-            </div>
-          ))}
-
-          {/* Month Summary Card */}
-          <div className="bg-primary-600 p-4 rounded-2xl flex flex-col justify-between col-span-2 lg:col-span-1 xl:col-span-1">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-medium text-xs uppercase tracking-wide text-primary-200">Tháng này</h3>
-                <div className="flex items-baseline gap-1 mt-1 text-white">
-                  <span className="text-2xl font-semibold">{stats.total_approved}</span>
-                  <span className="text-xs font-medium uppercase">đã duyệt</span>
-                </div>
-              </div>
-              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center text-white">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-emerald-400 h-full rounded-full" style={{ width: '100%' }}></div>
-              </div>
-              <p className="text-xs text-primary-200 mt-2 flex justify-between">
-                <span>Hoàn thành xử lý</span>
-                <span>100%</span>
-              </p>
-            </div>
-          </div>
+                )}
+              </button>
+            );
+          })}
         </div>
 
+        {/* Khu vực ĐƠN TỪ (3 tab trạng thái bên trái) — bộ lọc + danh sách.
+            4 thẻ thống kê + thẻ "Tháng này" cũ ở đây đã bỏ: chúng hiện đúng
+            cùng con số với 4 chip lọc bên dưới mà lại không bấm được, progress
+            bar viết cứng 100% (HCNS duyệt bỏ). */}
+        {activeSection === 'requests' && (
+        <>
 
         {/* Bộ lọc */}
         <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 mb-6">
@@ -2934,65 +2897,29 @@ const Approvals: React.FC = () => {
           }
         </div>
 
-        {/* Khối duyệt bảng công tháng (chốt công nhân viên) — đã tách sang
-            components/approvals/WorkFinalizationApprovalPanel */}
-        <WorkFinalizationApprovalPanel
-          activeTab={activeTab}
-          loading={loading}
-          showWorkFinalizationPanel={showWorkFinalizationPanel}
-          isAdmin={isAdmin}
-          isManagement={isManagement}
-          workFinalizationApprovals={workFinalizationApprovals}
-          openApproveModal={openApproveModal}
-          openRejectModal={openRejectModal}
-          handleViewDetails={handleViewDetails}
-          handleViewOnlineWorkDetails={handleViewOnlineWorkDetails}
-          handleViewWfDetails={handleViewWfDetails}
-          formatDateTime={formatDateTime}
-          getDayOfWeek={getDayOfWeek}
-        />
+        </>
+        )}
 
-        <div className="mt-12 tracking-tight">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-1.5 h-6 bg-primary-600 rounded-full"></div>
-            <h3 className="text-xl font-semibold text-gray-800 uppercase tracking-tight">
-              Quy trình & Quyền hạn của bạn
-            </h3>
-          </div>
-
-          <div className="bg-gradient-to-br from-slate-50 to-primary-50/30 p-6 sm:p-8 rounded-2xl border border-gray-100 relative overflow-hidden">
-            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2 py-0.5 bg-primary-600 text-white text-xs font-semibold rounded-md uppercase tracking-widest">Quyền hạn cao nhất</span>
-                </div>
-                <p className="text-gray-700 text-lg font-bold leading-snug">
-                  Bạn có quyền phê duyệt quản lý các loại đơn:{' '}
-                  <span className="text-primary-600 border-b-2 border-primary-100">
-                    Nghỉ phép, Tăng ca, Giải trình chấm công & Chốt công tháng.
-                  </span>
-                </p>
-                <div className="flex flex-wrap items-center gap-4 mt-4 text-gray-400 font-bold text-xs uppercase tracking-widest leading-none">
-                  <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-gray-100">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                    Cấp duyệt: QLTT
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-gray-100">
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
-                    Thời gian: 24h
-                  </div>
-                </div>
-              </div>
-              <button className="w-full sm:w-auto px-8 py-4 bg-gray-900 border-2 border-gray-900 hover:bg-primary-600 hover:border-primary-600 text-white rounded-lg text-xs font-semibold uppercase tracking-wide transition-all shadow-md hover:shadow-xl shadow-slate-200">
-                CẤU HÌNH QUY TRÌNH
-              </button>
-
-            </div>
-
-            {/* Decoration */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-          </div>
-        </div>
+        {/* Khu vực BẢNG CÔNG THÁNG (trước đây là panel chèn dưới danh sách
+            tab Chờ duyệt) — đã tách sang components/approvals/WorkFinalizationApprovalPanel.
+            Khối tĩnh "Quy trình & Quyền hạn của bạn" (nội dung viết cứng + nút
+            "CẤU HÌNH QUY TRÌNH" không có onClick) đã bỏ. */}
+        {activeSection === 'work_finalization' && (
+          <WorkFinalizationApprovalPanel
+            loading={loading}
+            showWorkFinalizationPanel={showWorkFinalizationPanel}
+            isAdmin={isAdmin}
+            isManagement={isManagement}
+            workFinalizationApprovals={workFinalizationApprovals}
+            openApproveModal={openApproveModal}
+            openRejectModal={openRejectModal}
+            handleViewDetails={handleViewDetails}
+            handleViewOnlineWorkDetails={handleViewOnlineWorkDetails}
+            handleViewWfDetails={handleViewWfDetails}
+            formatDateTime={formatDateTime}
+            getDayOfWeek={getDayOfWeek}
+          />
+        )}
 
       </div>
 

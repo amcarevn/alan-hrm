@@ -11,7 +11,6 @@ import React from 'react';
  * (dữ liệu đơn từ backend không có type chung).
  */
 interface WorkFinalizationApprovalPanelProps {
-  activeTab: string;
   loading: boolean;
   showWorkFinalizationPanel: boolean;
   isAdmin: any;
@@ -27,7 +26,6 @@ interface WorkFinalizationApprovalPanelProps {
 }
 
 const WorkFinalizationApprovalPanel: React.FC<WorkFinalizationApprovalPanelProps> = ({
-  activeTab,
   loading,
   showWorkFinalizationPanel,
   isAdmin,
@@ -43,7 +41,9 @@ const WorkFinalizationApprovalPanel: React.FC<WorkFinalizationApprovalPanelProps
 }) => {
   return (
     <>
-        {activeTab === 'pending' && !loading && showWorkFinalizationPanel && (
+        {/* Component này nằm trong tab riêng của trang Phê duyệt nên KHÔNG
+            tự lọc theo activeTab nữa — trang cha quyết định có render hay không. */}
+        {!loading && showWorkFinalizationPanel && (
           <div className="mt-8 mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 bg-white p-3 sm:p-4 md:p-5 rounded-lg shadow-sm border border-gray-100">
               <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
