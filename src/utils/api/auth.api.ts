@@ -35,11 +35,15 @@ export const authAPI = {
       phone: backendUser.phone_number || '',
       role: backendUser.role || 'user',
       isActive: backendUser.is_active !== undefined ? backendUser.is_active : true,
-      lastLoginAt: new Date().toISOString(),
+      lastLoginAt: backendUser.last_login || null,
       loginCount: 0,
       emailVerified: false,
       phoneVerified: false,
-      createdAt: new Date().toISOString(),
+      // Backend trả date_joined (snake_case) nên spread `...backendUser` bên
+      // dưới KHÔNG ghi đè được key camelCase này — trước đây nó luôn giữ
+      // nguyên new Date(), khiến "Ngày tham gia" ở trang Cài đặt luôn hiện
+      // NGÀY HÔM NAY và đổi sau mỗi lần đăng nhập. Để null nếu thiếu, UI hiện "N/A".
+      createdAt: backendUser.date_joined || backendUser.created_at || null,
       updatedAt: new Date().toISOString(),
       is_super_admin: backendUser.is_super_admin || false,
       // Spread TRƯỚC
@@ -137,11 +141,13 @@ export const authAPI = {
           phone: userData.phone_number || userData.username || '',
           role: userData.role || 'user',
           isActive: userData.is_active !== undefined ? userData.is_active : true,
-          lastLoginAt: new Date().toISOString(),
+          lastLoginAt: userData.last_login || null,
           loginCount: 0,
           emailVerified: false,
           phoneVerified: false,
-          createdAt: new Date().toISOString(),
+          // Xem chú thích ở login(): backend trả snake_case nên spread không
+          // ghi đè được key camelCase, giá trị new Date() cũ sẽ dính lại vĩnh viễn.
+          createdAt: userData.date_joined || userData.created_at || null,
           updatedAt: new Date().toISOString(),
           is_super_admin: userData.is_super_admin || false,
           // Spread TRƯỚC

@@ -2614,9 +2614,16 @@ const AttendanceManagement: React.FC = () => {
                             allEvents.push({
                               id: `v-dm-${ev.id}`,
                               event_type: 'registration_approval',
-                              created_at: new Date(
-                                new Date(ev.created_at).getTime() + 1000
-                              ).toISOString(),
+                              // Giờ duyệt THẬT. Trước đây luôn bịa = giờ tạo
+                              // đơn + 1 giây rồi hiển thị như mốc thời gian
+                              // thật, nên đơn duyệt sau cả tiếng vẫn hiện
+                              // "duyệt 1 giây sau khi tạo" (port fix từ TA).
+                              created_at: ev.data.direct_manager_approved_at || null,
+                              // Khoá SẮP XẾP tách riêng khỏi mốc hiển thị: đơn
+                              // cũ không có *_approved_at thì vẫn phải đứng sau
+                              // dòng tạo đơn, nhưng KHÔNG được hiển thị mốc bịa.
+                              _sortAt: ev.data.direct_manager_approved_at ||
+                                new Date(new Date(ev.created_at).getTime() + 1000).toISOString(),
                               data: {
                                 approval_level: 'DIRECT_MANAGER',
                                 approved_by_name:
@@ -2636,9 +2643,10 @@ const AttendanceManagement: React.FC = () => {
                             allEvents.push({
                               id: `v-hr-${ev.id}`,
                               event_type: 'registration_approval',
-                              created_at: new Date(
-                                new Date(ev.created_at).getTime() + 2000
-                              ).toISOString(),
+                              // Giờ duyệt THẬT — xem chú thích ở bước QLTT trên.
+                              created_at: ev.data.hr_approved_at || null,
+                              _sortAt: ev.data.hr_approved_at ||
+                                new Date(new Date(ev.created_at).getTime() + 2000).toISOString(),
                               data: {
                                 approval_level: 'HR',
                                 approved_by_name: ev.data.hr_approved_by_name,
@@ -2654,8 +2662,8 @@ const AttendanceManagement: React.FC = () => {
 
                     const sortedEvents = [...allEvents].sort(
                       (a, b) =>
-                        new Date(a.created_at).getTime() -
-                        new Date(b.created_at).getTime()
+                        new Date(a._sortAt || a.created_at).getTime() -
+                        new Date(b._sortAt || b.created_at).getTime()
                     );
 
                     const hasAnyPunch = attendanceDetails.some(
@@ -2811,9 +2819,9 @@ const AttendanceManagement: React.FC = () => {
                                       </span>
                                     )}
                                     <time className="text-xs text-gray-500 ml-auto">
-                                      {new Date(ev.created_at).toLocaleString(
-                                        'vi-VN'
-                                      )}
+                                      {ev.created_at
+                                        ? new Date(ev.created_at).toLocaleString('vi-VN')
+                                        : '—'}
                                     </time>
                                   </div>
                                   {ev.event_type === 'attendance' && (ev.data?.status || ev.data?.import_source) && (
