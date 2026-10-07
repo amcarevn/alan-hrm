@@ -10,6 +10,36 @@
       content="default-src 'self'; connect-src 'self' http://localhost:3001 http://localhost:8000 ws://localhost:3001 wss://localhost:3001 ws://localhost:3001/* wss://localhost:3001/*; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
     /> -->
     <title>Elani Beauty Medical Clinic — HRM</title>
+    <script>
+      // Chuyển hướng domain cũ sang domain chính thức, giữ nguyên đường dẫn người
+      // dùng đang mở (cho ai đã lưu bookmark cũ).
+      //
+      // Đặt trong <head>, chạy TRƯỚC khi tải bundle ứng dụng để khỏi mất công
+      // render rồi mới nhảy. Cloudflare Pages không cho redirect theo hostname
+      // trong file _redirects nên phải làm ở đây.
+      //
+      // So khớp CHÍNH XÁC hostname production — các bản preview của Pages nằm ở
+      // <hash>.alan-hrm.pages.dev, không được đụng tới.
+      //
+      // Lối thoát: thêm ?stay vào URL để ở lại domain cũ, phòng khi domain mới
+      // có sự cố mà vẫn cần vào gấp.
+      (function () {
+        var CU = 'alan-hrm.pages.dev';
+        var MOI = 'hr.elani.com.vn';
+        try {
+          if (
+            location.hostname === CU &&
+            location.search.indexOf('stay') === -1 &&
+            !sessionStorage.getItem('bo-qua-chuyen-domain')
+          ) {
+            sessionStorage.setItem('bo-qua-chuyen-domain', '1');
+            location.replace('https://' + MOI + location.pathname + location.search + location.hash);
+          }
+        } catch (e) {
+          /* chặn cookie/sessionStorage thì thôi, ở lại domain cũ còn hơn lỗi trắng trang */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
