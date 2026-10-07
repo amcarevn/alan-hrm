@@ -3683,7 +3683,12 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         phap_nhan_con: record.phap_nhan_con ?? '',
         loai_hop_dong: contractInfo.loai,
         trang_thai_hop_dong: contractInfo.trangThai,
+        ly_do_dieu_chinh: String((record as unknown as Record<string, unknown>)['ly_do_dieu_chinh'] ?? ''),
+        tong_luong_phai_tra: Math.round(tongThuNhapVI - congDoan - tongPhat - tongPhatBienBan),
         tong_thu_nhap_chiu_thue: Math.round(payrollTax.grossIncomeForTax),
+        giam_tru_ban_than: Math.round(payrollTax.taxDetail.personalDeduction),
+        so_nguoi_phu_thuoc: payrollTax.dependentCount,
+        giam_tru_nguoi_phu_thuoc: Math.round(payrollTax.taxDetail.dependentDeduction),
         thu_nhap_tinh_thue: getThuNhapTinhThue(record, payrollTax),
         year: record.year,
         month: record.month,
@@ -5980,6 +5985,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">PC trách nhiệm</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">PC khác</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng phụ cấp IV</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Thưởng</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng thu nhập VI</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">BHXH</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">BHYT</th>
@@ -5989,7 +5995,15 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Phạt đi muộn</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Phạt biên bản</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng giảm trừ VII</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Truy tăng</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Truy thu</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Điều chỉnh VIII</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase" style={{ minWidth: 200 }}>Lý do điều chỉnh</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng lương phải trả</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng thu nhập chịu thuế</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Giảm trừ gia cảnh</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Số NPT</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Giảm trừ NPT</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Thu nhập tính thuế</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Thuế TNCN X</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tạm ứng XI</th>
@@ -6022,6 +6036,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.phu_cap_trach_nhiem)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.phu_cap_khac)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_phu_cap_iv)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.thuong)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_thu_nhap_vi)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.bhxh)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.bhyt)}</td>
@@ -6031,7 +6046,15 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_phat)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_phat_bienban)}</td>
                       <td className="px-3 py-2 text-right text-red-700">{formatCurrency(row.tong_giam_tru_vii)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.truy_tang)}</td>
+                      <td className="px-3 py-2 text-right text-red-700">{formatCurrency(row.truy_thu)}</td>
+                      <td className={`px-3 py-2 text-right ${row.dieu_chinh < 0 ? 'text-red-700' : 'text-gray-700'}`}>{formatCurrency(row.dieu_chinh)}</td>
+                      <td className="px-3 py-2 text-gray-700">{row.ly_do_dieu_chinh || '—'}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_luong_phai_tra)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tong_thu_nhap_chiu_thue)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.giam_tru_ban_than)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatNumber(row.so_nguoi_phu_thuoc)}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.giam_tru_nguoi_phu_thuoc)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.thu_nhap_tinh_thue)}</td>
                       <td className="px-3 py-2 text-right text-red-700">{formatCurrency(row.thue_tncn)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(row.tam_ung)}</td>
