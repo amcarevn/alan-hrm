@@ -972,12 +972,12 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 font-bold text-red-700" colSpan={2}>CÁC KHOẢN GIẢM TRỪ KHÁC</td>
               </tr>
               <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">20</td>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">18</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Công đoàn</td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(congDoan)}</td>
               </tr>
               <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">21</td>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">19</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Phạt đi muộn + phạt biên bản</td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{(phatDiMuon + phatBienBan) > 0 ? fmt(phatDiMuon + phatBienBan) : '—'}</td>
               </tr>
@@ -991,7 +991,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               {/* Thưởng và Điều chỉnh lương: hiện đầy đủ trên phiếu. Thưởng nằm trong
                   TỔNG THU NHẬP (VI); điều chỉnh cộng thẳng vào LƯƠNG THỰC LĨNH. */}
               <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">18</td>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">20</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Thưởng</td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{thuongHienThi ? fmt(thuongHienThi) : '—'}</td>
               </tr>
@@ -1009,12 +1009,12 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 font-bold text-red-700" colSpan={2}>CÁC KHOẢN BẢO HIỂM</td>
               </tr>
               <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">18</td>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">21</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Mức lương đóng BH</td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(mucLuongDongBH)}</td>
               </tr>
               <tr>
-                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">19</td>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">22</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">BHXH (10.5%)</td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(tongBH)}</td>
               </tr>
@@ -1023,7 +1023,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                   thẳng vào đó. Truy tăng hiện số dương, truy thu hiện số âm. */}
               {(truyTangHienThi > 0 || truyThuHienThi > 0) && (
                 <tr>
-                  <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">22</td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">23</td>
                   <td className="border border-gray-300 px-3 py-2 text-gray-700">
                     Điều chỉnh lương
                     {truyTangHienThi > 0 && truyThuHienThi > 0 && (
