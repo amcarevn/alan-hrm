@@ -2633,7 +2633,7 @@ interface EditModalProps {
   /** Mốc cấu hình đang áp dụng, lấy từ salary_salaryemployeeconfig; null = chưa có */
   salaryConfig: EmployeeSalaryConfig | null;
   onClose: () => void;
-  onSave: (employeeId: number, payload: EmployeeSalaryConfigPayload) => Promise<void>;
+  onSave: (employeeId: number, payload: EmployeeSalaryConfigPayload, configId?: number | null) => Promise<void>;
   saving: boolean;
   /** Công đoàn phí thực tế đang áp dụng cho kỳ đang xem (đã tính theo rule
    * 50k/100k hoặc override thủ công ở backend) — null/undefined nếu chưa có
@@ -2758,12 +2758,22 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
       return;
     }
 
-    // Giữ nguyên tháng và mốc hiện tại chưa dùng để tính bảng lương chốt nào → sửa đè
-    // thẳng, không hỏi. Chưa ai phụ thuộc vào nó nên không có lịch sử để viết lại, mà
-    // mở mốc mới chỉ làm rác thêm. Gửi lại đúng ngày của mốc hiện tại để backend không
-    // hiểu nhầm thành chuyển mốc. Backend kiểm tra lại điều kiện này khi lưu.
-    if (!movesMilestone && salaryConfig.can_edit_in_place) {
-      await onSave(employee.id, { ...payload, effective_from: salaryConfig.effective_from });
+    // Mốc hiện tại chưa dùng để tính bảng lương chốt nào → sửa thẳng, không hỏi, kể cả
+    // khi HR đổi tháng hiệu lực. Backend dời chính mốc đó chứ không đẻ mốc mới: mốc
+    // nhập sai ngày mà lại sinh thêm một mốc nữa thì tháng cũ vẫn dính giá trị mới,
+    // đúng thứ HR đang muốn sửa. Giữ nguyên tháng thì gửi lại đúng ngày của mốc để
+    // backend không hiểu nhầm thành dời mốc.
+    if (salaryConfig.can_edit_in_place) {
+      await onSave(
+        employee.id,
+        {
+          ...payload,
+          effective_from: movesMilestone
+            ? `${monthOf(payload.effective_from)}-01`
+            : salaryConfig.effective_from,
+        },
+        salaryConfig.id,
+      );
       return;
     }
 
@@ -2810,7 +2820,8 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
       effective_from: newEffectiveFrom,
     };
     setPendingPayload(null);
-    await onSave(employee.id, payload);
+    // Vẫn PATCH vào mốc hiện tại: backend thấy mốc đã vướng kỳ chốt nên tự mở mốc mới.
+    await onSave(employee.id, payload, salaryConfig?.id ?? null);
   };
 
   return (
@@ -3527,6 +3538,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [deptFilterConfig, setDeptFilterConfig] = useState<string>('');
   const [configPage, setConfigPage] = useState(1);
   const [configTotal, setConfigTotal] = useState(0);
+  /** Mốc cấu hình đang áp dụng của các nhân viên trên trang, khoá theo employee id. */
+  const [activeConfigs, setActiveConfigs] = useState<Record<number, EmployeeSalaryConfig>>({});
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
   const [editEmployeeUnionFee, setEditEmployeeUnionFee] = useState<number | null>(null);
   const [editEmployeeConfig, setEditEmployeeConfig] = useState<EmployeeSalaryConfig | null>(null);
@@ -4325,8 +4338,25 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         setEmployees(res.results);
         setConfigTotal(res.count);
         setConfigPage(page);
+
+        // Lương và ngày hiệu lực hiển thị phải là của mốc cấu hình đang áp dụng, không
+        // phải số cũ trên hồ sơ nhân viên. Một request cho cả trang.
+        const configs = await salaryService
+          .listActiveEmployeeSalaryConfigs(res.results.map((e) => e.id))
+          .catch(() => [] as EmployeeSalaryConfig[]);
+        // Dữ liệu cũ có nhân viên mang nhiều mốc cùng is_active, nên chọn mốc muộn nhất
+        // thay vì tin vào thứ tự trả về.
+        const byEmployee: Record<number, EmployeeSalaryConfig> = {};
+        configs.forEach((config) => {
+          const current = byEmployee[config.employee];
+          if (!current || config.effective_from > current.effective_from) {
+            byEmployee[config.employee] = config;
+          }
+        });
+        setActiveConfigs(byEmployee);
       } catch {
         setEmployees([]);
+        setActiveConfigs({});
       } finally {
         setLoadingEmployees(false);
       }
@@ -4464,12 +4494,16 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     }
   };
 
-  const handleSave = async (employeeId: number, payload: EmployeeSalaryConfigPayload) => {
+  const handleSave = async (
+    employeeId: number,
+    payload: EmployeeSalaryConfigPayload,
+    configId?: number | null,
+  ) => {
     setSaving(true);
     setSaveError(null);
     const employeeName = editEmployee?.full_name ?? 'nhân viên';
     try {
-      await salaryService.saveEmployeeSalaryConfig(payload);
+      await salaryService.saveEmployeeSalaryConfig(payload, configId);
 
       // Đồng bộ lương hiển thị trên hồ sơ chỉ khi mốc đã có hiệu lực. Mốc tương lai
       // mà ghi ngay xuống hồ sơ thì danh sách nhân viên sẽ hiện mức chưa áp dụng.
@@ -4878,10 +4912,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           Ngày hiệu lực
                         </th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Gross preview
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Net preview
+                          Lương cơ bản
                         </th>
                         <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Thao tác
@@ -4891,7 +4922,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <tbody className="bg-white divide-y divide-gray-100">
                       {employees.map((employee) => {
                         const employeeConfig = parseEmployeeSalaryConfig(employee);
-                        const output = calculatePayrollOutput(employeeConfig);
+                        const activeConfig = activeConfigs[employee.id];
 
                         return (
                           <tr key={employee.id} className="hover:bg-gray-50 transition-colors">
@@ -4917,12 +4948,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                                 {employeeConfig.baseProfile.jobTitle || employee.position?.title || '—'}
                               </p>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">{employeeConfig.effectiveDate || '—'}</td>
-                            <td className="px-4 py-3 text-right text-sm font-medium text-gray-700">
-                              {formatCurrency(output.grossIncome)}
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {activeConfig ? formatDateVN(activeConfig.effective_from) : '—'}
                             </td>
-                            <td className="px-4 py-3 text-right text-sm font-semibold text-indigo-700">
-                              {formatCurrency(output.netSalary)}
+                            <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">
+                              {activeConfig ? formatCurrency(Number(activeConfig.base_amount)) : '—'}
                             </td>
                             <td className="px-4 py-3 text-center">
                               <button

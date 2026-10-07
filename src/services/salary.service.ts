@@ -677,6 +677,21 @@ class SalaryService {
     await managementApi.delete(`/api/v1/salary/monthly-allowances/${id}/`);
   }
 
+  /**
+   * Mốc đang áp dụng của nhiều nhân viên, một request cho cả trang danh sách.
+   *
+   * Danh sách trên trang cấu hình trước đây đọc lương từ hồ sơ nhân viên nên hiện số cũ
+   * khi cấu hình đã đổi. Lấy theo `is_active` chứ không theo ngày: form này sửa mốc hiện
+   * hành, không phải mốc của một kỳ đã qua.
+   */
+  async listActiveEmployeeSalaryConfigs(employeeIds: number[]): Promise<EmployeeSalaryConfig[]> {
+    if (!employeeIds.length) return [];
+    const response = await managementApi.get('/api/v1/salary/employee-configs/', {
+      params: { employees: employeeIds.join(','), is_active: true, page_size: 200 },
+    });
+    return Array.isArray(response.data) ? response.data : response.data.results ?? [];
+  }
+
   /** Lịch sử các mốc cấu hình của một nhân viên, mốc mới nhất trước. */
   async listEmployeeSalaryConfigs(employeeId: number): Promise<EmployeeSalaryConfig[]> {
     const response = await managementApi.get('/api/v1/salary/employee-configs/', {
@@ -689,10 +704,20 @@ class SalaryService {
    * Mở một mốc hiệu lực mới. Backend tự đóng mốc đang mở và ghi đè mốc trùng ngày,
    * nên gọi lại nhiều lần với cùng `effective_from` là an toàn.
    */
+  /**
+   * Lưu cấu hình lương.
+   *
+   * Có `configId` thì PATCH vào đúng mốc đó — backend mới quyết định được là sửa đè,
+   * dời mốc, hay mở mốc mới. POST luôn đi qua `create()` nên lúc nào cũng đẻ mốc mới,
+   * kể cả khi HR chỉ sửa ngày hiệu lực của mốc vừa tạo.
+   */
   async saveEmployeeSalaryConfig(
     payload: EmployeeSalaryConfigPayload,
+    configId?: number | null,
   ): Promise<EmployeeSalaryConfig> {
-    const response = await managementApi.post('/api/v1/salary/employee-configs/', payload);
+    const response = configId
+      ? await managementApi.patch(`/api/v1/salary/employee-configs/${configId}/`, payload)
+      : await managementApi.post('/api/v1/salary/employee-configs/', payload);
     return response.data;
   }
 
