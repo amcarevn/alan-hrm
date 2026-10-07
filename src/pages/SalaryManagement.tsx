@@ -390,18 +390,15 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const thuong       = (record as unknown as Record<string, number>)['thuong'] ?? 0;
   const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
 
-  // Thưởng đã chi trước kỳ lương (VD thưởng lễ trả tay trước 02/09) được ghi
-  // đồng thời ở MonthlyBonus (để vào thu nhập chịu thuế TNCN) và ở SalaryAdvance
-  // (khoản đã trả). Trên PHIẾU LƯƠNG ta ẩn cả hai vế đó đi cho nhân viên khỏi
-  // thắc mắc "sao vừa được thưởng vừa bị trừ" — chỉ hiện phần thưởng thực trả
-  // qua kỳ này và phần tạm ứng thật.
-  // Bảng danh sách bên ngoài và file Excel xuất ra vẫn giữ số gốc đầy đủ.
-  // "Còn phải thanh toán" KHÔNG đổi: hai vế trừ nhau triệt tiêu đúng bằng
-  // thuongDaTraTruoc (xem conPhaiTT bên dưới).
+  // Phiếu lương hiện ĐẦY ĐỦ mọi khoản, không giấu gì.
+  //
+  // Trước đây thưởng đã chi trước kỳ lương (vd thưởng lễ trả tay trước 02/09) bị
+  // trừ khỏi cả hai vế thưởng và tạm ứng cho nhân viên khỏi thắc mắc "sao vừa
+  // được thưởng vừa bị trừ". Nhưng giấu đi thì nhân viên không đối chiếu được
+  // với số đã nhận, nên nay hiện nguyên cả hai vế.
   const tamUngGoc        = record.tam_ung ?? 0;
-  const thuongDaTraTruoc = Math.min(thuong, tamUngGoc);
-  const thuongHienThi    = thuong - thuongDaTraTruoc;
-  const tamUngHienThi    = tamUngGoc - thuongDaTraTruoc;
+  const thuongHienThi    = thuong;
+  const tamUngHienThi    = tamUngGoc;
 
   // Deductions: use saved payroll config if available, otherwise calculate from standard rates
   const savedAdjustments = employee ? (employee.salary_adjustments as Record<string, unknown> | undefined) : undefined;
@@ -469,9 +466,10 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
   const tongGiamTruVII = tongBH + congDoan + phatDiMuon + phatBienBan;
   // Phần "giảm trừ khác" (không gồm bảo hiểm) hiển thị riêng ở Section V, trước mục Thưởng.
   const tongGiamTruKhacV = congDoan + phatDiMuon + phatBienBan;
-  // dieuChinhVIII (truy tăng − truy thu) vẫn được cộng vào lương thực lĩnh bên dưới,
-  // chỉ không hiển thị thành dòng riêng trên phiếu.
   const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
+  const truyTangHienThi = (record as unknown as Record<string, number>)['truy_tang'] ?? 0;
+  const truyThuHienThi  = (record as unknown as Record<string, number>)['truy_thu'] ?? 0;
+  const lyDoDieuChinh   = String((record as unknown as Record<string, unknown>)['ly_do_dieu_chinh'] ?? '');
   const tamUng = tamUngHienThi;
   const taxDetail = payrollTax.taxDetail;
   const thue = payrollTax.taxAmount;
@@ -527,8 +525,9 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
       ...(luongTangCa ? [`  Lương tăng ca      : ${fmtN(luongTangCa)}`] : []),
       ...(luongTrucCa ? [`  Lương trực ca      : ${fmtN(luongTrucCa)}`] : []),
       ...(thuNhapKhac ? [`  Thu nhập khác      : ${fmtN(thuNhapKhac)}`] : []),
-      // Thưởng và Điều chỉnh (truy tăng/truy thu) cố ý không liệt kê trên phiếu lương
-      // gửi nhân viên — giá trị vẫn nằm trong "Tổng thu nhập" và "Lương thực lĩnh".
+      ...(thuongHienThi ? [`  Thưởng             : ${fmtN(thuongHienThi)}`] : []),
+      ...(truyTangHienThi ? [`  Truy tăng          : ${fmtN(truyTangHienThi)}`] : []),
+      ...(truyThuHienThi ? [`  Truy thu           : -${fmtN(truyThuHienThi)}`] : []),
       '────────────────────────────────────────',
       '  CÁC KHOẢN PHỤ CẤP',
       '────────────────────────────────────────',
@@ -989,11 +988,13 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 text-right font-semibold text-red-700">{fmt(tongGiamTruKhacV)}</td>
               </tr>
 
-              {/* Mục "THƯỞNG" và "ĐIỀU CHỈNH LƯƠNG" (truy tăng / truy thu) cố ý KHÔNG
-                  hiển thị trên phiếu lương và các bảng trên giao diện — chỉ còn trong file
-                  Excel xuất ra cho HR. Giá trị của chúng VẪN nằm trong tổng thu nhập và
-                  lương thực lĩnh bên dưới, nên nhãn hai mục đó đã bỏ phần ghi công thức
-                  để không in ra một công thức không khớp với các dòng đang hiện. */}
+              {/* Thưởng và Điều chỉnh lương: hiện đầy đủ trên phiếu. Thưởng nằm trong
+                  TỔNG THU NHẬP (VI); điều chỉnh cộng thẳng vào LƯƠNG THỰC LĨNH. */}
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">18</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">Thưởng</td>
+                <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{thuongHienThi ? fmt(thuongHienThi) : '—'}</td>
+              </tr>
 
               {/* Section VI */}
               <tr className="bg-indigo-100">
@@ -1017,6 +1018,24 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">BHXH (10.5%)</td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-red-600">{fmt(tongBH)}</td>
               </tr>
+
+              {/* Điều chỉnh lương kỳ này — đặt ngay trước Lương thực lĩnh vì nó cộng
+                  thẳng vào đó. Truy tăng hiện số dương, truy thu hiện số âm. */}
+              {(truyTangHienThi > 0 || truyThuHienThi > 0) && (
+                <tr>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">22</td>
+                  <td className="border border-gray-300 px-3 py-2 text-gray-700">
+                    Điều chỉnh lương
+                    {truyTangHienThi > 0 && truyThuHienThi > 0 && (
+                      <span className="text-xs text-gray-500"> (truy tăng {fmt(truyTangHienThi)} − truy thu {fmt(truyThuHienThi)})</span>
+                    )}
+                    {lyDoDieuChinh && <span className="text-xs text-gray-500"> — {lyDoDieuChinh}</span>}
+                  </td>
+                  <td className={`border border-gray-300 px-3 py-2 text-right ${dieuChinhVIII < 0 ? 'text-red-600' : 'text-gray-800'}`}>
+                    {dieuChinhVIII < 0 ? `-${fmt(-dieuChinhVIII)}` : fmt(dieuChinhVIII)}
+                  </td>
+                </tr>
+              )}
 
               {/* Section VIII */}
               <tr className="bg-indigo-100">
