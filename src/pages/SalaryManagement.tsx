@@ -1243,6 +1243,8 @@ interface SalaryConfigurationValues {
     healthInsurance: number;
     unemploymentInsurance: number;
     unionFee: number;
+    /** Miễn hẳn phí công đoàn. Khác unionFee = 0 (nghĩa là "không ép mức, tính tự động"). */
+    unionFeeExempt: boolean;
     advancePenaltyCompensation: number;
   };
   employerContributions: {
@@ -1415,6 +1417,7 @@ const DEFAULT_SALARY_CONFIG: SalaryConfigurationValues = {
     healthInsurance: 0,
     unemploymentInsurance: 0,
     unionFee: 0,
+    unionFeeExempt: false,
     advancePenaltyCompensation: 0,
   },
   employerContributions: {
@@ -2123,6 +2126,7 @@ const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValue
       healthInsurance: toNumber(savedConfig.deductions?.healthInsurance),
       unemploymentInsurance: toNumber(savedConfig.deductions?.unemploymentInsurance),
       unionFee: toNumber(savedConfig.deductions?.unionFee),
+      unionFeeExempt: Boolean(savedConfig.deductions?.unionFeeExempt),
       advancePenaltyCompensation: toNumber(savedConfig.deductions?.advancePenaltyCompensation),
     },
     employerContributions: {
@@ -2191,7 +2195,9 @@ const calculatePayrollOutput = (config: SalaryConfigurationValues, effectiveUnio
   // Công đoàn: ưu tiên số đã tính tự động theo tỷ lệ công thử việc/chính thức
   // của tháng đang xem (do backend trả về khi finalize) — chỉ fallback về số
   // nhập tay trong config khi chưa có dữ liệu tháng đó (effectiveUnionFee === undefined).
-  const unionFee = effectiveUnionFee ?? config.deductions.unionFee;
+  const unionFee = config.deductions.unionFeeExempt
+    ? 0
+    : (effectiveUnionFee ?? config.deductions.unionFee);
   const configuredDeductions =
     unionFee + config.deductions.advancePenaltyCompensation;
   const totalDeductions =
@@ -2242,7 +2248,8 @@ const NumberField: React.FC<{
   value: number;
   onChange: (value: number) => void;
   step?: string;
-}> = ({ label, value, onChange }) => {
+  disabled?: boolean;
+}> = ({ label, value, onChange, disabled = false }) => {
   const [focused, setFocused] = React.useState(false);
   const [rawInput, setRawInput] = React.useState('');
 
@@ -2270,7 +2277,10 @@ const NumberField: React.FC<{
           onChange(raw === '' ? 0 : Number(raw));
         }}
         onBlur={() => setFocused(false)}
-        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+        disabled={disabled}
+        className={`w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500${
+          disabled ? ' bg-gray-100 text-gray-400 cursor-not-allowed' : ''
+        }`}
       />
     </div>
   );
@@ -2896,13 +2906,32 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
               </div>
 
               <div>
+                <label className="flex items-start gap-2 cursor-pointer mb-2">
+                  <input
+                    type="checkbox"
+                    checked={config.deductions.unionFeeExempt}
+                    onChange={(event) =>
+                      updateGroup('deductions', { ...config.deductions, unionFeeExempt: event.target.checked })
+                    }
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-800">
+                    Miễn phí công đoàn
+                    <span className="block text-xs text-gray-500">
+                      Nhân viên không tham gia công đoàn — không thu đồng nào, thắng cả số override bên dưới.
+                    </span>
+                  </span>
+                </label>
                 <NumberField
                   label="Công đoàn phí (override đặc biệt — để trống/0 nếu dùng số tự động)"
                   value={config.deductions.unionFee}
                   onChange={(value) => updateGroup('deductions', { ...config.deductions, unionFee: value })}
+                  disabled={config.deductions.unionFeeExempt}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  {computedUnionFee != null ? (
+                  {config.deductions.unionFeeExempt ? (
+                    <>Đang <strong className="text-gray-700">miễn phí công đoàn</strong> — bảng lương sẽ thu 0đ, bỏ qua cả số tự động lẫn override.</>
+                  ) : computedUnionFee != null ? (
                     <>
                       Nếu để trống/0: tự động tính theo tỷ lệ công thử việc/chính thức — số đang áp dụng
                       cho bảng lương tháng <strong>{computedUnionFeePeriodLabel}</strong> hiện là{' '}
