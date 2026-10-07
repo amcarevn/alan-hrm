@@ -23,20 +23,16 @@
       //
       // Lối thoát: thêm ?stay vào URL để ở lại domain cũ, phòng khi domain mới
       // có sự cố mà vẫn cần vào gấp.
+      //
+      // KHÔNG dùng cờ sessionStorage để chặn lặp: điều kiện đã là "đang ở đúng
+      // hostname cũ", mà sau khi chuyển thì hostname khác đi nên không thể lặp.
+      // Bản đầu có cờ đó và hoá ra nó chặn luôn mọi lần vào sau trong cùng phiên
+      // trình duyệt — vào lại domain cũ là ở nguyên đó, không chuyển nữa.
       (function () {
         var CU = 'alan-hrm.pages.dev';
         var MOI = 'hr.elani.com.vn';
-        try {
-          if (
-            location.hostname === CU &&
-            location.search.indexOf('stay') === -1 &&
-            !sessionStorage.getItem('bo-qua-chuyen-domain')
-          ) {
-            sessionStorage.setItem('bo-qua-chuyen-domain', '1');
-            location.replace('https://' + MOI + location.pathname + location.search + location.hash);
-          }
-        } catch (e) {
-          /* chặn cookie/sessionStorage thì thôi, ở lại domain cũ còn hơn lỗi trắng trang */
+        if (location.hostname === CU && location.search.indexOf('stay') === -1) {
+          location.replace('https://' + MOI + location.pathname + location.search + location.hash);
         }
       })();
     </script>
