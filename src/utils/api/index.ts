@@ -75,7 +75,9 @@ export {
   sendAccountEmailsAPI,
   birthdayWishesAPI,
   companyUnitsAPI,
+  employeeDependentsAPI,
 } from './hrm.api';
+export type { EmployeeDependent, EmployeeDependentPayload } from './hrm.api';
 export {
   assetsAPI,
   assetAssignmentsAPI,
@@ -105,6 +107,7 @@ import {
   sendAccountEmailsAPI,
   birthdayWishesAPI,
   companyUnitsAPI,
+  employeeDependentsAPI,
 } from './hrm.api';
 import {
   assetsAPI,
@@ -142,5 +145,6 @@ export default {
   dashboard: dashboardAPI,
   companyConfig: companyConfigAPI,
   companyUnits: companyUnitsAPI,
+  employeeDependents: employeeDependentsAPI,
   ctv: ctvAPI,
 };

@@ -19,8 +19,11 @@ import {
   ArrowUpTrayIcon,
   QuestionMarkCircleIcon,
   LockClosedIcon,
+  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 import { employeesAPI } from '../utils/api';
+import type { EmployeeSalaryConfig, EmployeeSalaryConfigPayload,
+  MonthlyAllowance, AllowanceToggleKey } from '../services/salary.service';
 import type { Department, Employee } from '../utils/api';
 import { salaryService, SalaryFormulaUpdateData, SalaryRecord, PenaltyRecord, CommissionRecord, type BulkSalaryConfigRecord, type PayslipEmailBatchStatus, type DepartmentPayslipRecipientsResponse, type CompanyPayslipRecipientsResponse, type SalaryFinalizeState } from '../services/salary.service';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
@@ -346,6 +349,10 @@ interface PayslipDetailModalProps {
   commissions?: CommissionRecord[];
   onEmailQueued?: (employeeId: number) => void;
   onRecordUpdated?: (record: SalaryRecord) => void;
+  /** Mở modal chọn khoản phụ cấp được tính cho kỳ này */
+  onOpenAllowance?: () => void;
+  /** Tháng đã chốt lương — khoá mọi thao tác sửa dữ liệu của kỳ */
+  periodFinalized?: boolean;
 }
 
 const getSalesCommissionAmount = (record: SalaryRecord, commissions?: CommissionRecord[]) => {
@@ -356,7 +363,7 @@ const getSalesCommissionAmount = (record: SalaryRecord, commissions?: Commission
   return (record as unknown as Record<string, number>)['luong_doanh_so'] ?? 0;
 };
 
-const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose, employee, penalties, commissions, onEmailQueued, onRecordUpdated }) => {
+const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose, employee, penalties, commissions, onEmailQueued, onRecordUpdated, onOpenAllowance, periodFinalized }) => {
   useLockBodyScroll(true);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailAddr, setEmailAddr] = useState(employee?.personal_email ?? '');
@@ -708,6 +715,18 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
             <p className="text-xs text-indigo-500 mt-0.5">Trạng thái hợp đồng: {contractStatusText}</p>
           </div>
           <div className="flex items-center gap-2">
+            {onOpenAllowance && (
+              <button
+                onClick={onOpenAllowance}
+                disabled={periodFinalized}
+                className="p-2 rounded-lg text-gray-500 hover:bg-amber-100 hover:text-amber-700 transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-500 disabled:cursor-not-allowed"
+                title={periodFinalized
+                  ? 'Tháng đã chốt lương nên không sửa được phụ cấp'
+                  : 'Chọn khoản phụ cấp được tính cho tháng này'}
+              >
+                <Cog6ToothIcon className="h-5 w-5" />
+              </button>
+            )}
             <button
               onClick={() => setEditingStandardWorkDays((prev) => !prev)}
               className="p-2 rounded-lg text-gray-500 hover:bg-amber-100 hover:text-amber-700 transition-colors"
@@ -2003,6 +2022,192 @@ const WORK_LOCATION_LABELS: Record<string, string> = {
   '219_TRUNG_KINH': 'Số 219 Trung Kính, Cầu Giấy, Hà Nội',
 };
 
+/**
+ * Ghép cấu hình lấy từ `salary_salaryemployeeconfig` lên trên phần suy từ hồ sơ.
+ *
+ * Bảng cấu hình chỉ giữ các trường cố định; những nhóm còn lại trên form (số ngày
+ * công dự kiến, số người phụ thuộc...) vẫn lấy từ hồ sơ để tính bản xem trước.
+ */
+/** Cộng/trừ ngày trên chuỗi YYYY-MM-DD, tránh lệch múi giờ khi dùng Date trực tiếp. */
+const addDays = (isoDate: string, days: number): string => {
+  const d = new Date(`${isoDate}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
+const maxDate = (a: string, b: string): string => (a >= b ? a : b);
+
+/** 'YYYY-MM-DD' → 'YYYY-MM'. Mốc cấu hình so theo tháng vì luôn mở vào ngày 1. */
+const monthOf = (isoDate: string): string => isoDate.slice(0, 7);
+
+/** 'YYYY-MM-DD' → 'MM/YYYY', khớp cách backend liệt kê kỳ đã chốt. */
+const formatPeriodVN = (isoDate: string): string => {
+  const [y, m] = isoDate.split('-');
+  return `${m}/${y}`;
+};
+
+/** Tháng chứa `isoDate` đã chốt lương chưa. */
+const isFinalizedMonth = (
+  config: Pick<EmployeeSalaryConfig, 'all_finalized_periods'> | null,
+  isoDate: string,
+): boolean => (config?.all_finalized_periods ?? []).includes(formatPeriodVN(isoDate));
+
+/** 'YYYY-MM-DD' → 'DD/MM/YYYY' để hiển thị cho người dùng. */
+const formatDateVN = (isoDate: string): string => {
+  const [y, m, d] = isoDate.split('-');
+  return `${d}/${m}/${y}`;
+};
+
+/**
+ * Ngày đầu tháng liền sau tháng chứa `isoDate`.
+ *
+ * Mốc cấu hình luôn mở vào ngày 1 để trùng ranh giới kỳ lương: bảng lương tính theo
+ * tháng nên một tháng chỉ được rơi vào đúng một mốc. Backend cũng kéo về ngày 1, hai
+ * bên phải ra cùng kết quả thì HR mới thấy đúng ngày sẽ lưu.
+ */
+const startOfNextMonth = (isoDate: string): string => {
+  const [y, m] = isoDate.split('-').map(Number);
+  return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+};
+
+/** Nhãn hiển thị cho từng cột cấu hình, dùng khi liệt kê thay đổi trong modal xác nhận. */
+const CONFIG_FIELD_LABELS: Record<string, string> = {
+  pay_type: 'Loại trả lương',
+  base_amount: 'Lương cơ bản',
+  salary_factor: 'Hệ số lương',
+  region: 'Vùng lương tối thiểu',
+  standard_work_days_mode: 'Công chuẩn mặc định',
+  allowance_transport: 'Phụ cấp đi lại / xăng xe',
+  allowance_phone: 'Phụ cấp điện thoại',
+  allowance_housing: 'Phụ cấp nhà ở',
+  allowance_hazardous: 'Phụ cấp độc hại / nguy hiểm',
+  lunch_mode: 'Phụ cấp trưa — cơ chế',
+  lunch_fixed_amount: 'Phụ cấp trưa — mức cố định',
+  lunch_per_work_day: 'Phụ cấp trưa — mức/ngày công',
+  lunch_monthly_cap: 'Phụ cấp trưa — trần/tháng',
+  parking_mode: 'Gửi xe — hình thức',
+  parking_daily_rate: 'Gửi xe — giá vé/ngày',
+  parking_monthly_rate: 'Gửi xe — giá vé tháng',
+  responsibility_mode: 'Trách nhiệm — cơ chế',
+  responsibility_monthly_max: 'Trách nhiệm — mức tối đa',
+  union_fee_override: 'Công đoàn phí (override)',
+  union_fee_exempt: 'Miễn phí công đoàn',
+};
+
+const CONFIG_ENUM_LABELS: Record<string, string> = {
+  monthly: 'Theo tháng', hourly: 'Theo giờ', daily: 'Theo ngày',
+  fixed: 'Cố định theo tháng', actual_working_day: 'Theo ngày công thực tế',
+  none: 'Không áp dụng', '': 'Chưa khai báo',
+  DEFAULT: 'Mặc định', FULL_MONTH: 'Full số ngày trong tháng',
+  I: 'Vùng I', II: 'Vùng II', III: 'Vùng III', IV: 'Vùng IV',
+};
+
+const AMOUNT_FIELDS = new Set([
+  'base_amount', 'allowance_transport', 'allowance_phone', 'allowance_housing',
+  'allowance_hazardous', 'lunch_fixed_amount', 'lunch_per_work_day', 'lunch_monthly_cap',
+  'parking_daily_rate', 'parking_monthly_rate', 'responsibility_monthly_max',
+  'union_fee_override',
+]);
+
+// So sánh theo số cho mọi trường số, kể cả trường không hiển thị dạng tiền —
+// nếu không "1.00" từ API sẽ khác "1" trên form và báo thay đổi giả.
+const NUMERIC_FIELDS = new Set([...AMOUNT_FIELDS, 'salary_factor']);
+
+const formatConfigValue = (field: string, raw: unknown): string => {
+  if (raw === null || raw === undefined || raw === '') {
+    return field === 'union_fee_override' ? 'tự động tính' : '—';
+  }
+  if (typeof raw === 'boolean') return raw ? 'Có' : 'Không';
+  if (AMOUNT_FIELDS.has(field)) return formatCurrency(Number(raw));
+  return CONFIG_ENUM_LABELS[String(raw)] ?? String(raw);
+};
+
+/** So payload sắp lưu với mốc đang áp dụng, trả về danh sách trường thực sự đổi. */
+const diffConfig = (
+  current: EmployeeSalaryConfig,
+  next: EmployeeSalaryConfigPayload,
+): { field: string; label: string; from: string; to: string }[] => {
+  const changes: { field: string; label: string; from: string; to: string }[] = [];
+  for (const field of Object.keys(CONFIG_FIELD_LABELS)) {
+    const before = (current as unknown as Record<string, unknown>)[field];
+    const after = (next as unknown as Record<string, unknown>)[field];
+    if (after === undefined) continue;
+
+    const same = NUMERIC_FIELDS.has(field)
+      ? Number(before ?? 0) === Number(after ?? 0)
+      : String(before ?? '') === String(after ?? '');
+    if (same) continue;
+
+    changes.push({
+      field,
+      label: CONFIG_FIELD_LABELS[field],
+      from: formatConfigValue(field, before),
+      to: formatConfigValue(field, after),
+    });
+  }
+  return changes;
+};
+
+const buildConfigState = (
+  employee: Employee,
+  apiConfig: EmployeeSalaryConfig | null,
+): SalaryConfigurationValues => {
+  const base = parseEmployeeSalaryConfig(employee);
+  if (!apiConfig) return base;
+
+  const n = (raw: string | number | null | undefined, fallback = 0) => {
+    if (raw === null || raw === undefined || raw === '') return fallback;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
+  return {
+    ...base,
+    effectiveDate: apiConfig.effective_from || base.effectiveDate,
+    baseSalary: {
+      payType: apiConfig.pay_type ?? base.baseSalary.payType,
+      amount: n(apiConfig.base_amount, base.baseSalary.amount),
+      factor: n(apiConfig.salary_factor, base.baseSalary.factor),
+      regionalMinimum: n(apiConfig.regional_minimum, base.baseSalary.regionalMinimum),
+    },
+    allowances: {
+      ...base.allowances,
+      transport: n(apiConfig.allowance_transport),
+      phone: n(apiConfig.allowance_phone),
+      housing: n(apiConfig.allowance_housing),
+      hazardous: n(apiConfig.allowance_hazardous),
+      responsibility: n(apiConfig.responsibility_monthly_max),
+    },
+    lunchAllowancePolicy: {
+      mode: apiConfig.lunch_mode === 'actual_working_day' ? 'actual_working_day' : 'fixed',
+      fixed_amount: n(apiConfig.lunch_fixed_amount),
+      amount_per_work_day: n(apiConfig.lunch_per_work_day),
+      monthly_cap: Math.min(n(apiConfig.lunch_monthly_cap, MAX_LUNCH_ALLOWANCE_CAP), MAX_LUNCH_ALLOWANCE_CAP),
+    },
+    parkingAllowancePolicy: {
+      mode: (apiConfig.parking_mode === 'daily' || apiConfig.parking_mode === 'monthly'
+        ? apiConfig.parking_mode
+        : 'none') as SalaryConfigurationValues['parkingAllowancePolicy']['mode'],
+      daily_rate: n(apiConfig.parking_daily_rate, 5000),
+      monthly_rate: n(apiConfig.parking_monthly_rate),
+    },
+    responsibilityAllowancePolicy: {
+      mode: (apiConfig.responsibility_mode === 'fixed' || apiConfig.responsibility_mode === 'actual_working_day'
+        ? apiConfig.responsibility_mode
+        : 'none') as SalaryConfigurationValues['responsibilityAllowancePolicy']['mode'],
+      monthly_max: n(apiConfig.responsibility_monthly_max),
+    },
+    taxPolicy: {
+      ...base.taxPolicy,
+      region: (apiConfig.region ?? base.taxPolicy.region) as SalaryConfigurationValues['taxPolicy']['region'],
+    },
+    deductions: {
+      ...base.deductions,
+      unionFee: n(apiConfig.union_fee_override),
+    },
+  };
+};
+
 const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValues => {
   const adjustments = asRecord(employee.salary_adjustments);
   const savedConfig = asRecord(adjustments.payroll_config);
@@ -2296,10 +2501,233 @@ const SectionCard: React.FC<{
   </div>
 );
 
+/** Nhãn tiếng Việt cho 7 khoản phụ cấp bật/tắt được theo tháng. */
+const ALLOWANCE_TOGGLE_LABELS: { key: AllowanceToggleKey; label: string }[] = [
+  { key: 'transport', label: 'Phụ cấp đi lại / xăng xe' },
+  { key: 'phone', label: 'Phụ cấp điện thoại' },
+  { key: 'housing', label: 'Phụ cấp nhà ở' },
+  { key: 'hazardous', label: 'Phụ cấp độc hại / nguy hiểm' },
+  { key: 'lunch', label: 'Phụ cấp ăn trưa' },
+  { key: 'parking', label: 'Phụ cấp gửi xe' },
+  { key: 'responsibility', label: 'Phụ cấp trách nhiệm' },
+];
+
+const ALL_TOGGLES_ON = Object.fromEntries(
+  ALLOWANCE_TOGGLE_LABELS.map((t) => [t.key, true]),
+) as Record<AllowanceToggleKey, boolean>;
+
+interface MonthlyAllowanceModalProps {
+  employeeId: number;
+  employeeName: string;
+  employeeCode: string;
+  year: number;
+  month: number;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+/**
+ * Bật/tắt từng khoản phụ cấp cho một nhân viên trong một tháng.
+ *
+ * Chưa có bản ghi = theo quy tắc mặc định (có công thì tính, không công thì thôi).
+ * Tạo bản ghi = HR quyết định rõ cho kỳ đó, khoản bật vẫn trả kể cả khi không có công.
+ */
+const MonthlyAllowanceModal: React.FC<MonthlyAllowanceModalProps> = ({
+  employeeId, employeeName, employeeCode, year, month, onClose, onSaved,
+}) => {
+  useLockBodyScroll(true);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [existing, setExisting] = useState<MonthlyAllowance | null>(null);
+  const [toggles, setToggles] = useState<Record<AllowanceToggleKey, boolean>>(ALL_TOGGLES_ON);
+  const [reason, setReason] = useState('');
+
+  useEffect(() => {
+    let huy = false;
+    setLoading(true);
+    salaryService.getMonthlyAllowance(employeeId, year, month)
+      .then((row) => {
+        if (huy) return;
+        setExisting(row);
+        if (row) {
+          setToggles(Object.fromEntries(
+            ALLOWANCE_TOGGLE_LABELS.map((t) => [t.key, row[t.key]]),
+          ) as Record<AllowanceToggleKey, boolean>);
+          setReason(row.reason || '');
+        }
+      })
+      .catch(() => { if (!huy) setError('Không tải được tuỳ chọn phụ cấp của kỳ này.'); })
+      .finally(() => { if (!huy) setLoading(false); });
+    return () => { huy = true; };
+  }, [employeeId, year, month]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await salaryService.saveMonthlyAllowance(
+        { employee: employeeId, year, month, ...toggles, reason },
+        existing?.id,
+      );
+      onSaved();
+      onClose();
+    } catch (err: unknown) {
+      const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
+      setError(
+        data && typeof data === 'object'
+          ? Object.entries(data).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ')
+          : 'Không lưu được. Vui lòng thử lại.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!existing) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await salaryService.deleteMonthlyAllowance(existing.id);
+      onSaved();
+      onClose();
+    } catch {
+      setError('Không xoá được tuỳ chọn.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const soTat = ALLOWANCE_TOGGLE_LABELS.filter((t) => !toggles[t.key]).length;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-start justify-between px-5 py-4 border-b border-gray-200">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900">Tính phụ cấp tháng {month}/{year}</h3>
+            <p className="text-sm text-gray-500 mt-0.5">{employeeName} · {employeeCode}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-10 text-gray-500">
+            <ArrowPathIcon className="h-5 w-5 animate-spin mr-2" />
+            <span className="text-sm">Đang tải...</span>
+          </div>
+        ) : (
+          <>
+            <div className="px-5 py-4 space-y-3">
+              {error && (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+
+              <p className="text-sm text-gray-600">
+                {existing
+                  ? 'Kỳ này đã được thiết lập riêng. Khoản được chọn vẫn trả kể cả khi không có ngày công.'
+                  : 'Kỳ này đang theo quy tắc mặc định: có ngày công thì tính đủ, không công thì không cộng phụ cấp. Lưu lại để thiết lập riêng.'}
+              </p>
+
+              <div className="rounded-md border border-gray-200 divide-y divide-gray-100">
+                {ALLOWANCE_TOGGLE_LABELS.map((t) => (
+                  <label
+                    key={t.key}
+                    className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={toggles[t.key]}
+                      onChange={(e) => setToggles((prev) => ({ ...prev, [t.key]: e.target.checked }))}
+                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-gray-800">{t.label}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setToggles(ALL_TOGGLES_ON)}
+                  className="px-2.5 py-1 text-xs font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Chọn tất cả
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setToggles(Object.fromEntries(
+                    ALLOWANCE_TOGGLE_LABELS.map((t) => [t.key, false]),
+                  ) as Record<AllowanceToggleKey, boolean>)}
+                  className="px-2.5 py-1 text-xs font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Bỏ chọn tất cả
+                </button>
+                {soTat > 0 && (
+                  <span className="px-2.5 py-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded">
+                    {soTat} khoản không tính
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Lý do</label>
+                <input
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="VD: nghỉ thai sản, chưa hưởng phụ cấp trách nhiệm..."
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 px-5 py-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={!existing || saving}
+                className="px-3 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-md hover:bg-red-50 disabled:opacity-40"
+              >
+                Về mặc định
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={saving}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Huỷ
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+                >
+                  {saving ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
+                  Lưu
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 interface EditModalProps {
   employee: Employee;
+  /** Mốc cấu hình đang áp dụng, lấy từ salary_salaryemployeeconfig; null = chưa có */
+  salaryConfig: EmployeeSalaryConfig | null;
   onClose: () => void;
-  onSave: (id: number, data: SalaryFormulaUpdateData) => Promise<void>;
+  onSave: (employeeId: number, payload: EmployeeSalaryConfigPayload, configId?: number | null) => Promise<void>;
   saving: boolean;
   /** Công đoàn phí thực tế đang áp dụng cho kỳ đang xem (đã tính theo rule
    * 50k/100k hoặc override thủ công ở backend) — null/undefined nếu chưa có
@@ -2309,18 +2737,29 @@ interface EditModalProps {
 }
 
 const EditSalaryModal: React.FC<EditModalProps> = ({
-  employee, onClose, onSave, saving, computedUnionFee, computedUnionFeePeriodLabel,
+  employee, salaryConfig, onClose, onSave, saving, computedUnionFee, computedUnionFeePeriodLabel,
 }) => {
   useLockBodyScroll(true);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [config, setConfig] = useState<SalaryConfigurationValues>(() => parseEmployeeSalaryConfig(employee));
-  const [standardWorkDaysMode, setStandardWorkDaysMode] = useState<'DEFAULT' | 'FULL_MONTH'>(employee.standard_work_days_mode ?? 'DEFAULT');
+  const [config, setConfig] = useState<SalaryConfigurationValues>(
+    () => buildConfigState(employee, salaryConfig),
+  );
+  const [standardWorkDaysMode, setStandardWorkDaysMode] = useState<'DEFAULT' | 'FULL_MONTH'>(
+    salaryConfig?.standard_work_days_mode ?? employee.standard_work_days_mode ?? 'DEFAULT',
+  );
+  const [unionFeeExempt, setUnionFeeExempt] = useState<boolean>(salaryConfig?.union_fee_exempt ?? false);
+  // Payload chờ xác nhận: mở modal "kết thúc cấu hình cũ" trước khi thực sự lưu.
+  const [pendingPayload, setPendingPayload] = useState<EmployeeSalaryConfigPayload | null>(null);
+  const [newEffectiveFrom, setNewEffectiveFrom] = useState<string>('');
 
   useEffect(() => {
     setValidationError(null);
-    setConfig(parseEmployeeSalaryConfig(employee));
-    setStandardWorkDaysMode(employee.standard_work_days_mode ?? 'DEFAULT');
-  }, [employee]);
+    setConfig(buildConfigState(employee, salaryConfig));
+    setStandardWorkDaysMode(
+      salaryConfig?.standard_work_days_mode ?? employee.standard_work_days_mode ?? 'DEFAULT',
+    );
+    setUnionFeeExempt(salaryConfig?.union_fee_exempt ?? false);
+  }, [employee, salaryConfig]);
 
   const payrollOutput = useMemo(
     () => calculatePayrollOutput(config, computedUnionFee ?? undefined),
@@ -2348,77 +2787,135 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
       setValidationError('Trần phụ cấp ăn trưa không được vượt quá 500.000đ/tháng.');
       return;
     }
+    if (!config.effectiveDate) {
+      setValidationError('Vui lòng chọn ngày hiệu lực.');
+      return;
+    }
 
-    const fixedAllowanceWithoutLunch =
-      config.allowances.transport +
-      config.allowances.phone +
-      config.allowances.housing +
-      config.allowances.hazardous;
+    // Mỗi lần lưu mở một mốc hiệu lực mới trong salary_salaryemployeeconfig; backend
+    // tự đóng mốc đang mở, nên bảng lương các tháng trước mốc này giữ nguyên số cũ.
+    const payload: EmployeeSalaryConfigPayload = {
+      employee: employee.id,
+      effective_from: config.effectiveDate,
 
-    const persistedAllowance =
-      config.lunchAllowancePolicy.mode === 'actual_working_day'
-        ? fixedAllowanceWithoutLunch
-        : fixedAllowanceWithoutLunch + lunchPreview;
-
-    const existingAdjustments = asRecord(employee.salary_adjustments);
-    const salaryEvents = Array.isArray(existingAdjustments.salary_events)
-      ? (existingAdjustments.salary_events as SalaryConfigEvent[])
-      : [];
-
-    const nextEvent: SalaryConfigEvent = {
-      type: 'salary_config_updated',
-      effective_date: config.effectiveDate,
-      changed_at: new Date().toISOString(),
-      payload: {
-        ...config,
-        allowances: {
-          ...config.allowances,
-          lunch: config.lunchAllowancePolicy.mode === 'fixed' ? lunchPreview : 0,
-        },
-      },
-    };
-
-    const normalizedConfig: SalaryConfigurationValues = {
-      ...config,
-      baseSalary: {
-        ...config.baseSalary,
-        regionalMinimum: payrollOutput.regionalMinimum,
-      },
-      allowances: {
-        ...config.allowances,
-        lunch: config.lunchAllowancePolicy.mode === 'fixed' ? lunchPreview : 0,
-      },
-      deductions: {
-        ...config.deductions,
-        pit: payrollOutput.pit,
-        socialInsurance: payrollOutput.socialInsurance,
-        healthInsurance: payrollOutput.healthInsurance,
-        unemploymentInsurance: payrollOutput.unemploymentInsurance,
-      },
-      lunchAllowancePolicy: {
-        ...config.lunchAllowancePolicy,
-        monthly_cap: Math.min(config.lunchAllowancePolicy.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP),
-      },
-    };
-
-    const data: SalaryFormulaUpdateData = {
-      basic_salary: config.baseSalary.amount,
-      allowance: persistedAllowance,
+      pay_type: config.baseSalary.payType,
+      base_amount: config.baseSalary.amount,
+      salary_factor: config.baseSalary.factor,
+      region: config.taxPolicy.region,
+      regional_minimum: config.baseSalary.regionalMinimum || null,
       standard_work_days_mode: standardWorkDaysMode,
-      salary_notes: `Hiệu lực từ ${config.effectiveDate}`,
-      allowance_notes:
-        config.lunchAllowancePolicy.mode === 'actual_working_day'
-          ? `Phụ cấp trưa: theo ngày công thực tế, tối đa ${Math.min(config.lunchAllowancePolicy.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP).toLocaleString('vi-VN')}đ/tháng (${config.timeAttendance.workingDays} công chuẩn)`
-          : `Phụ cấp trưa cố định: ${lunchPreview.toLocaleString('vi-VN')}đ/tháng`,
-      salary_adjustments: {
-        ...existingAdjustments,
-        payroll_config: normalizedConfig,
-        payroll_output_preview: payrollOutput,
-        salary_events: [...salaryEvents, nextEvent],
-      },
+
+      allowance_transport: config.allowances.transport,
+      allowance_phone: config.allowances.phone,
+      allowance_housing: config.allowances.housing,
+      allowance_hazardous: config.allowances.hazardous,
+      // Khoản gộp cũ trên hồ sơ giữ nguyên, form không sửa trực tiếp.
+      allowance_other: salaryConfig?.allowance_other ?? 0,
+
+      lunch_mode: config.lunchAllowancePolicy.mode,
+      lunch_fixed_amount: config.lunchAllowancePolicy.fixed_amount,
+      lunch_per_work_day: config.lunchAllowancePolicy.amount_per_work_day,
+      lunch_monthly_cap: config.lunchAllowancePolicy.monthly_cap,
+
+      parking_mode: config.parkingAllowancePolicy.mode,
+      parking_daily_rate: config.parkingAllowancePolicy.daily_rate,
+      parking_monthly_rate: config.parkingAllowancePolicy.monthly_rate,
+
+      responsibility_mode: config.responsibilityAllowancePolicy.mode,
+      responsibility_monthly_max: config.responsibilityAllowancePolicy.monthly_max,
+
+      // 0/để trống = dùng số tự động tính theo tỷ lệ công thử việc / chính thức.
+      union_fee_override: config.deductions.unionFee > 0 ? config.deductions.unionFee : null,
+      union_fee_exempt: unionFeeExempt,
+
+      notes: `Cập nhật từ form cấu hình lương, hiệu lực ${config.effectiveDate}`,
     };
 
-    await onSave(employee.id, data);
+    // Chưa có cấu hình nào → tạo mốc đầu tiên, không có gì để kết thúc.
+    if (!salaryConfig) {
+      await onSave(employee.id, payload);
+      return;
+    }
+
+    // HR đổi tháng hiệu lực trên form = chủ động chuyển mốc, dù mốc hiện tại có sửa đè
+    // được hay không. So theo tháng vì mốc luôn mở vào ngày 1.
+    const movesMilestone = monthOf(payload.effective_from) !== monthOf(salaryConfig.effective_from);
+
+    // Tháng đã chốt lương là ảnh chụp bất biến — đặt mốc vào đó sẽ tạo ra một cấu hình
+    // chưa từng dùng để tính ra bảng lương ấy. Backend cũng chặn, ở đây chặn sớm để HR
+    // biết ngay thay vì điền xong mới báo lỗi.
+    if (movesMilestone && isFinalizedMonth(salaryConfig, payload.effective_from)) {
+      setValidationError(
+        `Bảng lương tháng ${formatPeriodVN(payload.effective_from)} đã chốt nên không đặt ngày `
+        + 'hiệu lực vào tháng đó được. Chọn một tháng chưa chốt lương.',
+      );
+      return;
+    }
+
+    // Mốc hiện tại chưa dùng để tính bảng lương chốt nào → sửa thẳng, không hỏi, kể cả
+    // khi HR đổi tháng hiệu lực. Backend dời chính mốc đó chứ không đẻ mốc mới: mốc
+    // nhập sai ngày mà lại sinh thêm một mốc nữa thì tháng cũ vẫn dính giá trị mới,
+    // đúng thứ HR đang muốn sửa. Giữ nguyên tháng thì gửi lại đúng ngày của mốc để
+    // backend không hiểu nhầm thành dời mốc.
+    if (salaryConfig.can_edit_in_place) {
+      await onSave(
+        employee.id,
+        {
+          ...payload,
+          effective_from: movesMilestone
+            ? `${monthOf(payload.effective_from)}-01`
+            : salaryConfig.effective_from,
+        },
+        salaryConfig.id,
+      );
+      return;
+    }
+
+    // Còn lại đều là chuyển mốc, phải xác nhận: hoặc HR đổi tháng, hoặc mốc hiện tại đã
+    // dùng để tính bảng lương đã chốt nên sửa đè sẽ viết lại căn cứ của bảng lương đã phát.
+    //
+    // HR chỉ chọn **tháng bắt đầu**. Ngày đóng mốc cũ không hỏi nữa: backend luôn đóng
+    // nó vào ngày liền trước mốc mới, nên chuỗi mốc không bao giờ hở. Trước đây form cho
+    // nhập cả hai ngày và đặt lệch nhau là cả một tháng không có cấu hình, engine lặng
+    // lẽ bỏ hết phụ cấp của tháng đó.
+    //
+    // Đổi tháng thì lấy đúng tháng HR chọn; không đổi thì đề xuất tháng sau tháng hiện
+    // tại — tháng đang chạy thường chưa chốt lương nhưng đã tính dở, đổi giữa chừng dễ
+    // gây tranh cãi.
+    const today = new Date().toISOString().slice(0, 10);
+    setNewEffectiveFrom(
+      movesMilestone
+        ? `${monthOf(payload.effective_from)}-01`
+        : maxDate(startOfNextMonth(today), startOfNextMonth(salaryConfig.effective_from)),
+    );
+    setPendingPayload(payload);
+  };
+
+  /** Ô chọn tháng trả về 'YYYY-MM'; mốc luôn mở vào ngày 1 nên gắn thêm '-01'. */
+  const handleEffectiveMonthChange = (value: string) => {
+    setNewEffectiveFrom(value ? `${value}-01` : '');
+  };
+
+  const handleConfirmClose = async () => {
+    if (!pendingPayload) return;
+    if (!newEffectiveFrom) {
+      setValidationError('Chọn tháng bắt đầu cho cấu hình mới.');
+      return;
+    }
+    if (isFinalizedMonth(salaryConfig, newEffectiveFrom)) {
+      setValidationError(
+        `Bảng lương tháng ${formatPeriodVN(newEffectiveFrom)} đã chốt nên không đặt mốc vào tháng đó được.`,
+      );
+      return;
+    }
+    // Không gửi close_previous_on: backend tự đóng mốc cũ sát mốc mới.
+    const payload: EmployeeSalaryConfigPayload = {
+      ...pendingPayload,
+      effective_from: newEffectiveFrom,
+    };
+    setPendingPayload(null);
+    // Vẫn PATCH vào mốc hiện tại: backend thấy mốc đã vướng kỳ chốt nên tự mở mốc mới.
+    await onSave(employee.id, payload, salaryConfig?.id ?? null);
   };
 
   return (
@@ -2441,7 +2938,7 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ngày hiệu lực</label>
               <input
@@ -2466,14 +2963,10 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
                 })
               }
             />
-            <div className="rounded-md bg-indigo-50 border border-indigo-100 px-3 py-2 text-sm">
-              <p className="text-indigo-700">Net preview</p>
-              <p className="text-lg font-semibold text-indigo-800">{formatCurrency(payrollOutput.netSalary)}</p>
-            </div>
           </div>
 
-          <SectionCard title="1. Thông tin nền tảng (Base Profile)">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <SectionCard title="1. Công chuẩn">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <SelectBox
                 label="Công chuẩn mặc định"
                 value={standardWorkDaysMode}
@@ -2482,36 +2975,6 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
                   { value: 'FULL_MONTH', label: 'Full số ngày trong tháng' },
                 ]}
                 onChange={(value) => setStandardWorkDaysMode(value as 'DEFAULT' | 'FULL_MONTH')}
-              />
-              <TextField
-                label="Vị trí công việc"
-                value={config.baseProfile.jobTitle}
-                onChange={(value) => updateGroup('baseProfile', { ...config.baseProfile, jobTitle: value })}
-                disabled
-              />
-              <TextField
-                label="Cấp bậc"
-                value={config.baseProfile.level}
-                onChange={(value) => updateGroup('baseProfile', { ...config.baseProfile, level: value })}
-                disabled
-              />
-              <TextField
-                label="Phòng ban"
-                value={config.baseProfile.department}
-                onChange={(value) => updateGroup('baseProfile', { ...config.baseProfile, department: value })}
-                disabled
-              />
-              <TextField
-                label="Loại hợp đồng"
-                value={config.baseProfile.contractType}
-                onChange={(value) => updateGroup('baseProfile', { ...config.baseProfile, contractType: value })}
-                disabled
-              />
-              <TextField
-                label="Địa điểm làm việc"
-                value={config.baseProfile.workLocation}
-                onChange={(value) => updateGroup('baseProfile', { ...config.baseProfile, workLocation: value })}
-                disabled
               />
             </div>
           </SectionCard>
@@ -2539,10 +3002,22 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
                 }
                 step="0.1"
               />
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <p className="text-xs text-gray-500">Mức lương tối thiểu vùng ({config.taxPolicy.region})</p>
-                <p className="text-base font-semibold text-gray-900">{formatCurrency(payrollOutput.regionalMinimum)}</p>
-              </div>
+              <SelectBox
+                label="Vùng lương tối thiểu"
+                value={config.taxPolicy.region}
+                options={[
+                  { value: 'I', label: 'Vùng I' },
+                  { value: 'II', label: 'Vùng II' },
+                  { value: 'III', label: 'Vùng III' },
+                  { value: 'IV', label: 'Vùng IV' },
+                ]}
+                onChange={(value) =>
+                  updateGroup('taxPolicy', {
+                    ...config.taxPolicy,
+                    region: value as SalaryConfigurationValues['taxPolicy']['region'],
+                  })
+                }
+              />
             </div>
             <p className="text-xs text-gray-500">
               Tự động theo vùng lương và ngày hiệu lực (NĐ 293/2025/NĐ-CP, áp dụng từ 01/01/2026).
@@ -2775,136 +3250,8 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
             </div>
           </SectionCard>
 
-          <SectionCard title="4. Lương hiệu suất & hoa hồng (Variable Pay)">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <NumberField
-                label="Hoa hồng bán hàng"
-                value={config.variablePay.salesCommission}
-                onChange={(value) => updateGroup('variablePay', { ...config.variablePay, salesCommission: value })}
-              />
-              <NumberField
-                label="Thưởng KPI / OKR"
-                value={config.variablePay.kpiBonus}
-                onChange={(value) => updateGroup('variablePay', { ...config.variablePay, kpiBonus: value })}
-              />
-              <NumberField
-                label="Bonus theo quý / năm"
-                value={config.variablePay.quarterlyBonus}
-                onChange={(value) => updateGroup('variablePay', { ...config.variablePay, quarterlyBonus: value })}
-              />
-              <NumberField
-                label="Thưởng dự án"
-                value={config.variablePay.projectBonus}
-                onChange={(value) => updateGroup('variablePay', { ...config.variablePay, projectBonus: value })}
-              />
-              <NumberField
-                label="Thưởng sáng kiến"
-                value={config.variablePay.innovationBonus}
-                onChange={(value) => updateGroup('variablePay', { ...config.variablePay, innovationBonus: value })}
-              />
-            </div>
-          </SectionCard>
-
-          <SectionCard title="5. Thời gian làm việc (Time & Attendance)">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <NumberField
-                label="Số ngày công thực tế"
-                value={config.timeAttendance.workingDays}
-                onChange={(value) => updateGroup('timeAttendance', { ...config.timeAttendance, workingDays: value })}
-                step="1"
-              />
-              <NumberField
-                label="Số giờ làm việc"
-                value={config.timeAttendance.workingHours}
-                onChange={(value) => updateGroup('timeAttendance', { ...config.timeAttendance, workingHours: value })}
-                step="1"
-              />
-              <NumberField
-                label="Giờ tăng ca"
-                value={config.timeAttendance.overtimeHours}
-                onChange={(value) => updateGroup('timeAttendance', { ...config.timeAttendance, overtimeHours: value })}
-                step="1"
-              />
-              <NumberField
-                label="Nghỉ phép có lương"
-                value={config.timeAttendance.paidLeaveDays}
-                onChange={(value) => updateGroup('timeAttendance', { ...config.timeAttendance, paidLeaveDays: value })}
-                step="1"
-              />
-              <NumberField
-                label="Nghỉ không lương"
-                value={config.timeAttendance.unpaidLeaveDays}
-                onChange={(value) => updateGroup('timeAttendance', { ...config.timeAttendance, unpaidLeaveDays: value })}
-                step="1"
-              />
-              <NumberField
-                label="Đi muộn / về sớm"
-                value={config.timeAttendance.lateEarlyCount}
-                onChange={(value) => updateGroup('timeAttendance', { ...config.timeAttendance, lateEarlyCount: value })}
-                step="1"
-              />
-            </div>
-          </SectionCard>
-
-          <SectionCard title="6. Khấu trừ (Deductions)">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <SelectBox
-                label="Vùng lương tối thiểu"
-                value={config.taxPolicy.region}
-                options={[
-                  { value: 'I', label: 'Vùng I' },
-                  { value: 'II', label: 'Vùng II' },
-                  { value: 'III', label: 'Vùng III' },
-                  { value: 'IV', label: 'Vùng IV' },
-                ]}
-                onChange={(value) =>
-                  updateGroup('taxPolicy', {
-                    ...config.taxPolicy,
-                    region: value as SalaryConfigurationValues['taxPolicy']['region'],
-                  })
-                }
-              />
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <p className="text-xs text-gray-500">Mức lương đóng BHXH</p>
-                <p className="text-sm font-medium text-gray-900">Quản lý tại hồ sơ Bảo hiểm xã hội</p>
-              </div>
-
-              <NumberField
-                label="Số người phụ thuộc"
-                value={config.taxPolicy.dependentCount}
-                onChange={(value) =>
-                  updateGroup('taxPolicy', {
-                    ...config.taxPolicy,
-                    dependentCount: Math.max(Math.floor(value), 0),
-                  })
-                }
-                step="1"
-              />
-
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <p className="text-xs text-gray-500">Giảm trừ bản thân</p>
-                <p className="text-base font-semibold text-gray-900">{formatCurrency(payrollOutput.personalDeduction)}</p>
-              </div>
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <p className="text-xs text-gray-500">Giảm trừ người phụ thuộc</p>
-                <p className="text-base font-semibold text-gray-900">{formatCurrency(payrollOutput.dependentDeduction)}</p>
-              </div>
-
-              <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
-                <p className="text-xs text-blue-700">Thu nhập tính thuế</p>
-                <p className="text-base font-semibold text-blue-800">{formatCurrency(payrollOutput.taxableIncome)}</p>
-              </div>
-              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2">
-                <p className="text-xs text-red-700">Thuế TNCN tự tính</p>
-                <p className="text-base font-semibold text-red-800">{formatCurrency(payrollOutput.pit)}</p>
-              </div>
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <p className="text-xs text-gray-500">BHXH / BHYT / BHTN</p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {formatCurrency(payrollOutput.socialInsurance)} / {formatCurrency(payrollOutput.healthInsurance)} / {formatCurrency(payrollOutput.unemploymentInsurance)}
-                </p>
-              </div>
-
+          <SectionCard title="4. Công đoàn phí">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="flex items-start gap-2 cursor-pointer mb-2">
                   <input
@@ -2943,116 +3290,17 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
                   )}
                 </p>
               </div>
-              <NumberField
-                label="Tạm ứng / phạt / bồi thường"
-                value={config.deductions.advancePenaltyCompensation}
-                onChange={(value) =>
-                  updateGroup('deductions', {
-                    ...config.deductions,
-                    advancePenaltyCompensation: value,
-                  })
-                }
-              />
-            </div>
-            <p className="text-xs text-gray-500">
-              Áp dụng tự động: lương cơ sở 2.340.000đ (từ 01/07/2024), lương tối thiểu vùng mới (từ 01/01/2026),
-              giảm trừ gia cảnh 15.500.000đ + 6.200.000đ/người phụ thuộc, biểu thuế lũy tiến 5 bậc cho kỳ thuế 2026.
-            </p>
-          </SectionCard>
-
-          <SectionCard title="7. Đóng góp từ công ty (Employer Contributions)">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-              <NumberField
-                label="BHXH công ty đóng"
-                value={config.employerContributions.socialInsurance}
-                onChange={(value) =>
-                  updateGroup('employerContributions', {
-                    ...config.employerContributions,
-                    socialInsurance: value,
-                  })
-                }
-              />
-              <NumberField
-                label="BHYT công ty đóng"
-                value={config.employerContributions.healthInsurance}
-                onChange={(value) =>
-                  updateGroup('employerContributions', {
-                    ...config.employerContributions,
-                    healthInsurance: value,
-                  })
-                }
-              />
-              <NumberField
-                label="BHTN công ty đóng"
-                value={config.employerContributions.unemploymentInsurance}
-                onChange={(value) =>
-                  updateGroup('employerContributions', {
-                    ...config.employerContributions,
-                    unemploymentInsurance: value,
-                  })
-                }
-              />
-              <NumberField
-                label="Bảo hiểm bổ sung"
-                value={config.employerContributions.supplementalInsurance}
-                onChange={(value) =>
-                  updateGroup('employerContributions', {
-                    ...config.employerContributions,
-                    supplementalInsurance: value,
-                  })
-                }
-              />
-            </div>
-          </SectionCard>
-
-          <SectionCard title="8. Điều chỉnh (Adjustments)">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-              <NumberField
-                label="Truy thu lương"
-                value={config.adjustments.retroactiveCollect}
-                onChange={(value) => updateGroup('adjustments', { ...config.adjustments, retroactiveCollect: value })}
-              />
-              <NumberField
-                label="Truy lĩnh lương"
-                value={config.adjustments.retroactivePay}
-                onChange={(value) => updateGroup('adjustments', { ...config.adjustments, retroactivePay: value })}
-              />
-              <NumberField
-                label="Điều chỉnh sai sót kỳ trước"
-                value={config.adjustments.priorPeriodCorrection}
-                onChange={(value) =>
-                  updateGroup('adjustments', {
-                    ...config.adjustments,
-                    priorPeriodCorrection: value,
-                  })
-                }
-              />
-              <NumberField
-                label="Thưởng/phạt bất thường"
-                value={config.adjustments.irregularRewardPenalty}
-                onChange={(value) =>
-                  updateGroup('adjustments', {
-                    ...config.adjustments,
-                    irregularRewardPenalty: value,
-                  })
-                }
-              />
-            </div>
-          </SectionCard>
-
-          <SectionCard title="9. Tổng hợp lương (Payroll Output)">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
-                <p className="text-xs text-gray-500">Tổng thu nhập (Gross Income)</p>
-                <p className="text-base font-semibold text-gray-900">{formatCurrency(payrollOutput.grossIncome)}</p>
-              </div>
-              <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
-                <p className="text-xs text-gray-500">Tổng khấu trừ</p>
-                <p className="text-base font-semibold text-red-600">{formatCurrency(payrollOutput.totalDeductions)}</p>
-              </div>
-              <div className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2">
-                <p className="text-xs text-indigo-600">Lương thực nhận (Net Salary)</p>
-                <p className="text-base font-semibold text-indigo-700">{formatCurrency(payrollOutput.netSalary)}</p>
+              <div className="flex items-center gap-2 pt-6">
+                <input
+                  type="checkbox"
+                  id="union_fee_exempt"
+                  checked={unionFeeExempt}
+                  onChange={(event) => setUnionFeeExempt(event.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <label htmlFor="union_fee_exempt" className="text-sm text-gray-700">
+                  Miễn hẳn phí công đoàn
+                </label>
               </div>
             </div>
           </SectionCard>
@@ -3081,6 +3329,124 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* Xác nhận chuyển mốc: kết thúc cấu hình cũ rồi mở cấu hình mới */}
+      {pendingPayload && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+            <div className="px-5 py-4 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900">Chuyển sang cấu hình mới</h3>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Cấu hình cũ vẫn được giữ lại để tính đúng lương những tháng nó đã áp dụng.
+              </p>
+            </div>
+
+            <div className="px-5 py-4 space-y-4">
+              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                <p className="text-xs text-gray-500">Cấu hình đang áp dụng</p>
+                <p className="font-medium text-gray-900">
+                  Từ {salaryConfig?.effective_from}
+                  {salaryConfig?.effective_to ? ` đến ${salaryConfig.effective_to}` : ' (chưa kết thúc)'}
+                  {' · '}
+                  {formatCurrency(Number(salaryConfig?.base_amount ?? 0))}
+                </p>
+                {!!salaryConfig?.finalized_periods?.length && (
+                  <p className="text-xs text-amber-700 mt-1">
+                    Đã dùng để tính bảng lương {salaryConfig.finalized_periods.join(', ')} — đã chốt,
+                    nên phải mở mốc mới thay vì sửa đè.
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Cấu hình mới áp dụng từ tháng
+                </label>
+                <input
+                  type="month"
+                  value={newEffectiveFrom ? newEffectiveFrom.slice(0, 7) : ''}
+                  min={salaryConfig ? startOfNextMonth(salaryConfig.effective_from).slice(0, 7) : undefined}
+                  onChange={(event) => handleEffectiveMonthChange(event.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                {!!newEffectiveFrom && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    Cấu hình cũ kết thúc {formatDateVN(addDays(newEffectiveFrom, -1))}, cấu hình mới
+                    áp dụng từ {formatDateVN(newEffectiveFrom)}.
+                  </p>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 -mt-2">
+                Chỉ chọn tháng vì kỳ lương tính theo tháng — mốc cũ tự kết thúc sát ngày mốc mới bắt
+                đầu nên không có tháng nào thiếu cấu hình. Không chọn được tháng đã chốt lương.
+              </p>
+
+              <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm">
+                <p className="text-xs text-primary-700">Cấu hình mới</p>
+                <p className="font-semibold text-primary-800">
+                  Từ {newEffectiveFrom || '—'} · {formatCurrency(config.baseSalary.amount)}
+                </p>
+              </div>
+
+              {(() => {
+                const changes = salaryConfig && pendingPayload
+                  ? diffConfig(salaryConfig, pendingPayload)
+                  : [];
+                if (!changes.length) {
+                  return (
+                    <p className="text-sm text-gray-500">
+                      Không có trường nào thay đổi giá trị — chỉ tách mốc hiệu lực.
+                    </p>
+                  );
+                }
+                return (
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1.5">
+                      {changes.length} trường thay đổi
+                    </p>
+                    <div className="max-h-48 overflow-y-auto rounded-md border border-gray-200 divide-y divide-gray-100">
+                      {changes.map((c) => (
+                        <div key={c.field} className="flex items-baseline gap-2 px-3 py-1.5 text-sm">
+                          <span className="text-gray-600 flex-1 min-w-0 truncate">{c.label}</span>
+                          <span className="text-gray-400 line-through whitespace-nowrap">{c.from}</span>
+                          <span className="text-gray-400">→</span>
+                          <span className="font-medium text-gray-900 whitespace-nowrap">{c.to}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {validationError && (
+              <div className="mx-5 mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {validationError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => { setValidationError(null); setPendingPayload(null); }}
+                disabled={saving}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+              >
+                Quay lại
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmClose}
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+              >
+                {saving ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
+                Kết thúc cũ & tạo mới
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -3292,8 +3658,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [deptFilterConfig, setDeptFilterConfig] = useState<string>('');
   const [configPage, setConfigPage] = useState(1);
   const [configTotal, setConfigTotal] = useState(0);
+  /** Mốc cấu hình đang áp dụng của các nhân viên trên trang, khoá theo employee id. */
+  const [activeConfigs, setActiveConfigs] = useState<Record<number, EmployeeSalaryConfig>>({});
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
   const [editEmployeeUnionFee, setEditEmployeeUnionFee] = useState<number | null>(null);
+  const [editEmployeeConfig, setEditEmployeeConfig] = useState<EmployeeSalaryConfig | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -3304,6 +3673,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [salaryCommissions, setSalaryCommissions] = useState<CommissionRecord[]>([]);
   const [salaryPage, setSalaryPage] = useState(1);
   const [payslipRecord, setPayslipRecord] = useState<SalaryRecord | null>(null);
+  // Nhân viên đang mở modal bật/tắt phụ cấp của kỳ đang xem
+  const [allowanceTarget, setAllowanceTarget] = useState<
+    { employeeId: number; name: string; code: string } | null
+  >(null);
   const [payslipEmployee, setPayslipEmployee] = useState<Employee | null>(null);
   const [payslipPenalties, setPayslipPenalties] = useState<PenaltyRecord[]>([]);
   const [payslipCommissions, setPayslipCommissions] = useState<CommissionRecord[]>([]);
@@ -4186,8 +4559,25 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         setEmployees(res.results);
         setConfigTotal(res.count);
         setConfigPage(page);
+
+        // Lương và ngày hiệu lực hiển thị phải là của mốc cấu hình đang áp dụng, không
+        // phải số cũ trên hồ sơ nhân viên. Một request cho cả trang.
+        const configs = await salaryService
+          .listActiveEmployeeSalaryConfigs(res.results.map((e) => e.id))
+          .catch(() => [] as EmployeeSalaryConfig[]);
+        // Dữ liệu cũ có nhân viên mang nhiều mốc cùng is_active, nên chọn mốc muộn nhất
+        // thay vì tin vào thứ tự trả về.
+        const byEmployee: Record<number, EmployeeSalaryConfig> = {};
+        configs.forEach((config) => {
+          const current = byEmployee[config.employee];
+          if (!current || config.effective_from > current.effective_from) {
+            byEmployee[config.employee] = config;
+          }
+        });
+        setActiveConfigs(byEmployee);
       } catch {
         setEmployees([]);
+        setActiveConfigs({});
       } finally {
         setLoadingEmployees(false);
       }
@@ -4327,18 +4717,40 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     }
   };
 
-  const handleSave = async (id: number, data: SalaryFormulaUpdateData) => {
+  const handleSave = async (
+    employeeId: number,
+    payload: EmployeeSalaryConfigPayload,
+    configId?: number | null,
+  ) => {
     setSaving(true);
     setSaveError(null);
     const employeeName = editEmployee?.full_name ?? 'nhân viên';
     try {
-      await salaryService.updateSalaryFormula(id, data);
-      setSaveSuccess(`Đã cập nhật cấu hình lương cho ${employeeName}`);
+      await salaryService.saveEmployeeSalaryConfig(payload, configId);
+
+      // Đồng bộ lương hiển thị trên hồ sơ chỉ khi mốc đã có hiệu lực. Mốc tương lai
+      // mà ghi ngay xuống hồ sơ thì danh sách nhân viên sẽ hiện mức chưa áp dụng.
+      const today = new Date().toISOString().slice(0, 10);
+      if (payload.effective_from <= today) {
+        const employeeSync: SalaryFormulaUpdateData = {
+          basic_salary: Number(payload.base_amount ?? 0),
+          standard_work_days_mode: payload.standard_work_days_mode,
+          salary_notes: `Hiệu lực từ ${payload.effective_from}`,
+        };
+        await salaryService.updateSalaryFormula(employeeId, employeeSync);
+      }
+
+      setSaveSuccess(`Đã cập nhật cấu hình lương cho ${employeeName} (hiệu lực ${payload.effective_from})`);
       setEditEmployee(null);
+      setEditEmployeeConfig(null);
       setEditEmployeeUnionFee(null);
       loadEmployees(configPage);
-    } catch {
-      setSaveError('Không thể cập nhật. Vui lòng thử lại.');
+    } catch (err: unknown) {
+      const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
+      const detail = data && typeof data === 'object'
+        ? Object.entries(data).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ')
+        : '';
+      setSaveError(detail || 'Không thể cập nhật. Vui lòng thử lại.');
     } finally {
       setSaving(false);
     }
@@ -4576,10 +4988,17 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     }
 
     try {
-      const freshEmployee = await salaryService.getEmployeeSalaryConfig(employee.id);
+      // Mốc đang áp dụng (is_active), không phải mốc của kỳ đang xem: form này để sửa
+      // cấu hình hiện hành, mọi thay đổi đều mở mốc mới từ đây trở đi.
+      const [freshEmployee, config] = await Promise.all([
+        salaryService.getEmployeeSalaryConfig(employee.id).catch(() => employee),
+        salaryService.getActiveEmployeeSalaryConfig(employee.id).catch(() => null),
+      ]);
       setEditEmployee(freshEmployee);
+      setEditEmployeeConfig(config);
     } catch {
       setEditEmployee(employee);
+      setEditEmployeeConfig(null);
     } finally {
       setLoadingEmployeeConfig(null);
     }
@@ -4716,10 +5135,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                           Ngày hiệu lực
                         </th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Gross preview
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Net preview
+                          Lương cơ bản
                         </th>
                         <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Thao tác
@@ -4729,7 +5145,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <tbody className="bg-white divide-y divide-gray-100">
                       {employees.map((employee) => {
                         const employeeConfig = parseEmployeeSalaryConfig(employee);
-                        const output = calculatePayrollOutput(employeeConfig);
+                        const activeConfig = activeConfigs[employee.id];
 
                         return (
                           <tr key={employee.id} className="hover:bg-gray-50 transition-colors">
@@ -4755,12 +5171,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                                 {employeeConfig.baseProfile.jobTitle || employee.position?.title || '—'}
                               </p>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">{employeeConfig.effectiveDate || '—'}</td>
-                            <td className="px-4 py-3 text-right text-sm font-medium text-gray-700">
-                              {formatCurrency(output.grossIncome)}
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {activeConfig ? formatDateVN(activeConfig.effective_from) : '—'}
                             </td>
-                            <td className="px-4 py-3 text-right text-sm font-semibold text-indigo-700">
-                              {formatCurrency(output.netSalary)}
+                            <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">
+                              {activeConfig ? formatCurrency(Number(activeConfig.base_amount)) : '—'}
                             </td>
                             <td className="px-4 py-3 text-center">
                               <button
@@ -5355,11 +5770,25 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       {editEmployee && createPortal(
         <EditSalaryModal
           employee={editEmployee}
-          onClose={() => { setEditEmployee(null); setEditEmployeeUnionFee(null); }}
+          salaryConfig={editEmployeeConfig}
+          onClose={() => { setEditEmployee(null); setEditEmployeeConfig(null); setEditEmployeeUnionFee(null); }}
           onSave={handleSave}
           saving={saving}
           computedUnionFee={editEmployeeUnionFee}
           computedUnionFeePeriodLabel={`${String(selectedMonth).padStart(2, '0')}/${selectedYear}`}
+        />,
+        document.body,
+      )}
+
+      {allowanceTarget && createPortal(
+        <MonthlyAllowanceModal
+          employeeId={allowanceTarget.employeeId}
+          employeeName={allowanceTarget.name}
+          employeeCode={allowanceTarget.code}
+          year={selectedYear}
+          month={selectedMonth}
+          onClose={() => setAllowanceTarget(null)}
+          onSaved={() => loadSalary()}
         />,
         document.body,
       )}
@@ -5381,6 +5810,12 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
             }));
           }}
           onClose={() => { setPayslipRecord(null); setPayslipEmployee(null); setPayslipPenalties([]); setPayslipCommissions([]); }}
+          periodFinalized={salaryIsFinalized}
+          onOpenAllowance={() => setAllowanceTarget({
+            employeeId: payslipRecord.employee_id,
+            name: payslipRecord.ho_va_ten ?? payslipEmployee?.full_name ?? '',
+            code: payslipRecord.ma_nv ?? payslipEmployee?.employee_id ?? '',
+          })}
         />,
         document.body,
       )}

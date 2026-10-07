@@ -110,6 +110,102 @@ export interface SalaryFormulaUpdateData {
   salary_adjustments?: Record<string, unknown>;
 }
 
+/** Cơ chế chi trả — dùng chung cho phụ cấp trưa, gửi xe, trách nhiệm (khớp PayoutMode ở backend) */
+export type PayoutMode = 'none' | 'fixed' | 'actual_working_day' | 'daily' | 'monthly';
+
+/** Các trường cấu hình lương, khớp 1-1 với cột của bảng salary_salaryemployeeconfig */
+export interface EmployeeSalaryConfigValues {
+  pay_type: 'monthly' | 'hourly' | 'daily';
+  base_amount: string | number;
+  salary_factor: string | number;
+  region: 'I' | 'II' | 'III' | 'IV';
+  regional_minimum: string | number | null;
+  standard_work_days_mode: 'DEFAULT' | 'FULL_MONTH';
+  allowance_transport: string | number;
+  allowance_phone: string | number;
+  allowance_housing: string | number;
+  allowance_hazardous: string | number;
+  allowance_other: string | number;
+  lunch_mode: PayoutMode;
+  lunch_fixed_amount: string | number;
+  lunch_per_work_day: string | number;
+  lunch_monthly_cap: string | number;
+  /** '' = chưa khai báo, engine dùng số gửi xe đã lưu trên bảng công */
+  parking_mode: PayoutMode | '';
+  parking_daily_rate: string | number;
+  parking_monthly_rate: string | number;
+  responsibility_mode: PayoutMode;
+  responsibility_monthly_max: string | number;
+  /** null = tính tự động theo tỷ lệ công thử việc / chính thức */
+  union_fee_override: string | number | null;
+  union_fee_exempt: boolean;
+}
+
+export interface EmployeeSalaryConfig extends EmployeeSalaryConfigValues {
+  id: number;
+  /** false = mốc bị vô hiệu hoá, engine bỏ qua khi tính lương */
+  is_active: boolean;
+  employee: number;
+  employee_name: string;
+  employee_code: string;
+  effective_from: string;
+  effective_to: string | null;
+  fixed_allowance_total: string;
+  /**
+   * Sửa đè mốc này có an toàn không — true khi chưa bảng lương chốt nào dựa vào nó.
+   * Backend tự quyết định lại khi lưu, đây chỉ để form biết có cần hỏi chuyển mốc.
+   */
+  can_edit_in_place: boolean;
+  /** Các kỳ lương đã chốt mà mốc này đã dùng để tính, dạng ['08/2026'] */
+  finalized_periods: string[];
+  /** Mọi kỳ lương đã chốt, để form chặn HR chọn tháng đó ngay khi nhập */
+  all_finalized_periods: string[];
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmployeeSalaryConfigPayload extends Partial<EmployeeSalaryConfigValues> {
+  employee: number;
+  effective_from: string;
+  /** Ngày kết thúc cho mốc liền trước; bỏ trống = kết thúc ngay hôm trước ngày hiệu lực mới */
+  close_previous_on?: string | null;
+  is_active?: boolean;
+  notes?: string;
+}
+
+/** 7 khoản phụ cấp có thể bật/tắt riêng cho từng tháng */
+export const ALLOWANCE_TOGGLES = [
+  'transport', 'phone', 'housing', 'hazardous', 'lunch', 'parking', 'responsibility',
+] as const;
+
+export type AllowanceToggleKey = (typeof ALLOWANCE_TOGGLES)[number];
+
+/**
+ * Tuỳ chọn tính phụ cấp của một nhân viên trong một tháng.
+ * Không có bản ghi = theo mặc định (có công thì tính, 0 công thì không).
+ * Có bản ghi = HR quyết định rõ, khoản bật vẫn trả kể cả khi 0 công.
+ */
+export interface MonthlyAllowance extends Record<AllowanceToggleKey, boolean> {
+  id: number;
+  employee: number;
+  employee_name: string;
+  employee_code: string;
+  year: number;
+  month: number;
+  reason: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MonthlyAllowancePayload extends Partial<Record<AllowanceToggleKey, boolean>> {
+  employee: number;
+  year: number;
+  month: number;
+  reason?: string;
+}
+
 export interface UpdateSalaryStandardWorkDaysPayload {
   standard_work_days_mode: 'DEFAULT' | 'FULL_MONTH';
 }
@@ -527,6 +623,109 @@ class SalaryService {
     data: SalaryFormulaUpdateData
   ): Promise<Employee> {
     const response = await managementApi.patch(`/api-hrm/employees/${employeeId}/`, data);
+    return response.data;
+  }
+
+  /**
+   * Cấu hình lương đang áp dụng tại một ngày. Trả null khi nhân viên chưa có
+   * cấu hình nào (backend trả 204) — client tự dựng giá trị mặc định.
+   */
+  async getEmployeeSalaryConfigEffective(
+    employeeId: number,
+    date?: string,
+  ): Promise<EmployeeSalaryConfig | null> {
+    const response = await managementApi.get('/api/v1/salary/employee-configs/effective/', {
+      params: { employee: employeeId, ...(date ? { date } : {}) },
+    });
+    if (response.status === 204 || !response.data) return null;
+    return response.data;
+  }
+
+  /**
+   * Mốc cấu hình đang áp dụng (is_active) của một nhân viên.
+   * Trả null khi chưa có mốc nào — backend trả 204.
+   */
+  async getActiveEmployeeSalaryConfig(employeeId: number): Promise<EmployeeSalaryConfig | null> {
+    const response = await managementApi.get('/api/v1/salary/employee-configs/active/', {
+      params: { employee: employeeId },
+    });
+    if (response.status === 204 || !response.data) return null;
+    return response.data;
+  }
+
+  /** Tuỳ chọn tính phụ cấp của một nhân viên trong một kỳ; null nếu chưa khai. */
+  async getMonthlyAllowance(
+    employeeId: number, year: number, month: number,
+  ): Promise<MonthlyAllowance | null> {
+    const response = await managementApi.get('/api/v1/salary/monthly-allowances/', {
+      params: { employee: employeeId, year, month },
+    });
+    const rows: MonthlyAllowance[] = Array.isArray(response.data)
+      ? response.data
+      : response.data.results ?? [];
+    return rows[0] ?? null;
+  }
+
+  /** Tạo mới hoặc cập nhật tuỳ chọn phụ cấp của kỳ. */
+  async saveMonthlyAllowance(
+    payload: MonthlyAllowancePayload, existingId?: number,
+  ): Promise<MonthlyAllowance> {
+    if (existingId) {
+      const response = await managementApi.patch(
+        `/api/v1/salary/monthly-allowances/${existingId}/`, payload,
+      );
+      return response.data;
+    }
+    const response = await managementApi.post('/api/v1/salary/monthly-allowances/', payload);
+    return response.data;
+  }
+
+  /** Xoá tuỳ chọn để kỳ đó quay về quy tắc mặc định. */
+  async deleteMonthlyAllowance(id: number): Promise<void> {
+    await managementApi.delete(`/api/v1/salary/monthly-allowances/${id}/`);
+  }
+
+  /**
+   * Mốc đang áp dụng của nhiều nhân viên, một request cho cả trang danh sách.
+   *
+   * Danh sách trên trang cấu hình trước đây đọc lương từ hồ sơ nhân viên nên hiện số cũ
+   * khi cấu hình đã đổi. Lấy theo `is_active` chứ không theo ngày: form này sửa mốc hiện
+   * hành, không phải mốc của một kỳ đã qua.
+   */
+  async listActiveEmployeeSalaryConfigs(employeeIds: number[]): Promise<EmployeeSalaryConfig[]> {
+    if (!employeeIds.length) return [];
+    const response = await managementApi.get('/api/v1/salary/employee-configs/', {
+      params: { employees: employeeIds.join(','), is_active: true, page_size: 200 },
+    });
+    return Array.isArray(response.data) ? response.data : response.data.results ?? [];
+  }
+
+  /** Lịch sử các mốc cấu hình của một nhân viên, mốc mới nhất trước. */
+  async listEmployeeSalaryConfigs(employeeId: number): Promise<EmployeeSalaryConfig[]> {
+    const response = await managementApi.get('/api/v1/salary/employee-configs/', {
+      params: { employee: employeeId, page_size: 100 },
+    });
+    return Array.isArray(response.data) ? response.data : response.data.results ?? [];
+  }
+
+  /**
+   * Mở một mốc hiệu lực mới. Backend tự đóng mốc đang mở và ghi đè mốc trùng ngày,
+   * nên gọi lại nhiều lần với cùng `effective_from` là an toàn.
+   */
+  /**
+   * Lưu cấu hình lương.
+   *
+   * Có `configId` thì PATCH vào đúng mốc đó — backend mới quyết định được là sửa đè,
+   * dời mốc, hay mở mốc mới. POST luôn đi qua `create()` nên lúc nào cũng đẻ mốc mới,
+   * kể cả khi HR chỉ sửa ngày hiệu lực của mốc vừa tạo.
+   */
+  async saveEmployeeSalaryConfig(
+    payload: EmployeeSalaryConfigPayload,
+    configId?: number | null,
+  ): Promise<EmployeeSalaryConfig> {
+    const response = configId
+      ? await managementApi.patch(`/api/v1/salary/employee-configs/${configId}/`, payload)
+      : await managementApi.post('/api/v1/salary/employee-configs/', payload);
     return response.data;
   }
 

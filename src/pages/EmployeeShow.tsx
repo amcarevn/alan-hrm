@@ -4,6 +4,7 @@ import { employeesAPI, Employee, managementApi } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { WORK_LOCATION_OPTIONS } from '../constants/onboarding';
 import ConfirmDialog from '../components/ConfirmDialog';
+import DependentSection from './DependentSection';
 import {
   ArrowLeftIcon,
   ArrowPathIcon,
@@ -178,6 +179,11 @@ const EmployeeShow: React.FC = () => {
   const [onboardingLink, setOnboardingLink] = useState<string | null>(null);
   const [onboardingLinkError, setOnboardingLinkError] = useState<string | null>(null);
   const [onboardingLinkCopied, setOnboardingLinkCopied] = useState(false);
+
+  // Quyền thêm/sửa/xoá người phụ thuộc — khớp DependentWritePermission ở backend
+  const userRole = (user?.role || '').toUpperCase();
+  const canManageDependents =
+    userRole === 'ADMIN' || userRole === 'HR' || !!(user as any)?.is_super_admin;
 
   const [contractHistory, setContractHistory] = useState<ContractHistoryItem[]>([]);
   const [deletingContractId, setDeletingContractId] = useState<number | null>(null);
@@ -619,6 +625,9 @@ const EmployeeShow: React.FC = () => {
             <InfoField label="Địa chỉ" value={emp.emergency_contact_address} full />
           </div>
         </div>
+
+        {/* ── Người phụ thuộc (giảm trừ gia cảnh) ── */}
+        <DependentSection employeeId={employee.id} canManage={canManageDependents} />
 
         {/* ── Hồ sơ đính kèm ── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
