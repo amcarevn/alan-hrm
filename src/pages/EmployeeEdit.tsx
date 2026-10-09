@@ -679,7 +679,8 @@ const EmployeeEdit: React.FC = () => {
       payload['end_date'] = toApiDate(formData.end_date) || null;
       add('position_id', formData.position_id);
       add('department_id', formData.department_id);
-      if (formData.manager_id !== undefined) payload['manager_id'] = formData.manager_id;
+      // null = người dùng chọn "Không có" -> gửi 0 (quy ước xoá của backend).
+      if (formData.manager_id !== undefined) payload['manager_id'] = formData.manager_id ?? 0;
       add('rank', formData.rank?.trim());
       add('section', formData.section?.trim());
       add('doctor_team', formData.doctor_team?.trim());
@@ -944,7 +945,7 @@ const EmployeeEdit: React.FC = () => {
                     value: emp.id,
                   })),
               ]}
-              onChange={(v) => handleSelect('manager_id', v ?? undefined)}
+              onChange={(v) => handleSelect('manager_id', v ?? null)}
             />
 
             <SelectBox
