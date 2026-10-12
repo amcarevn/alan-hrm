@@ -43,6 +43,9 @@ import EmployeeList from './pages/EmployeeList';
 import CTVList from './pages/CTVList';
 import DoctorList from './pages/DoctorList';
 import SocialInsuranceList from './pages/SocialInsuranceList';
+import ImportantAlerts from './pages/ImportantAlerts';
+import EmployeeChanges from './pages/EmployeeChanges';
+import SalaryComparisonReport from './pages/SalaryComparisonReport';
 import EmployeeCreate from './pages/EmployeeCreate';
 import EmployeeShow from './pages/EmployeeShow';
 import EmployeeEdit from './pages/EmployeeEdit';
@@ -456,6 +459,28 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <SocialInsuranceList />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Cảnh báo quan trọng + Điều chỉnh nhân sự — chỉ Admin / HR */}
+          <Route
+            path="/dashboard/important-alerts"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'HR']}>
+                <Layout>
+                  <ImportantAlerts />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/employee-changes"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'HR']}>
+                <Layout>
+                  <EmployeeChanges />
                 </Layout>
               </ProtectedRoute>
             }
@@ -1050,6 +1075,16 @@ function App() {
               <ProtectedRoute requireBod>
                 <Layout>
                   <SalaryEmployeeConfig />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/salary-management/comparison"
+            element={
+              <ProtectedRoute requireBod>
+                <Layout>
+                  <SalaryComparisonReport />
                 </Layout>
               </ProtectedRoute>
             }

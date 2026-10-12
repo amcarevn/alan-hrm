@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   employeesAPI,
   departmentsAPI,
@@ -22,6 +22,7 @@ import {
   PaperClipIcon,
   ArrowLeftIcon,
   ExclamationTriangleIcon,
+  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 
 // ============================================
@@ -150,6 +151,23 @@ const Field: React.FC<FieldProps> = ({ label, required, children }) => (
   </div>
 );
 
+// Phòng ban / chức vụ / lương / phụ cấp không sửa thẳng ở đây nữa mà qua trang
+// "Điều chỉnh nhân sự" để mọi lần thay đổi đều có nhật ký (cũ → mới, ngày áp dụng,
+// người đổi). Ở đây chỉ hiện giá trị hiện tại kèm đường dẫn sang trang đó.
+const LockedField: React.FC<{ label: string; value: string; changeHref: string }> = ({ label, value, changeHref }) => (
+  <Field label={label}>
+    <div className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+      <span className="flex min-w-0 items-center gap-1.5 text-sm text-gray-700">
+        <LockClosedIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        <span className="truncate">{value || '—'}</span>
+      </span>
+      <Link to={changeHref} className="shrink-0 whitespace-nowrap text-xs font-semibold text-primary-600 hover:text-primary-800">
+        Điều chỉnh
+      </Link>
+    </div>
+  </Field>
+);
+
 // ============================================
 // CẢNH BÁO MÂU THUẪN NGÀY THÁNG / HỢP ĐỒNG
 // ============================================
@@ -267,6 +285,7 @@ const textareaClass = "w-full px-3 py-2 border border-gray-200 rounded-lg text-s
 
 const EmployeeEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const changeHref = `/dashboard/employee-changes?employee=${id}&create=1`;
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [loadingEmployee, setLoadingEmployee] = useState(true);
@@ -543,19 +562,6 @@ const EmployeeEdit: React.FC = () => {
     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
   };
 
-  // Format số tiền: 1000000 → 1.000.000
-  const formatCurrency = (value: string | number): string => {
-    const raw = String(value).replace(/\./g, '').replace(/\D/g, '');
-    if (!raw) return '';
-    return Number(raw).toLocaleString('de-DE'); // de-DE dùng dấu . phân cách nghìn
-  };
-
-  const handleCurrencyInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name } = e.target;
-    const formatted = formatCurrency(e.target.value);
-    setFormData((prev: any) => ({ ...prev, [name]: formatted }));
-  };
-
   // Tính ngày chính thức = probation_end_date + 1 ngày (định dạng DD/MM/YYYY)
   const calcOfficialStartDate = (probationEndDate: string): string => {
     const parts = probationEndDate?.match(/(\d{2})\/(\d{2})\/(\d{4})/);
@@ -677,9 +683,10 @@ const EmployeeEdit: React.FC = () => {
       add('start_date', toApiDate(formData.start_date));
       // end_date luôn gửi để cho phép xóa (null = xóa ngày nghỉ việc)
       payload['end_date'] = toApiDate(formData.end_date) || null;
-      add('position_id', formData.position_id);
-      add('department_id', formData.department_id);
-      if (formData.manager_id !== undefined) payload['manager_id'] = formData.manager_id;
+      // position_id / department_id / basic_salary / allowance: không gửi — đổi qua trang
+      // Điều chỉnh nhân sự (xem LockedField).
+      // null = người dùng chọn "Không có" -> gửi 0 (quy ước xoá của backend).
+      if (formData.manager_id !== undefined) payload['manager_id'] = formData.manager_id ?? 0;
       add('rank', formData.rank?.trim());
       add('section', formData.section?.trim());
       add('doctor_team', formData.doctor_team?.trim());
@@ -726,8 +733,6 @@ const EmployeeEdit: React.FC = () => {
       add('bank_account_holder', formData.bank_account_holder?.trim());
       add('bank_branch', formData.bank_branch?.trim());
 
-      if (formData.basic_salary !== '') payload['basic_salary'] = Number(String(formData.basic_salary).replace(/\./g, ''));
-      if (formData.allowance !== '') payload['allowance'] = Number(String(formData.allowance).replace(/\./g, ''));
       add('contract_type', formData.contract_type);
       if (formData.probation_months !== '') payload['probation_months'] = Number(formData.probation_months);
       add('probation_end_date', toApiDate(formData.probation_end_date));
@@ -912,22 +917,16 @@ const EmployeeEdit: React.FC = () => {
               <DateInput name="official_start_date" value={formData.official_start_date} onChange={handleInput} className={inputClass} />
             </Field>
 
-            <SelectBox
+            <LockedField
               label="Phòng ban"
-              value={formData.department_id}
-              placeholder="Chọn phòng ban"
-              searchable={true}
-              options={departments.map((d) => ({ label: d.name, value: d.id }))}
-              onChange={(v) => handleSelect('department_id', v)}
+              value={departments.find((d) => d.id === formData.department_id)?.name ?? ''}
+              changeHref={changeHref}
             />
 
-            <SelectBox
+            <LockedField
               label="Chức vụ"
-              value={formData.position_id}
-              placeholder="Chọn chức vụ"
-              searchable={true}
-              options={positions.map((p) => ({ label: p.title, value: p.id }))}
-              onChange={(v) => handleSelect('position_id', v)}
+              value={positions.find((p) => p.id === formData.position_id)?.title ?? ''}
+              changeHref={changeHref}
             />
 
             <SelectBox
@@ -944,7 +943,7 @@ const EmployeeEdit: React.FC = () => {
                     value: emp.id,
                   })),
               ]}
-              onChange={(v) => handleSelect('manager_id', v ?? undefined)}
+              onChange={(v) => handleSelect('manager_id', v ?? null)}
             />
 
             <SelectBox
@@ -1190,15 +1189,17 @@ const EmployeeEdit: React.FC = () => {
           })()}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <Field label="Lương cơ bản (VNĐ)">
-              <input type="text" inputMode="numeric" name="basic_salary" value={formData.basic_salary}
-                onChange={handleCurrencyInput} placeholder="10.000.000" className={inputClass} />
-            </Field>
+            <LockedField
+              label="Lương cơ bản (VNĐ)"
+              value={formData.basic_salary ? `${formData.basic_salary} đ` : ''}
+              changeHref={changeHref}
+            />
 
-            <Field label="Phụ cấp (VNĐ)">
-              <input type="text" inputMode="numeric" name="allowance" value={formData.allowance}
-                onChange={handleCurrencyInput} placeholder="2.000.000" className={inputClass} />
-            </Field>
+            <LockedField
+              label="Phụ cấp (VNĐ)"
+              value={formData.allowance ? `${formData.allowance} đ` : ''}
+              changeHref={changeHref}
+            />
 
             <SelectBox
               label="Loại hợp đồng"
