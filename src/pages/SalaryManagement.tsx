@@ -20,7 +20,9 @@ import {
   QuestionMarkCircleIcon,
   LockClosedIcon,
   Cog6ToothIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline';
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import { employeesAPI } from '../utils/api';
 import type { EmployeeSalaryConfig, EmployeeSalaryConfigPayload,
   MonthlyAllowance, AllowanceToggleKey } from '../services/salary.service';
@@ -3641,6 +3643,216 @@ async function parseSalaryConfigExcel(file: File): Promise<{ rows: ParsedSalaryC
   }
 }
 
+// Bộ cột của file Excel bảng lương. Để ở cấp module vì có HAI nút cùng dùng:
+// "Xuất Excel bảng lương" (một tháng) và "Xuất bảng lương tổng hợp" (nhiều tháng,
+// tách theo pháp nhân). Chung một nguồn thì hai file không bao giờ lệch cột nhau.
+const MONEY_FMT = { numFmt: '#,##0' };
+
+const PAYROLL_EXCEL_COLUMNS = [
+      { header: 'Mã NV', key: 'ma_nv', width: 14 },
+      { header: 'Họ và tên', key: 'ho_va_ten', width: 24 },
+      { header: 'Phòng ban', key: 'phong_ban', width: 18 },
+      { header: 'Pháp nhân con', key: 'phap_nhan_con', width: 22 },
+      { header: 'Loại hợp đồng', key: 'loai_hop_dong', width: 26 },
+      { header: 'Trạng thái HĐ', key: 'trang_thai_hop_dong', width: 14 },
+      { header: 'Năm', key: 'year', width: 8 },
+      { header: 'Tháng', key: 'month', width: 8 },
+      { header: 'Lương cơ bản', key: 'luong_co_ban', width: 16, style: MONEY_FMT },
+      // numFmt ép cứng định dạng số thường (không phải ngày/giờ) — công có thể lẻ
+      // (vd 26.5), để "General" mặc định thì một số phần mềm mở file (không phải
+      // Excel gốc) có thể tự đoán nhầm đây là ngày và hiển thị ra số serial ngày.
+      { header: 'Công chuẩn', key: 'cong_chuan', width: 12, style: { numFmt: '0.##' } },
+      { header: 'Tổng công', key: 'tong_cong', width: 12, style: { numFmt: '0.##' } },
+      { header: 'Lương ngày công thực tế', key: 'luong_ngay_cong', width: 20, style: MONEY_FMT },
+      { header: 'Lương doanh số', key: 'luong_doanh_so', width: 16, style: MONEY_FMT },
+      { header: 'Lương tăng ca', key: 'luong_tang_ca', width: 14, style: MONEY_FMT },
+      { header: 'Lương trực ca', key: 'luong_truc_ca', width: 14, style: MONEY_FMT },
+      { header: 'Thu nhập khác', key: 'thu_nhap_khac', width: 14, style: MONEY_FMT },
+      { header: 'Tổng khoản lương (III)', key: 'tong_luong_iii', width: 18, style: MONEY_FMT },
+      { header: 'PC gửi xe', key: 'phu_cap_gui_xe', width: 14, style: MONEY_FMT },
+      { header: 'PC ăn trưa', key: 'phu_cap_an_trua', width: 14, style: MONEY_FMT },
+      { header: 'PC trách nhiệm', key: 'phu_cap_trach_nhiem', width: 16, style: MONEY_FMT },
+      { header: 'PC khác', key: 'phu_cap_khac', width: 14, style: MONEY_FMT },
+      { header: 'Tổng phụ cấp (IV)', key: 'tong_phu_cap_iv', width: 16, style: MONEY_FMT },
+      { header: 'Thưởng', key: 'thuong', width: 12, style: MONEY_FMT },
+      { header: 'Tổng thu nhập (VI)', key: 'tong_thu_nhap_vi', width: 18, style: MONEY_FMT },
+      { header: 'BHXH', key: 'bhxh', width: 12, style: MONEY_FMT },
+      { header: 'BHYT', key: 'bhyt', width: 12, style: MONEY_FMT },
+      { header: 'BHTN', key: 'bhtn', width: 12, style: MONEY_FMT },
+      { header: 'Tổng BH', key: 'tong_bh', width: 12, style: MONEY_FMT },
+      { header: 'Công đoàn', key: 'cong_doan', width: 12, style: MONEY_FMT },
+      { header: 'Phạt đi muộn', key: 'tong_phat', width: 14, style: MONEY_FMT },
+      { header: 'Phạt biên bản', key: 'tong_phat_bienban', width: 14, style: MONEY_FMT },
+      { header: 'Tổng giảm trừ (VII)', key: 'tong_giam_tru_vii', width: 18, style: MONEY_FMT },
+      { header: 'Truy tăng', key: 'truy_tang', width: 14, style: MONEY_FMT },
+      { header: 'Truy thu', key: 'truy_thu', width: 14, style: MONEY_FMT },
+      { header: 'Điều chỉnh (VIII)', key: 'dieu_chinh', width: 16, style: MONEY_FMT },
+      // Cột chữ, đặt ngay sau số tiền điều chỉnh để kế toán đọc bảng là biết khoản
+      // truy tăng/truy thu đó vì sao (vd "Truy thu BHYT"), không phải mở lại bản ghi.
+      { header: 'Lý do điều chỉnh', key: 'ly_do_dieu_chinh', width: 28 },
+      // Khối cột để khớp tờ khai quyết toán thuế TNCN, xếp đúng thứ tự kế toán
+      // đang dùng: tổng lương được trả -> thu nhập chịu thuế [12] -> các khoản
+      // giảm trừ -> thu nhập tính thuế [21] -> số thuế.
+      //
+      // "Tổng lương phải trả" CỐ Ý không trừ bảo hiểm — chỉ trừ công đoàn và hai
+      // khoản phạt. Đây là số kế toán dùng, khác "Lương thực lĩnh (IX)".
+      { header: 'Tổng lương phải trả', key: 'tong_luong_phai_tra', width: 20, style: MONEY_FMT },
+      { header: 'Tổng thu nhập chịu thuế', key: 'tong_thu_nhap_chiu_thue', width: 22, style: MONEY_FMT },
+      { header: 'Giảm trừ gia cảnh (bản thân)', key: 'giam_tru_ban_than', width: 24, style: MONEY_FMT },
+      { header: 'Số người phụ thuộc', key: 'so_nguoi_phu_thuoc', width: 16, style: { numFmt: '0' } },
+      { header: 'Giảm trừ người phụ thuộc', key: 'giam_tru_nguoi_phu_thuoc', width: 24, style: MONEY_FMT },
+      { header: 'Thu nhập tính thuế', key: 'thu_nhap_tinh_thue', width: 20, style: MONEY_FMT },
+      { header: 'Thuế TNCN (X)', key: 'thue_tncn', width: 14, style: MONEY_FMT },
+      { header: 'Tạm ứng (XI)', key: 'tam_ung', width: 14, style: MONEY_FMT },
+      { header: 'Lương thực lĩnh (IX)', key: 'luong_thuc_linh', width: 18, style: MONEY_FMT },
+      { header: 'Còn phải thanh toán (XII)', key: 'con_phai_thanh_toan', width: 22, style: MONEY_FMT },
+];
+
+// Dựng dòng dữ liệu xuất Excel từ bảng lương một tháng. Tách khỏi useMemo để nút
+// "Xuất bảng lương tổng hợp" dùng lại được cho các tháng KHÁC tháng đang xem —
+// tháng khác không nằm trong state nên phải truyền dữ liệu vào từ ngoài.
+const buildPayrollDetailRows = (
+  salaryRecords: SalaryRecord[],
+  employees: Employee[],
+  salaryCommissions: CommissionRecord[],
+) => {
+    return salaryRecords.map((record) => {
+      const employee = employees.find((e) => e.id === record.employee_id);
+      const recordCommissions = salaryCommissions.filter((item) => item.employee === record.employee_id);
+      const payslipComputation = calculatePayslipNetPayable(record, employee, recordCommissions);
+      const payrollTax = payslipComputation.payrollTax;
+
+      const stdDays = getResolvedStandardWorkDays(record, employee ?? null);
+      const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
+      const luongCoBan = record.luong_co_ban ?? 0;
+      const luongNgayCongThucTe = soTheoBackend(record, 'luong_ngay_cong', workdayBreakdown.tongLuongNgayCong);
+      const luongTangCa = record.luong_tang_ca ?? 0;
+      const luongTrucCa = record.truc_toi ?? 0;
+      const luongDoanhSo = getSalesCommissionAmount(record, recordCommissions);
+      const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
+      const thuong = (record as unknown as Record<string, number>)['thuong'] ?? 0;
+      const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
+
+      const savedAdjustments = employee ? (employee.salary_adjustments as Record<string, unknown> | undefined) : undefined;
+      const savedConfig = savedAdjustments?.payroll_config as Record<string, unknown> | undefined;
+
+      const savedParkingPolicyRaw = savedConfig?.parkingAllowancePolicy as Record<string, unknown> | undefined;
+      const parkingPolicy: ParkingAllowancePolicy | null = savedParkingPolicyRaw
+        ? {
+            mode: savedParkingPolicyRaw.mode === 'daily' ? 'daily' : savedParkingPolicyRaw.mode === 'monthly' ? 'monthly' : 'none',
+            daily_rate: toNumber(savedParkingPolicyRaw.daily_rate, 5000),
+            monthly_rate: toNumber(savedParkingPolicyRaw.monthly_rate, 0),
+          }
+        : null;
+      const phuCapGuiXe = soTheoBackend(record, 'phu_cap_gui_xe',
+    parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : 0);
+
+      const savedLunchPolicyRaw = (savedConfig?.lunchAllowancePolicy as Record<string, unknown> | undefined);
+      const lunchPolicy: LunchAllowancePolicy | null = savedLunchPolicyRaw
+        ? {
+            mode: savedLunchPolicyRaw.mode === 'actual_working_day' ? 'actual_working_day' : 'fixed',
+            fixed_amount: toNumber(savedLunchPolicyRaw.fixed_amount),
+            amount_per_work_day: toNumber(savedLunchPolicyRaw.amount_per_work_day),
+            monthly_cap: toNumber(savedLunchPolicyRaw.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP),
+          }
+        : null;
+      const phuCapAnTrua = toNumber(
+        (record as unknown as Record<string, unknown>)['phu_cap_an_trua'],
+        lunchPolicy ? calculateLunchAllowance(lunchPolicy, record.tong_cong ?? 0, stdDays) : 0,
+      );
+
+      const savedRespPolicyRaw = savedConfig?.responsibilityAllowancePolicy as Record<string, unknown> | undefined;
+      const respPolicy: ResponsibilityAllowancePolicy | null = savedRespPolicyRaw
+        ? {
+            mode: savedRespPolicyRaw.mode === 'fixed' ? 'fixed' : savedRespPolicyRaw.mode === 'actual_working_day' ? 'actual_working_day' : 'none',
+            monthly_max: toNumber(savedRespPolicyRaw.monthly_max),
+          }
+        : null;
+      // Tổng phụ cấp (IV) phải bằng đúng số backend đã chốt. Ba cột gửi xe / ăn trưa /
+      // khác lấy thẳng từ dòng lương, còn trách nhiệm là PHẦN DƯ — backend gộp nó vào
+      // tổng chứ không trả riêng.
+      //
+      // Trước đây trách nhiệm được dựng lại từ chính sách trong hồ sơ, còn "PC khác" chỉ
+      // hấp thụ được phần thiếu (Math.max). Khi ba khoản kia cộng lại VƯỢT tổng đã chốt
+      // thì IV phình ra, kéo công thức IX và XII trong file Excel sai theo — tháng 6/2026
+      // có 2 ca, BS.Võ Thị Thu Sương lệch tới 40 triệu.
+      const tongPhuCapIVDaChot = soTheoBackend(record, 'phu_cap', NaN);
+      const phuCapKhacRemainder = soTheoBackend(record, 'phu_cap_khac', 0);
+      const phuCapTrachNhiem = Number.isFinite(tongPhuCapIVDaChot)
+        ? Math.max(tongPhuCapIVDaChot - phuCapGuiXe - phuCapAnTrua - phuCapKhacRemainder, 0)
+        : (respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0);
+      const tongPhuCapIV = phuCapGuiXe + phuCapAnTrua + phuCapTrachNhiem + phuCapKhacRemainder;
+      const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
+
+      const bhxh = payrollTax.socialInsurance;
+      const bhyt = payrollTax.healthInsurance;
+      const bhtn = payrollTax.unemploymentInsurance;
+      const tongBH = payrollTax.insuranceTotal;
+      const congDoan = toNumber((record as unknown as Record<string, number>)['cong_doan'],
+        (savedConfig?.deductions as Record<string, number> | undefined)?.unionFee ?? 0);
+      const tongPhat = record.tong_phat ?? 0;
+      const tongPhatBienBan = record.tong_phat_bienban ?? 0;
+      const tongGiamTruVII = tongBH + congDoan + tongPhat + tongPhatBienBan;
+      const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
+  const truyTang = (record as unknown as Record<string, number>)['truy_tang'] ?? 0;
+  const truyThu = (record as unknown as Record<string, number>)['truy_thu'] ?? 0;
+      const tamUng = record.tam_ung ?? 0;
+      const thue = payrollTax.taxAmount;
+      const contractInfo = getContractInfo(record, employee);
+
+      return {
+        ma_nv: record.ma_nv,
+        ho_va_ten: record.ho_va_ten,
+        phong_ban: record.phong_ban ?? '',
+        phap_nhan_con: record.phap_nhan_con ?? '',
+        loai_hop_dong: contractInfo.loai,
+        trang_thai_hop_dong: contractInfo.trangThai,
+        ly_do_dieu_chinh: String((record as unknown as Record<string, unknown>)['ly_do_dieu_chinh'] ?? ''),
+        tong_luong_phai_tra: Math.round(tongThuNhapVI - congDoan - tongPhat - tongPhatBienBan),
+        tong_thu_nhap_chiu_thue: Math.round(payrollTax.grossIncomeForTax),
+        giam_tru_ban_than: Math.round(payrollTax.taxDetail.personalDeduction),
+        so_nguoi_phu_thuoc: payrollTax.dependentCount,
+        giam_tru_nguoi_phu_thuoc: Math.round(payrollTax.taxDetail.dependentDeduction),
+        thu_nhap_tinh_thue: getThuNhapTinhThue(record, payrollTax),
+        year: record.year,
+        month: record.month,
+        luong_co_ban: Math.round(luongCoBan),
+        cong_chuan: stdDays,
+        // Không làm tròn: công có thể lẻ (vd nửa công 0.5) — làm tròn sẽ hiển thị sai
+        // lệch với số liệu thật (khớp với cách tính ở nút xuất Excel, không làm tròn).
+        tong_cong: record.tong_cong ?? 0,
+        luong_ngay_cong: Math.round(luongNgayCongThucTe),
+        luong_doanh_so: Math.round(luongDoanhSo),
+        luong_tang_ca: Math.round(luongTangCa),
+        luong_truc_ca: Math.round(luongTrucCa),
+        thu_nhap_khac: Math.round(thuNhapKhac),
+        tong_luong_iii: Math.round(tongLuongIII),
+        phu_cap_gui_xe: Math.round(phuCapGuiXe),
+        phu_cap_an_trua: Math.round(phuCapAnTrua),
+        phu_cap_trach_nhiem: Math.round(phuCapTrachNhiem),
+        phu_cap_khac: Math.round(phuCapKhacRemainder),
+        tong_phu_cap_iv: Math.round(tongPhuCapIV),
+        thuong: Math.round(thuong),
+        tong_thu_nhap_vi: Math.round(tongThuNhapVI),
+        bhxh: Math.round(bhxh),
+        bhyt: Math.round(bhyt),
+        bhtn: Math.round(bhtn),
+        tong_bh: Math.round(tongBH),
+        cong_doan: Math.round(congDoan),
+        tong_phat: Math.round(tongPhat),
+        tong_phat_bienban: Math.round(tongPhatBienBan),
+        tong_giam_tru_vii: Math.round(tongGiamTruVII),
+        truy_tang: Math.round(truyTang),
+        truy_thu: Math.round(truyThu),
+        dieu_chinh: Math.round(dieuChinhVIII),
+        thue_tncn: Math.round(thue),
+        tam_ung: Math.round(tamUng),
+        luong_thuc_linh: Math.round(payslipComputation.luongThucLinh),
+        con_phai_thanh_toan: Math.round(payslipComputation.conPhaiThanhToan),
+      };
+    });
+};
+
 const SalaryManagement: React.FC<SalaryManagementProps> = ({
   defaultTab = 'config',
   lockTab = false,
@@ -3751,6 +3963,13 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
   const [loadingTotalSalary, setLoadingTotalSalary] = useState(false);
   const [totalSalaryError, setTotalSalaryError] = useState<string | null>(null);
   const [exportingPayroll, setExportingPayroll] = useState(false);
+  // Xuất bảng lương tổng hợp nhiều tháng. Mặc định để trống, mở hộp thoại mới điền
+  // theo tháng đang xem — đặt mặc định ngay tại đây sẽ bị đứng ở tháng lúc mount.
+  const [exportingTongHop, setExportingTongHop] = useState(false);
+  const [tongHopOpen, setTongHopOpen] = useState(false);
+  const [tongHopTu, setTongHopTu] = useState('');
+  const [tongHopDen, setTongHopDen] = useState('');
+  const [tongHopPhapNhan, setTongHopPhapNhan] = useState<string[]>([]);
   const [showPayrollPreviewModal, setShowPayrollPreviewModal] = useState(false);
   const [sendingDeptPayslipEmail, setSendingDeptPayslipEmail] = useState(false);
   const [deptPayslipEmailResult, setDeptPayslipEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -3964,143 +4183,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const payrollDetailRows = useMemo(() => {
-    return salaryRecords.map((record) => {
-      const employee = employees.find((e) => e.id === record.employee_id);
-      const recordCommissions = salaryCommissions.filter((item) => item.employee === record.employee_id);
-      const payslipComputation = calculatePayslipNetPayable(record, employee, recordCommissions);
-      const payrollTax = payslipComputation.payrollTax;
-
-      const stdDays = getResolvedStandardWorkDays(record, employee ?? null);
-      const workdayBreakdown = getWorkdaySalaryBreakdown(record, employee);
-      const luongCoBan = record.luong_co_ban ?? 0;
-      const luongNgayCongThucTe = soTheoBackend(record, 'luong_ngay_cong', workdayBreakdown.tongLuongNgayCong);
-      const luongTangCa = record.luong_tang_ca ?? 0;
-      const luongTrucCa = record.truc_toi ?? 0;
-      const luongDoanhSo = getSalesCommissionAmount(record, recordCommissions);
-      const thuNhapKhac = (record as unknown as Record<string, number>)['thu_nhap_khac'] ?? 0;
-      const thuong = (record as unknown as Record<string, number>)['thuong'] ?? 0;
-      const tongLuongIII = luongNgayCongThucTe + luongDoanhSo + luongTangCa + luongTrucCa + thuNhapKhac;
-
-      const savedAdjustments = employee ? (employee.salary_adjustments as Record<string, unknown> | undefined) : undefined;
-      const savedConfig = savedAdjustments?.payroll_config as Record<string, unknown> | undefined;
-
-      const savedParkingPolicyRaw = savedConfig?.parkingAllowancePolicy as Record<string, unknown> | undefined;
-      const parkingPolicy: ParkingAllowancePolicy | null = savedParkingPolicyRaw
-        ? {
-            mode: savedParkingPolicyRaw.mode === 'daily' ? 'daily' : savedParkingPolicyRaw.mode === 'monthly' ? 'monthly' : 'none',
-            daily_rate: toNumber(savedParkingPolicyRaw.daily_rate, 5000),
-            monthly_rate: toNumber(savedParkingPolicyRaw.monthly_rate, 0),
-          }
-        : null;
-      const phuCapGuiXe = soTheoBackend(record, 'phu_cap_gui_xe',
-    parkingPolicy ? calculateParkingAllowance(parkingPolicy, record.ngay_cong) : 0);
-
-      const savedLunchPolicyRaw = (savedConfig?.lunchAllowancePolicy as Record<string, unknown> | undefined);
-      const lunchPolicy: LunchAllowancePolicy | null = savedLunchPolicyRaw
-        ? {
-            mode: savedLunchPolicyRaw.mode === 'actual_working_day' ? 'actual_working_day' : 'fixed',
-            fixed_amount: toNumber(savedLunchPolicyRaw.fixed_amount),
-            amount_per_work_day: toNumber(savedLunchPolicyRaw.amount_per_work_day),
-            monthly_cap: toNumber(savedLunchPolicyRaw.monthly_cap, MAX_LUNCH_ALLOWANCE_CAP),
-          }
-        : null;
-      const phuCapAnTrua = toNumber(
-        (record as unknown as Record<string, unknown>)['phu_cap_an_trua'],
-        lunchPolicy ? calculateLunchAllowance(lunchPolicy, record.tong_cong ?? 0, stdDays) : 0,
-      );
-
-      const savedRespPolicyRaw = savedConfig?.responsibilityAllowancePolicy as Record<string, unknown> | undefined;
-      const respPolicy: ResponsibilityAllowancePolicy | null = savedRespPolicyRaw
-        ? {
-            mode: savedRespPolicyRaw.mode === 'fixed' ? 'fixed' : savedRespPolicyRaw.mode === 'actual_working_day' ? 'actual_working_day' : 'none',
-            monthly_max: toNumber(savedRespPolicyRaw.monthly_max),
-          }
-        : null;
-      // Tổng phụ cấp (IV) phải bằng đúng số backend đã chốt. Ba cột gửi xe / ăn trưa /
-      // khác lấy thẳng từ dòng lương, còn trách nhiệm là PHẦN DƯ — backend gộp nó vào
-      // tổng chứ không trả riêng.
-      //
-      // Trước đây trách nhiệm được dựng lại từ chính sách trong hồ sơ, còn "PC khác" chỉ
-      // hấp thụ được phần thiếu (Math.max). Khi ba khoản kia cộng lại VƯỢT tổng đã chốt
-      // thì IV phình ra, kéo công thức IX và XII trong file Excel sai theo — tháng 6/2026
-      // có 2 ca, BS.Võ Thị Thu Sương lệch tới 40 triệu.
-      const tongPhuCapIVDaChot = soTheoBackend(record, 'phu_cap', NaN);
-      const phuCapKhacRemainder = soTheoBackend(record, 'phu_cap_khac', 0);
-      const phuCapTrachNhiem = Number.isFinite(tongPhuCapIVDaChot)
-        ? Math.max(tongPhuCapIVDaChot - phuCapGuiXe - phuCapAnTrua - phuCapKhacRemainder, 0)
-        : (respPolicy ? calculateResponsibilityAllowance(respPolicy, record.tong_cong ?? 0, stdDays) : 0);
-      const tongPhuCapIV = phuCapGuiXe + phuCapAnTrua + phuCapTrachNhiem + phuCapKhacRemainder;
-      const tongThuNhapVI = tongLuongIII + tongPhuCapIV + thuong;
-
-      const bhxh = payrollTax.socialInsurance;
-      const bhyt = payrollTax.healthInsurance;
-      const bhtn = payrollTax.unemploymentInsurance;
-      const tongBH = payrollTax.insuranceTotal;
-      const congDoan = toNumber((record as unknown as Record<string, number>)['cong_doan'],
-        (savedConfig?.deductions as Record<string, number> | undefined)?.unionFee ?? 0);
-      const tongPhat = record.tong_phat ?? 0;
-      const tongPhatBienBan = record.tong_phat_bienban ?? 0;
-      const tongGiamTruVII = tongBH + congDoan + tongPhat + tongPhatBienBan;
-      const dieuChinhVIII = (record as unknown as Record<string, number>)['dieu_chinh'] ?? 0;
-  const truyTang = (record as unknown as Record<string, number>)['truy_tang'] ?? 0;
-  const truyThu = (record as unknown as Record<string, number>)['truy_thu'] ?? 0;
-      const tamUng = record.tam_ung ?? 0;
-      const thue = payrollTax.taxAmount;
-      const contractInfo = getContractInfo(record, employee);
-
-      return {
-        ma_nv: record.ma_nv,
-        ho_va_ten: record.ho_va_ten,
-        phong_ban: record.phong_ban ?? '',
-        phap_nhan_con: record.phap_nhan_con ?? '',
-        loai_hop_dong: contractInfo.loai,
-        trang_thai_hop_dong: contractInfo.trangThai,
-        ly_do_dieu_chinh: String((record as unknown as Record<string, unknown>)['ly_do_dieu_chinh'] ?? ''),
-        tong_luong_phai_tra: Math.round(tongThuNhapVI - congDoan - tongPhat - tongPhatBienBan),
-        tong_thu_nhap_chiu_thue: Math.round(payrollTax.grossIncomeForTax),
-        giam_tru_ban_than: Math.round(payrollTax.taxDetail.personalDeduction),
-        so_nguoi_phu_thuoc: payrollTax.dependentCount,
-        giam_tru_nguoi_phu_thuoc: Math.round(payrollTax.taxDetail.dependentDeduction),
-        thu_nhap_tinh_thue: getThuNhapTinhThue(record, payrollTax),
-        year: record.year,
-        month: record.month,
-        luong_co_ban: Math.round(luongCoBan),
-        cong_chuan: stdDays,
-        // Không làm tròn: công có thể lẻ (vd nửa công 0.5) — làm tròn sẽ hiển thị sai
-        // lệch với số liệu thật (khớp với cách tính ở nút xuất Excel, không làm tròn).
-        tong_cong: record.tong_cong ?? 0,
-        luong_ngay_cong: Math.round(luongNgayCongThucTe),
-        luong_doanh_so: Math.round(luongDoanhSo),
-        luong_tang_ca: Math.round(luongTangCa),
-        luong_truc_ca: Math.round(luongTrucCa),
-        thu_nhap_khac: Math.round(thuNhapKhac),
-        tong_luong_iii: Math.round(tongLuongIII),
-        phu_cap_gui_xe: Math.round(phuCapGuiXe),
-        phu_cap_an_trua: Math.round(phuCapAnTrua),
-        phu_cap_trach_nhiem: Math.round(phuCapTrachNhiem),
-        phu_cap_khac: Math.round(phuCapKhacRemainder),
-        tong_phu_cap_iv: Math.round(tongPhuCapIV),
-        thuong: Math.round(thuong),
-        tong_thu_nhap_vi: Math.round(tongThuNhapVI),
-        bhxh: Math.round(bhxh),
-        bhyt: Math.round(bhyt),
-        bhtn: Math.round(bhtn),
-        tong_bh: Math.round(tongBH),
-        cong_doan: Math.round(congDoan),
-        tong_phat: Math.round(tongPhat),
-        tong_phat_bienban: Math.round(tongPhatBienBan),
-        tong_giam_tru_vii: Math.round(tongGiamTruVII),
-        truy_tang: Math.round(truyTang),
-        truy_thu: Math.round(truyThu),
-        dieu_chinh: Math.round(dieuChinhVIII),
-        thue_tncn: Math.round(thue),
-        tam_ung: Math.round(tamUng),
-        luong_thuc_linh: Math.round(payslipComputation.luongThucLinh),
-        con_phai_thanh_toan: Math.round(payslipComputation.conPhaiThanhToan),
-      };
-    });
-  }, [salaryRecords, employees, salaryCommissions]);
+  const payrollDetailRows = useMemo(
+    () => buildPayrollDetailRows(salaryRecords, employees, salaryCommissions),
+    [salaryRecords, employees, salaryCommissions],
+  );
 
   const handleExportPayrollExcel = async () => {
     if (!salaryRecords.length || exportingPayroll) return;
@@ -4111,70 +4197,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet('Bang Luong Chi Tiet');
 
-      // Định dạng số tiền có phân cách hàng nghìn (hiển thị kiểu 22.000.000 theo
-      // locale VN của Excel — mã '#,##0' chỉ là placeholder, Excel tự áp đúng ký
-      // tự phân cách theo vùng của máy đang mở file).
-      const MONEY_FMT = { numFmt: '#,##0' };
-
-      ws.columns = [
-        { header: 'Mã NV', key: 'ma_nv', width: 14 },
-        { header: 'Họ và tên', key: 'ho_va_ten', width: 24 },
-        { header: 'Phòng ban', key: 'phong_ban', width: 18 },
-        { header: 'Pháp nhân con', key: 'phap_nhan_con', width: 22 },
-        { header: 'Loại hợp đồng', key: 'loai_hop_dong', width: 26 },
-        { header: 'Trạng thái HĐ', key: 'trang_thai_hop_dong', width: 14 },
-        { header: 'Năm', key: 'year', width: 8 },
-        { header: 'Tháng', key: 'month', width: 8 },
-        { header: 'Lương cơ bản', key: 'luong_co_ban', width: 16, style: MONEY_FMT },
-        // numFmt ép cứng định dạng số thường (không phải ngày/giờ) — công có thể lẻ
-        // (vd 26.5), để "General" mặc định thì một số phần mềm mở file (không phải
-        // Excel gốc) có thể tự đoán nhầm đây là ngày và hiển thị ra số serial ngày.
-        { header: 'Công chuẩn', key: 'cong_chuan', width: 12, style: { numFmt: '0.##' } },
-        { header: 'Tổng công', key: 'tong_cong', width: 12, style: { numFmt: '0.##' } },
-        { header: 'Lương ngày công thực tế', key: 'luong_ngay_cong', width: 20, style: MONEY_FMT },
-        { header: 'Lương doanh số', key: 'luong_doanh_so', width: 16, style: MONEY_FMT },
-        { header: 'Lương tăng ca', key: 'luong_tang_ca', width: 14, style: MONEY_FMT },
-        { header: 'Lương trực ca', key: 'luong_truc_ca', width: 14, style: MONEY_FMT },
-        { header: 'Thu nhập khác', key: 'thu_nhap_khac', width: 14, style: MONEY_FMT },
-        { header: 'Tổng khoản lương (III)', key: 'tong_luong_iii', width: 18, style: MONEY_FMT },
-        { header: 'PC gửi xe', key: 'phu_cap_gui_xe', width: 14, style: MONEY_FMT },
-        { header: 'PC ăn trưa', key: 'phu_cap_an_trua', width: 14, style: MONEY_FMT },
-        { header: 'PC trách nhiệm', key: 'phu_cap_trach_nhiem', width: 16, style: MONEY_FMT },
-        { header: 'PC khác', key: 'phu_cap_khac', width: 14, style: MONEY_FMT },
-        { header: 'Tổng phụ cấp (IV)', key: 'tong_phu_cap_iv', width: 16, style: MONEY_FMT },
-        { header: 'Thưởng', key: 'thuong', width: 12, style: MONEY_FMT },
-        { header: 'Tổng thu nhập (VI)', key: 'tong_thu_nhap_vi', width: 18, style: MONEY_FMT },
-        { header: 'BHXH', key: 'bhxh', width: 12, style: MONEY_FMT },
-        { header: 'BHYT', key: 'bhyt', width: 12, style: MONEY_FMT },
-        { header: 'BHTN', key: 'bhtn', width: 12, style: MONEY_FMT },
-        { header: 'Tổng BH', key: 'tong_bh', width: 12, style: MONEY_FMT },
-        { header: 'Công đoàn', key: 'cong_doan', width: 12, style: MONEY_FMT },
-        { header: 'Phạt đi muộn', key: 'tong_phat', width: 14, style: MONEY_FMT },
-        { header: 'Phạt biên bản', key: 'tong_phat_bienban', width: 14, style: MONEY_FMT },
-        { header: 'Tổng giảm trừ (VII)', key: 'tong_giam_tru_vii', width: 18, style: MONEY_FMT },
-        { header: 'Truy tăng', key: 'truy_tang', width: 14, style: MONEY_FMT },
-        { header: 'Truy thu', key: 'truy_thu', width: 14, style: MONEY_FMT },
-        { header: 'Điều chỉnh (VIII)', key: 'dieu_chinh', width: 16, style: MONEY_FMT },
-        // Cột chữ, đặt ngay sau số tiền điều chỉnh để kế toán đọc bảng là biết khoản
-        // truy tăng/truy thu đó vì sao (vd "Truy thu BHYT"), không phải mở lại bản ghi.
-        { header: 'Lý do điều chỉnh', key: 'ly_do_dieu_chinh', width: 28 },
-        // Khối cột để khớp tờ khai quyết toán thuế TNCN, xếp đúng thứ tự kế toán
-        // đang dùng: tổng lương được trả -> thu nhập chịu thuế [12] -> các khoản
-        // giảm trừ -> thu nhập tính thuế [21] -> số thuế.
-        //
-        // "Tổng lương phải trả" CỐ Ý không trừ bảo hiểm — chỉ trừ công đoàn và hai
-        // khoản phạt. Đây là số kế toán dùng, khác "Lương thực lĩnh (IX)".
-        { header: 'Tổng lương phải trả', key: 'tong_luong_phai_tra', width: 20, style: MONEY_FMT },
-        { header: 'Tổng thu nhập chịu thuế', key: 'tong_thu_nhap_chiu_thue', width: 22, style: MONEY_FMT },
-        { header: 'Giảm trừ gia cảnh (bản thân)', key: 'giam_tru_ban_than', width: 24, style: MONEY_FMT },
-        { header: 'Số người phụ thuộc', key: 'so_nguoi_phu_thuoc', width: 16, style: { numFmt: '0' } },
-        { header: 'Giảm trừ người phụ thuộc', key: 'giam_tru_nguoi_phu_thuoc', width: 24, style: MONEY_FMT },
-        { header: 'Thu nhập tính thuế', key: 'thu_nhap_tinh_thue', width: 20, style: MONEY_FMT },
-        { header: 'Thuế TNCN (X)', key: 'thue_tncn', width: 14, style: MONEY_FMT },
-        { header: 'Tạm ứng (XI)', key: 'tam_ung', width: 14, style: MONEY_FMT },
-        { header: 'Lương thực lĩnh (IX)', key: 'luong_thuc_linh', width: 18, style: MONEY_FMT },
-        { header: 'Còn phải thanh toán (XII)', key: 'con_phai_thanh_toan', width: 22, style: MONEY_FMT },
-      ];
+      ws.columns = [...PAYROLL_EXCEL_COLUMNS];
 
       // Hàng số thứ tự cột (1, 2, 3...) chèn lên trên hàng tiêu đề — cột nào là cột
       // "tổng" (cộng/trừ từ cột khác) thì hiện luôn công thức kiểu "15=10+11+12+13+14"
@@ -4533,6 +4556,185 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
       setSalaryError('Không thể xuất file Excel bảng lương. Vui lòng thử lại.');
     } finally {
       setExportingPayroll(false);
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Xuất bảng lương tổng hợp: nhiều tháng, tách theo pháp nhân
+  // ---------------------------------------------------------------------------
+  // Tab đầu "Tổng hợp" là số CỘNG của từng tháng theo từng pháp nhân; các tab sau
+  // là chi tiết từng tháng, đầy đủ cột như file bảng lương một tháng.
+  //
+  // Phải tách theo pháp nhân chứ không cộng gộp: cùng một người có thể nằm ở ELANI
+  // tháng này và NITA tháng sau (dữ liệu thật có người chuyển qua lại), gộp lại thì
+  // không đối chiếu được với sổ của từng pháp nhân.
+  //
+  // Lọc pháp nhân đi qua tham số `legal_entity` của API, KHÔNG gom theo chuỗi
+  // `phap_nhan_con` trong dòng lương: chuỗi đó là tên tại thời điểm chốt nên tháng
+  // 7/2026 lưu tên cũ "Trung Tín" còn tháng 8 lưu "Elani" — gom theo chuỗi sẽ ra 5
+  // nhóm rời rạc và tháng 7 không có ELANI nào. Backend đã có sẵn bảng quy đổi tên
+  // cũ về mã hiện hành (`legal_entity_text_candidates`).
+  const handleExportTongHop = async () => {
+    if (exportingTongHop) return;
+    const [tuNam, tuThang] = tongHopTu.split('-').map(Number);
+    const [denNam, denThang] = tongHopDen.split('-').map(Number);
+    if (!tuNam || !tuThang || !denNam || !denThang) return;
+    if (tuNam * 12 + tuThang > denNam * 12 + denThang) {
+      setSalaryError('Khoảng tháng không hợp lệ: tháng bắt đầu phải trước hoặc bằng tháng kết thúc.');
+      return;
+    }
+    if (!tongHopPhapNhan.length) {
+      setSalaryError('Chọn ít nhất một pháp nhân để xuất.');
+      return;
+    }
+
+    const cacThang: Array<{ year: number; month: number }> = [];
+    for (let m = tuNam * 12 + (tuThang - 1); m <= denNam * 12 + (denThang - 1); m += 1) {
+      cacThang.push({ year: Math.floor(m / 12), month: (m % 12) + 1 });
+    }
+
+    setExportingTongHop(true);
+    setSalaryError(null);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+
+      const nhanPhapNhan = (ma: string) =>
+        ma === NO_LEGAL_ENTITY_FILTER
+          ? 'Không có pháp nhân'
+          : (legalEntities.find((e) => e.value === ma)?.label ?? ma);
+
+      // Cột cho tab tổng hợp: giữ đúng các cột SỐ của file chi tiết để hai file đối
+      // chiếu được với nhau. Bỏ `cong_chuan` vì cộng công chuẩn của nhiều người là
+      // số vô nghĩa — công chuẩn là mức của một người trong tháng, không phải khoản
+      // cộng dồn được.
+      const cotSo = PAYROLL_EXCEL_COLUMNS.filter(
+        (c) => 'style' in c && c.style && c.key !== 'cong_chuan',
+      );
+
+      // ---- Tab 1: Tổng hợp ----------------------------------------------------
+      const wsTong = wb.addWorksheet('Tổng hợp');
+      wsTong.columns = [
+        { header: 'Kỳ lương', key: '_ky', width: 12 },
+        { header: 'Pháp nhân', key: '_phap_nhan', width: 22 },
+        { header: 'Số người', key: '_so_nguoi', width: 10, style: { numFmt: '0' } },
+        ...cotSo.map((c) => ({ ...c })),
+      ];
+      wsTong.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.alignment = { vertical: 'middle', wrapText: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } };
+      });
+      wsTong.getRow(1).height = 30;
+      wsTong.views = [{ state: 'frozen', ySplit: 1 }];
+
+      // Gom dữ liệu: tải tuần tự theo tháng để không bắn hàng chục request cùng lúc.
+      const chiTietTheoThang: Array<{
+        nhan: string;
+        rows: Array<Record<string, unknown>>;
+      }> = [];
+      const congTheoPhapNhan: Record<string, Record<string, number>> = {};
+
+      for (const { year, month } of cacThang) {
+        const commissions = await salaryService
+          .listCommissions({ year, month })
+          .catch(() => [] as CommissionRecord[]);
+        const gopChiTiet: Array<Record<string, unknown>> = [];
+
+        for (const maPN of tongHopPhapNhan) {
+          const res = await salaryService.getSalaryByDepartment({
+            year,
+            month,
+            legal_entity: maPN,
+          });
+          const records = res.results ?? [];
+          const rows = buildPayrollDetailRows(records, employees, commissions);
+          gopChiTiet.push(...(rows as unknown as Array<Record<string, unknown>>));
+
+          const dong: Record<string, number> = { _so_nguoi: rows.length };
+          cotSo.forEach((c) => {
+            const key = String(c.key);
+            dong[key] = rows.reduce(
+              (s, r) => s + toNumber((r as unknown as Record<string, unknown>)[key]),
+              0,
+            );
+          });
+          wsTong.addRow({
+            _ky: `${String(month).padStart(2, '0')}/${year}`,
+            _phap_nhan: nhanPhapNhan(maPN),
+            ...dong,
+          });
+
+          const cong = congTheoPhapNhan[maPN] ?? (congTheoPhapNhan[maPN] = { _so_nguoi: 0 });
+          Object.entries(dong).forEach(([k, v]) => {
+            cong[k] = (cong[k] ?? 0) + v;
+          });
+        }
+
+        chiTietTheoThang.push({
+          nhan: `T${String(month).padStart(2, '0')}.${year}`,
+          rows: gopChiTiet,
+        });
+      }
+
+      // Dòng cộng của từng pháp nhân qua toàn bộ khoảng tháng, rồi tổng tất cả.
+      wsTong.addRow({});
+      const tongTatCa: Record<string, number> = { _so_nguoi: 0 };
+      tongHopPhapNhan.forEach((maPN) => {
+        const cong = congTheoPhapNhan[maPN];
+        if (!cong) return;
+        const r = wsTong.addRow({
+          _ky: 'Cộng',
+          _phap_nhan: nhanPhapNhan(maPN),
+          ...cong,
+        });
+        r.eachCell((cell) => {
+          cell.font = { bold: true };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+        });
+        Object.entries(cong).forEach(([k, v]) => {
+          tongTatCa[k] = (tongTatCa[k] ?? 0) + v;
+        });
+      });
+      if (tongHopPhapNhan.length > 1) {
+        const r = wsTong.addRow({ _ky: 'TỔNG CỘNG', _phap_nhan: 'Tất cả pháp nhân', ...tongTatCa });
+        r.eachCell((cell) => {
+          cell.font = { bold: true };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE9FE' } };
+        });
+      }
+
+      // ---- Các tab phụ: chi tiết từng tháng -----------------------------------
+      chiTietTheoThang.forEach(({ nhan, rows }) => {
+        const ws = wb.addWorksheet(nhan);
+        ws.columns = [...PAYROLL_EXCEL_COLUMNS];
+        ws.getRow(1).eachCell((cell) => {
+          cell.font = { bold: true };
+          cell.alignment = { vertical: 'middle', wrapText: true };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } };
+        });
+        ws.getRow(1).height = 30;
+        ws.views = [{ state: 'frozen', ySplit: 1 }];
+        rows.forEach((r) => ws.addRow(r));
+      });
+
+      const ten = `bang_luong_tong_hop_${tongHopTu.replace('-', '')}_${tongHopDen.replace('-', '')}.xlsx`;
+      const buf = await wb.xlsx.writeBuffer();
+      const url = URL.createObjectURL(
+        new Blob([buf], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        }),
+      );
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = ten;
+      a.click();
+      URL.revokeObjectURL(url);
+      setTongHopOpen(false);
+    } catch {
+      setSalaryError('Không thể xuất bảng lương tổng hợp. Vui lòng thử lại.');
+    } finally {
+      setExportingTongHop(false);
     }
   };
 
@@ -5318,42 +5520,112 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                   <ArrowPathIcon className="h-4 w-4" />
                   Tải dữ liệu
                 </button>
-                <button
-                  onClick={() => openTotalSalaryModal('company')}
-                  disabled={salaryRecords.length === 0}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <CurrencyDollarIcon className="h-4 w-4" />
-                  Tổng lương công ty
-                </button>
-                <button
-                  onClick={() => openTotalSalaryModal('legal_entity')}
-                  disabled={salaryRecords.length === 0 || !legalEntityFilterView}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded-md hover:bg-violet-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <CurrencyDollarIcon className="h-4 w-4" />
-                  Tổng lương pháp nhân
-                </button>
-                <button
-                  onClick={handleExportPayrollExcel}
-                  disabled={salaryRecords.length === 0 || exportingPayroll || loadingSalary}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {exportingPayroll ? (
-                    <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ArrowDownTrayIcon className="h-4 w-4" />
-                  )}
-                  {exportingPayroll ? 'Đang xuất Excel...' : 'Xuất Excel bảng lương'}
-                </button>
+
                 <button
                   onClick={() => { _closeActiveTaxTooltip?.(); setShowPayrollPreviewModal(true); }}
                   disabled={salaryRecords.length === 0 || loadingSalary}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <EyeIcon className="h-4 w-4" />
                   Xem trước
                 </button>
+
+                {/* Hai nhóm hành động cùng loại gom vào menu thả xuống. Trước đây sáu
+                    nút phẳng nằm cạnh nhau, thêm nút "tổng hợp" nữa thành bảy — hàng
+                    nút dài hơn cả bảng và không còn thấy đâu là việc chính. */}
+                <Menu as="div" className="relative">
+                  <MenuButton
+                    disabled={salaryRecords.length === 0}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <CurrencyDollarIcon className="h-4 w-4" />
+                    Tổng lương
+                    <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                  </MenuButton>
+                  <MenuItems
+                    anchor="bottom start"
+                    className="z-50 mt-1 w-60 rounded-md border border-gray-200 bg-white py-1 shadow-lg focus:outline-none"
+                  >
+                    <MenuItem>
+                      <button
+                        onClick={() => openTotalSalaryModal('company')}
+                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 data-[focus]:bg-gray-50"
+                      >
+                        <CurrencyDollarIcon className="h-4 w-4 text-indigo-500" />
+                        Toàn công ty
+                      </button>
+                    </MenuItem>
+                    <MenuItem disabled={!legalEntityFilterView}>
+                      <button
+                        onClick={() => openTotalSalaryModal('legal_entity')}
+                        disabled={!legalEntityFilterView}
+                        title={legalEntityFilterView ? undefined : 'Chọn một pháp nhân ở bộ lọc phía trên trước'}
+                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 disabled:text-gray-400 data-[focus]:bg-gray-50"
+                      >
+                        <CurrencyDollarIcon className="h-4 w-4 text-violet-500" />
+                        Theo pháp nhân
+                        {!legalEntityFilterView && (
+                          <span className="ml-auto text-xs text-gray-400">chưa chọn</span>
+                        )}
+                      </button>
+                    </MenuItem>
+                  </MenuItems>
+                </Menu>
+
+                <Menu as="div" className="relative">
+                  <MenuButton
+                    disabled={exportingPayroll || exportingTongHop || loadingSalary}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {exportingPayroll || exportingTongHop ? (
+                      <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ArrowDownTrayIcon className="h-4 w-4" />
+                    )}
+                    {exportingPayroll
+                      ? 'Đang xuất Excel...'
+                      : exportingTongHop
+                        ? 'Đang tổng hợp...'
+                        : 'Xuất Excel'}
+                    <ChevronDownIcon className="h-4 w-4 text-emerald-500" />
+                  </MenuButton>
+                  <MenuItems
+                    anchor="bottom start"
+                    className="z-50 mt-1 w-80 rounded-md border border-gray-200 bg-white py-1 shadow-lg focus:outline-none"
+                  >
+                    <MenuItem disabled={salaryRecords.length === 0}>
+                      <button
+                        onClick={handleExportPayrollExcel}
+                        disabled={salaryRecords.length === 0}
+                        className="flex w-full flex-col items-start gap-0.5 px-4 py-2 text-left disabled:opacity-50 data-[focus]:bg-gray-50"
+                      >
+                        <span className="text-sm text-gray-700">
+                          Bảng lương tháng {selectedMonth}/{selectedYear}
+                        </span>
+                        <span className="text-xs text-gray-500">Chi tiết từng nhân viên của tháng đang xem</span>
+                      </button>
+                    </MenuItem>
+                    <MenuItem>
+                      <button
+                        onClick={() => {
+                          _closeActiveTaxTooltip?.();
+                          const kyHienTai = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
+                          setTongHopTu(kyHienTai);
+                          setTongHopDen(kyHienTai);
+                          setTongHopPhapNhan(legalEntities.map((e) => e.value));
+                          setTongHopOpen(true);
+                        }}
+                        className="flex w-full flex-col items-start gap-0.5 px-4 py-2 text-left data-[focus]:bg-gray-50"
+                      >
+                        <span className="text-sm text-gray-700">Bảng lương tổng hợp nhiều tháng</span>
+                        <span className="text-xs text-gray-500">
+                          Cộng theo từng tháng và từng pháp nhân, kèm tab chi tiết mỗi tháng
+                        </span>
+                      </button>
+                    </MenuItem>
+                  </MenuItems>
+                </Menu>
+
                 {canFinalizeSalary && (
                   <button
                     onClick={handleFinalizeSalaryMonth}
@@ -6586,11 +6858,97 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
             {/* Footer */}
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button 
-                onClick={() => setShowTotalSalaryModal(false)} 
+              <button
+                onClick={() => setShowTotalSalaryModal(false)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
               >
                 Đóng
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {tongHopOpen && createPortal(
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900">Xuất bảng lương tổng hợp</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Một file gồm tab <span className="font-medium">Tổng hợp</span> cộng theo từng tháng và
+                từng pháp nhân, kèm tab chi tiết của mỗi tháng.
+              </p>
+            </div>
+
+            <div className="px-6 py-5 space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Từ tháng</label>
+                  <input
+                    type="month"
+                    value={tongHopTu}
+                    onChange={(e) => setTongHopTu(e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Đến tháng</label>
+                  <input
+                    type="month"
+                    value={tongHopDen}
+                    onChange={(e) => setTongHopDen(e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Pháp nhân</label>
+                <div className="space-y-2">
+                  {[
+                    ...legalEntities,
+                    { value: NO_LEGAL_ENTITY_FILTER, label: 'Không có pháp nhân' },
+                  ].map((entity) => (
+                    <label key={entity.value} className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={tongHopPhapNhan.includes(entity.value)}
+                        onChange={(e) =>
+                          setTongHopPhapNhan((cu) =>
+                            e.target.checked
+                              ? [...cu, entity.value]
+                              : cu.filter((v) => v !== entity.value),
+                          )
+                        }
+                        className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                      />
+                      {entity.label}
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  Mỗi pháp nhân được cộng riêng. Cùng một người chuyển pháp nhân giữa các tháng
+                  vẫn vào đúng cột của từng bên.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setTongHopOpen(false)}
+                disabled={exportingTongHop}
+                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                Huỷ
+              </button>
+              <button
+                onClick={handleExportTongHop}
+                disabled={exportingTongHop || !tongHopPhapNhan.length}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {exportingTongHop && <ArrowPathIcon className="h-4 w-4 animate-spin" />}
+                {exportingTongHop ? 'Đang tổng hợp...' : 'Xuất file'}
               </button>
             </div>
           </div>
