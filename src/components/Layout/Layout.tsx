@@ -2,6 +2,7 @@ import { ReactNode, useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import NotificationDrawer from './NotificationDrawer';
+import ImportantAlertsGate from '../ImportantAlertsModal';
 import { NotificationDrawerProvider, useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
 
 function LayoutInner({ children }: { children: ReactNode }) {
@@ -27,6 +28,9 @@ function LayoutInner({ children }: { children: ReactNode }) {
         unreadIds={unreadIds}
         onMarkRead={markRead}
       />
+
+      {/* Cảnh báo hợp đồng / BHXH — tự hiện 1 lần mỗi phiên cho Admin/HR */}
+      <ImportantAlertsGate />
     </div>
   );
 }

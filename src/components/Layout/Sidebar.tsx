@@ -33,6 +33,9 @@ import {
   MegaphoneIcon,
   UsersIcon,
   UserGroupIcon,
+  ArrowsRightLeftIcon,
+  BellAlertIcon,
+  PresentationChartLineIcon,
 } from '@heroicons/react/24/outline';
 
 // Define interface for navigation items
@@ -86,6 +89,18 @@ const navigationItems: NavigationItem[] = [
         name: 'Quản lý nhân viên',
         href: '/dashboard/employees',
         icon: UserIcon,
+        roles: ['ADMIN', 'HR'],
+      },
+      {
+        name: 'Điều chỉnh nhân sự',
+        href: '/dashboard/employee-changes',
+        icon: ArrowsRightLeftIcon,
+        roles: ['ADMIN', 'HR'],
+      },
+      {
+        name: 'Cảnh báo quan trọng',
+        href: '/dashboard/important-alerts',
+        icon: BellAlertIcon,
         roles: ['ADMIN', 'HR'],
       },
       {
@@ -258,6 +273,13 @@ const navigationItems: NavigationItem[] = [
         name: 'Bảng lương',
         href: '/dashboard/salary-management/payroll',
         icon: TableCellsIcon,
+        roles: ['ADMIN', 'HR'],
+        bodOnly: true,
+      },
+      {
+        name: 'Biến động lương',
+        href: '/dashboard/salary-management/comparison',
+        icon: PresentationChartLineIcon,
         roles: ['ADMIN', 'HR'],
         bodOnly: true,
       },
