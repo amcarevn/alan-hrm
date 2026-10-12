@@ -242,10 +242,11 @@ function InsuranceList({ rows }: { rows: InsuranceAlert[] }) {
             <tr>
               <TH>Mã NV</TH>
               <TH>Họ tên</TH>
+              <TH>Pháp nhân</TH>
               <TH>Phòng ban</TH>
               <TH>Vị trí</TH>
               <TH>Loại HĐ</TH>
-              <TH>Hạn đóng BHXH</TH>
+              <TH>Ngày đóng BHXH</TH>
               <TH>Trạng thái</TH>
             </tr>
           </thead>
@@ -254,6 +255,9 @@ function InsuranceList({ rows }: { rows: InsuranceAlert[] }) {
               <tr key={`${i.id}-${i.due_date}`} className="transition-colors hover:bg-gray-50">
                 <TD className="whitespace-nowrap font-semibold text-gray-900">{i.employee_code || '—'}</TD>
                 <TD className="min-w-[9rem]"><EmployeeLink id={i.id} name={i.full_name} /></TD>
+                <TD className="whitespace-nowrap">
+                  <span title={i.legal_entity_name || undefined}>{i.legal_entity || '—'}</span>
+                </TD>
                 <TD className="min-w-[7rem] max-w-[13rem]">{i.department || '—'}</TD>
                 <TD className="min-w-[7rem] max-w-[13rem]">{i.position || '—'}</TD>
                 <TD className="min-w-[7rem] max-w-[12rem]">{i.contract_type_display || '—'}</TD>
@@ -282,10 +286,11 @@ function InsuranceList({ rows }: { rows: InsuranceAlert[] }) {
               <div className="shrink-0">{insuranceBadge(i)}</div>
             </div>
             <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+              <MobileField label="Pháp nhân">{i.legal_entity}</MobileField>
               <MobileField label="Phòng ban">{i.department}</MobileField>
               <MobileField label="Vị trí">{i.position}</MobileField>
               <MobileField label="Ngày vào làm">{fmtDate(i.start_date)}</MobileField>
-              <MobileField label="Hạn đóng BHXH">{fmtDate(i.due_date)}</MobileField>
+              <MobileField label="Ngày đóng BHXH">{fmtDate(i.due_date)}</MobileField>
               <MobileField label="Loại HĐ" wide>{i.contract_type_display}</MobileField>
             </dl>
           </li>
@@ -589,7 +594,7 @@ export default function ImportantAlerts() {
 
               {tab === 'insurance' && r && (
                 <p className="mt-2 text-xs text-gray-400">
-                  Hạn đóng = ngày vào làm + {r.insurance_probation_months} tháng. Người quá hạn được theo dõi thêm tối đa{' '}
+                  Ngày đóng BHXH = ngày vào làm + {r.insurance_probation_months} tháng. Người quá hạn được theo dõi thêm tối đa{' '}
                   {r.insurance_overdue_days} ngày nếu vẫn chưa có hồ sơ BHXH.
                 </p>
               )}
