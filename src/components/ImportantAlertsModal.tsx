@@ -247,7 +247,7 @@ function ImportantAlertsModal({ data, onClose, onViewAll }: { data: ImportantAle
                   name={i.full_name}
                   code={i.employee_code}
                   department={i.department}
-                  dateLabel={`Hạn đóng ${fmtDate(i.due_date)}`}
+                  dateLabel={`Ngày đóng BHXH ${fmtDate(i.due_date)}`}
                   tone={toneOf(i.status === 'OVERDUE', i.days_left)}
                   badge={daysText(i.days_left, 'Đến hạn hôm nay')}
                 />

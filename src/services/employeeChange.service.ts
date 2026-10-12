@@ -98,6 +98,9 @@ export interface AlertEmployeeInfo {
   full_name: string;
   department: string;
   position: string;
+  /** Pháp nhân = đơn vị làm việc của nhân viên: mã ngắn (ELANI/NITA) + tên đầy đủ; '' nếu chưa gán. */
+  legal_entity: string;
+  legal_entity_name: string;
   contract_type: string;
   contract_type_display: string;
 }
