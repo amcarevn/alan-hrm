@@ -351,7 +351,8 @@ const CreateChangeModal: React.FC<CreateModalProps> = ({
               {moneyField('Phụ cấp', current.allowance, allowance, setAllowance)}
               {moneyField('Lương bảo hiểm', current.insurance_salary, insuranceSalary, setInsuranceSalary)}
               <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                Bảng lương tính theo tháng: lương và phụ cấp mới được tính từ kỳ lương <strong>tháng {effectiveMonth}</strong>.
+                Bảng lương tính theo tháng: lương và phụ cấp mới được tính từ kỳ lương <strong>tháng {effectiveMonth}</strong>
+                trở đi — ghi đè cấu hình lương đã có của các tháng đó (trừ tháng đã chốt lương).
                 Lương bảo hiểm đổi kể từ ngày áp dụng.
               </p>
             </div>
