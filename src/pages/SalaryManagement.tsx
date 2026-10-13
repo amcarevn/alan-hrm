@@ -1235,6 +1235,8 @@ interface SalaryConfigurationValues {
     housing: number;
     responsibility: number;
     hazardous: number;
+    /** Phụ cấp khác (gộp) — `allowance_other`, khoản thứ 5 cộng thẳng vào lương tháng. */
+    other: number;
   };
   lunchAllowancePolicy: LunchAllowancePolicy;
   parkingAllowancePolicy: ParkingAllowancePolicy;
@@ -1397,6 +1399,7 @@ const DEFAULT_SALARY_CONFIG: SalaryConfigurationValues = {
     housing: 0,
     responsibility: 0,
     hazardous: 0,
+    other: 0,
   },
   lunchAllowancePolicy: {
     mode: 'fixed',
@@ -2178,6 +2181,7 @@ const buildConfigState = (
       phone: n(apiConfig.allowance_phone),
       housing: n(apiConfig.allowance_housing),
       hazardous: n(apiConfig.allowance_hazardous),
+      other: n(apiConfig.allowance_other),
       responsibility: n(apiConfig.responsibility_monthly_max),
     },
     lunchAllowancePolicy: {
@@ -2283,6 +2287,7 @@ const parseEmployeeSalaryConfig = (employee: Employee): SalaryConfigurationValue
       housing: toNumber(savedConfig.allowances?.housing),
       responsibility: toNumber(savedConfig.allowances?.responsibility, employee.allowance ?? 0),
       hazardous: toNumber(savedConfig.allowances?.hazardous),
+      other: 0,
     },
     lunchAllowancePolicy: lunchPolicy,
     parkingAllowancePolicy: (() => {
@@ -2361,6 +2366,7 @@ const calculatePayrollOutput = (config: SalaryConfigurationValues, effectiveUnio
     config.allowances.phone +
     config.allowances.housing +
     config.allowances.hazardous +
+    config.allowances.other +
     lunchAllowance +
     parkingAllowance +
     responsibilityAllowance;
@@ -2811,8 +2817,7 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
       allowance_phone: config.allowances.phone,
       allowance_housing: config.allowances.housing,
       allowance_hazardous: config.allowances.hazardous,
-      // Khoản gộp cũ trên hồ sơ giữ nguyên, form không sửa trực tiếp.
-      allowance_other: salaryConfig?.allowance_other ?? 0,
+      allowance_other: config.allowances.other,
 
       lunch_mode: config.lunchAllowancePolicy.mode,
       lunch_fixed_amount: config.lunchAllowancePolicy.fixed_amount,
@@ -3029,8 +3034,8 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
           <SectionCard title="3. Thu nhập bổ sung (Allowances & Earnings)">
             <div className="space-y-4">
 
-              {/* Phụ cấp cố định — 4 cột */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {/* Phụ cấp cố định — 5 khoản; tổng hiện ở ô "Phụ cấp" trên hồ sơ nhân viên */}
+              <div className="grid grid-cols-2 md:grid-cols-5 items-end gap-3">
                 <NumberField
                   label="Phụ cấp đi lại / xăng xe"
                   value={config.allowances.transport}
@@ -3051,7 +3056,22 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
                   value={config.allowances.hazardous}
                   onChange={(value) => updateGroup('allowances', { ...config.allowances, hazardous: value })}
                 />
+                <NumberField
+                  label="Phụ cấp khác"
+                  value={config.allowances.other}
+                  onChange={(value) => updateGroup('allowances', { ...config.allowances, other: value })}
+                />
               </div>
+              <p className="text-xs text-gray-500">
+                Lương cơ bản và tổng 5 khoản phụ cấp trên (
+                <strong>
+                  {formatCurrency(
+                    config.allowances.transport + config.allowances.phone + config.allowances.housing
+                    + config.allowances.hazardous + config.allowances.other,
+                  )}
+                </strong>
+                ) tự cập nhật sang hồ sơ nhân viên khi mốc có hiệu lực.
+              </p>
 
               {/* Phụ cấp ăn trưa */}
               <div className="rounded-lg border border-amber-200 bg-amber-50">
@@ -3866,7 +3886,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
-  const [searchEmployee, setSearchEmployee] = useState('');
+  const [searchEmployee, setSearchEmployee] = useState(
+    () => new URLSearchParams(window.location.search).get('search') ?? '',
+  );
   const [deptFilterConfig, setDeptFilterConfig] = useState<string>('');
   const [configPage, setConfigPage] = useState(1);
   const [configTotal, setConfigTotal] = useState(0);
@@ -4930,12 +4952,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
     try {
       await salaryService.saveEmployeeSalaryConfig(payload, configId);
 
-      // Đồng bộ lương hiển thị trên hồ sơ chỉ khi mốc đã có hiệu lực. Mốc tương lai
-      // mà ghi ngay xuống hồ sơ thì danh sách nhân viên sẽ hiện mức chưa áp dụng.
+      // Lương cơ bản / Phụ cấp trên hồ sơ do backend tự đồng bộ theo mốc đang hiệu lực
+      // (cả mốc tương lai khi tới tháng) — ở đây chỉ còn ghi chế độ công chuẩn + ghi chú.
       const today = new Date().toISOString().slice(0, 10);
       if (payload.effective_from <= today) {
         const employeeSync: SalaryFormulaUpdateData = {
-          basic_salary: Number(payload.base_amount ?? 0),
           standard_work_days_mode: payload.standard_work_days_mode,
           salary_notes: `Hiệu lực từ ${payload.effective_from}`,
         };

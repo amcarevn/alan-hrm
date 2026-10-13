@@ -154,7 +154,9 @@ const Field: React.FC<FieldProps> = ({ label, required, children }) => (
 // Phòng ban / chức vụ / lương / phụ cấp không sửa thẳng ở đây nữa mà qua trang
 // "Điều chỉnh nhân sự" để mọi lần thay đổi đều có nhật ký (cũ → mới, ngày áp dụng,
 // người đổi). Ở đây chỉ hiện giá trị hiện tại kèm đường dẫn sang trang đó.
-const LockedField: React.FC<{ label: string; value: string; changeHref: string }> = ({ label, value, changeHref }) => (
+const LockedField: React.FC<{ label: string; value: string; changeHref: string; linkLabel?: string; hint?: string }> = ({
+  label, value, changeHref, linkLabel = 'Điều chỉnh', hint,
+}) => (
   <Field label={label}>
     <div className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
       <span className="flex min-w-0 items-center gap-1.5 text-sm text-gray-700">
@@ -162,9 +164,10 @@ const LockedField: React.FC<{ label: string; value: string; changeHref: string }
         <span className="truncate">{value || '—'}</span>
       </span>
       <Link to={changeHref} className="shrink-0 whitespace-nowrap text-xs font-semibold text-primary-600 hover:text-primary-800">
-        Điều chỉnh
+        {linkLabel}
       </Link>
     </div>
+    {hint && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
   </Field>
 );
 
@@ -1195,10 +1198,14 @@ const EmployeeEdit: React.FC = () => {
               changeHref={changeHref}
             />
 
+            {/* Phụ cấp = tổng 5 khoản phụ cấp cố định của cấu hình lương, tự đồng bộ — chỉ
+                sửa ở trang Cấu hình tính lương. */}
             <LockedField
               label="Phụ cấp (VNĐ)"
               value={formData.allowance ? `${formData.allowance} đ` : ''}
-              changeHref={changeHref}
+              changeHref={`/dashboard/salary-management/config?search=${encodeURIComponent(formData.employee_id)}`}
+              linkLabel="Cấu hình lương"
+              hint="Tổng các khoản phụ cấp cố định ở trang Cấu hình tính lương."
             />
 
             <SelectBox
