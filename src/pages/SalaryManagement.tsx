@@ -3063,14 +3063,20 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
                 />
               </div>
               <p className="text-xs text-gray-500">
-                Lương cơ bản và tổng 5 khoản phụ cấp trên (
+                Lương cơ bản và tổng phụ cấp cố định theo tháng (
                 <strong>
                   {formatCurrency(
                     config.allowances.transport + config.allowances.phone + config.allowances.housing
-                    + config.allowances.hazardous + config.allowances.other,
+                    + config.allowances.hazardous + config.allowances.other
+                    + (config.lunchAllowancePolicy.mode === 'fixed'
+                      ? Math.min(config.lunchAllowancePolicy.fixed_amount, config.lunchAllowancePolicy.monthly_cap)
+                      : 0)
+                    + (config.parkingAllowancePolicy.mode === 'monthly' ? config.parkingAllowancePolicy.monthly_rate : 0)
+                    + (config.responsibilityAllowancePolicy.mode === 'fixed' ? config.responsibilityAllowancePolicy.monthly_max : 0),
                   )}
                 </strong>
-                ) tự cập nhật sang hồ sơ nhân viên khi mốc có hiệu lực.
+                : 5 khoản trên + ăn trưa / gửi xe / trách nhiệm nếu chọn cố định theo tháng, ăn trưa chỉ tính khi phòng
+                ban được hưởng) tự cập nhật sang hồ sơ nhân viên khi mốc có hiệu lực; hồ sơ hiện chi tiết từng khoản.
               </p>
 
               {/* Phụ cấp ăn trưa */}

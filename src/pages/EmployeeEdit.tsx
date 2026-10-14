@@ -1205,7 +1205,7 @@ const EmployeeEdit: React.FC = () => {
               value={formData.allowance ? `${formData.allowance} đ` : ''}
               changeHref={`/dashboard/salary-management/config?search=${encodeURIComponent(formData.employee_id)}`}
               linkLabel="Cấu hình lương"
-              hint="Tổng các khoản phụ cấp cố định ở trang Cấu hình tính lương."
+              hint="Tổng các khoản phụ cấp cố định theo tháng (chi tiết ở trang hồ sơ), sửa ở trang Cấu hình tính lương."
             />
 
             <SelectBox
