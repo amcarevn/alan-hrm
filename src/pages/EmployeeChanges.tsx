@@ -146,7 +146,6 @@ const CreateChangeModal: React.FC<CreateModalProps> = ({
   const [newDepartment, setNewDepartment] = useState<number | ''>('');
   const [newPosition, setNewPosition] = useState<number | ''>('');
   const [basicSalary, setBasicSalary] = useState('');
-  const [allowance, setAllowance] = useState('');
   const [insuranceSalary, setInsuranceSalary] = useState('');
   const [effectiveDate, setEffectiveDate] = useState(todayISO());
   const [note, setNote] = useState('');
@@ -176,7 +175,6 @@ const CreateChangeModal: React.FC<CreateModalProps> = ({
         if (cancelled) return;
         setCurrent(data);
         setBasicSalary(moneyInputValue(data.basic_salary));
-        setAllowance(moneyInputValue(data.allowance));
         setInsuranceSalary(moneyInputValue(data.insurance_salary));
       })
       .catch((err) => !cancelled && setError(apiErrorMessage(err, 'Không tải được thông tin hiện tại của nhân viên.')))
@@ -201,10 +199,9 @@ const CreateChangeModal: React.FC<CreateModalProps> = ({
     } else {
       const same = (text: string, now: string | null) => parseMoney(text) === (now === null ? null : Math.round(Number(now)));
       if (basicSalary !== '' && !same(basicSalary, current.basic_salary)) payload.basic_salary = parseMoney(basicSalary) ?? 0;
-      if (allowance !== '' && !same(allowance, current.allowance)) payload.allowance = parseMoney(allowance) ?? 0;
       if (insuranceSalary !== '' && !same(insuranceSalary, current.insurance_salary)) payload.insurance_salary = parseMoney(insuranceSalary) ?? 0;
-      if (payload.basic_salary === undefined && payload.allowance === undefined && payload.insurance_salary === undefined) {
-        return 'Nhập lương, phụ cấp hoặc lương bảo hiểm mới khác với hiện tại.';
+      if (payload.basic_salary === undefined && payload.insurance_salary === undefined) {
+        return 'Nhập lương hoặc lương bảo hiểm mới khác với hiện tại.';
       }
     }
     return payload;
@@ -348,10 +345,23 @@ const CreateChangeModal: React.FC<CreateModalProps> = ({
           {current && changeType === 'SALARY' && (
             <div className="space-y-3">
               {moneyField('Lương', current.basic_salary, basicSalary, setBasicSalary)}
-              {moneyField('Phụ cấp', current.allowance, allowance, setAllowance)}
+              {/* Phụ cấp chỉ sửa ở trang Cấu hình tính lương (từng khoản); hồ sơ tự cập nhật
+                  theo tổng — backend cũng chặn. */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">Phụ cấp hiện tại</label>
+                <div className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                  <span>{formatMoney(current.allowance)}</span>
+                  <Link
+                    to="/dashboard/salary-management/config"
+                    className="shrink-0 text-xs font-semibold text-primary-600 hover:text-primary-800"
+                  >
+                    Sửa ở Cấu hình lương
+                  </Link>
+                </div>
+              </div>
               {moneyField('Lương bảo hiểm', current.insurance_salary, insuranceSalary, setInsuranceSalary)}
               <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                Bảng lương tính theo tháng: lương và phụ cấp mới được tính từ kỳ lương <strong>tháng {effectiveMonth}</strong>.
+                Bảng lương tính theo tháng: lương mới được tính từ kỳ lương <strong>tháng {effectiveMonth}</strong>.
                 Lương bảo hiểm đổi kể từ ngày áp dụng.
               </p>
             </div>

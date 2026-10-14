@@ -159,6 +159,43 @@ const InfoField: React.FC<{ label: string; value?: any; highlight?: boolean; ful
   );
 };
 
+// Chi tiết tất cả phụ cấp theo mốc cấu hình lương đang hiệu lực (Alan 2026-10-14) —
+// backend: GET /api-hrm/employees/<id>/allowance-breakdown/ (salary/allowance_breakdown.py).
+type AllowanceItem = { key: string; label: string; amount: string | null; note: string; in_total: boolean };
+type AllowanceBreakdown = { config: number | null; total: string | null; effective_from?: string; items: AllowanceItem[] };
+
+const formatVnd = (v: string | number) => `${Number(v).toLocaleString('vi-VN')} đ`;
+
+const AllowanceBreakdownField: React.FC<{ breakdown: AllowanceBreakdown | null; fallback: any }> = ({ breakdown, fallback }) => {
+  if (!breakdown || breakdown.config == null) {
+    return <InfoField label="Phụ cấp" value={fallback != null ? formatVnd(fallback) : null} full />;
+  }
+  return (
+    <div className="col-span-2">
+      <label className="text-sm font-semibold text-gray-700">
+        Phụ cấp <span className="font-normal text-gray-500">(tổng cố định/tháng)</span>
+      </label>
+      <p className="text-base mt-0.5 font-semibold text-black">{formatVnd(breakdown.total ?? 0)}</p>
+      <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 text-sm">
+        {breakdown.items.map((item) => (
+          <li key={item.key} className="flex items-start justify-between gap-3 border-b border-dashed border-gray-100 py-1.5">
+            <span className="text-gray-600">{item.label}</span>
+            <span className="text-right">
+              <span className={item.amount != null && Number(item.amount) > 0 ? 'font-medium text-gray-900' : 'text-gray-400'}>
+                {item.amount != null ? formatVnd(item.amount) : 'Theo công'}
+              </span>
+              {item.note && <span className="block text-xs text-gray-400">{item.note}</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-1.5 text-xs text-gray-400">
+        Tổng chỉ gồm các khoản cố định theo tháng; khoản theo ngày công tính khi chốt lương. Sửa ở trang Cấu hình tính lương.
+      </p>
+    </div>
+  );
+};
+
 // ============================================
 // MAIN COMPONENT
 // ============================================
@@ -186,6 +223,19 @@ const EmployeeShow: React.FC = () => {
     userRole === 'ADMIN' || userRole === 'HR' || !!(user as any)?.is_super_admin;
 
   const [contractHistory, setContractHistory] = useState<ContractHistoryItem[]>([]);
+  // Chi tiết phụ cấp — chỉ BOD mới xem lương / phụ cấp.
+  const canSeeSalary = Boolean(
+    user?.employee_profile?.is_bod || user?.hrm_user?.is_bod || (user as any)?.is_bod
+  );
+  const [allowanceBreakdown, setAllowanceBreakdown] = useState<AllowanceBreakdown | null>(null);
+  useEffect(() => {
+    setAllowanceBreakdown(null);
+    if (!id || !canSeeSalary) return;
+    managementApi
+      .get(`/api-hrm/employees/${id}/allowance-breakdown/`)
+      .then((res) => setAllowanceBreakdown(res.data))
+      .catch(() => setAllowanceBreakdown(null));
+  }, [id, canSeeSalary, location.key]);
   const [deletingContractId, setDeletingContractId] = useState<number | null>(null);
   const [confirmDeleteContract, setConfirmDeleteContract] = useState<ContractHistoryItem | null>(null);
 
@@ -485,11 +535,9 @@ const EmployeeShow: React.FC = () => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             {isBodUser && (
-              <InfoField label="Lương cơ bản" value={emp.basic_salary != null ? `${Number(emp.basic_salary).toLocaleString('vi-VN')} đ` : null} highlight />
+              <InfoField label="Lương cơ bản" value={emp.basic_salary != null ? `${Number(emp.basic_salary).toLocaleString('vi-VN')} đ` : null} highlight full />
             )}
-            {isBodUser && (
-              <InfoField label="Phụ cấp" value={emp.allowance != null ? `${Number(emp.allowance).toLocaleString('vi-VN')} đ` : null} />
-            )}
+            {isBodUser && <AllowanceBreakdownField breakdown={allowanceBreakdown} fallback={emp.allowance} />}
             <InfoField label="Tỷ lệ % doanh số hưởng" value={emp.revenue_percentage} />
             <InfoField label="Tỷ lệ % lợi nhuận hưởng" value={emp.profit_percentage} />
             <InfoField label="Loại hợp đồng" value={emp.contract_type ? (emp.contract_type_display || CONTRACT_TYPE_LABELS[emp.contract_type] || emp.contract_type) : null} full />
