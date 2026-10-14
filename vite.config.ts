@@ -16,6 +16,14 @@ export default defineConfig({
         target: TARGET_API_URL,
         changeOrigin: true,
       },
+      // Bản sao của Pages Function `functions/_api/[[path]].js` cho lúc chạy local:
+      // production đi qua Function, còn `npm run dev` thì vite đứng ra chuyển tiếp.
+      // Thiếu cái này thì local gọi /_api vào hư không.
+      '/_api': {
+        target: process.env.VITE_HRM_API_URL || 'https://alan-hrm.amcare.vn',
+        changeOrigin: true,
+        rewrite: (duongDan) => duongDan.replace(/^\/_api/, ''),
+      },
     },
   },
   css: {
