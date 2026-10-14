@@ -1,7 +1,18 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 
-export const API_BASE_URL = 'https://alan-hrm.amcare.vn';
+// Gọi API qua chính domain của frontend: `/_api/...` được Pages Function ở
+// `functions/_api/[[path]].js` chuyển tiếp về backend. Cùng origin nên không còn
+// gọi chéo domain, và người dùng không nhìn thấy tên miền backend.
+//
+// Để trống phần origin (đường dẫn tương đối) chứ không ghi cứng
+// `https://hr.elani.com.vn/_api`: như vậy bản preview của Pages và môi trường
+// local đều tự trỏ về chính nó, không vô tình đâm vào production.
+//
+// Backend cũ vẫn sống ở https://alan-hrm.amcare.vn — muốn quay lại thì đổi dòng
+// dưới về đúng tên miền đó, không cần gỡ Pages Function.
+export const API_BASE_URL = '/_api';
+//export const API_BASE_URL = 'https://alan-hrm.amcare.vn';
 //export const API_BASE_URL = 'https://app-uat.amcare.vn';
 //export const API_BASE_URL = 'http://localhost:8000';
 // Create axios instance for Management API
