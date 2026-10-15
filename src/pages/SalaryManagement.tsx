@@ -3706,6 +3706,15 @@ const PAYROLL_EXCEL_COLUMNS = [
       { header: 'BHYT', key: 'bhyt', width: 12, style: MONEY_FMT },
       { header: 'BHTN', key: 'bhtn', width: 12, style: MONEY_FMT },
       { header: 'Tổng BH', key: 'tong_bh', width: 12, style: MONEY_FMT },
+      // Phần doanh nghiệp trích nộp. KHÔNG trừ vào lương nhân viên — để HCNS đối
+      // chiếu với bảng kê nộp cơ quan BHXH, nên không vào cột tổng giảm trừ nào.
+      // Ba cấu phần để trống khi tỷ lệ gộp lệch chuẩn (vd hồ sơ truy thu BHYT ghi
+      // 4,5%/0%): backend trả null thay vì đoán, thà trống còn hơn bịa số.
+      { header: 'DN: BHXH (17,5%)', key: 'bh_dn_bhxh', width: 16, style: MONEY_FMT },
+      { header: 'DN: BHYT (3%)', key: 'bh_dn_bhyt', width: 14, style: MONEY_FMT },
+      { header: 'DN: BHTN (1%)', key: 'bh_dn_bhtn', width: 14, style: MONEY_FMT },
+      { header: 'DN trích nộp (21,5%)', key: 'bh_dn_cong', width: 18, style: MONEY_FMT },
+      { header: 'Tổng nộp cơ quan BH (32%)', key: 'bh_tong_nop', width: 22, style: MONEY_FMT },
       { header: 'Công đoàn', key: 'cong_doan', width: 12, style: MONEY_FMT },
       { header: 'Phạt đi muộn', key: 'tong_phat', width: 14, style: MONEY_FMT },
       { header: 'Phạt biên bản', key: 'tong_phat_bienban', width: 14, style: MONEY_FMT },
@@ -3737,6 +3746,22 @@ const PAYROLL_EXCEL_COLUMNS = [
 // Dựng dòng dữ liệu xuất Excel từ bảng lương một tháng. Tách khỏi useMemo để nút
 // "Xuất bảng lương tổng hợp" dùng lại được cho các tháng KHÁC tháng đang xem —
 // tháng khác không nằm trong state nên phải truyền dữ liệu vào từ ngoài.
+// Phần doanh nghiệp trích nộp BHXH, đọc thẳng số backend đã tính.
+// Không tự nhân lại ở frontend: hồ sơ BHXH chỉ lưu tỷ lệ GỘP mỗi bên, nên ba cấu
+// phần chỉ tách được khi tỷ lệ gộp đúng chuẩn. Backend trả `null` cho trường hợp
+// lệch chuẩn (dữ liệu thật có hồ sơ truy thu BHYT ghi 4,5% NLĐ / 0% DN) — giữ
+// nguyên null để ô Excel bỏ trống, thà trống còn hơn bịa một con số sai.
+const layBaoHiemDoanhNghiep = (record: SalaryRecord) => {
+  const r = record as unknown as Record<string, number | null | undefined>;
+  return {
+    bh_dn_bhxh: r.bh_dn_bhxh ?? null,
+    bh_dn_bhyt: r.bh_dn_bhyt ?? null,
+    bh_dn_bhtn: r.bh_dn_bhtn ?? null,
+    bh_dn_cong: Math.round(toNumber(r.bh_dn_cong)),
+    bh_tong_nop: Math.round(toNumber(r.bh_tong_nop)),
+  };
+};
+
 const buildPayrollDetailRows = (
   salaryRecords: SalaryRecord[],
   employees: Employee[],
@@ -3864,6 +3889,7 @@ const buildPayrollDetailRows = (
         bhyt: Math.round(bhyt),
         bhtn: Math.round(bhtn),
         tong_bh: Math.round(tongBH),
+        ...layBaoHiemDoanhNghiep(record),
         cong_doan: Math.round(congDoan),
         tong_phat: Math.round(tongPhat),
         tong_phat_bienban: Math.round(tongPhatBienBan),
@@ -4426,6 +4452,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           bhyt: Math.round(bhyt),
           bhtn: Math.round(bhtn),
           tong_bh: Math.round(tongBH),
+          ...layBaoHiemDoanhNghiep(record),
           cong_doan: Math.round(congDoan),
           tong_phat: Math.round(tongPhat),
           tong_phat_bienban: Math.round(tongPhatBienBan),
