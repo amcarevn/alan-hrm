@@ -3730,7 +3730,15 @@ const PAYROLL_EXCEL_COLUMNS = [
       // giảm trừ -> thu nhập tính thuế [21] -> số thuế.
       //
       // "Tổng lương phải trả" CỐ Ý không trừ bảo hiểm — chỉ trừ công đoàn và hai
-      // khoản phạt. Đây là số kế toán dùng, khác "Lương thực lĩnh (IX)".
+      // khoản phạt, rồi CỘNG Điều chỉnh (VIII). Đây là số kế toán dùng, khác
+      // "Lương thực lĩnh (IX)" ở chỗ không trừ bảo hiểm.
+      //
+      //     Tổng lương phải trả = Tổng thu nhập (VI) − công đoàn − phạt đi muộn
+      //                           − phạt biên bản + Điều chỉnh (VIII)
+      //
+      // Vế Điều chỉnh thêm theo yêu cầu kế toán 16/10/2026: thiếu nó thì người bị
+      // truy thu vẫn hiện nguyên lương chưa trừ, người được truy tăng thì thiếu
+      // phần được cộng — lệch đúng bằng số truy thu/truy tăng của kỳ.
       { header: 'Tổng lương phải trả', key: 'tong_luong_phai_tra', width: 20, style: MONEY_FMT },
       { header: 'Tổng thu nhập chịu thuế', key: 'tong_thu_nhap_chiu_thue', width: 22, style: MONEY_FMT },
       { header: 'Giảm trừ gia cảnh (bản thân)', key: 'giam_tru_ban_than', width: 24, style: MONEY_FMT },
@@ -3859,7 +3867,7 @@ const buildPayrollDetailRows = (
         loai_hop_dong: contractInfo.loai,
         trang_thai_hop_dong: contractInfo.trangThai,
         ly_do_dieu_chinh: String((record as unknown as Record<string, unknown>)['ly_do_dieu_chinh'] ?? ''),
-        tong_luong_phai_tra: Math.round(tongThuNhapVI - congDoan - tongPhat - tongPhatBienBan),
+        tong_luong_phai_tra: Math.round(tongThuNhapVI - congDoan - tongPhat - tongPhatBienBan + dieuChinhVIII),
         tong_thu_nhap_chiu_thue: Math.round(payrollTax.grossIncomeForTax),
         giam_tru_ban_than: Math.round(payrollTax.taxDetail.personalDeduction),
         so_nguoi_phu_thuoc: payrollTax.dependentCount,
@@ -4274,7 +4282,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         dieu_chinh: formula('dieu_chinh',
           `${colNumberOf('truy_tang')}-${colNumberOf('truy_thu')}`),
         tong_luong_phai_tra: formula('tong_luong_phai_tra',
-          `${colNumberOf('tong_thu_nhap_vi')}-${colNumberOf('cong_doan')}-${colNumberOf('tong_phat')}-${colNumberOf('tong_phat_bienban')}`),
+          `${colNumberOf('tong_thu_nhap_vi')}-${colNumberOf('cong_doan')}-${colNumberOf('tong_phat')}-${colNumberOf('tong_phat_bienban')}+${colNumberOf('dieu_chinh')}`),
         // Phải cộng cả Điều chỉnh (truy tăng − truy thu) — đúng như công thức phiếu
         // lương: luongThucLinh = tongThuNhapVI − tongGiamTruVII + dieuChinhVIII.
         // Thiếu vế này thì Excel tính lại lúc mở file và ghi đè số đúng bằng số sai.
@@ -4461,7 +4469,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
         truy_thu: Math.round(truyThu),
         dieu_chinh: Math.round(dieuChinhVIII),
         ly_do_dieu_chinh: lyDoDieuChinh,
-          tong_luong_phai_tra: Math.round(tongThuNhapVI - congDoan - tongPhat - tongPhatBienBan),
+          tong_luong_phai_tra: Math.round(tongThuNhapVI - congDoan - tongPhat - tongPhatBienBan + dieuChinhVIII),
           tong_thu_nhap_chiu_thue: Math.round(payrollTax.grossIncomeForTax),
           giam_tru_ban_than: Math.round(payrollTax.taxDetail.personalDeduction),
           so_nguoi_phu_thuoc: payrollTax.dependentCount,
@@ -4509,7 +4517,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           result: rowData.dieu_chinh,
         };
         dataRow.getCell('tong_luong_phai_tra').value = {
-          formula: `${cellRef('tong_thu_nhap_vi')}-${cellRef('cong_doan')}-${cellRef('tong_phat')}-${cellRef('tong_phat_bienban')}`,
+          formula: `${cellRef('tong_thu_nhap_vi')}-${cellRef('cong_doan')}-${cellRef('tong_phat')}-${cellRef('tong_phat_bienban')}+${cellRef('dieu_chinh')}`,
           result: rowData.tong_luong_phai_tra,
         };
         dataRow.getCell('luong_thuc_linh').value = {
