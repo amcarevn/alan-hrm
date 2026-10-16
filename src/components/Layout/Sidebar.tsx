@@ -491,6 +491,20 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
     if (item.bodOnly && !isBod) {
       return false;
     }
+    // `bodOnly` đã là cổng chặt nhất, qua được nó là đủ — KHÔNG đòi thêm vai trò
+    // ADMIN/HR ở bước 5 bên dưới.
+    //
+    // Trước đây đòi cả hai nên menu chặt hơn chính hệ thống: API bảng lương
+    // (`SalaryDepartmentView`) và route guard `requireBod` đều chỉ xét `is_bod`.
+    // Hệ quả là người chỉ có `is_bod` gõ thẳng URL thì vào xem được bình thường,
+    // nhưng không thấy link nào trong menu — tưởng chưa được cấp quyền.
+    //
+    // Ca thực tế: kế toán thuế cần đọc toàn bộ bảng lương. Cấp `is_bod` là đúng
+    // mức; nâng lên HR để hiện menu sẽ kèm theo quyền chốt lương và sửa chấm
+    // công, nhiều hơn hẳn thứ cần.
+    if (item.bodOnly) {
+      return true;
+    }
 
     // 1. Check if item requires a specific employee permission
     if (item.employeePermission && employeePermission?.[item.employeePermission as keyof typeof employeePermission]) {
