@@ -23,6 +23,14 @@ export default function ProtectedRoute({ children, allowedRoles, requireBod = fa
     return <Navigate to="/login" replace />;
   }
 
+  // Cờ BOD là thẩm quyền cho các route gác bằng `requireBod` — khớp với backend,
+  // nơi `SalaryDepartmentView` cũng chỉ xét `is_bod`.
+  const isBod = Boolean(
+    user?.employee_profile?.is_bod ||
+    user?.hrm_user?.is_bod ||
+    (user as any)?.is_bod
+  );
+
   // Always check staff access restrictions
   if (user) {
     const userRole = user.role ? user.role.toUpperCase() : '';
@@ -36,8 +44,17 @@ export default function ProtectedRoute({ children, allowedRoles, requireBod = fa
       null
     );
     
-    // Super admin can access everything
-    if (!isSuperAdmin && userRole === 'STAFF') {
+    // Super admin can access everything.
+    //
+    // `requireBod && isBod` cũng được miễn danh sách trắng dưới đây: route đó đã
+    // tự gác bằng cờ BOD ở cuối hàm, và backend cũng chỉ xét `is_bod`. Danh sách
+    // trắng này liệt kê cứng từng đường dẫn cho vai trò STAFF, không có nhóm
+    // salary-management — nên người được cấp `is_bod` mà vai trò vẫn là STAFF
+    // (vd kế toán thuế cần đọc bảng lương) sẽ bị đá về /home dù đã có quyền.
+    //
+    // Lỗi này nằm im lâu nay vì mọi người có `is_bod` trước đó đều là superuser,
+    // thoát ở nhánh `isSuperAdmin` ngay phía trên.
+    if (!isSuperAdmin && userRole === 'STAFF' && !(requireBod && isBod)) {
       // Staff can only access specific routes
       // These routes correspond to: Home, Me, Attendance, Organization Chart, Approvals
       // PLUS attendance upload for HCNS department staff
@@ -119,16 +136,8 @@ export default function ProtectedRoute({ children, allowedRoles, requireBod = fa
     }
   }
 
-  if (requireBod && user) {
-    const isBod = Boolean(
-      user.employee_profile?.is_bod ||
-      user.hrm_user?.is_bod ||
-      (user as any)?.is_bod
-    );
-
-    if (!isBod) {
-      return <Navigate to="/home" replace />;
-    }
+  if (requireBod && user && !isBod) {
+    return <Navigate to="/home" replace />;
   }
 
   return <>{children}</>;
