@@ -26,12 +26,15 @@ const STATUS_OPTIONS: SelectOption<string>[] = [
   { value: 'ACTIVE', label: 'Đang tham gia' },
   { value: 'RESIGNED', label: 'Nghỉ việc' },
   { value: 'SUSPENDED', label: 'Tạm dừng' },
+  { value: 'STOPPED', label: 'Dừng đóng' },
 ];
 
 const STATUS_FORM_OPTIONS: SelectOption<SocialInsuranceStatus>[] = [
   { value: 'ACTIVE', label: 'Đang tham gia' },
   { value: 'RESIGNED', label: 'Nghỉ việc' },
   { value: 'SUSPENDED', label: 'Tạm dừng' },
+  // HCNS tự cập nhật thủ công, không kéo theo logic nào
+  { value: 'STOPPED', label: 'Dừng đóng' },
 ];
 
 
@@ -41,6 +44,7 @@ const StatusBadge: React.FC<{ status: SocialInsuranceStatus; label: string }> = 
     ACTIVE:    'bg-emerald-100 text-emerald-700',
     RESIGNED:  'bg-red-100 text-red-700',
     SUSPENDED: 'bg-yellow-100 text-yellow-700',
+    STOPPED:   'bg-gray-200 text-gray-700',
   };
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[status]}`}>
@@ -671,7 +675,7 @@ const SocialInsuranceList: React.FC = () => {
   const [editItem, setEditItem]     = useState<SocialInsurance | null | undefined>(undefined);
   const [deleteItem, setDeleteItem] = useState<SocialInsurance | null>(null);
   const [deleting, setDeleting]     = useState(false);
-  const [stats, setStats]           = useState({ total: 0, ACTIVE: 0, RESIGNED: 0, SUSPENDED: 0 });
+  const [stats, setStats]           = useState({ total: 0, ACTIVE: 0, RESIGNED: 0, SUSPENDED: 0, STOPPED: 0 });
   const [showImport, setShowImport] = useState(false);
   const [exporting, setExporting]   = useState(false);
 
@@ -786,7 +790,7 @@ const SocialInsuranceList: React.FC = () => {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div
           className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-primary-500 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setStatusFilter('')}
@@ -814,6 +818,13 @@ const SocialInsuranceList: React.FC = () => {
         >
           <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Tạm dừng</p>
           <p className="text-2xl font-extrabold text-yellow-600 mt-1">{stats.SUSPENDED}</p>
+        </div>
+        <div
+          className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-gray-400 shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter('STOPPED')}
+        >
+          <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Dừng đóng</p>
+          <p className="text-2xl font-extrabold text-gray-600 mt-1">{stats.STOPPED ?? 0}</p>
         </div>
       </div>
 

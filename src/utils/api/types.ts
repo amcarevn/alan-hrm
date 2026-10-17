@@ -1063,7 +1063,7 @@ export interface CTVFilterEmployee {
 // ======================
 // BHXH
 // ======================
-export type SocialInsuranceStatus = 'ACTIVE' | 'RESIGNED' | 'SUSPENDED';
+export type SocialInsuranceStatus = 'ACTIVE' | 'RESIGNED' | 'SUSPENDED' | 'STOPPED';
 
 export interface SocialInsurance {
   id: number;
