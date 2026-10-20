@@ -1215,6 +1215,8 @@ interface ParsedSalaryConfigRow {
 
 interface SalaryConfigurationValues {
   effectiveDate: string;
+  /** Lương đổi từ đúng ngày hiệu lực chứ không phải từ đầu tháng */
+  apDungGiuaThang?: boolean;
   baseProfile: {
     jobTitle: string;
     level: string;
@@ -2169,6 +2171,9 @@ const buildConfigState = (
   return {
     ...base,
     effectiveDate: apiConfig.effective_from || base.effectiveDate,
+    apDungGiuaThang: Boolean(
+      (apiConfig as unknown as Record<string, unknown>).ap_dung_giua_thang,
+    ),
     baseSalary: {
       payType: apiConfig.pay_type ?? base.baseSalary.payType,
       amount: n(apiConfig.base_amount, base.baseSalary.amount),
@@ -2805,6 +2810,7 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
     const payload: EmployeeSalaryConfigPayload = {
       employee: employee.id,
       effective_from: config.effectiveDate,
+      ap_dung_giua_thang: Boolean(config.apDungGiuaThang),
 
       pay_type: config.baseSalary.payType,
       base_amount: config.baseSalary.amount,
@@ -2954,6 +2960,32 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
                 onChange={(event) => setConfig((prev) => ({ ...prev, effectiveDate: event.target.value }))}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
+              {/* Mặc định mốc lương luôn mở vào ngày 1 vì kỳ lương tính theo tháng.
+                  Ô này là ngoại lệ cho trường hợp lương đổi thật từ giữa kỳ. */}
+              <label className="mt-2 flex items-start gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={Boolean(config.apDungGiuaThang)}
+                  onChange={(event) =>
+                    setConfig((prev) => ({ ...prev, apDungGiuaThang: event.target.checked }))
+                  }
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span>
+                  Áp dụng từ giữa tháng
+                  <span className="block text-xs text-gray-500">
+                    Tháng có ngày hiệu lực sẽ tính lương cơ bản bình quân theo số công
+                    trước/sau ngày đó, khỏi phải bù tay bằng truy tăng. Không tick thì
+                    mốc được kéo về ngày 1 như cũ.
+                  </span>
+                </span>
+              </label>
+              {config.apDungGiuaThang && config.effectiveDate && (
+                <p className="mt-1 text-xs text-amber-700">
+                  Tháng {formatPeriodVN(config.effectiveDate)} sẽ chia theo mốc ngày{' '}
+                  {parseDate(config.effectiveDate).getDate()}.
+                </p>
+              )}
             </div>
             <SelectBox
               label="Loại trả lương"

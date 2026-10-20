@@ -172,6 +172,14 @@ export interface EmployeeSalaryConfigPayload extends Partial<EmployeeSalaryConfi
   close_previous_on?: string | null;
   is_active?: boolean;
   notes?: string;
+  /**
+   * Lương đổi từ ĐÚNG ngày `effective_from`, không phải từ đầu tháng.
+   *
+   * Mặc định backend kéo mọi mốc về ngày 1 (kỳ lương tính theo tháng). Bật cờ này thì
+   * giữ nguyên ngày, và tháng đó được tính lương cơ bản bình quân theo số công thực tế
+   * trước/sau mốc — khỏi phải bù tay bằng truy tăng.
+   */
+  ap_dung_giua_thang?: boolean;
 }
 
 /** 7 khoản phụ cấp có thể bật/tắt riêng cho từng tháng */
