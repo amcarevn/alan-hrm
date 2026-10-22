@@ -256,7 +256,6 @@ const FormModal: React.FC<{
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!form.employee.trim())          errs.employee        = 'Vui lòng chọn nhân viên';
-    if (!form.insurance_number?.trim()) errs.insurance_number = 'Vui lòng nhập mã số BHXH';
     if (!form.legal_entity?.trim())     errs.legal_entity    = 'Vui lòng chọn pháp nhân';
     if (!form.salary_base)              errs.salary_base     = 'Vui lòng nhập lương đóng BHXH';
     return errs;
@@ -285,7 +284,8 @@ const FormModal: React.FC<{
       const payload: SocialInsuranceCreateData = {
         ...form,
         insurance_book_number: form.insurance_book_number || undefined,
-        insurance_number: form.insurance_number || undefined,
+        // Không bắt buộc (có bạn chưa có mã BHXH). Khi sửa mà xoá trống thì gửi '' để xoá mã cũ.
+        insurance_number: form.insurance_number?.trim() || (initial ? '' : undefined),
         legal_entity: form.legal_entity || undefined,
         start_date: form.start_date || undefined,
         end_date: form.end_date || undefined,
@@ -374,7 +374,7 @@ const FormModal: React.FC<{
             )}
           </Field>
 
-          <Field label={<>Mã số BHXH <span className="text-red-500">*</span></>} error={fieldErrors.insurance_number}>
+          <Field label="Mã số BHXH" error={fieldErrors.insurance_number}>
             <input
               type="text"
               value={form.insurance_number}
