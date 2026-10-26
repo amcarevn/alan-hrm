@@ -185,10 +185,12 @@ const CreateChangeModal: React.FC<CreateModalProps> = ({
   const pendingSameType = current?.pending.find((p) => p.change_type === changeType) ?? null;
   const isFuture = effectiveDate > todayISO();
   const effectiveMonth = effectiveDate ? `${effectiveDate.slice(5, 7)}/${effectiveDate.slice(0, 4)}` : '';
+  const effectiveMidMonth = !!effectiveDate && effectiveDate.slice(8, 10) !== '01';
 
   const buildPayload = (): EmployeeChangeCreatePayload | string => {
     if (employeeId === '' || !current) return 'Vui lòng chọn nhân viên.';
     if (!effectiveDate) return 'Vui lòng chọn thời gian áp dụng.';
+    if (changeType === 'SALARY' && !note.trim()) return 'Vui lòng nhập lý do thay đổi lương.';
     const payload: EmployeeChangeCreatePayload = { employee: employeeId, change_type: changeType, effective_date: effectiveDate, note: note.trim() };
     if (changeType === 'ORG') {
       if (newDepartment !== '' && newDepartment !== current.department_id) payload.department_id = newDepartment;
@@ -361,8 +363,11 @@ const CreateChangeModal: React.FC<CreateModalProps> = ({
               </div>
               {moneyField('Lương bảo hiểm', current.insurance_salary, insuranceSalary, setInsuranceSalary)}
               <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                Bảng lương tính theo tháng: lương mới được tính từ kỳ lương <strong>tháng {effectiveMonth}</strong>.
-                Lương bảo hiểm đổi kể từ ngày áp dụng.
+                Lương mới được tính từ đúng ngày <strong>{effectiveDate ? formatDate(effectiveDate) : '…'}</strong>
+                {effectiveMidMonth && (
+                  <> — tháng {effectiveMonth} tính lương cơ bản bình quân theo số công trước/sau ngày này</>
+                )}
+                . Lương bảo hiểm đổi kể từ ngày áp dụng.
               </p>
             </div>
           )}
@@ -378,7 +383,9 @@ const CreateChangeModal: React.FC<CreateModalProps> = ({
               </p>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Ghi chú</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                {changeType === 'SALARY' ? 'Lý do thay đổi *' : 'Ghi chú'}
+              </label>
               <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Lý do điều chỉnh, số quyết định..." className={inputClass} />
             </div>
           </div>
