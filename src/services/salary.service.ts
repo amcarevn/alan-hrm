@@ -11,6 +11,17 @@ export interface SalaryFormulaConfig {
   salary_adjustments?: Record<string, unknown>;
 }
 
+/** Một đoạn lương khi lương đổi giữa tháng — tiền đã làm tròn, cộng lại khớp tổng. */
+export interface SalarySegment {
+  tu_ngay: string;
+  den_ngay: string;
+  muc_luong: number;
+  cong_thu_viec: number;
+  cong_chinh_thuc: number;
+  tien_thu_viec: number;
+  tien_chinh_thuc: number;
+}
+
 export interface SalaryRecord {
   employee_id: number;
   ma_nv: string;
@@ -28,6 +39,8 @@ export interface SalaryRecord {
   luong_ngay_cong_thu_viec?: number;
   luong_ngay_cong_chinh_thuc?: number;
   luong_ngay_cong?: number;
+  /** Chỉ có khi lương đổi giữa tháng: lương ngày công tách theo từng mức lương. */
+  luong_theo_moc?: SalarySegment[] | null;
   tang_ca: number;
   truc_toi: number;
   lam_them_gio: number;
