@@ -490,7 +490,24 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
 
   const fmt = (v: number) => v ? Math.round(v).toLocaleString('vi-VN') : '—';
 
-  const monthLabel = `Tháng ${String(record.month).padStart(2, '0')}.${record.year}`;
+  // Lương đổi giữa tháng: backend chỉ lưu MỘT mức bình quân (vd 11.951.220) — đúng tiền
+  // nhưng nhân viên không tự kiểm được. Có `luong_theo_moc` thì hiện từng mức và công
+  // thức từng đoạn; tiền từng đoạn đã làm tròn sẵn để cộng lại khớp đúng tổng.
+  const luongTheoMoc = (record.luong_theo_moc ?? []).filter((d) => d.cong_thu_viec + d.cong_chinh_thuc > 0);
+  const doiLuongGiuaThang = luongTheoMoc.length > 1;
+  const ngayThang = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+  const khoangNgay = (d: { tu_ngay: string; den_ngay: string }) => `${ngayThang(d.tu_ngay)} – ${ngayThang(d.den_ngay)}`;
+  const congThucDoan = (cong: number, muc: number, tyLe?: number) =>
+    `${cong} công × ${fmt(muc)} / ${stdDays}${tyLe ? ` × ${tyLe}%` : ''}`;
+  const dongCongThuc = (key: string, label: string, tien: number) => (
+    <tr key={key} className="bg-gray-50">
+      <td className="border border-gray-300 px-3 py-1" />
+      <td className="border border-gray-300 py-1 pl-7 pr-3 text-xs text-gray-500">{label}</td>
+      <td className="border border-gray-300 px-3 py-1 text-right text-xs text-gray-600">{fmt(tien)}</td>
+    </tr>
+  );
+
+  const monthLabel =`Tháng ${String(record.month).padStart(2, '0')}.${record.year}`;
 
   useEffect(() => {
     setStandardWorkDaysMode((employee as { standard_work_days_mode?: 'DEFAULT' | 'FULL_MONTH' } | undefined)?.standard_work_days_mode ?? record.standard_work_days_mode ?? 'DEFAULT');
@@ -521,6 +538,10 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
       '  THÔNG TIN CÔNG',
       '────────────────────────────────────────',
       `  Công chuẩn         : ${stdDays} công`,
+      ...(doiLuongGiuaThang
+        ? ['  Lương cơ bản       : thay đổi trong tháng',
+           ...luongTheoMoc.map((d) => `  └─ ${khoangNgay(d)}  : ${fmtN(d.muc_luong)} (${d.cong_thu_viec + d.cong_chinh_thuc} công)`)]
+        : []),
       `  Ngày công thực tế  : ${record.tong_cong}`,
       ...(hasProbationDays ? [`  Công TV / CT       : ${congThuViec} / ${congChinhThuc}`] : []),
       `  Giờ tăng ca        : ${record.so_gio_tang_ca ?? record.tang_ca ?? 0}`,
@@ -528,8 +549,19 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
       '  CÁC KHOẢN THU NHẬP',
       '────────────────────────────────────────',
       `  Lương ngày công    : ${fmtN(luongNgayCongThucTe)}`,
+      ...(doiLuongGiuaThang && !hasProbationDays
+        ? luongTheoMoc.map((d) => `     · ${congThucDoan(d.cong_chinh_thuc, d.muc_luong)} = ${fmtN(d.tien_chinh_thuc)}`)
+        : []),
       ...(hasProbationDays ? [`  └─ Lương công TV (${probationRatePercent}%) : ${fmtN(luongCongThuViec)}`] : []),
+      ...(hasProbationDays && doiLuongGiuaThang
+        ? luongTheoMoc.filter((d) => d.cong_thu_viec > 0)
+            .map((d) => `     · ${congThucDoan(d.cong_thu_viec, d.muc_luong, probationRatePercent)} = ${fmtN(d.tien_thu_viec)}`)
+        : []),
       ...(hasProbationDays ? [`  └─ Lương công CT    : ${fmtN(luongCongChinhThuc)}`] : []),
+      ...(hasProbationDays && doiLuongGiuaThang
+        ? luongTheoMoc.filter((d) => d.cong_chinh_thuc > 0)
+            .map((d) => `     · ${congThucDoan(d.cong_chinh_thuc, d.muc_luong)} = ${fmtN(d.tien_chinh_thuc)}`)
+        : []),
       ...(luongDoanhSo ? [`  Lương doanh số     : ${fmtN(luongDoanhSo)}`] : []),
       ...(luongTangCa ? [`  Lương tăng ca      : ${fmtN(luongTangCa)}`] : []),
       ...(luongTrucCa ? [`  Lương trực ca      : ${fmtN(luongTrucCa)}`] : []),
@@ -874,9 +906,25 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               </tr>
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">6</td>
-                <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương cơ bản</td>
-                <td className="border border-gray-300 px-3 py-2 text-right font-medium text-gray-800">{fmt(record.luong_co_ban)}</td>
+                <td className="border border-gray-300 px-3 py-2 text-gray-700">
+                  Lương cơ bản
+                  {doiLuongGiuaThang && <span className="block text-xs text-amber-700">Thay đổi trong tháng</span>}
+                </td>
+                <td className="border border-gray-300 px-3 py-2 text-right font-medium text-gray-800">
+                  {doiLuongGiuaThang
+                    ? luongTheoMoc.map((d) => fmt(d.muc_luong)).join(' → ')
+                    : fmt(record.luong_co_ban)}
+                </td>
               </tr>
+              {doiLuongGiuaThang && luongTheoMoc.map((d, i) => (
+                <tr key={`moc-${d.tu_ngay}`}>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">6{'abcdefgh'[i]}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-gray-700">
+                    Từ {khoangNgay(d)} ({d.cong_thu_viec + d.cong_chinh_thuc} công)
+                  </td>
+                  <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(d.muc_luong)}</td>
+                </tr>
+              ))}
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">7</td>
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Ngày công thực tế</td>
@@ -905,6 +953,8 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                 <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương ngày công thực tế</td>
                 <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(luongNgayCongThucTe)}</td>
               </tr>
+              {doiLuongGiuaThang && !hasProbationDays && luongTheoMoc.map((d) =>
+                dongCongThuc(`ct-${d.tu_ngay}`, congThucDoan(d.cong_chinh_thuc, d.muc_luong), d.tien_chinh_thuc))}
               {hasProbationDays && (
                 <>
                   <tr>
@@ -912,12 +962,25 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                     <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương công thử việc ({probationRatePercent}%)</td>
                     <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(luongCongThuViec)}</td>
                   </tr>
+                  {doiLuongGiuaThang && luongTheoMoc.filter((d) => d.cong_thu_viec > 0).map((d) =>
+                    dongCongThuc(`tv-${d.tu_ngay}`, congThucDoan(d.cong_thu_viec, d.muc_luong, probationRatePercent), d.tien_thu_viec))}
                   <tr>
                     <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">9b</td>
                     <td className="border border-gray-300 px-3 py-2 text-gray-700">Lương công chính thức</td>
                     <td className="border border-gray-300 px-3 py-2 text-right text-gray-800">{fmt(luongCongChinhThuc)}</td>
                   </tr>
+                  {doiLuongGiuaThang && luongTheoMoc.filter((d) => d.cong_chinh_thuc > 0).map((d) =>
+                    dongCongThuc(`ct-${d.tu_ngay}`, congThucDoan(d.cong_chinh_thuc, d.muc_luong), d.tien_chinh_thuc))}
                 </>
+              )}
+              {doiLuongGiuaThang && (
+                <tr>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-gray-400">*</td>
+                  <td className="border border-gray-300 px-3 py-2 text-xs text-gray-500" colSpan={2}>
+                    Ghi chú: Lương thay đổi từ ngày {luongTheoMoc.slice(1).map((d) => ngayThang(d.tu_ngay)).join(', ')} — công
+                    trước ngày đổi tính theo mức lương cũ, từ ngày đổi tính theo mức lương mới (lương 1 công = mức lương / {stdDays} công chuẩn).
+                  </td>
+                </tr>
               )}
               <tr>
                 <td className="border border-gray-300 px-3 py-2 text-center text-gray-500">10</td>
