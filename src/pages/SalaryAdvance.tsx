@@ -256,7 +256,7 @@ const SalaryAdvance: React.FC = () => {
       {/* Content */}
       {tab === 'mine' && <MineTab me={me} loadingMe={loadingMe} />}
       {tab === 'approvals' && showApprovalsTab && (
-        <ApprovalsTab isAdmin={isAdmin} lockState={lockState} />
+        <ApprovalsTab isAdmin={isAdmin} isManager={isManager} lockState={lockState} />
       )}
       {tab === 'approved' && showApprovedTab && <ApprovedTab isAdmin={isAdmin} />}
     </div>
@@ -695,8 +695,9 @@ const InfoStat: React.FC<{
 // ─── TAB 2: DUYỆT CẤP DƯỚI ─────────────────────────────────────────────────
 const ApprovalsTab: React.FC<{
   isAdmin: boolean;
+  isManager: boolean;
   lockState: SalaryAdvanceApprovalLockState | null;
-}> = ({ isAdmin, lockState }) => {
+}> = ({ isAdmin, isManager, lockState }) => {
   const [items, setItems] = useState<GenericRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -707,24 +708,36 @@ const ApprovalsTab: React.FC<{
   const [detailRequest, setDetailRequest] = useState<GenericRequest | null>(null);
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number } | null>(null);
 
-  // Admin: status PENDING_ADMIN, no owner filter
-  // Manager: status PENDING_MANAGER, owner=subordinates
-  const targetStatus: GenericRequestStatus = isAdmin ? 'PENDING_ADMIN' : 'PENDING_MANAGER';
+  // Người dùng có thể giữ CẢ HAI vai cùng lúc (HCNS/Admin đồng thời là quản lý
+  // trực tiếp của vài người). Trước đây chỗ này chọn MỘT TRONG HAI hàng đợi
+  // (isAdmin ? PENDING_ADMIN : PENDING_MANAGER) nên đơn của cấp dưới một Admin
+  // không bao giờ hiện với ai: chính Admin đó là quản lý trực tiếp nhưng chỉ
+  // thấy hàng đợi HCNS, còn người khác thì không có quyền — đơn kẹt vĩnh viễn ở
+  // PENDING_MANAGER (port từ Trung Anh 98bb757, Linh sửa 01/10/2026).
+  const queues: Array<{ status: GenericRequestStatus; owner?: 'subordinates' }> = [
+    ...(isManager ? [{ status: 'PENDING_MANAGER' as GenericRequestStatus, owner: 'subordinates' as const }] : []),
+    ...(isAdmin ? [{ status: 'PENDING_ADMIN' as GenericRequestStatus }] : []),
+  ];
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await genericRequestService.list({
-        owner: isAdmin ? undefined : 'subordinates',
-        request_type: 'SALARY_ADVANCE',
-        status: targetStatus,
-        page,
-        page_size: PAGE_SIZE,
-      });
-      setItems(res.results);
-      setTotalItems(res.count);
-      setTotalPages(Math.max(1, Math.ceil(res.count / PAGE_SIZE)));
+      const results = await Promise.all(queues.map((q) =>
+        genericRequestService.list({
+          owner: q.owner,
+          request_type: 'SALARY_ADVANCE',
+          status: q.status,
+          page,
+          page_size: PAGE_SIZE,
+        })
+      ));
+      // Bước QLTT lên trước: đó mới là việc chưa ai làm.
+      const merged = results.flatMap((r) => r.results);
+      const count = results.reduce((sum, r) => sum + r.count, 0);
+      setItems(merged);
+      setTotalItems(count);
+      setTotalPages(Math.max(1, Math.ceil(count / PAGE_SIZE)));
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.message || 'Không tải được danh sách');
     } finally {
@@ -735,14 +748,24 @@ const ApprovalsTab: React.FC<{
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, isAdmin]);
+  }, [page, isAdmin, isManager]);
+
+  /**
+   * Gọi ĐÚNG bước duyệt theo TRẠNG THÁI của đơn, không theo vai của người bấm.
+   * Trước đây dùng `isAdmin ? adminApprove : managerApprove` — khi danh sách
+   * gộp cả 2 hàng đợi, một Admin bấm duyệt đơn đang ở PENDING_MANAGER sẽ gọi
+   * nhầm adminApprove và nhảy cóc qua bước quản lý trực tiếp.
+   */
+  const approveByStage = (item: GenericRequest) =>
+    item.status === 'PENDING_MANAGER'
+      ? genericRequestService.managerApprove(item.id)
+      : genericRequestService.adminApprove(item.id);
 
   const handleApprove = async (item: GenericRequest) => {
     if (!window.confirm(`Duyệt đơn ${item.request_code} của ${item.employee_name}?`)) return;
     setActionId(item.id);
     try {
-      if (isAdmin) await genericRequestService.adminApprove(item.id);
-      else await genericRequestService.managerApprove(item.id);
+      await approveByStage(item);
       await fetchData();
     } catch (e: any) {
       alert(e?.response?.data?.error || e?.message || 'Duyệt thất bại');
@@ -762,14 +785,19 @@ const ApprovalsTab: React.FC<{
     setError(null);
 
     try {
-      // Fetch tất cả đơn pending (bỏ qua pagination client — dùng page_size lớn)
-      const all = await genericRequestService.list({
-        owner: isAdmin ? undefined : 'subordinates',
-        request_type: 'SALARY_ADVANCE',
-        status: targetStatus,
-        page: 1,
-        page_size: Math.max(totalItems, 500),
-      });
+      // Fetch tất cả đơn pending (bỏ qua pagination client — dùng page_size lớn).
+      // Lấy CẢ HAI hàng đợi giống fetchData, không thì "Duyệt tất cả" bỏ sót
+      // đúng nhóm đơn đang chờ chính mình duyệt ở bước quản lý trực tiếp.
+      const allPages = await Promise.all(queues.map((q) =>
+        genericRequestService.list({
+          owner: q.owner,
+          request_type: 'SALARY_ADVANCE',
+          status: q.status,
+          page: 1,
+          page_size: Math.max(totalItems, 500),
+        })
+      ));
+      const all = { results: allPages.flatMap((r) => r.results) };
 
       let success = 0;
       const failed: { id: number; code: string; error: string }[] = [];
@@ -779,8 +807,7 @@ const ApprovalsTab: React.FC<{
       for (let i = 0; i < all.results.length; i++) {
         const item = all.results[i];
         try {
-          if (isAdmin) await genericRequestService.adminApprove(item.id);
-          else await genericRequestService.managerApprove(item.id);
+          await approveByStage(item);
           success++;
         } catch (e: any) {
           failed.push({
@@ -832,7 +859,9 @@ const ApprovalsTab: React.FC<{
       )}
       <div className="flex justify-between items-center gap-3">
         <p className="text-sm text-gray-500">
-          {isAdmin
+          {isAdmin && isManager
+            ? 'Đơn chờ bạn duyệt — gồm cả bước quản lý trực tiếp (cấp dưới của bạn) lẫn bước HCNS duyệt cuối. Nhãn trên từng dòng cho biết đơn đang ở bước nào.'
+            : isAdmin
             ? 'Danh sách đơn chờ HCNS duyệt cuối (đã qua quản lý trực tiếp).'
             : 'Danh sách đơn chờ bạn duyệt (cấp 1).'}
         </p>
