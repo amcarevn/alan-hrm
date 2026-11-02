@@ -622,7 +622,7 @@ const EmployeeChanges: React.FC = () => {
                   <p className="text-xs text-gray-500">Áp dụng: <strong className="text-gray-800">{formatDate(r.effective_date)}</strong></p>
                   {r.note && <p className="text-xs italic text-gray-600">“{r.note}”</p>}
                   {r.apply_error && <p className="text-xs text-red-600">Lỗi khi áp dụng: {r.apply_error}</p>}
-                  <p className="text-xs text-gray-400">{r.source === 'AUTO' ? r.source_display : `Tạo bởi ${r.created_by_name || '—'}`} · {formatDateTime(r.created_at)}</p>
+                  <p className="text-xs text-gray-400">{r.source === 'AUTO' ? `${r.source_display} · ${r.created_by_name || '—'}` : `Tạo bởi ${r.created_by_name || '—'}`} · {formatDateTime(r.created_at)}</p>
                   {actions(r)}
                 </div>
               ))}
