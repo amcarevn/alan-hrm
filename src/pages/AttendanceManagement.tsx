@@ -276,6 +276,9 @@ const AttendanceManagement: React.FC = () => {
     return diffMinutes / 60;
   };
 
+  // Giờ tăng ca / làm thêm hiện tối đa 2 chữ số thập phân, bỏ số 0 thừa (3h57p = 3.95, không làm
+  // tròn thành 4.0 — backend lưu đúng 2 chữ số).
+  const formatHours = (hours: number) => String(Number(hours.toFixed(2)));
   const overtimeDuration = calculateOvertimeDuration();
   const extraHoursDuration = calculateExtraHoursDuration();
   const nightShiftDuration = calculateNightShiftDuration();
@@ -3880,7 +3883,7 @@ const AttendanceManagement: React.FC = () => {
                                       : 'text-primary-700'
                                       }`}
                                   >
-                                    {overtimeDuration.toFixed(1)} giờ
+                                    {formatHours(overtimeDuration)} giờ
                                   </span>
                                 </div>
 
@@ -4031,7 +4034,7 @@ const AttendanceManagement: React.FC = () => {
                                       : 'text-primary-700'
                                       }`}
                                   >
-                                    {extraHoursDuration.toFixed(1)} giờ
+                                    {formatHours(extraHoursDuration)} giờ
                                   </span>
                                 </div>
 
