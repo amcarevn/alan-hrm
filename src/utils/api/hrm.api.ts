@@ -16,6 +16,33 @@ import type {
 let mePromise: Promise<Employee> | null = null;
 
 // Employees API
+export interface BirthdayEmployee {
+  id: number;
+  employee_id: string;
+  full_name: string;
+  date_of_birth: string;
+  day: number;
+  /** Tuổi tròn trong năm đang xem. */
+  age: number;
+  department_name: string | null;
+  position_title: string | null;
+  employment_status: string;
+  avatar_url: string | null;
+}
+
+export interface BirthdayGroup {
+  company_unit: { id: number; code: string; name: string } | null;
+  count: number;
+  employees: BirthdayEmployee[];
+}
+
+export interface BirthdaysByMonthResponse {
+  year: number;
+  month: number;
+  total: number;
+  groups: BirthdayGroup[];
+}
+
 export const employeesAPI = {
   list: async (params?: {
     page?: number;
@@ -229,6 +256,15 @@ export const employeesAPI = {
     const response = await managementApi.get('/api-hrm/employees/birthdays_today/', { params });
     const data = response.data;
     return Array.isArray(data) ? data : (data?.results ?? []);
+  },
+
+  /** Sinh nhật nhân sự trong tháng, chia theo pháp nhân (chỉ Admin / HCNS). */
+  birthdaysByMonth: async (month: number, year: number): Promise<BirthdaysByMonthResponse> => {
+    const response: AxiosResponse<BirthdaysByMonthResponse> = await managementApi.get(
+      '/api-hrm/employees/birthdays-by-month/',
+      { params: { month, year } },
+    );
+    return response.data;
   },
 
   exportAll: async (): Promise<{

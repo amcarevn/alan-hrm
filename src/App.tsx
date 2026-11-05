@@ -103,6 +103,7 @@ import SalaryData from './pages/SalaryData';
 import OvertimeRatePage from './pages/OvertimeRateConfig';
 import SalaryBonusPrediction from './pages/SalaryBonusPrediction';
 import AttendanceRanking from './pages/AttendanceRanking';
+import EmployeeBirthdays from './pages/EmployeeBirthdays';
 import RecruitmentNeeds from './pages/recruitment/RecruitmentNeeds';
 import RecruitmentJobs from './pages/recruitment/RecruitmentJobs';
 import RecruitmentCandidates from './pages/recruitment/RecruitmentCandidates';
@@ -687,6 +688,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <AttendanceRanking />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/rewards/birthdays"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'HR']}>
+                <Layout>
+                  <EmployeeBirthdays />
                 </Layout>
               </ProtectedRoute>
             }
