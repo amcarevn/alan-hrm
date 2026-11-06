@@ -6774,6 +6774,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
                     <li>Chỉ cần điền các cột muốn cập nhật; cột bỏ trống giữ nguyên cấu hình cũ</li>
                     <li><strong>Mã nhân viên</strong> là bắt buộc; <strong>Ngày hiệu lực</strong> chỉ bắt buộc khi có đổi Lương cơ bản/Hệ số lương (ví dụ chỉ đổi công đoàn phí thì có thể để trống)</li>
                     <li>PC Gửi xe — Giá vé: nhập giá vé ngày (Vé ngày) hoặc giá vé tháng (Vé tháng)</li>
+                    <li><strong>Phí công đoàn</strong>: số trong file thay số đang đặt ở Cấu hình tính lương, áp từ tháng chưa chốt lương trở đi (tháng đã chốt giữ nguyên); ghi <strong>0</strong> để hệ thống tự tính 50.000/100.000 theo công thử việc/chính thức</li>
                   </ul>
                 </div>
               )}
