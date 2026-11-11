@@ -482,8 +482,10 @@ export const EmployeeOnboardingForm: React.FC = () => {
         if (val.length > 0 && val.length < 9) return `Còn thiếu ${9 - val.length} số`;
         return '';
       case 'social_insurance_number':
+        // Luật BHXH 2024 (từ 1/7/2025): mã số BHXH là số định danh cá nhân 12 số; mã cũ 10 số vẫn dùng.
         if (!/^\d*$/.test(val)) return 'Chỉ được nhập số';
-        if (val.length > 10) return 'Tối đa 10 chữ số';
+        if (val.length > 12) return 'Tối đa 12 chữ số';
+        if (val.length === 11) return 'Mã BHXH gồm 10 số (mã cũ) hoặc 12 số (số CCCD)';
         if (val.length > 0 && val.length < 10) return `Còn thiếu ${10 - val.length} số`;
         return '';
       case 'tax_code':
@@ -545,7 +547,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
       if (values.permanent_address.trim().length > 500) { showToast('error', 'Địa chỉ thường trú không quá 500 ký tự'); return false; }
       if (!values.current_address.trim()) { showToast('error', 'Vui lòng nhập địa chỉ hiện tại'); return false; }
       if (values.current_address.trim().length > 500) { showToast('error', 'Địa chỉ hiện tại không quá 500 ký tự'); return false; }
-      if (values.social_insurance_number.trim() && !/^\d{10}$/.test(values.social_insurance_number.trim())) { showToast('error', 'Mã BHXH phải có đúng 10 chữ số'); return false; }
+      if (values.social_insurance_number.trim() && !/^(\d{10}|\d{12})$/.test(values.social_insurance_number.trim())) { showToast('error', 'Mã BHXH phải có 10 chữ số (mã cũ) hoặc 12 chữ số (số CCCD)'); return false; }
       if (values.tax_code.trim() && !/^\d{10,13}$/.test(values.tax_code.trim())) { showToast('error', 'Mã số thuế phải có 10-13 chữ số'); return false; }
       if (!values.marital_status) { showToast('error', 'Vui lòng chọn tình trạng hôn nhân'); return false; }
     }
@@ -889,7 +891,7 @@ export const EmployeeOnboardingForm: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <TF label="Mã BHXH" value={values.social_insurance_number} onChange={handleChange('social_insurance_number')} placeholder="1234567890" error={getFieldError('social_insurance_number', values.social_insurance_number)} maxLength={10} />
+              <TF label="Mã BHXH" value={values.social_insurance_number} onChange={handleChange('social_insurance_number')} placeholder="10 hoặc 12 chữ số" error={getFieldError('social_insurance_number', values.social_insurance_number)} maxLength={12} />
               <p className="text-xs text-gray-500 mt-1">
                 (Tra cứu tại{' '}
                 <a href="https://baohiemxahoi.gov.vn/tracuu/Pages/tra-cuu-ho-gia-dinh.aspx" target="_blank" rel="noreferrer" className="text-blue-500 underline">
