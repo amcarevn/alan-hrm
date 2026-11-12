@@ -15,6 +15,7 @@ import genericRequestService, {
   GenericRequest,
   GenericRequestStatus,
   SalaryAdvanceApprovalLockState,
+  SalaryAdvanceConfig,
 } from '../services/genericRequest.service';
 import { approvalService } from '../services/approval.service';
 import salaryService, { AdvanceRecord } from '../services/salary.service';
@@ -24,16 +25,14 @@ import Pagination from '../components/Pagination';
 // ============================================================================
 // CONSTS
 // ============================================================================
-// TẠM THỜI COMMENT: bỏ trần tuyệt đối 5.000.000đ và giới hạn chỉ nhận đơn
-// ngày 1-3 hàng tháng theo yêu cầu Alan. Chỉ còn giữ rule tối đa 30% lương
-// cơ bản (MAX_RATIO). Bật lại bằng cách đổi 2 flag này về true.
-const ENABLE_MAX_AMOUNT_CAP = false;
-const ENABLE_WINDOW_RESTRICTION = false;
-const WINDOW_DAYS: number[] = [1, 2, 3];
-const MAX_AMOUNT = 5_000_000;
-const MAX_RATIO = 0.3; // Alan: tối đa 30% lương cơ bản (TA dùng 80%)
-const MAX_RATIO_PERCENT = Math.round(MAX_RATIO * 100);
+// Quy định tạm ứng lương Alan (tối đa % lương cơ bản, trần 5.000.000đ và khung ngày tạo đơn
+// đang bật hay tắt, khung duyệt) lấy từ backend GET /api-hrm/salary-advance/config/ — cùng
+// nguồn backend dùng để kiểm tra đơn, như Trung Anh. Web KHÔNG tự ghi số / cờ bật tắt nào;
+// bật lại trần 5 triệu hay khung ngày 1-3 chỉ cần đổi ở backend.
 const PAGE_SIZE = 20;
+
+/** Khung DUYỆT đơn theo backend, vd 'trong 3 ngày đầu tháng'. */
+const approvalWindowText = (c: SalaryAdvanceConfig | null) => c?.approval_window.text ?? 'theo quy định';
 
 const STATUS_LABELS: Record<GenericRequestStatus, string> = {
   DRAFT: 'Nháp',
@@ -144,6 +143,19 @@ const SalaryAdvance: React.FC = () => {
 
   const [lockState, setLockState] = useState<SalaryAdvanceApprovalLockState | null>(null);
   const [togglingLock, setTogglingLock] = useState(false);
+  // Quy định tạm ứng lấy từ backend /api-hrm/salary-advance/config/ — không tự đặt số ở web.
+  const [advanceConfig, setAdvanceConfig] = useState<SalaryAdvanceConfig | null>(null);
+  const [configError, setConfigError] = useState(false);
+  const approvalText = approvalWindowText(advanceConfig);
+
+  const fetchAdvanceConfig = async () => {
+    try {
+      setAdvanceConfig(await genericRequestService.getSalaryAdvanceConfig());
+      setConfigError(false);
+    } catch {
+      setConfigError(true);
+    }
+  };
 
   const fetchMe = async () => {
     setLoadingMe(true);
@@ -169,19 +181,21 @@ const SalaryAdvance: React.FC = () => {
   useEffect(() => {
     fetchMe();
     fetchLockState();
+    fetchAdvanceConfig();
   }, []);
 
   const handleToggleLock = async () => {
     if (!lockState) return;
     const nextLocked = !lockState.is_locked;
     const confirmMsg = nextLocked
-      ? 'Khoá lại rule duyệt tạm ứng lương? Quản lý trực tiếp/HCNS sẽ chỉ duyệt được trong 3 ngày đầu tháng.'
-      : 'Mở khoá duyệt tạm ứng lương? Quản lý trực tiếp/HCNS sẽ duyệt được bất kỳ lúc nào, không giới hạn 3 ngày đầu tháng.';
+      ? `Khoá lại rule duyệt tạm ứng lương? Quản lý trực tiếp/HCNS sẽ chỉ duyệt được ${approvalText}.`
+      : `Mở khoá duyệt tạm ứng lương? Quản lý trực tiếp/HCNS sẽ duyệt được bất kỳ lúc nào, không giới hạn ${approvalText}.`;
     if (!window.confirm(confirmMsg)) return;
     setTogglingLock(true);
     try {
       const data = await genericRequestService.setApprovalLock(nextLocked);
       setLockState(data);
+      fetchAdvanceConfig();
     } catch (e: any) {
       alert(e?.response?.data?.error || e?.message || 'Cập nhật thất bại');
     } finally {
@@ -199,9 +213,8 @@ const SalaryAdvance: React.FC = () => {
             Tạm ứng lương
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            {ENABLE_WINDOW_RESTRICTION
-              ? 'Đăng ký tạm ứng lương ngày 1-3 hàng tháng. Quản lý trực tiếp duyệt → HCNS duyệt cuối.'
-              : 'Quản lý trực tiếp duyệt → HCNS duyệt cuối.'}
+            {advanceConfig?.window.enabled && `Đăng ký tạm ứng lương ${advanceConfig.window.text} hàng tháng. `}
+            Quản lý trực tiếp duyệt → HCNS duyệt cuối.
           </p>
         </div>
         {isAdmin && lockState && (
@@ -211,7 +224,7 @@ const SalaryAdvance: React.FC = () => {
             disabled={togglingLock}
             title={
               lockState.is_locked
-                ? 'Đang khoá: chỉ duyệt được trong 3 ngày đầu tháng. Bấm để mở khoá.'
+                ? `Đang khoá: chỉ duyệt được ${approvalText}. Bấm để mở khoá.`
                 : 'Đang mở khoá: duyệt được bất kỳ lúc nào. Bấm để khoá lại.'
             }
             className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg shadow-sm ring-1 transition-all disabled:opacity-60 ${
@@ -228,7 +241,7 @@ const SalaryAdvance: React.FC = () => {
             {togglingLock
               ? 'Đang cập nhật...'
               : lockState.is_locked
-              ? 'Khoá duyệt (đúng khung 1-3)'
+              ? `Khoá duyệt (đúng khung ${approvalText})`
               : 'Đã mở khoá duyệt'}
           </button>
         )}
@@ -254,9 +267,11 @@ const SalaryAdvance: React.FC = () => {
       </div>
 
       {/* Content */}
-      {tab === 'mine' && <MineTab me={me} loadingMe={loadingMe} />}
+      {tab === 'mine' && (
+        <MineTab me={me} loadingMe={loadingMe} advanceConfig={advanceConfig} configError={configError} />
+      )}
       {tab === 'approvals' && showApprovalsTab && (
-        <ApprovalsTab isAdmin={isAdmin} isManager={isManager} lockState={lockState} />
+        <ApprovalsTab isAdmin={isAdmin} isManager={isManager} lockState={lockState} approvalText={approvalText} />
       )}
       {tab === 'approved' && showApprovedTab && <ApprovedTab isAdmin={isAdmin} />}
     </div>
@@ -302,10 +317,12 @@ const ReadOnlyField: React.FC<{ label: string; value: string; multiline?: boolea
 );
 
 // ─── TAB 1: ĐƠN CỦA TÔI ────────────────────────────────────────────────────
-const MineTab: React.FC<{ me: CurrentEmployee | null; loadingMe: boolean }> = ({
-  me,
-  loadingMe,
-}) => {
+const MineTab: React.FC<{
+  me: CurrentEmployee | null;
+  loadingMe: boolean;
+  advanceConfig: SalaryAdvanceConfig | null;
+  configError: boolean;
+}> = ({ me, loadingMe, advanceConfig, configError }) => {
   const [items, setItems] = useState<GenericRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -321,16 +338,26 @@ const MineTab: React.FC<{ me: CurrentEmployee | null; loadingMe: boolean }> = ({
   const [showSalary, setShowSalary] = useState(false);
 
   const today = useMemo(() => new Date(), []);
-  const isInWindow = ENABLE_WINDOW_RESTRICTION ? WINDOW_DAYS.includes(today.getDate()) : true;
+  // Khung tạo đơn theo backend (Alan đang tắt = nhận đơn mọi ngày). Chưa tải được cấu hình thì
+  // không cho tạo đơn (không đoán theo đồng hồ máy người dùng).
+  const windowEnabled = !!advanceConfig?.window.enabled;
+  const canCreate = !!advanceConfig?.can_create;
   const amountInWords = useMemo(() => amountToWords(Number(amount) || 0), [amount]);
 
   const departmentName = me?.department?.name || me?.department_name || '—';
   const managerName = me?.manager?.full_name || me?.manager_name || '—';
   const basicSalary = Number(me?.basic_salary || 0);
-  const maxByPercent = Math.floor(basicSalary * MAX_RATIO);
-  const effectiveCap = ENABLE_MAX_AMOUNT_CAP
-    ? Math.min(MAX_AMOUNT, maxByPercent > 0 ? maxByPercent : MAX_AMOUNT)
-    : (maxByPercent > 0 ? maxByPercent : null);
+  // Mức tối đa theo backend; chưa tải được cấu hình thì không tự kiểm tra ở web (backend vẫn chặn).
+  const maxAmount = advanceConfig?.max_amount ?? null;
+  const ratioLabel = advanceConfig ? `${advanceConfig.max_ratio_percent}%` : null;
+  const maxByPercent = advanceConfig ? Math.floor(basicSalary * advanceConfig.max_ratio) : 0;
+  const effectiveCap =
+    maxAmount != null
+      ? Math.min(maxAmount, maxByPercent > 0 ? maxByPercent : maxAmount)
+      : (maxByPercent > 0 ? maxByPercent : null);
+  const conditionsText = advanceConfig
+    ? `Điều kiện: ${advanceConfig.conditions.slice(0, 3).join(', ').toLowerCase()}.`
+    : '';
 
   const fetchData = async () => {
     setLoading(true);
@@ -364,12 +391,12 @@ const MineTab: React.FC<{ me: CurrentEmployee | null; loadingMe: boolean }> = ({
       setFormError('Vui lòng nhập số tiền hợp lệ.');
       return;
     }
-    if (ENABLE_MAX_AMOUNT_CAP && amountNum > MAX_AMOUNT) {
-      setFormError(`Số tiền tối đa ${formatCurrency(MAX_AMOUNT)}.`);
+    if (maxAmount != null && amountNum > maxAmount) {
+      setFormError(`Số tiền tối đa ${formatCurrency(maxAmount)}.`);
       return;
     }
     if (maxByPercent > 0 && amountNum > maxByPercent) {
-      setFormError(`Không vượt quá ${MAX_RATIO_PERCENT}% lương cơ bản (${formatCurrency(maxByPercent)}).`);
+      setFormError(`Không vượt quá ${ratioLabel} lương cơ bản (${formatCurrency(maxByPercent)}).`);
       return;
     }
     setSubmitting(true);
@@ -425,22 +452,18 @@ const MineTab: React.FC<{ me: CurrentEmployee | null; loadingMe: boolean }> = ({
         <InfoStat label="Quản lý trực tiếp" value={managerName} />
         <MaskedSalaryStat
           label="Có thể ứng tối đa"
-          value={
-            effectiveCap != null
-              ? formatCurrency(effectiveCap)
-              : ENABLE_MAX_AMOUNT_CAP
-              ? formatCurrency(MAX_AMOUNT)
-              : '—'
-          }
+          value={effectiveCap != null ? formatCurrency(effectiveCap) : '—'}
           masked={!showSalary}
           onToggle={() => setShowSalary((v) => !v)}
           hint={
-            ENABLE_MAX_AMOUNT_CAP
+            !advanceConfig
+              ? undefined
+              : maxAmount != null
               ? basicSalary > 0
-                ? `≤ ${MAX_RATIO_PERCENT}% lương cơ bản và ≤ 5.000.000đ`
-                : '≤ 5.000.000đ'
+                ? `≤ ${ratioLabel} lương cơ bản và ≤ ${formatCurrency(maxAmount)}`
+                : `≤ ${formatCurrency(maxAmount)}`
               : basicSalary > 0
-              ? `≤ ${MAX_RATIO_PERCENT}% lương cơ bản`
+              ? `≤ ${ratioLabel} lương cơ bản`
               : 'Chưa xác định (thiếu lương cơ bản)'
           }
           highlight="emerald"
@@ -448,28 +471,32 @@ const MineTab: React.FC<{ me: CurrentEmployee | null; loadingMe: boolean }> = ({
       </div>
 
       {/* Banner window */}
-      {ENABLE_WINDOW_RESTRICTION ? (
+      {!advanceConfig ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 text-amber-800 p-4">
+          <p className="font-medium">
+            {configError
+              ? '⚠ Không tải được quy định tạm ứng lương — vui lòng tải lại trang.'
+              : 'Đang tải quy định tạm ứng lương...'}
+          </p>
+        </div>
+      ) : windowEnabled ? (
         <div
           className={`rounded-2xl border p-4 ${
-            isInWindow
+            canCreate
               ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
               : 'border-amber-200 bg-amber-50 text-amber-800'
           }`}
         >
           <p className="font-medium">
-            {isInWindow
+            {canCreate
               ? `✅ Hôm nay (ngày ${today.getDate()}) đang trong khoảng nhận đơn tạm ứng lương.`
-              : `⚠ Chỉ nhận đơn tạm ứng lương từ ngày 1 đến ngày 3 hàng tháng. Hôm nay là ngày ${today.getDate()}.`}
+              : `⚠ Chỉ nhận đơn tạm ứng lương ${advanceConfig.window.text} hàng tháng. Hôm nay là ngày ${today.getDate()}.`}
           </p>
-          <p className="text-sm mt-1 opacity-80">
-            Điều kiện: nhân viên chính thức, không có đơn xin nghỉ việc.
-          </p>
+          <p className="text-sm mt-1 opacity-80">{conditionsText}</p>
         </div>
       ) : (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-800 p-4">
-          <p className="text-sm opacity-80">
-            Điều kiện: nhân viên chính thức, không có đơn xin nghỉ việc.
-          </p>
+          <p className="text-sm opacity-80">{conditionsText}</p>
         </div>
       )}
 
@@ -490,7 +517,7 @@ const MineTab: React.FC<{ me: CurrentEmployee | null; loadingMe: boolean }> = ({
             setAmount('');
             setShowForm(true);
           }}
-          disabled={!isInWindow}
+          disabled={!canCreate}
           className="btn-primary flex items-center gap-2 disabled:bg-gray-300 disabled:hover:bg-gray-300 disabled:cursor-not-allowed"
         >
           <PlusIcon className="w-4 h-4" />
@@ -516,22 +543,24 @@ const MineTab: React.FC<{ me: CurrentEmployee | null; loadingMe: boolean }> = ({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Số tiền tạm ứng
-                  {ENABLE_MAX_AMOUNT_CAP && ` (không quá ${formatCurrency(MAX_AMOUNT)})`}{' '}
+                  {maxAmount != null && ` (không quá ${formatCurrency(maxAmount)})`}{' '}
                   <span className="text-rose-600">*</span>
                 </label>
                 <input
                   type="number"
                   min={0}
-                  max={ENABLE_MAX_AMOUNT_CAP ? MAX_AMOUNT : undefined}
+                  max={maxAmount ?? undefined}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="VD: 3000000"
                   className="input-field"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Không vượt quá {MAX_RATIO_PERCENT}% lương cơ bản
-                  {basicSalary > 0 && ` (${formatCurrency(maxByPercent)})`}.
-                </p>
+                {ratioLabel && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Không vượt quá {ratioLabel} lương cơ bản
+                    {basicSalary > 0 && ` (${formatCurrency(maxByPercent)})`}.
+                  </p>
+                )}
               </div>
               <ReadOnlyField
                 label="Số tiền (viết bằng chữ)"
@@ -697,7 +726,9 @@ const ApprovalsTab: React.FC<{
   isAdmin: boolean;
   isManager: boolean;
   lockState: SalaryAdvanceApprovalLockState | null;
-}> = ({ isAdmin, isManager, lockState }) => {
+  /** Khung duyệt theo backend, vd 'trong 3 ngày đầu tháng'. */
+  approvalText: string;
+}> = ({ isAdmin, isManager, lockState, approvalText }) => {
   const [items, setItems] = useState<GenericRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -853,7 +884,7 @@ const ApprovalsTab: React.FC<{
         <div className="rounded-2xl border border-amber-200 bg-amber-50 text-amber-800 p-3 text-sm flex items-center gap-2">
           <LockOpenIcon className="w-4 h-4 flex-shrink-0" />
           <span>
-            Admin đã <strong>mở khoá</strong> — có thể duyệt đơn tạm ứng lương bất kỳ ngày nào trong tháng, không giới hạn 3 ngày đầu tháng.
+            Admin đã <strong>mở khoá</strong> — có thể duyệt đơn tạm ứng lương bất kỳ ngày nào trong tháng, không giới hạn {approvalText}.
           </span>
         </div>
       )}

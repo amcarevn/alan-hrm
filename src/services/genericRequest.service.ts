@@ -77,6 +77,25 @@ export interface SalaryAdvanceApprovalLockState {
   updated_at: string | null;
 }
 
+/** GET /api-hrm/salary-advance/config/ — quy định tạm ứng lương lấy từ backend (cùng nguồn backend dùng để
+ * kiểm tra khi tạo / duyệt đơn; cùng đường dẫn và dạng dữ liệu với Trung Anh). Web không tự ghi số, cờ bật
+ * tắt hay khung ngày. Chỉ khai báo phần web dùng. */
+export type SalaryAdvanceConfig = {
+  /** Trần tuyệt đối (đ); null = đang tắt (Alan chỉ giới hạn theo % lương cơ bản). */
+  max_amount: number | null;
+  /** Tỷ lệ trên lương cơ bản (0.3 = 30%); không áp khi chưa có lương cơ bản. */
+  max_ratio: number;
+  max_ratio_percent: number;
+  /** Khung tạo đơn: enabled = false là nhận đơn mọi ngày; text = 'từ ngày 1 đến ngày 3'. */
+  window: { enabled: boolean; first_day: number; last_day: number; text: string; open: boolean };
+  /** Tạo được ngay lúc này — chưa xét điều kiện cá nhân. */
+  can_create: boolean;
+  /** Khung duyệt đơn: text = 'trong 3 ngày đầu tháng'. */
+  approval_window: { enabled: boolean; first_day: number; last_day: number; text: string; open: boolean };
+  /** Điều kiện để hiển thị. */
+  conditions: string[];
+};
+
 class GenericRequestService {
   private base = '/api-hrm/generic-requests/';
 
@@ -147,6 +166,12 @@ class GenericRequestService {
       responseType: 'blob',
     });
     return URL.createObjectURL(res.data);
+  }
+
+  /** Quy định tạm ứng lương (mức tối đa, khung ngày, điều kiện) theo backend. */
+  async getSalaryAdvanceConfig(): Promise<SalaryAdvanceConfig> {
+    const res = await managementApi.get('/api-hrm/salary-advance/config/');
+    return res.data;
   }
 
   async getApprovalLock(): Promise<SalaryAdvanceApprovalLockState> {
