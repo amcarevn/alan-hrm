@@ -4604,7 +4604,11 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({
           result: rowData.tong_bh,
         };
         dataRow.getCell('tong_giam_tru_vii').value = {
-          formula: `SUM(${cellRef('tong_bh')}:${cellRef('tong_phat_bienban')})`,
+          // Cộng TỪNG Ô, không dùng SUM(tong_bh:tong_phat_bienban): giữa hai cột này có
+          // 5 cột BH doanh nghiệp trích nộp (chèn ngày 15/10/2026), SUM theo vùng sẽ trừ
+          // luôn phần DN vào lương nhân viên — Excel tính lại lúc mở file làm "Còn phải
+          // thanh toán" hụt 75% mức đóng BH mỗi người (T10/2026: hụt 468,75 triệu).
+          formula: `${cellRef('tong_bh')}+${cellRef('cong_doan')}+${cellRef('tong_phat')}+${cellRef('tong_phat_bienban')}`,
           result: rowData.tong_giam_tru_vii,
         };
         dataRow.getCell('dieu_chinh').value = {
