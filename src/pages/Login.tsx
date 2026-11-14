@@ -129,8 +129,8 @@ export default function Login() {
         <motion.div custom={0} variants={fadeUp} className="mb-4">
           <div className="bg-white rounded-2xl px-5 py-3 shadow-2xl shadow-black/30">
             <img
-              src="/logo-alan.png"
-              alt="ALAN Beauty Medical Clinic"
+              src="/elani-logo-gold.png"
+              alt="ELANI Beauty Medical Clinic"
               className="h-16 w-auto max-w-[220px] object-contain"
             />
           </div>

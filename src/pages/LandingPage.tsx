@@ -98,7 +98,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <div className="bg-white rounded-xl px-3 py-1.5 shadow-md">
               <img
-                src="/logo-alan.png"
+                src="/elani-logo-gold.png"
                 alt="ELANI HRM"
                 className="h-7 w-auto max-w-[130px] object-contain"
               />
@@ -377,8 +377,8 @@ export default function LandingPage() {
             <div className="flex items-center gap-4">
               <div className="bg-white rounded-lg px-2.5 py-1">
                 <img
-                  src="/logo-alan.png"
-                  alt="Alan HRM"
+                  src="/elani-logo-gold.png"
+                  alt="Elani HRM"
                   className="h-6 w-auto max-w-[110px] object-contain"
                 />
               </div>
