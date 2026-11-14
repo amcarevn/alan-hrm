@@ -96,11 +96,11 @@ export default function LandingPage() {
       <header className="fixed top-0 inset-x-0 z-50 bg-primary-700/95 backdrop-blur-md border-b border-primary-600">
         <div className="mx-auto max-w-7xl px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-white rounded-xl px-3 py-1.5 shadow-md">
+            <div className="py-1">
               <img
-                src="/logo-alan.png"
+                src="/elani-logo-gold.png"
                 alt="ELANI HRM"
-                className="h-7 w-auto max-w-[130px] object-contain"
+                className="h-10 w-auto max-w-[130px] object-contain drop-shadow-sm"
               />
             </div>
             <span className="text-white/70 text-xs hidden sm:block">Hệ thống Quản lý Nhân sự</span>
@@ -375,11 +375,11 @@ export default function LandingPage() {
         <div className="border-t border-primary-600 bg-primary-800">
           <div className="mx-auto max-w-7xl px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="bg-white rounded-lg px-2.5 py-1">
+              <div className="py-0.5">
                 <img
-                  src="/logo-alan.png"
-                  alt="Alan HRM"
-                  className="h-6 w-auto max-w-[110px] object-contain"
+                  src="/elani-logo-gold.png"
+                  alt="Elani HRM"
+                  className="h-9 w-auto max-w-[110px] object-contain"
                 />
               </div>
               <span className="text-white/50 text-xs hidden sm:block">Hệ thống Quản lý Nhân sự</span>

@@ -273,7 +273,7 @@ export default function Header() {
                 ) : (
                   <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
                 )}
-                <span className="hidden sm:inline">App Alan</span>
+                <span className="hidden sm:inline">App Elani</span>
               </button>
 
             </div>
