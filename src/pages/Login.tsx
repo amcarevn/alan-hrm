@@ -127,11 +127,11 @@ export default function Login() {
       {/* ── LOGO + BRANDING ── */}
       <motion.div initial="hidden" animate="visible" className="relative z-10 flex flex-col items-center mb-10">
         <motion.div custom={0} variants={fadeUp} className="mb-4">
-          <div className="bg-white rounded-2xl px-5 py-3 shadow-2xl shadow-black/30">
+          <div className="px-5 py-3">
             <img
               src="/elani-logo-gold.png"
               alt="ELANI Beauty Medical Clinic"
-              className="h-16 w-auto max-w-[220px] object-contain"
+              className="h-20 w-auto max-w-[220px] object-contain drop-shadow-lg"
             />
           </div>
         </motion.div>

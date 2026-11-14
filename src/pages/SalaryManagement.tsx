@@ -647,8 +647,8 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
               <table style="border-collapse: collapse;" role="presentation">
                 <tr>
-                  <td style="width: 80px; vertical-align: middle; padding-right: 16px;">
-                    <img src="${logoUrl}" alt="ELANI BEAUTY MEDICAL CLINIC Logo" style="width: 80px;">
+                  <td style="width: 96px; vertical-align: middle; padding-right: 16px;">
+                    <table role="presentation" style="border-collapse: collapse;"><tr><td bgcolor="#730A40" style="background-color: #730A40; border-radius: 8px; padding: 8px 10px;"><img src="${logoUrl}" alt="ELANI BEAUTY MEDICAL CLINIC Logo" style="width: 76px; display: block;"></td></tr></table>
                   </td>
                   <td style="vertical-align: middle; color: #666; font-size: 13px; line-height: 1.5;">
                     <strong>Phòng HCNS - ELANI BEAUTY MEDICAL CLINIC</strong><br>
