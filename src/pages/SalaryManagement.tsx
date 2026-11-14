@@ -612,7 +612,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
     const defaultEmailBody = buildEmailBody();
 
     const buildEmailPreviewHtml = (subject: string, body: string) => {
-    const logoUrl = 'https://s3.cloudfly.vn/alan/hrm/alan-logo.jpg';
+    const logoUrl = 'https://hr.elani.com.vn/elani-logo-gold.png';
     const bannerUrl = 'https://s3.cloudfly.vn/alan/hrm/banner-email.jpg';
     const safeSubject = escapeHtml(subject);
     const safeBody = escapeHtml(body).replace(/\n/g, '<br>');
@@ -652,7 +652,7 @@ const PayslipDetailModal: React.FC<PayslipDetailModalProps> = ({ record, onClose
                   </td>
                   <td style="vertical-align: middle; color: #666; font-size: 13px; line-height: 1.5;">
                     <strong>Phòng HCNS - ELANI BEAUTY MEDICAL CLINIC</strong><br>
-                    Địa chỉ: Số 219 Trung Kính, Yên Hòa, Hà Nội<br>
+                    Địa chỉ: Số 167 Trung Kính, Yên Hòa, Hà Nội<br>
                     SĐT: 0936.004.735
                   </td>
                 </tr>
