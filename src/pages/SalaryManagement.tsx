@@ -2826,6 +2826,8 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
   const [unionFeeExempt, setUnionFeeExempt] = useState<boolean>(salaryConfig?.union_fee_exempt ?? false);
   // Payload chờ xác nhận: mở modal "kết thúc cấu hình cũ" trước khi thực sự lưu.
   const [pendingPayload, setPendingPayload] = useState<EmployeeSalaryConfigPayload | null>(null);
+  // Hộp xác nhận đang mở MỐC MỚI từ giữa tháng (POST tạo mốc) thay vì chuyển mốc theo tháng.
+  const [pendingMidMonth, setPendingMidMonth] = useState(false);
   const [newEffectiveFrom, setNewEffectiveFrom] = useState<string>('');
 
   useEffect(() => {
@@ -2913,9 +2915,34 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
       return;
     }
 
+    // Lương đổi thật từ giữa kỳ (tick "Áp dụng từ giữa tháng") và ngày chọn SAU ngày bắt đầu
+    // của mốc đang áp dụng => MỞ MỐC MỚI từ đúng ngày đó; mốc cũ giữ nguyên tới hôm trước, tháng
+    // đó backend tính lương cơ bản bình quân theo số công trước/sau mốc.
+    // Trước đây form chỉ so THÁNG: cùng tháng thì sửa đè mốc cũ (gửi lại ngày cũ), khác tháng thì
+    // kéo về ngày 1 — nên không đặt được "10tr từ 12/11" khi tháng 11 đã có mốc 8tr (NV00177
+    // Bạc Thị Dung, 16/11/2026).
+    const giuaThang = Boolean(config.apDungGiuaThang);
+    if (giuaThang && payload.effective_from > salaryConfig.effective_from) {
+      if (isFinalizedMonth(salaryConfig, payload.effective_from)) {
+        setValidationError(
+          `Bảng lương tháng ${formatPeriodVN(payload.effective_from)} đã chốt nên không đặt ngày `
+          + 'hiệu lực vào tháng đó được. Chọn một tháng chưa chốt lương.',
+        );
+        return;
+      }
+      setPendingMidMonth(true);
+      setNewEffectiveFrom(payload.effective_from);
+      setPendingPayload(payload);
+      return;
+    }
+
     // HR đổi tháng hiệu lực trên form = chủ động chuyển mốc, dù mốc hiện tại có sửa đè
-    // được hay không. So theo tháng vì mốc luôn mở vào ngày 1.
-    const movesMilestone = monthOf(payload.effective_from) !== monthOf(salaryConfig.effective_from);
+    // được hay không. So theo tháng vì mốc luôn mở vào ngày 1 — trừ mốc giữa tháng: so
+    // đúng ngày, và giữ nguyên ngày khi dời (không kéo về ngày 1).
+    const movesMilestone = giuaThang
+      ? payload.effective_from !== salaryConfig.effective_from
+      : monthOf(payload.effective_from) !== monthOf(salaryConfig.effective_from);
+    const movedFrom = giuaThang ? payload.effective_from : `${monthOf(payload.effective_from)}-01`;
 
     // Tháng đã chốt lương là ảnh chụp bất biến — đặt mốc vào đó sẽ tạo ra một cấu hình
     // chưa từng dùng để tính ra bảng lương ấy. Backend cũng chặn, ở đây chặn sớm để HR
@@ -2938,9 +2965,7 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
         employee.id,
         {
           ...payload,
-          effective_from: movesMilestone
-            ? `${monthOf(payload.effective_from)}-01`
-            : salaryConfig.effective_from,
+          effective_from: movesMilestone ? movedFrom : salaryConfig.effective_from,
         },
         salaryConfig.id,
       );
@@ -2959,9 +2984,10 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
     // tại — tháng đang chạy thường chưa chốt lương nhưng đã tính dở, đổi giữa chừng dễ
     // gây tranh cãi.
     const today = new Date().toISOString().slice(0, 10);
+    setPendingMidMonth(false);
     setNewEffectiveFrom(
       movesMilestone
-        ? `${monthOf(payload.effective_from)}-01`
+        ? movedFrom
         : maxDate(startOfNextMonth(today), startOfNextMonth(salaryConfig.effective_from)),
     );
     setPendingPayload(payload);
@@ -2984,12 +3010,24 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
       );
       return;
     }
+    if (pendingMidMonth && salaryConfig && newEffectiveFrom <= salaryConfig.effective_from) {
+      setValidationError(
+        `Ngày đổi lương phải sau ${formatDateVN(salaryConfig.effective_from)} (ngày bắt đầu của cấu hình đang áp dụng).`,
+      );
+      return;
+    }
     // Không gửi close_previous_on: backend tự đóng mốc cũ sát mốc mới.
     const payload: EmployeeSalaryConfigPayload = {
       ...pendingPayload,
       effective_from: newEffectiveFrom,
     };
     setPendingPayload(null);
+    if (pendingMidMonth) {
+      // Tạo MỐC MỚI (POST) từ đúng ngày đã chọn — PATCH vào mốc hiện tại sẽ chỉ dời/sửa đè mốc đó.
+      setPendingMidMonth(false);
+      await onSave(employee.id, { ...payload, ap_dung_giua_thang: true }, null);
+      return;
+    }
     // Vẫn PATCH vào mốc hiện tại: backend thấy mốc đã vướng kỳ chốt nên tự mở mốc mới.
     await onSave(employee.id, payload, salaryConfig?.id ?? null);
   };
@@ -3458,7 +3496,9 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
             <div className="px-5 py-4 border-b border-gray-200">
-              <h3 className="text-base font-semibold text-gray-900">Chuyển sang cấu hình mới</h3>
+              <h3 className="text-base font-semibold text-gray-900">
+                {pendingMidMonth ? 'Đổi lương từ giữa tháng' : 'Chuyển sang cấu hình mới'}
+              </h3>
               <p className="text-sm text-gray-500 mt-0.5">
                 Cấu hình cũ vẫn được giữ lại để tính đúng lương những tháng nó đã áp dụng.
               </p>
@@ -3481,6 +3521,28 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
                 )}
               </div>
 
+              {pendingMidMonth ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cấu hình mới áp dụng từ ngày
+                  </label>
+                  <input
+                    type="date"
+                    value={newEffectiveFrom}
+                    min={salaryConfig ? addDays(salaryConfig.effective_from, 1) : undefined}
+                    onChange={(event) => setNewEffectiveFrom(event.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  {!!newEffectiveFrom && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      Cấu hình cũ áp dụng tới {formatDateVN(addDays(newEffectiveFrom, -1))}, cấu hình mới
+                      áp dụng từ {formatDateVN(newEffectiveFrom)}. Tháng {formatPeriodVN(newEffectiveFrom)} tính
+                      lương cơ bản bình quân theo số công trước/sau ngày này.
+                    </p>
+                  )}
+                </div>
+              ) : (
+              <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Cấu hình mới áp dụng từ tháng
@@ -3503,6 +3565,8 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
                 Chỉ chọn tháng vì kỳ lương tính theo tháng — mốc cũ tự kết thúc sát ngày mốc mới bắt
                 đầu nên không có tháng nào thiếu cấu hình. Không chọn được tháng đã chốt lương.
               </p>
+              </>
+              )}
 
               <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm">
                 <p className="text-xs text-primary-700">Cấu hình mới</p>
@@ -3551,7 +3615,7 @@ const EditSalaryModal: React.FC<EditModalProps> = ({
             <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-200">
               <button
                 type="button"
-                onClick={() => { setValidationError(null); setPendingPayload(null); }}
+                onClick={() => { setValidationError(null); setPendingPayload(null); setPendingMidMonth(false); }}
                 disabled={saving}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >
