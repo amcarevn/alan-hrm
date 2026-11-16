@@ -177,16 +177,28 @@ export interface SalaryComparisonReport {
   };
 }
 
-/** 1 người trong 1 tháng (lương cao nhất / thấp nhất của kỳ). */
-export interface SalaryPersonMonth {
-  employee_id: number | null;
-  employee_code: string;
-  full_name: string;
-  department: string;
+/** Lương 1 tháng của 1 người. */
+export interface SalaryMonthAmount {
   year: number;
   month: number;
   label: string; // MM/YYYY
   amount: number;
+}
+
+/** Lương theo tháng của 1 nhân viên trong kỳ — HR chọn người để xem tháng cao nhất / thấp nhất. */
+export interface SalaryEmployeeStat {
+  employee_id: number | null;
+  employee_code: string;
+  full_name: string;
+  department: string;
+  /** Số tháng có lương trong kỳ (bỏ tháng 0 đ). */
+  month_count: number;
+  months: SalaryMonthAmount[];
+  highest: SalaryMonthAmount;
+  lowest: SalaryMonthAmount;
+  /** Bình quân / tháng = tổng ÷ số tháng có lương của người đó. */
+  average: number;
+  total: number;
 }
 
 /** GET /api/v1/salary/records/salary-statistics/ — backend salary/salary_statistics.py. */
@@ -214,8 +226,8 @@ export interface SalaryStatistics {
   average_salary: number | null;
   /** Tổng quỹ lương ÷ số dòng lương. */
   average_per_salary_line: number | null;
-  highest: SalaryPersonMonth | null;
-  lowest: SalaryPersonMonth | null;
+  /** Theo từng nhân viên (sắp theo tên). */
+  employees: SalaryEmployeeStat[];
   has_unfinalized_month: boolean;
 }
 
