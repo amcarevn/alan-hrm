@@ -3,18 +3,25 @@ import type { FormEvent, ReactNode } from 'react';
 import {
   ArrowPathIcon,
   ChartBarIcon,
+  ChevronDownIcon,
   ClockIcon,
   ExclamationCircleIcon,
   LockClosedIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { SelectBox } from './LandingLayout/SelectBox';
 import type { SelectOption } from './LandingLayout/SelectBox';
 import { apiErrorMessage, employeeChangeService } from '../services/employeeChange.service';
-import type { SalaryMetricKey, SalaryPersonMonth, SalaryStatistics } from '../services/employeeChange.service';
+import type {
+  SalaryEmployeeStat,
+  SalaryMetricKey,
+  SalaryMonthAmount,
+  SalaryStatistics,
+} from '../services/employeeChange.service';
 
 /**
- * Tab "Thống kê quỹ lương" của trang Biến động lương: tổng lao động hiện tại, lương cao nhất /
- * thấp nhất trong 1 tháng của 1 người trong kỳ, lương bình quân.
+ * Tab "Thống kê quỹ lương" của trang Biến động lương: tổng lao động hiện tại, tổng quỹ lương, lương
+ * bình quân, và lương theo từng nhân viên (HR chọn người để xem tháng cao nhất / thấp nhất của họ).
  *
  * Mọi con số (kể cả số tháng tối đa mỗi lần xem, danh sách chỉ số) do backend tính và trả —
  * salary/salary_statistics.py; web chỉ hiển thị.
@@ -69,21 +76,143 @@ function StatCard({ title, accent, children }: { title: string; accent: string; 
   );
 }
 
-function PersonMonth({ item }: { item: SalaryPersonMonth | null }) {
-  if (!item) return <p className="text-sm text-gray-400 mt-1">Chưa có dữ liệu</p>;
+const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
+/** Số dòng hiện cùng lúc — còn lại gõ mã / tên để lọc. */
+const EMPLOYEE_PAGE = 50;
+
+/** Một tháng lương trong chi tiết của 1 người: tô xanh tháng cao nhất, đỏ tháng thấp nhất. */
+function MonthChip({ item, kind }: { item: SalaryMonthAmount; kind: 'max' | 'min' | 'normal' }) {
+  const tone = kind === 'max'
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+    : kind === 'min'
+      ? 'border-red-200 bg-red-50 text-red-700'
+      : 'border-gray-200 bg-white text-gray-700';
   return (
-    <>
-      <p className="text-[15px] sm:text-xl font-extrabold text-gray-900 mt-1 break-words tabular-nums">
-        {fmtMoney(item.amount)}
+    <div className={`rounded-lg border px-2.5 py-1.5 ${tone}`}>
+      <p className="text-[11px] font-medium opacity-80">
+        T{item.label}
+        {kind === 'max' ? ' · cao nhất' : kind === 'min' ? ' · thấp nhất' : ''}
       </p>
-      <p className="text-xs text-gray-600 mt-0.5 break-words">
-        {item.full_name} <span className="text-gray-400">({item.employee_code})</span>
-      </p>
-      <p className="text-xs text-gray-400">
-        Tháng {item.label}
-        {item.department ? ` · ${item.department}` : ''}
-      </p>
-    </>
+      <p className="text-sm font-semibold tabular-nums">{fmtMoney(item.amount)}</p>
+    </div>
+  );
+}
+
+/**
+ * Lương theo từng nhân viên: HR tìm / chọn người để xem tháng lương cao nhất, thấp nhất và bình quân
+ * của CHÍNH người đó trong kỳ (không phải người cao nhất / thấp nhất toàn công ty). Bấm một dòng để
+ * xem lương từng tháng.
+ */
+function EmployeeSalaryStats({ employees }: { employees: SalaryEmployeeStat[] }) {
+  const [query, setQuery] = useState('');
+  const [openCode, setOpenCode] = useState<string | null>(null);
+  const q = norm(query);
+  const matched = q
+    ? employees.filter((e) => norm(e.employee_code).includes(q) || norm(e.full_name).includes(q))
+    : employees;
+  const shown = matched.slice(0, EMPLOYEE_PAGE);
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm min-w-0 overflow-hidden">
+      <div className="px-4 sm:px-5 pt-4 sm:pt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="text-sm font-bold text-gray-900">Lương theo từng nhân viên</h3>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Tháng lương cao nhất / thấp nhất và bình quân của từng người trong kỳ. Bấm vào một người để xem
+            lương từng tháng.
+          </p>
+        </div>
+        <div className="relative sm:w-72">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Mã hoặc tên nhân viên"
+            className="input-field pl-9"
+          />
+        </div>
+      </div>
+
+      {matched.length === 0 ? (
+        <p className="px-5 py-8 text-center text-sm text-gray-400">
+          {employees.length ? 'Không có nhân viên khớp.' : 'Kỳ này chưa có dữ liệu lương.'}
+        </p>
+      ) : (
+        <div className="mt-3 divide-y divide-gray-100">
+          {shown.map((e) => {
+            const open = openCode === e.employee_code;
+            return (
+              <div key={e.employee_code}>
+                <button
+                  type="button"
+                  onClick={() => setOpenCode(open ? null : e.employee_code)}
+                  className={`w-full text-left px-4 sm:px-5 py-3 hover:bg-gray-50 ${open ? 'bg-primary-50/40' : ''}`}
+                  aria-expanded={open}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900 break-words">
+                        {e.full_name} <span className="font-normal text-gray-400">({e.employee_code})</span>
+                      </p>
+                      <p className="text-xs text-gray-400 break-words">
+                        {e.department || '—'} · {e.month_count} tháng có lương
+                      </p>
+                    </div>
+                    <ChevronDownIcon
+                      className={`mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
+                    />
+                  </div>
+                  <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                    <div className="min-w-0">
+                      <p className="text-gray-400">Cao nhất</p>
+                      <p className="font-semibold text-emerald-700 tabular-nums break-words">{fmtMoney(e.highest.amount)}</p>
+                      <p className="text-gray-400">T{e.highest.label}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-gray-400">Thấp nhất</p>
+                      <p className="font-semibold text-red-600 tabular-nums break-words">{fmtMoney(e.lowest.amount)}</p>
+                      <p className="text-gray-400">T{e.lowest.label}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-gray-400">Bình quân / tháng</p>
+                      <p className="font-semibold text-gray-900 tabular-nums break-words">{fmtMoney(e.average)}</p>
+                    </div>
+                  </div>
+                </button>
+                {open && (
+                  <div className="px-4 sm:px-5 pb-4 bg-primary-50/40">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+                      {e.months.map((m) => (
+                        <MonthChip
+                          key={m.label}
+                          item={m}
+                          kind={
+                            e.month_count > 1 && m.label === e.highest.label
+                              ? 'max'
+                              : e.month_count > 1 && m.label === e.lowest.label
+                                ? 'min'
+                                : 'normal'
+                          }
+                        />
+                      ))}
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500">
+                      Tổng {fmtMoney(e.total)} ÷ {e.month_count} tháng có lương = {fmtMoney(e.average)} / tháng.
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {matched.length > shown.length && (
+        <p className="px-5 py-3 text-center text-xs text-gray-400 border-t border-gray-100">
+          Đang hiện {shown.length}/{matched.length} người — gõ mã hoặc tên để tìm người cần xem.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -255,7 +384,7 @@ export default function SalaryStatisticsPanel({ monthOptions, departmentOptions,
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <StatCard title="Tổng lao động hiện tại" accent="border-l-blue-500">
               <p className="text-[15px] sm:text-xl font-extrabold text-gray-900 mt-1">{data.headcount_current} người</p>
               <p className="text-xs text-gray-400 mt-0.5">
@@ -263,11 +392,13 @@ export default function SalaryStatisticsPanel({ monthOptions, departmentOptions,
                 {filtered ? ' · theo phòng ban / pháp nhân đã chọn' : ''}
               </p>
             </StatCard>
-            <StatCard title="Lương cao nhất / tháng" accent="border-l-emerald-500">
-              <PersonMonth item={data.highest} />
-            </StatCard>
-            <StatCard title="Lương thấp nhất / tháng" accent="border-l-red-500">
-              <PersonMonth item={data.lowest} />
+            <StatCard title="Tổng quỹ lương" accent="border-l-emerald-500">
+              <p className="text-[15px] sm:text-xl font-extrabold text-gray-900 mt-1 break-words tabular-nums">
+                {fmtMoney(data.total_payroll)}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {data.paid_month_count} tháng có lương · {data.employee_count} người
+              </p>
             </StatCard>
             <StatCard title="Lương bình quân" accent="border-l-primary-500">
               {data.average_salary === null ? (
@@ -292,6 +423,8 @@ export default function SalaryStatisticsPanel({ monthOptions, departmentOptions,
               )}
             </StatCard>
           </div>
+
+          <EmployeeSalaryStats employees={data.employees} />
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm min-w-0 overflow-hidden">
             <div className="px-4 sm:px-5 pt-4 sm:pt-5">
