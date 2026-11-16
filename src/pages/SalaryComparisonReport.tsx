@@ -15,6 +15,7 @@ import {
   ScaleIcon,
 } from '@heroicons/react/24/outline';
 import { SelectBox } from '../components/LandingLayout/SelectBox';
+import SalaryStatisticsPanel from '../components/SalaryStatisticsPanel';
 import type { SelectOption } from '../components/LandingLayout/SelectBox';
 import { salaryService } from '../services/salary.service';
 import { apiErrorMessage, employeeChangeService } from '../services/employeeChange.service';
@@ -35,6 +36,12 @@ interface Filters {
 }
 
 type Trend = 'up' | 'down' | 'same';
+type ReportTab = 'compare' | 'stats';
+
+const REPORT_TABS: Array<{ value: ReportTab; label: string }> = [
+  { value: 'compare', label: 'So sánh 2 tháng' },
+  { value: 'stats', label: 'Thống kê quỹ lương' },
+];
 type TrendFilter = 'all' | Trend;
 type SortValue = 'abs:desc' | 'diff:desc' | 'diff:asc' | 'name:asc' | 'name:desc' | 'code:asc' | 'code:desc';
 
@@ -336,6 +343,7 @@ function SortHeader({
 
 export default function SalaryComparisonReport() {
   const monthOptions = useMemo(buildMonthOptions, []);
+  const [tab, setTab] = useState<ReportTab>('compare');
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [applied, setApplied] = useState<Filters | null>(null);
   const [pending, setPending] = useState<Filters | null>(null);
@@ -556,9 +564,41 @@ export default function SalaryComparisonReport() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Báo cáo biến động lương</h1>
-        <p className="text-sm text-gray-500 mt-0.5">So sánh lương từng nhân viên giữa hai tháng.</p>
+        <p className="text-sm text-gray-500 mt-0.5">
+          So sánh lương từng nhân viên giữa hai tháng, và thống kê quỹ lương theo kỳ.
+        </p>
       </div>
 
+      {/* Tab */}
+      <div className="flex gap-1 border-b border-gray-200" role="tablist">
+        {REPORT_TABS.map((t) => {
+          const active = tab === t.value;
+          return (
+            <button
+              key={t.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(t.value)}
+              className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${
+                active ? 'border-primary-600 text-primary-700' : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === 'stats' ? (
+        <SalaryStatisticsPanel
+          monthOptions={monthOptions}
+          departmentOptions={departmentOptions}
+          legalEntityOptions={legalEntityOptions}
+          metricOptions={metricOptions}
+        />
+      ) : (
+      <>
       {/* Bộ lọc */}
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 items-start">
@@ -979,6 +1019,8 @@ export default function SalaryComparisonReport() {
           )}
         </>
       ) : null}
+      </>
+      )}
     </div>
   );
 }

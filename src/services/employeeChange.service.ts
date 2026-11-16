@@ -177,6 +177,56 @@ export interface SalaryComparisonReport {
   };
 }
 
+/** 1 người trong 1 tháng (lương cao nhất / thấp nhất của kỳ). */
+export interface SalaryPersonMonth {
+  employee_id: number | null;
+  employee_code: string;
+  full_name: string;
+  department: string;
+  year: number;
+  month: number;
+  label: string; // MM/YYYY
+  amount: number;
+}
+
+/** GET /api/v1/salary/records/salary-statistics/ — backend salary/salary_statistics.py. */
+export interface SalaryStatistics {
+  period: {
+    from: { year: number; month: number; label: string };
+    to: { year: number; month: number; label: string };
+    /** Số tháng tối đa mỗi lần xem (backend chặn). */
+    max_months: number;
+  };
+  metric: { key: SalaryMetricKey; label: string };
+  metrics: Array<{ key: SalaryMetricKey; label: string }>;
+  /** Nhân viên đang làm việc hôm nay (cùng định nghĩa Dashboard), theo phòng ban / pháp nhân đang lọc. */
+  headcount_current: number;
+  headcount_date: string; // YYYY-MM-DD
+  months: Array<{ year: number; month: number; label: string; is_finalized: boolean; employee_count: number; total: number }>;
+  /** Số tháng có lương trong kỳ. */
+  paid_month_count: number;
+  /** Số nhân viên (khác nhau) có lương trong kỳ. */
+  employee_count: number;
+  /** Số dòng lương (người × tháng) được tính. */
+  salary_line_count: number;
+  total_payroll: number;
+  /** Tổng quỹ lương ÷ số nhân viên ÷ số tháng; null khi kỳ không có lương. */
+  average_salary: number | null;
+  /** Tổng quỹ lương ÷ số dòng lương. */
+  average_per_salary_line: number | null;
+  highest: SalaryPersonMonth | null;
+  lowest: SalaryPersonMonth | null;
+  has_unfinalized_month: boolean;
+}
+
+export interface SalaryStatisticsParams {
+  month_from: string; // YYYY-MM
+  month_to: string; // YYYY-MM
+  metric?: SalaryMetricKey;
+  department?: number | '';
+  legal_entity?: string;
+}
+
 export interface SalaryComparisonParams {
   month_a: string; // YYYY-MM
   month_b: string; // YYYY-MM
@@ -222,6 +272,14 @@ export const employeeChangeService = {
   async salaryComparison(params: SalaryComparisonParams) {
     const res = await managementApi.get<SalaryComparisonReport>(
       '/api/v1/salary/records/comparison-report/', { params: clean(params) },
+    );
+    return res.data;
+  },
+
+  /** Thống kê quỹ lương theo kỳ: lao động hiện tại, lương cao nhất / thấp nhất / bình quân. */
+  async salaryStatistics(params: SalaryStatisticsParams) {
+    const res = await managementApi.get<SalaryStatistics>(
+      '/api/v1/salary/records/salary-statistics/', { params: clean(params) },
     );
     return res.data;
   },
