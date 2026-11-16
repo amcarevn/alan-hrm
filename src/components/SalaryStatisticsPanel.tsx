@@ -10,6 +10,7 @@ import {
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { SelectBox } from './LandingLayout/SelectBox';
+import Pagination from './Pagination';
 import type { SelectOption } from './LandingLayout/SelectBox';
 import { apiErrorMessage, employeeChangeService } from '../services/employeeChange.service';
 import type {
@@ -76,9 +77,9 @@ function StatCard({ title, accent, children }: { title: string; accent: string; 
   );
 }
 
-const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
-/** Số dòng hiện cùng lúc — còn lại gõ mã / tên để lọc. */
-const EMPLOYEE_PAGE = 50;
+const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
+/** Số dòng / trang mặc định — giống trang Quản lý nhân viên. */
+const DEFAULT_PAGE_SIZE = 20;
 
 /** Một tháng lương trong chi tiết của 1 người: tô xanh tháng cao nhất, đỏ tháng thấp nhất. */
 function MonthChip({ item, kind }: { item: SalaryMonthAmount; kind: 'max' | 'min' | 'normal' }) {
@@ -106,11 +107,19 @@ function MonthChip({ item, kind }: { item: SalaryMonthAmount; kind: 'max' | 'min
 function EmployeeSalaryStats({ employees }: { employees: SalaryEmployeeStat[] }) {
   const [query, setQuery] = useState('');
   const [openCode, setOpenCode] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_PAGE_SIZE);
+  // Kỳ / bộ lọc mới (danh sách đổi) thì về trang 1.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [employees]);
   const q = norm(query);
   const matched = q
     ? employees.filter((e) => norm(e.employee_code).includes(q) || norm(e.full_name).includes(q))
     : employees;
-  const shown = matched.slice(0, EMPLOYEE_PAGE);
+  const totalPages = Math.max(1, Math.ceil(matched.length / itemsPerPage));
+  const page = Math.min(currentPage, totalPages);
+  const shown = matched.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm min-w-0 overflow-hidden">
@@ -127,7 +136,10 @@ function EmployeeSalaryStats({ employees }: { employees: SalaryEmployeeStat[] })
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setCurrentPage(1);
+            }}
             placeholder="Mã hoặc tên nhân viên"
             className="input-field pl-9"
           />
@@ -207,10 +219,23 @@ function EmployeeSalaryStats({ employees }: { employees: SalaryEmployeeStat[] })
           })}
         </div>
       )}
-      {matched.length > shown.length && (
-        <p className="px-5 py-3 text-center text-xs text-gray-400 border-t border-gray-100">
-          Đang hiện {shown.length}/{matched.length} người — gõ mã hoặc tên để tìm người cần xem.
-        </p>
+      {matched.length > 0 && (
+        <div className="px-4 sm:px-5 py-4 border-t border-gray-100">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={matched.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={(next) => {
+              setCurrentPage(next);
+              setOpenCode(null);
+            }}
+            onItemsPerPageChange={(size) => {
+              setItemsPerPage(size);
+              setCurrentPage(1);
+            }}
+          />
+        </div>
       )}
     </div>
   );
