@@ -15,6 +15,7 @@ import type { SelectOption } from './LandingLayout/SelectBox';
 import { apiErrorMessage, employeeChangeService } from '../services/employeeChange.service';
 import type {
   SalaryEmployeeStat,
+  SalaryLegalEntityStat,
   SalaryMetricKey,
   SalaryMonthAmount,
   SalaryStatistics,
@@ -99,20 +100,94 @@ function MonthChip({ item, kind }: { item: SalaryMonthAmount; kind: 'max' | 'min
   );
 }
 
-/**
- * Lương theo từng nhân viên: HR tìm / chọn người để xem tháng lương cao nhất, thấp nhất và bình quân
- * của CHÍNH người đó trong kỳ (không phải người cao nhất / thấp nhất toàn công ty). Bấm một dòng để
- * xem lương từng tháng.
- */
-function EmployeeSalaryStats({ employees }: { employees: SalaryEmployeeStat[] }) {
-  const [query, setQuery] = useState('');
+/** Một người trong danh sách: dòng tóm tắt (cao nhất / thấp nhất / bình quân), bấm để xem từng tháng. */
+function EmployeeRow({ e, open, onToggle, alsoIn }: {
+  e: SalaryEmployeeStat;
+  open: boolean;
+  onToggle: () => void;
+  /** Pháp nhân khác cũng trả lương cho người này trong kỳ (chuyển pháp nhân giữa kỳ). */
+  alsoIn?: string[];
+}) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`w-full text-left px-4 sm:px-5 py-3 hover:bg-gray-50 ${open ? 'bg-primary-50/40' : ''}`}
+        aria-expanded={open}
+      >
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-gray-900 break-words">
+              {e.full_name} <span className="font-normal text-gray-400">({e.employee_code})</span>
+            </p>
+            <p className="text-xs text-gray-400 break-words">
+              {e.department || '—'} · {e.month_count} tháng có lương
+              {alsoIn && alsoIn.length > 0 && (
+                <span className="text-amber-700"> · cũng có lương ở {alsoIn.join(', ')}</span>
+              )}
+            </p>
+          </div>
+          <ChevronDownIcon
+            className={`mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          />
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+          <div className="min-w-0">
+            <p className="text-gray-400">Cao nhất</p>
+            <p className="font-semibold text-emerald-700 tabular-nums break-words">{fmtMoney(e.highest.amount)}</p>
+            <p className="text-gray-400">T{e.highest.label}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-gray-400">Thấp nhất</p>
+            <p className="font-semibold text-red-600 tabular-nums break-words">{fmtMoney(e.lowest.amount)}</p>
+            <p className="text-gray-400">T{e.lowest.label}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-gray-400">Bình quân / tháng</p>
+            <p className="font-semibold text-gray-900 tabular-nums break-words">{fmtMoney(e.average)}</p>
+          </div>
+        </div>
+      </button>
+      {open && (
+        <div className="px-4 sm:px-5 pb-4 bg-primary-50/40">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+            {e.months.map((m) => (
+              <MonthChip
+                key={m.label}
+                item={m}
+                kind={
+                  e.month_count > 1 && m.label === e.highest.label
+                    ? 'max'
+                    : e.month_count > 1 && m.label === e.lowest.label
+                      ? 'min'
+                      : 'normal'
+                }
+              />
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-gray-500">
+            Tổng {fmtMoney(e.total)} ÷ {e.month_count} tháng có lương = {fmtMoney(e.average)} / tháng.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Danh sách người (đã lọc theo ô tìm) + phân trang riêng — dùng cho từng pháp nhân. */
+function EmployeeList({ employees, query, otherEntities }: {
+  employees: SalaryEmployeeStat[];
+  query: string;
+  otherEntities?: (code: string) => string[];
+}) {
   const [openCode, setOpenCode] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_PAGE_SIZE);
-  // Kỳ / bộ lọc mới (danh sách đổi) thì về trang 1.
+  // Kỳ / bộ lọc / ô tìm đổi thì về trang 1.
   useEffect(() => {
     setCurrentPage(1);
-  }, [employees]);
+  }, [employees, query]);
   const q = norm(query);
   const matched = q
     ? employees.filter((e) => norm(e.employee_code).includes(q) || norm(e.full_name).includes(q))
@@ -120,15 +195,121 @@ function EmployeeSalaryStats({ employees }: { employees: SalaryEmployeeStat[] })
   const totalPages = Math.max(1, Math.ceil(matched.length / itemsPerPage));
   const page = Math.min(currentPage, totalPages);
   const shown = matched.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  if (matched.length === 0) {
+    return <p className="px-5 py-6 text-center text-sm text-gray-400">Không có nhân viên khớp.</p>;
+  }
+  return (
+    <>
+      <div className="divide-y divide-gray-100">
+        {shown.map((e) => (
+          <EmployeeRow
+            key={e.employee_code}
+            e={e}
+            open={openCode === e.employee_code}
+            onToggle={() => setOpenCode(openCode === e.employee_code ? null : e.employee_code)}
+            alsoIn={otherEntities?.(e.employee_code)}
+          />
+        ))}
+      </div>
+      <div className="px-4 sm:px-5 py-4 border-t border-gray-100">
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={matched.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={(next) => {
+            setCurrentPage(next);
+            setOpenCode(null);
+          }}
+          onItemsPerPageChange={(size) => {
+            setItemsPerPage(size);
+            setCurrentPage(1);
+          }}
+        />
+      </div>
+    </>
+  );
+}
+
+const entityLabel = (g: SalaryLegalEntityStat) => g.code || g.name;
+
+/** Một pháp nhân: tiêu đề (số người, tổng quỹ, bình quân) bấm để thu gọn + danh sách người của pháp nhân đó. */
+function LegalEntityGroup({ group, query, otherEntities }: {
+  group: SalaryLegalEntityStat;
+  query: string;
+  otherEntities: (code: string) => string[];
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+    <section className="border-t border-gray-100">
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-expanded={!collapsed}
+        className="w-full text-left px-4 sm:px-5 py-3 bg-gray-50 hover:bg-gray-100 border-b border-gray-100"
+      >
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-gray-900 break-words">
+              {group.code ? (
+                <>
+                  <span className="inline-flex items-center rounded-md bg-primary-100 text-primary-800 px-1.5 py-0.5 text-xs font-bold mr-1.5">
+                    {group.code}
+                  </span>
+                  {group.name !== group.code && <span className="font-semibold text-gray-700">{group.name}</span>}
+                </>
+              ) : (
+                group.name
+              )}
+            </p>
+            <p className="mt-1 text-xs text-gray-500 break-words">
+              {fmtNumber(group.employee_count)} người · {group.paid_month_count} tháng có lương · Tổng quỹ{' '}
+              <span className="font-semibold text-gray-800 tabular-nums">{fmtMoney(group.total)}</span>
+              {group.average_salary != null && (
+                <>
+                  {' '}· Bình quân{' '}
+                  <span className="font-semibold text-gray-800 tabular-nums">{fmtMoney(group.average_salary)}</span>
+                  {' '}/ người / tháng
+                </>
+              )}
+            </p>
+          </div>
+          <ChevronDownIcon
+            className={`mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400 transition-transform ${collapsed ? '' : 'rotate-180'}`}
+          />
+        </div>
+      </button>
+      {!collapsed && <EmployeeList employees={group.employees} query={query} otherEntities={otherEntities} />}
+    </section>
+  );
+}
+
+/**
+ * Lương theo từng nhân viên, CHIA THEO PHÁP NHÂN trả lương từng tháng: HR tìm / chọn người để xem tháng
+ * lương cao nhất, thấp nhất và bình quân của CHÍNH người đó. Người chuyển pháp nhân giữa kỳ có ở cả hai
+ * nhóm (mỗi nhóm chỉ các tháng của pháp nhân đó). Backend cũ chưa trả legal_entities → một danh sách chung.
+ */
+function EmployeeSalaryStats({ employees, groups }: { employees: SalaryEmployeeStat[]; groups?: SalaryLegalEntityStat[] }) {
+  const [query, setQuery] = useState('');
+  const hasGroups = !!groups && groups.length > 0;
+  // Mã NV -> các pháp nhân trả lương trong kỳ (để ghi "cũng có lương ở ..." cho người chuyển pháp nhân).
+  const entitiesOf = new Map<string, string[]>();
+  (groups || []).forEach((g) => g.employees.forEach((e) => {
+    entitiesOf.set(e.employee_code, [...(entitiesOf.get(e.employee_code) || []), entityLabel(g)]);
+  }));
+  const q = norm(query);
+  const visibleGroups = (groups || []).filter(
+    (g) => !q || g.employees.some((e) => norm(e.employee_code).includes(q) || norm(e.full_name).includes(q)),
+  );
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm min-w-0 overflow-hidden">
-      <div className="px-4 sm:px-5 pt-4 sm:pt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h3 className="text-sm font-bold text-gray-900">Lương theo từng nhân viên</h3>
+          <h3 className="text-sm font-bold text-gray-900">Lương theo từng nhân viên{hasGroups ? ' — theo pháp nhân' : ''}</h3>
           <p className="text-xs text-gray-400 mt-0.5">
-            Tháng lương cao nhất / thấp nhất và bình quân của từng người trong kỳ. Bấm vào một người để xem
-            lương từng tháng.
+            Tháng lương cao nhất / thấp nhất và bình quân của từng người trong kỳ
+            {hasGroups ? ', chia theo pháp nhân trả lương từng tháng' : ''}. Bấm vào một người để xem lương từng tháng.
           </p>
         </div>
         <div className="relative sm:w-72">
@@ -136,106 +317,30 @@ function EmployeeSalaryStats({ employees }: { employees: SalaryEmployeeStat[] })
           <input
             type="text"
             value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setCurrentPage(1);
-            }}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="Mã hoặc tên nhân viên"
             className="input-field pl-9"
           />
         </div>
       </div>
 
-      {matched.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-gray-400">
-          {employees.length ? 'Không có nhân viên khớp.' : 'Kỳ này chưa có dữ liệu lương.'}
-        </p>
+      {employees.length === 0 ? (
+        <p className="px-5 py-8 text-center text-sm text-gray-400 border-t border-gray-100">Kỳ này chưa có dữ liệu lương.</p>
+      ) : !hasGroups ? (
+        <div className="border-t border-gray-100">
+          <EmployeeList employees={employees} query={query} />
+        </div>
+      ) : visibleGroups.length === 0 ? (
+        <p className="px-5 py-8 text-center text-sm text-gray-400 border-t border-gray-100">Không có nhân viên khớp.</p>
       ) : (
-        <div className="mt-3 divide-y divide-gray-100">
-          {shown.map((e) => {
-            const open = openCode === e.employee_code;
-            return (
-              <div key={e.employee_code}>
-                <button
-                  type="button"
-                  onClick={() => setOpenCode(open ? null : e.employee_code)}
-                  className={`w-full text-left px-4 sm:px-5 py-3 hover:bg-gray-50 ${open ? 'bg-primary-50/40' : ''}`}
-                  aria-expanded={open}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-900 break-words">
-                        {e.full_name} <span className="font-normal text-gray-400">({e.employee_code})</span>
-                      </p>
-                      <p className="text-xs text-gray-400 break-words">
-                        {e.department || '—'} · {e.month_count} tháng có lương
-                      </p>
-                    </div>
-                    <ChevronDownIcon
-                      className={`mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
-                    />
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                    <div className="min-w-0">
-                      <p className="text-gray-400">Cao nhất</p>
-                      <p className="font-semibold text-emerald-700 tabular-nums break-words">{fmtMoney(e.highest.amount)}</p>
-                      <p className="text-gray-400">T{e.highest.label}</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-gray-400">Thấp nhất</p>
-                      <p className="font-semibold text-red-600 tabular-nums break-words">{fmtMoney(e.lowest.amount)}</p>
-                      <p className="text-gray-400">T{e.lowest.label}</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-gray-400">Bình quân / tháng</p>
-                      <p className="font-semibold text-gray-900 tabular-nums break-words">{fmtMoney(e.average)}</p>
-                    </div>
-                  </div>
-                </button>
-                {open && (
-                  <div className="px-4 sm:px-5 pb-4 bg-primary-50/40">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-                      {e.months.map((m) => (
-                        <MonthChip
-                          key={m.label}
-                          item={m}
-                          kind={
-                            e.month_count > 1 && m.label === e.highest.label
-                              ? 'max'
-                              : e.month_count > 1 && m.label === e.lowest.label
-                                ? 'min'
-                                : 'normal'
-                          }
-                        />
-                      ))}
-                    </div>
-                    <p className="mt-2 text-xs text-gray-500">
-                      Tổng {fmtMoney(e.total)} ÷ {e.month_count} tháng có lương = {fmtMoney(e.average)} / tháng.
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-      {matched.length > 0 && (
-        <div className="px-4 sm:px-5 py-4 border-t border-gray-100">
-          <Pagination
-            currentPage={page}
-            totalPages={totalPages}
-            totalItems={matched.length}
-            itemsPerPage={itemsPerPage}
-            onPageChange={(next) => {
-              setCurrentPage(next);
-              setOpenCode(null);
-            }}
-            onItemsPerPageChange={(size) => {
-              setItemsPerPage(size);
-              setCurrentPage(1);
-            }}
+        visibleGroups.map((g) => (
+          <LegalEntityGroup
+            key={g.code || '__none__'}
+            group={g}
+            query={query}
+            otherEntities={(code) => (entitiesOf.get(code) || []).filter((label) => label !== entityLabel(g))}
           />
-        </div>
+        ))
       )}
     </div>
   );
@@ -449,7 +554,7 @@ export default function SalaryStatisticsPanel({ monthOptions, departmentOptions,
             </StatCard>
           </div>
 
-          <EmployeeSalaryStats employees={data.employees} />
+          <EmployeeSalaryStats employees={data.employees} groups={data.legal_entities} />
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm min-w-0 overflow-hidden">
             <div className="px-4 sm:px-5 pt-4 sm:pt-5">
