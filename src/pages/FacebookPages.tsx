@@ -51,7 +51,7 @@ const FacebookPages: React.FC = () => {
 
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
     setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); // Reset to first page when changing items per page
+    setCurrentPage(1); // Reset to first page when changing items per page.
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
