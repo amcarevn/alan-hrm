@@ -228,7 +228,24 @@ export interface SalaryStatistics {
   average_per_salary_line: number | null;
   /** Theo từng nhân viên (sắp theo tên). */
   employees: SalaryEmployeeStat[];
+  /** Chia theo pháp nhân trả lương từng tháng (mã A-Z, "Chưa gán pháp nhân" cuối). Backend cũ chưa có. */
+  legal_entities?: SalaryLegalEntityStat[];
   has_unfinalized_month: boolean;
+}
+
+/** Một pháp nhân trong kỳ: nhân viên chỉ gồm các tháng do pháp nhân đó trả (người chuyển pháp nhân có ở cả 2). */
+export interface SalaryLegalEntityStat {
+  /** '' = dòng lương chưa ghi pháp nhân. */
+  code: string;
+  name: string;
+  employee_count: number;
+  paid_month_count: number;
+  salary_line_count: number;
+  total: number;
+  /** Tổng ÷ số nhân viên ÷ số tháng có lương của pháp nhân. */
+  average_salary: number | null;
+  average_per_salary_line: number | null;
+  employees: SalaryEmployeeStat[];
 }
 
 export interface SalaryStatisticsParams {
