@@ -281,19 +281,24 @@ const FormModal: React.FC<{
     try {
       setSaving(true);
       setError(null);
+      // Khi SỬA mà xoá trống một ô không bắt buộc thì phải gửi giá trị rỗng (null / '') để backend xoá
+      // giá trị cũ — bỏ trường đi (undefined) thì backend giữ nguyên. HCNS Alan 2026-11-18 (L2HCM111):
+      // xoá ngày dừng cũ 20/09 để tham gia lại từ 01/11 nhưng ngày dừng vẫn còn -> tự thành "Nghỉ việc".
+      const cleared = initial ? '' : undefined;
+      const clearedDate = initial ? null : undefined;
       const payload: SocialInsuranceCreateData = {
         ...form,
-        insurance_book_number: form.insurance_book_number || undefined,
+        insurance_book_number: form.insurance_book_number || cleared,
         // Không bắt buộc (có bạn chưa có mã BHXH). Khi sửa mà xoá trống thì gửi '' để xoá mã cũ.
-        insurance_number: form.insurance_number?.trim() || (initial ? '' : undefined),
+        insurance_number: form.insurance_number?.trim() || cleared,
         legal_entity: form.legal_entity || undefined,
-        start_date: form.start_date || undefined,
-        end_date: form.end_date || undefined,
+        start_date: form.start_date || clearedDate,
+        end_date: form.end_date || clearedDate,
         salary_base: form.salary_base || undefined,
         employee_rate: form.employee_rate !== '' ? form.employee_rate : '0',
         employer_rate: form.employer_rate !== '' ? form.employer_rate : '0',
         contribution_rate: form.contribution_rate || undefined,
-        note: form.note || undefined,
+        note: form.note || cleared,
       };
       if (initial) {
         await socialInsuranceAPI.update(initial.id, payload);
@@ -407,13 +412,13 @@ const FormModal: React.FC<{
             <Field label="Ngày bắt đầu" error={fieldErrors.start_date}>
               <input
                 type="date"
-                value={form.start_date}
+                value={form.start_date ?? ''}
                 onChange={e => { set('start_date', e.target.value); clearFieldError('start_date'); }}
                 className={`input-field ${fieldErrors.start_date ? 'border-red-400 focus:ring-red-300' : ''}`}
               />
             </Field>
             <Field label="Ngày dừng">
-              <input type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} className="input-field" />
+              <input type="date" value={form.end_date ?? ''} onChange={e => set('end_date', e.target.value)} className="input-field" />
             </Field>
           </div>
 
