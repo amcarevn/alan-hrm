@@ -1096,8 +1096,9 @@ export interface SocialInsuranceCreateData {
   insurance_book_number?: string;
   insurance_number?: string;
   legal_entity?: string;
-  start_date?: string;
-  end_date?: string;
+  /** null = xoá ngày cũ khi sửa (bỏ trường thì backend giữ nguyên). */
+  start_date?: string | null;
+  end_date?: string | null;
   salary_base?: string;
   employee_rate?: string;
   employer_rate?: string;
