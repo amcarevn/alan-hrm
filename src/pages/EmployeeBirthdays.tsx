@@ -3,7 +3,9 @@ import {
   ArrowPathIcon,
   BuildingOffice2Icon,
   CakeIcon,
+  CheckIcon,
   ChevronLeftIcon,
+  ClipboardDocumentIcon,
   ChevronRightIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
@@ -82,6 +84,18 @@ const EmployeeBirthdays: React.FC = () => {
         : g.employees,
     }))
     .filter((g) => g.employees.length > 0);
+
+  // Sao chép số tài khoản (HCNS chuyển quà sinh nhật) — báo ✓ 1,5 giây.
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const copyAccount = async (e: BirthdayEmployee) => {
+    try {
+      await navigator.clipboard.writeText(e.bank_account);
+      setCopiedId(e.id);
+      window.setTimeout(() => setCopiedId((id) => (id === e.id ? null : id)), 1500);
+    } catch {
+      // Trình duyệt chặn clipboard (http / không cấp quyền): người dùng vẫn bôi đen để chép được.
+    }
+  };
 
   const todayCount = isViewingCurrentMonth
     ? (data?.groups ?? []).reduce((n, g) => n + g.employees.filter((e) => e.day === now.getDate()).length, 0)
@@ -224,7 +238,8 @@ const EmployeeBirthdays: React.FC = () => {
                     <th className="px-4 py-2.5">Nhân sự</th>
                     <th className="px-4 py-2.5">Phòng ban</th>
                     <th className="px-4 py-2.5">Vị trí</th>
-                    <th className="px-4 py-2.5 text-right">Tuổi</th>
+                    <th className="px-4 py-2.5">Số tài khoản</th>
+                    <th className="px-4 py-2.5">Ngân hàng</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -257,7 +272,25 @@ const EmployeeBirthdays: React.FC = () => {
                         </td>
                         <td className="px-4 py-2.5">{e.department_name ?? '—'}</td>
                         <td className="px-4 py-2.5">{e.position_title ?? '—'}</td>
-                        <td className="px-4 py-2.5 text-right tabular-nums">{e.age}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap">
+                          {e.bank_account ? (
+                            <span className="inline-flex items-center gap-1">
+                              <span className="tabular-nums">{e.bank_account}</span>
+                              <button
+                                type="button"
+                                onClick={() => copyAccount(e)}
+                                className="p-1 rounded-md text-gray-400 hover:text-primary-600 hover:bg-primary-50"
+                                title="Sao chép số tài khoản"
+                                aria-label={`Sao chép số tài khoản của ${e.full_name}`}
+                              >
+                                {copiedId === e.id
+                                  ? <CheckIcon className="h-3.5 w-3.5 text-emerald-600" />
+                                  : <ClipboardDocumentIcon className="h-3.5 w-3.5" />}
+                              </button>
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td className="px-4 py-2.5">{e.bank_name || '—'}</td>
                       </tr>
                     );
                   })}

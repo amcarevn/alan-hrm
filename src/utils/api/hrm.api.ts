@@ -22,10 +22,11 @@ export interface BirthdayEmployee {
   full_name: string;
   date_of_birth: string;
   day: number;
-  /** Tuổi tròn trong năm đang xem. */
-  age: number;
   department_name: string | null;
   position_title: string | null;
+  /** Số tài khoản / ngân hàng trên hồ sơ (API chỉ Admin / HCNS gọi được); '' = chưa có. */
+  bank_account: string;
+  bank_name: string;
   employment_status: string;
   avatar_url: string | null;
 }
